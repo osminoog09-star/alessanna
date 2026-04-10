@@ -6,12 +6,12 @@
     <title>Alessanna Ilusalong</title>
     <meta
       name="description"
-      content="Alessanna Ilusalong: стрижка, покраска, маникюр, педикюр и массаж в премиальной атмосфере."
+      content="Alessanna Ilusalong: волосы, маникюр, педикюр и массаж в премиальной атмосфере в центре Таллина."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&family=Bodoni+Moda:opsz,wght@6..96,600;6..96,700&family=Great+Vibes&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -51,64 +51,222 @@
     </header>
 
     <main id="top">
-      <section class="hero">
+      <section class="hero hero-services">
         <div class="container hero-grid">
-          <div class="hero-copy reveal">
-            <a class="button button-mawe hero-mawe-link" href="mawe.html">Магазин косметики MAVE</a>
+          <div class="hero-copy hero-copy-compact reveal">
+            <button
+              class="button button-mawe hero-service-link services-toggle"
+              type="button"
+              data-services-toggle
+              aria-expanded="false"
+              aria-controls="services-panel"
+            >
+              Услуги и цены
+            </button>
           </div>
         </div>
       </section>
 
       <section class="services section" id="services">
-        <div class="container">
-          <div class="services-layout">
-            <div class="services-left reveal">
-              <div class="section-heading">
-                <p class="eyebrow">Услуги и цены</p>
-              </div>
-
-              <div class="price-buttons">
-                <a class="price-button" href="#booking"><span>Стрижка</span><strong>от 25 €</strong></a>
-                <a class="price-button" href="#booking"><span>Покраска</span><strong>от 45 €</strong></a>
-                <a class="price-button" href="#booking"><span>Маникюр</span><strong>от 20 €</strong></a>
-                <a class="price-button" href="#booking"><span>Педикюр</span><strong>от 30 €</strong></a>
-                <a class="price-button" href="#booking"><span>Массаж</span><strong>от 35 €</strong></a>
-              </div>
+        <div class="container services-stack">
+          <div class="services-dropdown" id="services-panel" data-services-panel aria-hidden="true">
+            <div class="section-heading services-section-heading services-drop-item">
+              <p class="eyebrow">Услуги</p>
+              <h2>Выберите категорию, а подробный прайс уже расположен ниже.</h2>
             </div>
 
-            <aside class="services-price-card reveal">
-              <div class="services-ornaments" aria-hidden="true">
+            <div class="service-category-grid services-drop-item">
+              <a class="service-category-card service-category-link" href="#price-hair">
+                <div class="service-category-top">
+                  <p class="service-category-title">Волосы</p>
+                  <strong>от 25 €</strong>
+                </div>
+                <p class="service-category-copy">Стрижки, окрашивание и уход с чистой формой и спокойной подачей.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-manicure">
+                <div class="service-category-top">
+                  <p class="service-category-title">Маникюр</p>
+                  <strong>от 15 €</strong>
+                </div>
+                <p class="service-category-copy">Классический маникюр, гель-лак и аккуратная архитектура ногтей.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-pedicure">
+                <div class="service-category-top">
+                  <p class="service-category-title">Педикюр</p>
+                  <strong>от 30 €</strong>
+                </div>
+                <p class="service-category-copy">Комфортный уход за стопами и стойкий результат для ежедневной жизни.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-massage">
+                <div class="service-category-top">
+                  <p class="service-category-title">Массаж</p>
+                  <strong>от 35 €</strong>
+                </div>
+                <p class="service-category-copy">Сеансы для расслабления, восстановления и ощущения лёгкости в теле.</p>
+              </a>
+            </div>
+
+            <div class="price-showcase-card services-drop-item">
+              <div class="services-ornaments services-ornaments-showcase" aria-hidden="true">
                 <span class="ornament-leaf ornament-leaf-top"></span>
                 <span class="ornament-leaf ornament-leaf-mid"></span>
                 <span class="ornament-stem ornament-stem-main"></span>
                 <span class="ornament-flower ornament-flower-bottom"></span>
                 <span class="ornament-leaf ornament-leaf-bottom"></span>
               </div>
-              <div class="services-price-inner">
-                <p class="services-price-title">Прайс-лист</p>
 
-                <div class="services-price-group">
-                  <p class="services-price-subtitle">Маникюр</p>
-                  <div class="services-price-row"><span>Маникюр</span><strong>15-20 €</strong></div>
-                  <div class="services-price-row"><span>Покрытие лаком</span><strong>7 €</strong></div>
-                  <div class="services-price-row"><span>Маникюр с гель-лаком</span><strong>30 €</strong></div>
-                  <div class="services-price-row"><span>Снятие гель-лака с классическим маникюром</span><strong>25 €</strong></div>
-                  <div class="services-price-row"><span>Снятие гель-лака</span><strong>15 €</strong></div>
-                  <div class="services-price-row"><span>Наращивание ногтей</span><strong>40-50 €</strong></div>
-                  <div class="services-price-row"><span>Коррекция ногтей</span><strong>35-40 €</strong></div>
-                  <div class="services-price-row"><span>Снятие искусственных ногтей</span><strong>25 €</strong></div>
-                  <div class="services-price-row"><span>Ремонт одного ногтя</span><strong>7 €</strong></div>
+              <div class="price-showcase-inner">
+                <header class="price-panel-heading">
+                  <p class="services-price-title price-panel-title">Прайс-лист</p>
+                  <p class="price-panel-script">Maniküür · Pediküür · Juuksed · Body</p>
+                  <div class="price-panel-divider"></div>
+                </header>
+
+              <section class="price-panel-section" id="price-hair">
+                <h3 class="price-panel-section-title">Волосы</h3>
+                <p class="price-panel-section-note">Стрижки, окрашивание и уход под ваш образ и ритм жизни.</p>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Женская стрижка</strong>
+                    <p class="service-item-desc">Форма, текстура и лёгкая укладка в одном визите.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">60 мин</span>
+                    <strong class="service-item-price">от 25 €</strong>
+                  </div>
                 </div>
 
-                <div class="services-price-group">
-                  <p class="services-price-subtitle">Педикюр</p>
-                  <div class="services-price-row"><span>Педикюр</span><strong>30-35 €</strong></div>
-                  <div class="services-price-row"><span>Педикюр с гель-лаком</span><strong>35-40 €</strong></div>
-                  <div class="services-price-row"><span>Снятие гель-лака с классическим педикюром</span><strong>30-35 €</strong></div>
-                  <div class="services-price-row"><span>Мужской педикюр</span><strong>30-35 €</strong></div>
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Окрашивание в один тон</strong>
+                    <p class="service-item-desc">Чистый оттенок, блеск и подбор домашнего ухода после процедуры.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">120 мин</span>
+                    <strong class="service-item-price">от 45 €</strong>
+                  </div>
                 </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Уход и укладка</strong>
+                    <p class="service-item-desc">Быстрое восстановление волос и мягкий финальный объём.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">45 мин</span>
+                    <strong class="service-item-price">от 30 €</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section class="price-panel-section" id="price-manicure">
+                <h3 class="price-panel-section-title">Маникюр</h3>
+                <p class="price-panel-section-note">Точная работа, комфорт и стойкий ухоженный результат.</p>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Классический маникюр</strong>
+                    <p class="service-item-desc">Чистая форма, обработка и естественный ухоженный вид рук.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">60 мин</span>
+                    <strong class="service-item-price">15-20 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Маникюр с гель-лаком</strong>
+                    <p class="service-item-desc">Стойкое покрытие с выравниванием и мягким блеском.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">90 мин</span>
+                    <strong class="service-item-price">30 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Наращивание или коррекция</strong>
+                    <p class="service-item-desc">Усиление длины и формы с сохранением аккуратного силуэта ногтей.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">120 мин</span>
+                    <strong class="service-item-price">40-50 €</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section class="price-panel-section" id="price-pedicure">
+                <h3 class="price-panel-section-title">Педикюр</h3>
+                <p class="price-panel-section-note">Комфортный уход за стопами и долговечный аккуратный результат.</p>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Классический педикюр</strong>
+                    <p class="service-item-desc">Уход за стопами, чистая обработка и лёгкое чувство свежести.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">75 мин</span>
+                    <strong class="service-item-price">30-35 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Педикюр с гель-лаком</strong>
+                    <p class="service-item-desc">Классический уход плюс стойкое покрытие для открытой обуви.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">90 мин</span>
+                    <strong class="service-item-price">35-40 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Мужской педикюр</strong>
+                    <p class="service-item-desc">Функциональный уход без покрытия с акцентом на чистоту и комфорт.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">75 мин</span>
+                    <strong class="service-item-price">30-35 €</strong>
+                  </div>
+                </div>
+              </section>
+
+              <section class="price-panel-section" id="price-massage">
+                <h3 class="price-panel-section-title">Массаж</h3>
+                <p class="price-panel-section-note">Сеансы для расслабления, восстановления и перезагрузки.</p>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Экспресс массаж спины</strong>
+                    <p class="service-item-desc">Снимает напряжение в плечах и спине, когда нужно быстро восстановиться.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">30 мин</span>
+                    <strong class="service-item-price">35 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Расслабляющий массаж тела</strong>
+                    <p class="service-item-desc">Глубокий мягкий ритм для отдыха, лёгкости и ощущения спокойствия.</p>
+                  </div>
+                  <div class="service-item-meta">
+                    <span class="service-item-time">60 мин</span>
+                    <strong class="service-item-price">55 €</strong>
+                  </div>
+                </div>
+              </section>
               </div>
-            </aside>
+            </div>
           </div>
         </div>
       </section>
@@ -117,10 +275,10 @@
         <div class="container booking-shell reveal">
           <div class="booking-copy">
             <p class="eyebrow">Запись</p>
-            <h2>Запишитесь на удобное время и сразу посмотрите записи на месяц.</h2>
+            <h2>Запишитесь на удобное время и выберите привычный способ связи.</h2>
             <p>
-              Оставьте контакты, и администратор свяжется с вами, чтобы подобрать мастера,
-              услугу и ближайшее комфортное окно.
+              Можно оставить форму, а можно написать напрямую в удобный канал. Это особенно удобно с телефона,
+              если нужно быстро уточнить мастера, время или услугу.
             </p>
             <div class="booking-calendar">
               <div class="calendar-head">
@@ -150,7 +308,34 @@
               </div>
             </div>
           </div>
+
           <div class="booking-side">
+            <div class="booking-methods">
+              <a class="booking-method-card" href="https://wa.me/37255555555" target="_blank" rel="noreferrer">
+                <span class="booking-method-label">WhatsApp</span>
+                <strong class="booking-method-name">Быстрый диалог</strong>
+                <span class="booking-method-note">Подходит для записи, уточнения времени и подтверждения визита.</span>
+              </a>
+
+              <a class="booking-method-card" href="https://t.me/alessannailu" target="_blank" rel="noreferrer">
+                <span class="booking-method-label">Telegram</span>
+                <strong class="booking-method-name">Сообщения и фото</strong>
+                <span class="booking-method-note">Удобно, если хотите уточнить услугу или прислать референс.</span>
+              </a>
+
+              <a class="booking-method-card" href="tel:+37255555555">
+                <span class="booking-method-label">Звонок</span>
+                <strong class="booking-method-name">Срочная запись</strong>
+                <span class="booking-method-note">Лучший вариант, если хотите записаться на ближайшее время.</span>
+              </a>
+
+              <a class="booking-method-card" href="https://instagram.com/alessannailu" target="_blank" rel="noreferrer">
+                <span class="booking-method-label">Instagram Direct</span>
+                <strong class="booking-method-name">Запись через direct</strong>
+                <span class="booking-method-note">Можно задать вопросы по стилю, уходу и доступным окнам.</span>
+              </a>
+            </div>
+
             <form class="booking-form">
               <label>
                 <span>Ваше имя</span>
@@ -161,10 +346,9 @@
                 <input type="tel" name="phone" placeholder="+372 5555 5555" />
               </label>
               <label>
-                <span>Услуга</span>
+                <span>Категория услуги</span>
                 <select name="service">
-                  <option>Стрижка</option>
-                  <option>Покраска</option>
+                  <option>Волосы</option>
                   <option>Маникюр</option>
                   <option>Педикюр</option>
                   <option>Массаж</option>
@@ -176,33 +360,95 @@
               </label>
               <button class="button" type="submit">Отправить заявку</button>
             </form>
+
             <aside class="booking-highlight">
-              <p class="booking-highlight-label">Быстрая запись</p>
-              <strong>Популярные часы</strong>
-              <span>Выберите день в календаре, чтобы увидеть свободные окна и отправить заявку.</span>
+              <p class="booking-highlight-label">Как удобнее</p>
+              <strong>Мы отвечаем и в форме, и в мессенджерах</strong>
+              <span>Если удобнее написать напрямую, выбирайте WhatsApp, Telegram, звонок или Instagram Direct.</span>
             </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="contact-section section" id="contact">
+        <div class="container">
+          <div class="section-heading contact-heading reveal">
+            <p class="eyebrow">Контакты</p>
+            <h2>Легко найти салон, связаться с нами и приехать без лишних поисков.</h2>
+          </div>
+
+          <div class="contact-shell reveal">
+            <div class="contact-details">
+              <article class="contact-card">
+                <p class="contact-label">Адрес</p>
+                <strong>Tallinn, Kesklinn, Estonia</strong>
+                <span>Работаем в центре города. Точный вход отправляем после подтверждения записи.</span>
+              </article>
+
+              <article class="contact-card">
+                <p class="contact-label">Телефон</p>
+                <strong><a href="tel:+37255555555">+372 5555 5555</a></strong>
+                <span>Можно позвонить для быстрой записи или уточнения по услугам.</span>
+              </article>
+
+              <article class="contact-card">
+                <p class="contact-label">Разработчик сайта</p>
+                <strong><a href="mailto:denis.zukov@alessannailu.com">denis.zukov@alessannailu.com</a></strong>
+                <span>Я разработчик сайта. При возникновении технических проблем, ошибок или вопросов по работе сайта свяжитесь со мной.</span>
+              </article>
+
+              <article class="contact-card">
+                <p class="contact-label">Часы работы</p>
+                <strong>Пн-Вс: 09:00-21:00</strong>
+                <span>При записи заранее можно подобрать более удобное окно в течение дня.</span>
+              </article>
+
+              <article class="contact-card">
+                <p class="contact-label">Парковка и ориентир</p>
+                <strong>Городская парковка рядом</strong>
+                <span>Удобный подъезд со стороны центра. После подтверждения записи подскажем ориентир точнее.</span>
+              </article>
+
+              <div class="contact-quick-links">
+                <a class="button button-ghost contact-quick-link" href="https://wa.me/37255555555" target="_blank" rel="noreferrer">WhatsApp</a>
+                <a class="button button-ghost contact-quick-link" href="https://t.me/alessannailu" target="_blank" rel="noreferrer">Telegram</a>
+                <a class="button button-ghost contact-quick-link" href="tel:+37255555555">Позвонить</a>
+                <a class="button button-ghost contact-quick-link" href="https://instagram.com/alessannailu" target="_blank" rel="noreferrer">Instagram</a>
+              </div>
+            </div>
+
+            <div class="contact-map-card contact-card contact-map">
+              <iframe
+                title="Карта Alessanna Ilusalong"
+                src="https://www.openstreetmap.org/export/embed.html?bbox=24.727%2C59.428%2C24.769%2C59.444&layer=mapnik&marker=59.4370%2C24.7536"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+              ></iframe>
+              <div class="contact-map-footer">
+                <div>
+                  <p class="contact-label">Карта</p>
+                  <span>Центр Таллина, удобная локация для записи до или после дел в городе.</span>
+                </div>
+                <a
+                  class="button button-small"
+                  href="https://www.openstreetmap.org/?mlat=59.4370&mlon=24.7536#map=15/59.4370/24.7536"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Открыть карту
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
     </main>
 
-    <footer class="site-footer" id="contact">
-      <div class="container footer-grid">
-        <div>
-          <p class="eyebrow">Alessanna Ilusalong</p>
-          <p>Таллин, центр города</p>
-          <p>+372 5555 5555</p>
-          <p>denis.zukov@alessannailu.com</p>
-        </div>
-        <div>
-          <p class="footer-title">Часы работы</p>
-          <p>Пн-Вс: 09:00-21:00</p>
-        </div>
-        <div>
-          <p class="footer-title">Соцсети</p>
-          <p>Instagram</p>
-          <p>Telegram</p>
-          <p>WhatsApp</p>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <p>Alessanna Ilusalong</p>
+          <p>alessannailu.com</p>
         </div>
       </div>
     </footer>

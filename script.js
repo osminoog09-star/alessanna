@@ -8,6 +8,8 @@ const calendarTitle = document.querySelector("[data-calendar-title]");
 const selectedDayLabel = document.querySelector("[data-selected-day]");
 const selectedInfoLabel = document.querySelector("[data-selected-info]");
 const bookingDateInput = document.querySelector("[data-booking-date]");
+const servicesToggle = document.querySelector("[data-services-toggle]");
+const servicesPanel = document.querySelector("[data-services-panel]");
 const locale = document.documentElement.lang.toLowerCase().startsWith("et") ? "et" : "ru";
 
 const translations = {
@@ -141,6 +143,83 @@ if ("IntersectionObserver" in window) {
   revealItems.forEach((item) => observer.observe(item));
 } else {
   revealItems.forEach((item) => item.classList.add("is-visible"));
+}
+
+if (servicesToggle && servicesPanel) {
+  const updateServicesState = (isOpen) => {
+    servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
+    servicesPanel.classList.toggle("is-open", isOpen);
+    servicesToggle.classList.toggle("is-open", isOpen);
+    servicesToggle.setAttribute("aria-expanded", String(isOpen));
+    servicesPanel.setAttribute("aria-hidden", String(!isOpen));
+  };
+
+  const scrollToHashTarget = (hashValue) => {
+    if (!hashValue) {
+      return;
+    }
+
+    const target = document.querySelector(hashValue);
+
+    if (target) {
+      window.setTimeout(() => {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 180);
+    }
+  };
+
+  const openServices = (hashValue = "#services") => {
+    if (!servicesPanel.classList.contains("is-open")) {
+      updateServicesState(true);
+    } else {
+      servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
+    }
+
+    if (hashValue) {
+      scrollToHashTarget(hashValue);
+    }
+  };
+
+  const toggleServices = () => {
+    const shouldOpen = !servicesPanel.classList.contains("is-open");
+    updateServicesState(shouldOpen);
+
+    if (shouldOpen) {
+      scrollToHashTarget("#services");
+    }
+  };
+
+  servicesToggle.addEventListener("click", toggleServices);
+
+  document.querySelectorAll('a[href="#services"], a[href^="#price-"]').forEach((link) => {
+    link.addEventListener("click", () => {
+      const targetHash = link.getAttribute("href");
+
+      if (targetHash === "#services" || targetHash.startsWith("#price-")) {
+        openServices(targetHash);
+      }
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    if (servicesPanel.classList.contains("is-open")) {
+      servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
+    }
+  });
+
+  window.addEventListener("hashchange", () => {
+    if (window.location.hash === "#services" || window.location.hash.startsWith("#price-")) {
+      openServices(window.location.hash);
+    }
+  });
+
+  if (window.location.hash === "#services" || window.location.hash.startsWith("#price-")) {
+    updateServicesState(true);
+    scrollToHashTarget(window.location.hash);
+  }
 }
 
 if (calendarGrid && calendarTitle) {

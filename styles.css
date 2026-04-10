@@ -130,12 +130,17 @@ select {
 
 .brand-text strong {
   font-size: 1rem;
-  font-weight: 800;
+  font-family: "Bodoni Moda", "Cormorant Garamond", serif;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
 }
 
 .brand-text em {
   color: var(--muted);
   font-size: 0.78rem;
+  font-family: "Manrope", sans-serif;
+  letter-spacing: 0.02em;
 }
 
 .site-nav {
@@ -1410,6 +1415,7 @@ body {
 
 .brand-text strong {
   font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .brand-text em {
@@ -1807,5 +1813,665 @@ body {
 
   .mawe-actions {
     justify-content: center;
+  }
+}
+
+.services-left .section-heading h2 {
+  max-width: 12ch;
+}
+
+.service-categories {
+  display: grid;
+  gap: 16px;
+}
+
+.service-category-card,
+.contact-card,
+.footer-bottom {
+  border: 1px solid var(--stroke);
+  border-radius: 22px;
+  background: rgba(7, 7, 7, 0.96);
+}
+
+.service-category-card {
+  padding: 24px 26px;
+}
+
+.service-category-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.service-category-title {
+  margin: 0;
+  color: var(--text);
+  font-family: "Cormorant Garamond", serif;
+  font-size: 2rem;
+  line-height: 0.95;
+}
+
+.service-category-top strong {
+  color: var(--accent);
+  font-size: 1.08rem;
+  white-space: nowrap;
+}
+
+.service-category-copy,
+.service-group-text,
+.service-item-desc,
+.booking-method-note,
+.contact-card span,
+.contact-map-footer span,
+.footer-bottom p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.services-price-inner-wide {
+  max-width: none;
+}
+
+.service-group-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.service-group-text {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 0.96rem;
+}
+
+.service-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(199, 161, 90, 0.12);
+}
+
+.service-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.service-item-main {
+  min-width: 0;
+}
+
+.service-item-name {
+  display: block;
+  color: var(--text);
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.service-item-desc {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+}
+
+.service-item-meta {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+  text-align: right;
+}
+
+.service-item-time {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.service-item-price {
+  color: var(--accent);
+  font-size: 1.22rem;
+  white-space: nowrap;
+}
+
+.booking-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.booking-method-card {
+  display: grid;
+  gap: 10px;
+  padding: 20px 22px;
+  border: 1px solid var(--stroke);
+  border-radius: 22px;
+  background: rgba(7, 7, 7, 0.96);
+  transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+
+.booking-method-card:hover,
+.booking-method-card:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(199, 161, 90, 0.06);
+  border-color: rgba(199, 161, 90, 0.4);
+}
+
+.booking-method-label,
+.contact-label {
+  margin: 0;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.booking-method-name {
+  color: var(--text);
+  font-size: 1.04rem;
+  font-weight: 700;
+}
+
+.contact-section {
+  padding-top: 18px;
+}
+
+.contact-heading h2 {
+  max-width: 13ch;
+}
+
+.contact-shell {
+  display: grid;
+  grid-template-columns: 0.92fr 1.08fr;
+  gap: 24px;
+}
+
+.contact-details {
+  display: grid;
+  gap: 16px;
+}
+
+.contact-card {
+  padding: 22px 24px;
+}
+
+.contact-card strong {
+  display: block;
+  margin: 8px 0 6px;
+  color: var(--text);
+  font-size: 1.08rem;
+}
+
+.contact-card a {
+  color: inherit;
+}
+
+.contact-quick-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.contact-quick-link {
+  width: 100%;
+}
+
+.contact-map-card {
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(380px, 1fr) auto;
+}
+
+.contact-map iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  filter: grayscale(1) invert(1) contrast(0.95) brightness(0.92);
+}
+
+.contact-map-footer {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px 22px;
+  border-top: 1px solid rgba(199, 161, 90, 0.12);
+  background: rgba(7, 7, 7, 0.98);
+}
+
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  padding: 18px 24px;
+}
+
+.footer-bottom p {
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .booking-methods,
+  .contact-shell,
+  .contact-quick-links {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-map-card {
+    grid-template-rows: minmax(320px, 1fr) auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .service-category-card,
+  .contact-card,
+  .booking-method-card,
+  .footer-bottom {
+    padding: 18px;
+  }
+
+  .service-category-title {
+    font-size: 1.7rem;
+  }
+
+  .service-group-head,
+  .service-item,
+  .contact-map-footer,
+  .footer-bottom {
+    display: grid;
+  }
+
+  .service-item-meta {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .contact-map-card {
+    grid-template-rows: 280px auto;
+  }
+}
+
+.hero-services {
+  padding: 26px 0 18px;
+}
+
+.hero-copy-compact {
+  min-height: auto;
+}
+
+.hero-service-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 260px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.hero-service-link::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  margin-top: -4px;
+  border-right: 1px solid rgba(199, 161, 90, 0.82);
+  border-bottom: 1px solid rgba(199, 161, 90, 0.82);
+  transform: rotate(45deg);
+  transition: transform 0.45s ease, opacity 0.35s ease;
+}
+
+.hero-service-link.is-open::after {
+  transform: translateY(4px) rotate(-135deg);
+}
+
+.hero-service-link.is-open {
+  background: rgba(199, 161, 90, 0.12);
+}
+
+.services-stack {
+  display: grid;
+  gap: 24px;
+}
+
+.services-dropdown {
+  --services-height: 0px;
+  display: grid;
+  gap: 24px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-22px);
+  transition:
+    max-height 0.88s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.46s ease,
+    transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.services-dropdown.is-open {
+  max-height: var(--services-height);
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.services-drop-item {
+  opacity: 0;
+  transform: translateY(-28px);
+  transition:
+    opacity 0.55s ease,
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.services-dropdown.is-open .services-drop-item {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.services-dropdown.is-open .services-section-heading {
+  transition-delay: 0.06s;
+}
+
+.services-dropdown.is-open .service-category-grid {
+  transition-delay: 0.16s;
+}
+
+.services-dropdown.is-open .price-showcase-card {
+  transition-delay: 0.34s;
+}
+
+.services-section-heading {
+  margin-bottom: 0;
+}
+
+.services-section-heading h2 {
+  max-width: 12ch;
+}
+
+.service-category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.services-dropdown .service-category-card {
+  opacity: 0;
+  transform: translateY(-18px) scale(0.985);
+  transition:
+    opacity 0.48s ease,
+    transform 0.62s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s ease,
+    background 0.28s ease;
+}
+
+.services-dropdown.is-open .service-category-card {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.services-dropdown.is-open .service-category-card:nth-child(1) {
+  transition-delay: 0.22s;
+}
+
+.services-dropdown.is-open .service-category-card:nth-child(2) {
+  transition-delay: 0.29s;
+}
+
+.services-dropdown.is-open .service-category-card:nth-child(3) {
+  transition-delay: 0.36s;
+}
+
+.services-dropdown.is-open .service-category-card:nth-child(4) {
+  transition-delay: 0.43s;
+}
+
+.service-category-link {
+  min-height: 100%;
+  transition: transform 0.28s ease, border-color 0.28s ease, background 0.28s ease;
+}
+
+.service-category-link:hover,
+.service-category-link:focus-visible {
+  transform: translateY(-3px);
+  border-color: rgba(199, 161, 90, 0.44);
+  background: rgba(199, 161, 90, 0.08);
+}
+
+.price-showcase-card {
+  position: relative;
+  padding: 54px 54px 50px;
+  border: 1px solid rgba(199, 161, 90, 0.24);
+  border-radius: 38px;
+  background:
+    linear-gradient(180deg, rgba(6, 6, 6, 0.7), rgba(8, 8, 8, 0.54)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 32%);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.price-showcase-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(199, 161, 90, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 24%);
+  pointer-events: none;
+}
+
+.price-showcase-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.services-ornaments-showcase {
+  opacity: 0.82;
+}
+
+.services-ornaments-showcase .ornament-leaf-top {
+  top: 40px;
+  left: 48px;
+  width: 92px;
+  height: 148px;
+}
+
+.services-ornaments-showcase .ornament-leaf-mid {
+  top: 132px;
+  left: 228px;
+  width: 64px;
+  height: 112px;
+}
+
+.services-ornaments-showcase .ornament-stem-main {
+  top: 138px;
+  left: 310px;
+  width: 380px;
+  height: 680px;
+  transform: rotate(34deg);
+}
+
+.services-ornaments-showcase .ornament-flower {
+  left: 18px;
+  bottom: -34px;
+  width: 360px;
+  height: 220px;
+}
+
+.services-ornaments-showcase .ornament-leaf-bottom {
+  right: 72px;
+  bottom: 52px;
+  width: 64px;
+  height: 98px;
+}
+
+.price-panel-heading {
+  margin-bottom: 28px;
+}
+
+.price-panel-title {
+  max-width: 6ch;
+  font-size: clamp(4rem, 8vw, 5.8rem);
+  line-height: 0.9;
+}
+
+.price-panel-script {
+  margin: 8px 0 14px 8px;
+  color: rgba(199, 161, 90, 0.88);
+  font-family: "Great Vibes", "Cormorant Garamond", serif;
+  font-size: clamp(2rem, 4.4vw, 3.3rem);
+  line-height: 1;
+}
+
+.price-panel-divider {
+  width: min(100%, 640px);
+  height: 1px;
+  background: rgba(199, 161, 90, 0.72);
+}
+
+.price-panel-section {
+  margin-top: 32px;
+  padding-top: 26px;
+  border-top: 1px solid rgba(199, 161, 90, 0.2);
+}
+
+.price-panel-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.price-panel-section-title {
+  margin: 0 0 10px;
+  color: rgba(199, 161, 90, 0.92);
+  font-family: "Great Vibes", "Cormorant Garamond", serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.price-panel-section-note {
+  margin: 0 0 18px;
+  max-width: 42ch;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.65;
+}
+
+.service-item-panel {
+  padding: 14px 0;
+}
+
+.service-item-panel .service-item-name {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 0.98;
+}
+
+.service-item-panel .service-item-desc {
+  max-width: 46ch;
+}
+
+.service-item-panel .service-item-time {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+}
+
+.service-item-panel .service-item-price {
+  font-size: 1.34rem;
+}
+
+@media (max-width: 980px) {
+  .service-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .price-showcase-card {
+    padding: 40px 32px 36px;
+  }
+
+  .services-ornaments-showcase .ornament-stem-main {
+    left: 232px;
+    width: 260px;
+    height: 520px;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-services {
+    padding: 18px 0 10px;
+  }
+
+  .hero-service-link {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .service-category-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .price-showcase-card {
+    padding: 30px 22px 26px;
+    border-radius: 28px;
+  }
+
+  .price-panel-title {
+    font-size: clamp(3rem, 14vw, 4.2rem);
+  }
+
+  .price-panel-script {
+    margin-left: 2px;
+    font-size: clamp(1.7rem, 9vw, 2.4rem);
+  }
+
+  .services-ornaments-showcase {
+    opacity: 0.58;
+  }
+
+  .services-ornaments-showcase .ornament-leaf-top {
+    top: 28px;
+    left: 18px;
+    width: 68px;
+    height: 112px;
+  }
+
+  .services-ornaments-showcase .ornament-leaf-mid {
+    top: 110px;
+    left: 126px;
+    width: 44px;
+    height: 82px;
+  }
+
+  .services-ornaments-showcase .ornament-stem-main {
+    top: 122px;
+    left: 164px;
+    width: 150px;
+    height: 380px;
+  }
+
+  .services-ornaments-showcase .ornament-flower {
+    left: -6px;
+    bottom: -12px;
+    width: 220px;
+    height: 150px;
+  }
+
+  .services-ornaments-showcase .ornament-leaf-bottom {
+    right: 24px;
+    bottom: 26px;
+    width: 44px;
+    height: 76px;
+  }
+
+  .price-panel-section-title {
+    font-size: 2.2rem;
   }
 }
