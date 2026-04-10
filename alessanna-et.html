@@ -53,15 +53,24 @@
     <main id="top">
       <section class="hero hero-services">
         <div class="container hero-grid">
-          <div class="hero-copy hero-copy-compact reveal">
+          <div class="hero-copy hero-copy-compact hero-services-actions reveal">
             <button
               class="button button-mawe hero-service-link services-toggle"
               type="button"
               data-services-toggle
               aria-expanded="false"
-              aria-controls="services-panel"
+              aria-controls="services-categories-panel"
             >
-              Teenused ja hinnad
+              Teenused
+            </button>
+            <button
+              class="button button-mawe hero-service-link price-toggle"
+              type="button"
+              data-price-toggle
+              aria-expanded="false"
+              aria-controls="services-price-panel"
+            >
+              Hinnakiri
             </button>
           </div>
         </div>
@@ -69,10 +78,10 @@
 
       <section class="services section" id="services">
         <div class="container services-stack">
-          <div class="services-dropdown" id="services-panel" data-services-panel aria-hidden="true">
+          <div class="services-dropdown" id="services-categories-panel" data-services-panel aria-hidden="true">
             <div class="section-heading services-section-heading services-drop-item">
               <p class="eyebrow">Teenused</p>
-              <h2>Vali kategooria ja detailne hinnakiri asub kohe nende all.</h2>
+              <h2>Vali teenusekategooria, et liikuda kiirelt õige hinnakirja osani.</h2>
             </div>
 
             <div class="service-category-grid services-drop-item">
@@ -108,7 +117,9 @@
                 <p class="service-category-copy">Seansid lõõgastuseks, taastumiseks ja keha kerguse tunneteks.</p>
               </a>
             </div>
+          </div>
 
+          <div class="services-dropdown services-price-dropdown" id="services-price-panel" data-price-panel aria-hidden="true">
             <div class="price-showcase-card services-drop-item">
               <div class="services-ornaments services-ornaments-showcase" aria-hidden="true">
                 <span class="ornament-leaf ornament-leaf-top"></span>
@@ -125,43 +136,43 @@
                   <div class="price-panel-divider"></div>
                 </header>
 
-              <section class="price-panel-section" id="price-hair">
-                <h3 class="price-panel-section-title">Juuksed</h3>
-                <p class="price-panel-section-note">Lõikused, värvimine ja hooldus sinu kuvandi ja rütmi järgi.</p>
+                <section class="price-panel-section" id="price-hair">
+                  <h3 class="price-panel-section-title">Juuksed</h3>
+                  <p class="price-panel-section-note">Lõikused, värvimine ja hooldus sinu kuvandi ja rütmi järgi.</p>
 
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Naiste juukselõikus</strong>
-                    <p class="service-item-desc">Vorm, tekstuur ja kerge viimistlus ühe külastusega.</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Naiste juukselõikus</strong>
+                      <p class="service-item-desc">Vorm, tekstuur ja kerge viimistlus ühe külastusega.</p>
+                    </div>
+                    <div class="service-item-meta">
+                      <span class="service-item-time">60 min</span>
+                      <strong class="service-item-price">alates 25 €</strong>
+                    </div>
                   </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">60 min</span>
-                    <strong class="service-item-price">alates 25 €</strong>
-                  </div>
-                </div>
 
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Ühtlane värvimine</strong>
-                    <p class="service-item-desc">Puhas toon, läige ja hoolduse soovitus pärast protseduuri.</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Ühtlane värvimine</strong>
+                      <p class="service-item-desc">Puhas toon, läige ja hoolduse soovitus pärast protseduuri.</p>
+                    </div>
+                    <div class="service-item-meta">
+                      <span class="service-item-time">120 min</span>
+                      <strong class="service-item-price">alates 45 €</strong>
+                    </div>
                   </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">120 min</span>
-                    <strong class="service-item-price">alates 45 €</strong>
-                  </div>
-                </div>
 
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Hooldus ja viimistlus</strong>
-                    <p class="service-item-desc">Kiire taastav hooldus ja pehme lõppmaht.</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Hooldus ja viimistlus</strong>
+                      <p class="service-item-desc">Kiire taastav hooldus ja pehme lõppmaht.</p>
+                    </div>
+                    <div class="service-item-meta">
+                      <span class="service-item-time">45 min</span>
+                      <strong class="service-item-price">alates 30 €</strong>
+                    </div>
                   </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">45 min</span>
-                    <strong class="service-item-price">alates 30 €</strong>
-                  </div>
-                </div>
-              </section>
+                </section>
 
               <section class="price-panel-section" id="price-manicure">
                 <h3 class="price-panel-section-title">Maniküür</h3>

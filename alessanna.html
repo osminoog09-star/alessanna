@@ -53,15 +53,24 @@
     <main id="top">
       <section class="hero hero-services">
         <div class="container hero-grid">
-          <div class="hero-copy hero-copy-compact reveal">
+          <div class="hero-copy hero-copy-compact hero-services-actions reveal">
             <button
               class="button button-mawe hero-service-link services-toggle"
               type="button"
               data-services-toggle
               aria-expanded="false"
-              aria-controls="services-panel"
+              aria-controls="services-categories-panel"
             >
-              Услуги и цены
+              Услуги
+            </button>
+            <button
+              class="button button-mawe hero-service-link price-toggle"
+              type="button"
+              data-price-toggle
+              aria-expanded="false"
+              aria-controls="services-price-panel"
+            >
+              Прайс-лист
             </button>
           </div>
         </div>
@@ -69,10 +78,10 @@
 
       <section class="services section" id="services">
         <div class="container services-stack">
-          <div class="services-dropdown" id="services-panel" data-services-panel aria-hidden="true">
+          <div class="services-dropdown" id="services-categories-panel" data-services-panel aria-hidden="true">
             <div class="section-heading services-section-heading services-drop-item">
               <p class="eyebrow">Услуги</p>
-              <h2>Выберите категорию, а подробный прайс уже расположен ниже.</h2>
+              <h2>Выберите категорию услуг, чтобы быстро перейти к нужному разделу.</h2>
             </div>
 
             <div class="service-category-grid services-drop-item">
@@ -108,7 +117,9 @@
                 <p class="service-category-copy">Сеансы для расслабления, восстановления и ощущения лёгкости в теле.</p>
               </a>
             </div>
+          </div>
 
+          <div class="services-dropdown services-price-dropdown" id="services-price-panel" data-price-panel aria-hidden="true">
             <div class="price-showcase-card services-drop-item">
               <div class="services-ornaments services-ornaments-showcase" aria-hidden="true">
                 <span class="ornament-leaf ornament-leaf-top"></span>
@@ -125,43 +136,43 @@
                   <div class="price-panel-divider"></div>
                 </header>
 
-              <section class="price-panel-section" id="price-hair">
-                <h3 class="price-panel-section-title">Волосы</h3>
-                <p class="price-panel-section-note">Стрижки, окрашивание и уход под ваш образ и ритм жизни.</p>
+                <section class="price-panel-section" id="price-hair">
+                  <h3 class="price-panel-section-title">Волосы</h3>
+                  <p class="price-panel-section-note">Стрижки, окрашивание и уход под ваш образ и ритм жизни.</p>
 
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Женская стрижка</strong>
-                    <p class="service-item-desc">Форма, текстура и лёгкая укладка в одном визите.</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Женская стрижка</strong>
+                      <p class="service-item-desc">Форма, текстура и лёгкая укладка в одном визите.</p>
+                    </div>
+                    <div class="service-item-meta">
+                      <span class="service-item-time">60 мин</span>
+                      <strong class="service-item-price">от 25 €</strong>
+                    </div>
                   </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">60 мин</span>
-                    <strong class="service-item-price">от 25 €</strong>
-                  </div>
-                </div>
 
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Окрашивание в один тон</strong>
-                    <p class="service-item-desc">Чистый оттенок, блеск и подбор домашнего ухода после процедуры.</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание в один тон</strong>
+                      <p class="service-item-desc">Чистый оттенок, блеск и подбор домашнего ухода после процедуры.</p>
+                    </div>
+                    <div class="service-item-meta">
+                      <span class="service-item-time">120 мин</span>
+                      <strong class="service-item-price">от 45 €</strong>
+                    </div>
                   </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">120 мин</span>
-                    <strong class="service-item-price">от 45 €</strong>
-                  </div>
-                </div>
 
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Уход и укладка</strong>
-                    <p class="service-item-desc">Быстрое восстановление волос и мягкий финальный объём.</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Уход и укладка</strong>
+                      <p class="service-item-desc">Быстрое восстановление волос и мягкий финальный объём.</p>
+                    </div>
+                    <div class="service-item-meta">
+                      <span class="service-item-time">45 мин</span>
+                      <strong class="service-item-price">от 30 €</strong>
+                    </div>
                   </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">45 мин</span>
-                    <strong class="service-item-price">от 30 €</strong>
-                  </div>
-                </div>
-              </section>
+                </section>
 
               <section class="price-panel-section" id="price-manicure">
                 <h3 class="price-panel-section-title">Маникюр</h3>

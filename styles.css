@@ -2105,13 +2105,21 @@ body {
   min-height: auto;
 }
 
+.hero-services-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
 .hero-service-link {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 14px;
-  min-width: 260px;
+  min-width: 220px;
   appearance: none;
   cursor: pointer;
 }
@@ -2138,6 +2146,10 @@ body {
 .services-stack {
   display: grid;
   gap: 24px;
+}
+
+.services-price-dropdown {
+  margin-top: 6px;
 }
 
 .services-dropdown {
@@ -2412,6 +2424,10 @@ body {
   .hero-service-link {
     width: 100%;
     min-width: 0;
+  }
+
+  .hero-services-actions {
+    gap: 12px;
   }
 
   .service-category-grid {

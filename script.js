@@ -10,6 +10,8 @@ const selectedInfoLabel = document.querySelector("[data-selected-info]");
 const bookingDateInput = document.querySelector("[data-booking-date]");
 const servicesToggle = document.querySelector("[data-services-toggle]");
 const servicesPanel = document.querySelector("[data-services-panel]");
+const priceToggle = document.querySelector("[data-price-toggle]");
+const pricePanel = document.querySelector("[data-price-panel]");
 const locale = document.documentElement.lang.toLowerCase().startsWith("et") ? "et" : "ru";
 
 const translations = {
@@ -145,13 +147,13 @@ if ("IntersectionObserver" in window) {
   revealItems.forEach((item) => item.classList.add("is-visible"));
 }
 
-if (servicesToggle && servicesPanel) {
-  const updateServicesState = (isOpen) => {
-    servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
-    servicesPanel.classList.toggle("is-open", isOpen);
-    servicesToggle.classList.toggle("is-open", isOpen);
-    servicesToggle.setAttribute("aria-expanded", String(isOpen));
-    servicesPanel.setAttribute("aria-hidden", String(!isOpen));
+if (servicesToggle && servicesPanel && priceToggle && pricePanel) {
+  const updatePanelState = (panel, toggle, isOpen) => {
+    panel.style.setProperty("--services-height", `${panel.scrollHeight}px`);
+    panel.classList.toggle("is-open", isOpen);
+    toggle.classList.toggle("is-open", isOpen);
+    toggle.setAttribute("aria-expanded", String(isOpen));
+    panel.setAttribute("aria-hidden", String(!isOpen));
   };
 
   const scrollToHashTarget = (hashValue) => {
@@ -171,9 +173,9 @@ if (servicesToggle && servicesPanel) {
     }
   };
 
-  const openServices = (hashValue = "#services") => {
+  const openServicesPanel = (hashValue = "#services") => {
     if (!servicesPanel.classList.contains("is-open")) {
-      updateServicesState(true);
+      updatePanelState(servicesPanel, servicesToggle, true);
     } else {
       servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
     }
@@ -183,23 +185,49 @@ if (servicesToggle && servicesPanel) {
     }
   };
 
+  const openPricePanel = (hashValue = "#services-price-panel") => {
+    if (!pricePanel.classList.contains("is-open")) {
+      updatePanelState(pricePanel, priceToggle, true);
+    } else {
+      pricePanel.style.setProperty("--services-height", `${pricePanel.scrollHeight}px`);
+    }
+
+    if (hashValue) {
+      scrollToHashTarget(hashValue);
+    }
+  };
+
   const toggleServices = () => {
     const shouldOpen = !servicesPanel.classList.contains("is-open");
-    updateServicesState(shouldOpen);
+    updatePanelState(servicesPanel, servicesToggle, shouldOpen);
 
     if (shouldOpen) {
       scrollToHashTarget("#services");
     }
   };
 
+  const togglePrice = () => {
+    const shouldOpen = !pricePanel.classList.contains("is-open");
+    updatePanelState(pricePanel, priceToggle, shouldOpen);
+
+    if (shouldOpen) {
+      scrollToHashTarget("#services-price-panel");
+    }
+  };
+
   servicesToggle.addEventListener("click", toggleServices);
+  priceToggle.addEventListener("click", togglePrice);
 
   document.querySelectorAll('a[href="#services"], a[href^="#price-"]').forEach((link) => {
     link.addEventListener("click", () => {
       const targetHash = link.getAttribute("href");
 
-      if (targetHash === "#services" || targetHash.startsWith("#price-")) {
-        openServices(targetHash);
+      if (targetHash === "#services") {
+        openServicesPanel(targetHash);
+      }
+
+      if (targetHash.startsWith("#price-")) {
+        openPricePanel(targetHash);
       }
     });
   });
@@ -208,16 +236,29 @@ if (servicesToggle && servicesPanel) {
     if (servicesPanel.classList.contains("is-open")) {
       servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
     }
-  });
 
-  window.addEventListener("hashchange", () => {
-    if (window.location.hash === "#services" || window.location.hash.startsWith("#price-")) {
-      openServices(window.location.hash);
+    if (pricePanel.classList.contains("is-open")) {
+      pricePanel.style.setProperty("--services-height", `${pricePanel.scrollHeight}px`);
     }
   });
 
-  if (window.location.hash === "#services" || window.location.hash.startsWith("#price-")) {
-    updateServicesState(true);
+  window.addEventListener("hashchange", () => {
+    if (window.location.hash === "#services") {
+      openServicesPanel(window.location.hash);
+    }
+
+    if (window.location.hash === "#services-price-panel" || window.location.hash.startsWith("#price-")) {
+      openPricePanel(window.location.hash);
+    }
+  });
+
+  if (window.location.hash === "#services") {
+    updatePanelState(servicesPanel, servicesToggle, true);
+    scrollToHashTarget(window.location.hash);
+  }
+
+  if (window.location.hash === "#services-price-panel" || window.location.hash.startsWith("#price-")) {
+    updatePanelState(pricePanel, priceToggle, true);
     scrollToHashTarget(window.location.hash);
   }
 }
