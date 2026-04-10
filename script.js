@@ -148,12 +148,27 @@ if ("IntersectionObserver" in window) {
 }
 
 if (servicesToggle && servicesPanel && priceToggle && pricePanel) {
-  const updatePanelState = (panel, toggle, isOpen) => {
+  const syncPanelHeight = (panel) => {
     panel.style.setProperty("--services-height", `${panel.scrollHeight}px`);
+  };
+
+  const refreshOpenPanel = (panel) => {
+    syncPanelHeight(panel);
+    window.requestAnimationFrame(() => syncPanelHeight(panel));
+    window.setTimeout(() => syncPanelHeight(panel), 180);
+    window.setTimeout(() => syncPanelHeight(panel), 720);
+  };
+
+  const updatePanelState = (panel, toggle, isOpen) => {
+    syncPanelHeight(panel);
     panel.classList.toggle("is-open", isOpen);
     toggle.classList.toggle("is-open", isOpen);
     toggle.setAttribute("aria-expanded", String(isOpen));
     panel.setAttribute("aria-hidden", String(!isOpen));
+
+    if (isOpen) {
+      refreshOpenPanel(panel);
+    }
   };
 
   const scrollToHashTarget = (hashValue) => {
@@ -177,7 +192,7 @@ if (servicesToggle && servicesPanel && priceToggle && pricePanel) {
     if (!servicesPanel.classList.contains("is-open")) {
       updatePanelState(servicesPanel, servicesToggle, true);
     } else {
-      servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
+      refreshOpenPanel(servicesPanel);
     }
 
     if (hashValue) {
@@ -189,7 +204,7 @@ if (servicesToggle && servicesPanel && priceToggle && pricePanel) {
     if (!pricePanel.classList.contains("is-open")) {
       updatePanelState(pricePanel, priceToggle, true);
     } else {
-      pricePanel.style.setProperty("--services-height", `${pricePanel.scrollHeight}px`);
+      refreshOpenPanel(pricePanel);
     }
 
     if (hashValue) {
@@ -234,13 +249,35 @@ if (servicesToggle && servicesPanel && priceToggle && pricePanel) {
 
   window.addEventListener("resize", () => {
     if (servicesPanel.classList.contains("is-open")) {
-      servicesPanel.style.setProperty("--services-height", `${servicesPanel.scrollHeight}px`);
+      refreshOpenPanel(servicesPanel);
     }
 
     if (pricePanel.classList.contains("is-open")) {
-      pricePanel.style.setProperty("--services-height", `${pricePanel.scrollHeight}px`);
+      refreshOpenPanel(pricePanel);
     }
   });
+
+  window.addEventListener("load", () => {
+    if (servicesPanel.classList.contains("is-open")) {
+      refreshOpenPanel(servicesPanel);
+    }
+
+    if (pricePanel.classList.contains("is-open")) {
+      refreshOpenPanel(pricePanel);
+    }
+  });
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      if (servicesPanel.classList.contains("is-open")) {
+        refreshOpenPanel(servicesPanel);
+      }
+
+      if (pricePanel.classList.contains("is-open")) {
+        refreshOpenPanel(pricePanel);
+      }
+    });
+  }
 
   window.addEventListener("hashchange", () => {
     if (window.location.hash === "#services") {

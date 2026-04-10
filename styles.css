@@ -2168,7 +2168,8 @@ body {
 }
 
 .services-dropdown.is-open {
-  max-height: var(--services-height);
+  max-height: 8000px;
+  max-height: max(var(--services-height), 8000px);
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
