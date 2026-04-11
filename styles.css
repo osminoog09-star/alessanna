@@ -1188,6 +1188,20 @@ select {
   cursor: default;
 }
 
+.calendar-day.is-unavailable,
+.calendar-day:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
+}
+
+.calendar-day.is-unavailable:hover,
+.calendar-day.is-unavailable:focus-visible,
+.calendar-day:disabled:hover,
+.calendar-day:disabled:focus-visible {
+  transform: none;
+  box-shadow: none;
+}
+
 .calendar-day.is-soft {
   background: linear-gradient(180deg, rgba(250, 235, 224, 0.92), rgba(255, 252, 248, 0.98));
 }

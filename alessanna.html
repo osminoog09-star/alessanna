@@ -743,14 +743,20 @@
                 </label>
                 <label>
                   <span>Категория услуги</span>
-                  <select name="service">
-                    <option>Стрижка</option>
-                    <option>Окрашивание</option>
-                    <option>Химическая завивка</option>
-                    <option>Укладки</option>
-                    <option>Брови и ресницы</option>
-                    <option>Маникюр</option>
-                    <option>Педикюр</option>
+                  <select name="service" data-service-select>
+                    <option value="hair-cut">Стрижка</option>
+                    <option value="hair-color">Окрашивание</option>
+                    <option value="perm">Химическая завивка</option>
+                    <option value="styling">Укладки</option>
+                    <option value="brows-lashes">Брови и ресницы</option>
+                    <option value="manicure">Маникюр</option>
+                    <option value="pedicure">Педикюр</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Мастер</span>
+                  <select name="master" data-master-select required>
+                    <option value="">Выберите мастера</option>
                   </select>
                 </label>
                 <label>

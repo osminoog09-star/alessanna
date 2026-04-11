@@ -9,6 +9,8 @@ const selectedDayLabel = document.querySelector("[data-selected-day]");
 const selectedInfoLabel = document.querySelector("[data-selected-info]");
 const bookingDateInput = document.querySelector("[data-booking-date]");
 const bookingTimeSelect = document.querySelector("[data-booking-time]");
+const bookingServiceSelect = document.querySelector("[data-service-select]");
+const bookingMasterSelect = document.querySelector("[data-master-select]");
 const calendarPrev = document.querySelector("[data-calendar-prev]");
 const calendarNext = document.querySelector("[data-calendar-next]");
 const servicesToggle = document.querySelector("[data-services-toggle]");
@@ -51,6 +53,7 @@ const translations = {
       soft: "Свободно",
       busy: "Почти занято",
       featured: "Лучшая дата",
+      unavailable: "Нет времени",
     },
     noteLabels: {
       1: "1 окно",
@@ -63,6 +66,10 @@ const translations = {
     },
     selectedPrefix: "Доступно",
     timePlaceholder: "Выберите время",
+    masterPlaceholder: "Выберите мастера",
+    selectMasterInfo: "Выберите мастера, чтобы увидеть свободные даты",
+    noSlots: "Нет свободного времени",
+    noMasterSlots: "У выбранного мастера нет свободных окон в этом месяце",
     submitSuccess: "Заявка отправлена",
   },
   et: {
@@ -98,6 +105,7 @@ const translations = {
       soft: "Vabu aegu",
       busy: "Peaaegu täis",
       featured: "Soovitatud aeg",
+      unavailable: "Aegu pole",
     },
     noteLabels: {
       1: "1 aeg",
@@ -110,6 +118,10 @@ const translations = {
     },
     selectedPrefix: "Saadaval",
     timePlaceholder: "Vali aeg",
+    masterPlaceholder: "Vali meister",
+    selectMasterInfo: "Vali meister, et näha vabu kuupäevi",
+    noSlots: "Vabu aegu pole",
+    noMasterSlots: "Valitud meistril ei ole selles kuus vabu aegu",
     submitSuccess: "Päring saadetud",
   },
 };
@@ -318,50 +330,118 @@ if (calendarGrid && calendarTitle) {
   let visibleMonth = currentDate.getMonth();
   let selectedButton = null;
 
+  const specialistGroups = {
+    nails: {
+      label: "küünetehnikud",
+      masters: ["Aljona", "Alesja"],
+    },
+    hair: {
+      label: "juuksurid",
+      masters: ["Galina", "Irina", "Viktoria", "Anne"],
+    },
+  };
+
+  const nailServiceValues = new Set(["brows-lashes", "manicure", "pedicure"]);
+
+  const masterProfiles = {
+    Aljona: { seed: 1, slots: ["09:30", "11:30", "14:00", "16:30"] },
+    Alesja: { seed: 3, slots: ["10:00", "12:30", "15:00", "17:30"] },
+    Galina: { seed: 2, slots: ["09:00", "11:00", "13:30", "16:00"] },
+    Irina: { seed: 4, slots: ["10:00", "12:00", "14:30", "17:00"] },
+    Viktoria: { seed: 6, slots: ["09:30", "12:00", "15:00", "18:00"] },
+    Anne: { seed: 8, slots: ["10:30", "13:00", "16:00", "18:30"] },
+  };
+
   const formatDate = (dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) =>
     locale === "et"
       ? `${dayNumber}. ${t.monthNamesDate[monthNumber]} ${yearNumber}`
       : `${dayNumber} ${t.monthNamesDate[monthNumber]} ${yearNumber}`;
 
+  const getServiceGroupKey = () => (nailServiceValues.has(bookingServiceSelect?.value) ? "nails" : "hair");
+
+  const getSelectedMaster = () => bookingMasterSelect?.value || "";
+
   const createDayData = (state, slots, buttonLabel = t.buttonLabels[state]) => ({
     state,
     buttonLabel,
-    noteLabel: t.noteLabels[slots.length] || `${slots.length}`,
+    noteLabel: slots.length ? t.noteLabels[slots.length] || `${slots.length}` : t.noSlots,
     slots,
   });
 
-  const availabilityMap = {
-    2: createDayData("soft", ["10:00", "12:00", "15:30", "17:00", "17:30", "18:00"]),
-    4: createDayData("busy", ["14:00", "18:00"]),
-    7: createDayData("featured", ["11:00", "13:00", "17:00"]),
-    9: createDayData("soft", ["09:30", "12:30", "16:30", "17:30", "18:00"]),
-    12: createDayData("featured", ["11:00", "13:30", "16:00", "18:30"]),
-    15: createDayData("busy", ["17:00"]),
-    18: createDayData("soft", ["10:00", "11:30", "15:00", "16:30", "17:30", "18:00", "18:30"]),
-    21: createDayData("featured", ["10:30", "14:00", "17:30"]),
-    24: createDayData("busy", ["12:00", "16:00"]),
-    27: createDayData("soft", ["09:00", "13:00", "15:00", "17:00", "18:00"]),
-    30: createDayData("featured", ["10:00", "12:30", "15:00"]),
+  const resetSelectedDate = () => {
+    selectedDate.year = visibleYear;
+    selectedDate.month = visibleMonth;
+    selectedDate.day = null;
   };
 
-  const defaultSlots = {
-    soft: ["10:00", "14:00", "17:00", "18:00"],
-    busy: ["12:00", "18:00"],
-    featured: ["10:30", "13:00", "16:30"],
+  const populateMasterSelect = () => {
+    if (!bookingMasterSelect) {
+      return;
+    }
+
+    const group = specialistGroups[getServiceGroupKey()];
+    bookingMasterSelect.innerHTML = "";
+
+    const placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    placeholderOption.textContent = t.masterPlaceholder;
+    placeholderOption.disabled = true;
+    placeholderOption.selected = true;
+    bookingMasterSelect.append(placeholderOption);
+
+    const groupElement = document.createElement("optgroup");
+    groupElement.label = group.label;
+
+    group.masters.forEach((masterName) => {
+      const option = document.createElement("option");
+      option.value = masterName;
+      option.textContent = masterName;
+      groupElement.append(option);
+    });
+
+    bookingMasterSelect.append(groupElement);
+  };
+
+  const getMasterSlots = (masterName, dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) => {
+    const profile = masterProfiles[masterName];
+
+    if (!profile) {
+      return [];
+    }
+
+    const weekday = new Date(yearNumber, monthNumber, dayNumber).getDay();
+
+    if (weekday === 0) {
+      return [];
+    }
+
+    const marker = (dayNumber + monthNumber + weekday + profile.seed) % 9;
+
+    if (marker === 0 || marker === 5) {
+      return [];
+    }
+
+    const slotCount =
+      marker % 4 === 0 ? 1 : marker % 3 === 0 ? 2 : Math.min(profile.slots.length, 3 + ((dayNumber + profile.seed) % 2));
+
+    return profile.slots.slice(0, slotCount);
   };
 
   const getDayData = (dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) => {
-    const customDayData =
-      monthNumber === currentDate.getMonth() && yearNumber === currentDate.getFullYear()
-        ? availabilityMap[dayNumber]
-        : null;
+    const masterName = getSelectedMaster();
 
-    if (customDayData) {
-      return customDayData;
+    if (!masterName) {
+      return createDayData("unavailable", [], t.buttonLabels.unavailable);
     }
 
-    const state = (dayNumber + monthNumber) % 6 === 0 ? "busy" : (dayNumber + monthNumber) % 4 === 0 ? "featured" : "soft";
-    return createDayData(state, defaultSlots[state]);
+    const slots = getMasterSlots(masterName, dayNumber, monthNumber, yearNumber);
+
+    if (!slots.length) {
+      return createDayData("unavailable", [], t.buttonLabels.unavailable);
+    }
+
+    const state = slots.length >= 4 ? "soft" : slots.length === 1 ? "busy" : "featured";
+    return createDayData(state, slots);
   };
 
   const updateTimeOptions = (dayData) => {
@@ -373,10 +453,14 @@ if (calendarGrid && calendarTitle) {
 
     const placeholderOption = document.createElement("option");
     placeholderOption.value = "";
-    placeholderOption.textContent = t.timePlaceholder;
+    placeholderOption.textContent = dayData?.slots?.length ? t.timePlaceholder : getSelectedMaster() ? t.noSlots : t.masterPlaceholder;
     placeholderOption.disabled = true;
     placeholderOption.selected = true;
     bookingTimeSelect.append(placeholderOption);
+
+    if (!dayData?.slots?.length) {
+      return;
+    }
 
     dayData.slots.forEach((slot) => {
       const option = document.createElement("option");
@@ -386,12 +470,39 @@ if (calendarGrid && calendarTitle) {
     });
   };
 
-  const updateSelection = (button, dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) => {
+  const clearSelection = (message = t.selectMasterInfo) => {
     if (selectedButton) {
       selectedButton.classList.remove("is-selected");
     }
 
+    selectedButton = null;
+    selectedDate.day = null;
+
+    if (selectedDayLabel) {
+      selectedDayLabel.textContent = t.noSlots;
+    }
+
+    if (selectedInfoLabel) {
+      selectedInfoLabel.textContent = message;
+    }
+
+    if (bookingDateInput) {
+      bookingDateInput.value = "";
+    }
+
+    updateTimeOptions(null);
+  };
+
+  const updateSelection = (button, dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) => {
     const dayData = getDayData(dayNumber, monthNumber, yearNumber);
+
+    if (!dayData.slots.length) {
+      return;
+    }
+
+    if (selectedButton) {
+      selectedButton.classList.remove("is-selected");
+    }
 
     selectedButton = button;
     selectedButton.classList.add("is-selected");
@@ -447,10 +558,12 @@ if (calendarGrid && calendarTitle) {
       }
 
       const dayData = getDayData(dayNumber, visibleMonth, visibleYear);
-      const slotsText = dayData.slots.join(", ");
+      const slotsText = dayData.slots.length ? dayData.slots.join(", ") : t.noSlots;
 
       button.dataset.day = String(dayNumber);
       button.classList.add(`is-${dayData.state}`);
+      button.disabled = !dayData.slots.length;
+      button.setAttribute("aria-disabled", String(!dayData.slots.length));
       button.innerHTML = `
         <span class="calendar-date">${dayNumber}</span>
         <span class="calendar-meta">${dayData.buttonLabel}</span>
@@ -461,24 +574,27 @@ if (calendarGrid && calendarTitle) {
       calendarGrid.append(button);
 
       const shouldSelectSavedDay =
+        dayData.slots.length &&
         selectedDate.day === dayNumber &&
         selectedDate.month === visibleMonth &&
         selectedDate.year === visibleYear;
 
-      if (shouldSelectSavedDay || (!selectedDate.day && dayNumber === currentDate.getDate())) {
+      if (shouldSelectSavedDay) {
         updateSelection(button, dayNumber, visibleMonth, visibleYear);
       }
     }
 
     if (!selectedButton) {
       const currentDayButton = isCurrentMonth
-        ? calendarGrid.querySelector(`.calendar-day[data-day="${currentDate.getDate()}"]`)
+        ? calendarGrid.querySelector(`.calendar-day[data-day="${currentDate.getDate()}"]:not(:disabled)`)
         : null;
-      const firstAvailableButton = currentDayButton || calendarGrid.querySelector(".calendar-day:not(.is-outside)");
+      const firstAvailableButton = currentDayButton || calendarGrid.querySelector(".calendar-day:not(.is-outside):not(:disabled)");
       const firstAvailableDay = firstAvailableButton?.querySelector(".calendar-date")?.textContent;
 
       if (firstAvailableButton && firstAvailableDay) {
         updateSelection(firstAvailableButton, Number(firstAvailableDay), visibleMonth, visibleYear);
+      } else {
+        clearSelection(getSelectedMaster() ? t.noMasterSlots : t.selectMasterInfo);
       }
     }
   };
@@ -493,12 +609,25 @@ if (calendarGrid && calendarTitle) {
 
     visibleYear = nextVisibleMonth.getFullYear();
     visibleMonth = nextVisibleMonth.getMonth();
+    resetSelectedDate();
     renderCalendar();
   };
+
+  bookingServiceSelect?.addEventListener("change", () => {
+    populateMasterSelect();
+    resetSelectedDate();
+    renderCalendar();
+  });
+
+  bookingMasterSelect?.addEventListener("change", () => {
+    resetSelectedDate();
+    renderCalendar();
+  });
 
   calendarPrev?.addEventListener("click", () => moveCalendarMonth(-1));
   calendarNext?.addEventListener("click", () => moveCalendarMonth(1));
 
+  populateMasterSelect();
   renderCalendar();
 }
 
