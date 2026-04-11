@@ -2746,9 +2746,32 @@ body {
 }
 
 .price-panel-title {
-  max-width: 6ch;
-  font-size: clamp(4rem, 8vw, 5.8rem);
-  line-height: 0.9;
+  position: relative;
+  display: inline-block;
+  max-width: none;
+  width: fit-content;
+  margin-bottom: 28px;
+  font-size: clamp(3.2rem, 7vw, 5.2rem);
+  line-height: 0.92;
+  white-space: nowrap;
+}
+
+.price-panel-title::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: -14px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(199, 161, 90, 0.78) 12%,
+    rgba(228, 198, 126, 0.96) 50%,
+    rgba(199, 161, 90, 0.78) 88%,
+    transparent
+  );
+  box-shadow: 0 0 16px rgba(199, 161, 90, 0.18);
 }
 
 .price-panel-script {
@@ -2924,7 +2947,7 @@ body {
   }
 
   .price-panel-title {
-    font-size: clamp(3rem, 14vw, 4.2rem);
+    font-size: clamp(2.4rem, 11vw, 4.2rem);
   }
 
   .price-panel-script {
