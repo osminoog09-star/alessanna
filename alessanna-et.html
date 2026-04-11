@@ -743,14 +743,20 @@
                 </label>
                 <label>
                   <span>Teenuse kategooria</span>
-                  <select name="service">
-                    <option>Lõikus</option>
-                    <option>Värvimine</option>
-                    <option>Keemiline lokk</option>
-                    <option>Soengud</option>
-                    <option>Ripsmed ja kulmud</option>
-                    <option>Maniküür</option>
-                    <option>Pediküür</option>
+                  <select name="service" data-service-select>
+                    <option value="hair-cut">Lõikus</option>
+                    <option value="hair-color">Värvimine</option>
+                    <option value="perm">Keemiline lokk</option>
+                    <option value="styling">Soengud</option>
+                    <option value="brows-lashes">Ripsmed ja kulmud</option>
+                    <option value="manicure">Maniküür</option>
+                    <option value="pedicure">Pediküür</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Meister</span>
+                  <select name="master" data-master-select required>
+                    <option value="">Vali meister</option>
                   </select>
                 </label>
                 <label>
