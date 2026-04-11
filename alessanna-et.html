@@ -6,7 +6,7 @@
     <title>Alessanna Ilusalong</title>
     <meta
       name="description"
-      content="Alessanna Ilusalong: juuksed, maniküür, pediküür ja massaaž premium atmosfääris Tallinna kesklinnas."
+      content="Alessanna Ilusalong: lõikus, värvimine, ripsmed ja kulmud, maniküür ning pediküür Pärnus."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,58 +20,48 @@
     <div class="page-glow page-glow-left"></div>
     <div class="page-glow page-glow-right"></div>
 
-    <header class="site-header">
-      <div class="container nav-shell">
-        <a class="brand" href="#top" aria-label="Alessanna Ilusalong">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
-            <strong>Alessanna</strong>
-            <em>Ilusalong</em>
-          </span>
-        </a>
-
-        <button class="nav-toggle" type="button" aria-label="Ava menüü" aria-expanded="false">
-          <span></span>
-          <span></span>
-        </button>
-
-        <nav class="site-nav">
-          <a href="#services">Teenused</a>
-          <a href="#contact">Kontakt</a>
-        </nav>
-
-        <div class="header-tools">
-          <div class="lang-switch" aria-label="Keele valik">
-            <a class="lang-link" href="alessanna.html">RU</a>
-            <a class="lang-link is-active" href="alessanna-et.html">ET</a>
-          </div>
-          <a class="button button-small" href="#booking">Broneeri</a>
-        </div>
+    <div class="floating-lang-wrap">
+      <div class="lang-switch" aria-label="Keele valik">
+        <a class="lang-link" href="alessanna.html">RU</a>
+        <a class="lang-link is-active" href="alessanna-et.html">ET</a>
       </div>
-    </header>
+    </div>
 
     <main id="top">
       <section class="hero hero-services">
         <div class="container hero-grid">
-          <div class="hero-copy hero-copy-compact hero-services-actions reveal">
-            <button
-              class="button button-mawe hero-service-link services-toggle"
-              type="button"
-              data-services-toggle
-              aria-expanded="false"
-              aria-controls="services-categories-panel"
-            >
-              Teenused
-            </button>
-            <button
-              class="button button-mawe hero-service-link price-toggle"
-              type="button"
-              data-price-toggle
-              aria-expanded="false"
-              aria-controls="services-price-panel"
-            >
-              Hinnakiri
-            </button>
+          <div class="hero-copy hero-copy-compact reveal">
+            <div class="salon-wordmark" aria-label="Alessanna Ilusalong">
+              <img
+                class="salon-wordmark-image"
+                src="assets/alessanna-wordmark.png"
+                alt="Alessanna"
+                fetchpriority="high"
+                decoding="async"
+              />
+              <p class="salon-wordmark-subtitle">I L U S A L O N G</p>
+            </div>
+
+            <div class="hero-services-actions">
+              <button
+                class="button button-mawe hero-service-link services-toggle"
+                type="button"
+                data-services-toggle
+                aria-expanded="false"
+                aria-controls="services-categories-panel"
+              >
+                Teenused
+              </button>
+              <button
+                class="button button-mawe hero-service-link price-toggle"
+                type="button"
+                data-price-toggle
+                aria-expanded="false"
+                aria-controls="services-price-panel"
+              >
+                Hinnakiri
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -85,20 +75,60 @@
             </div>
 
             <div class="service-category-grid services-drop-item">
-              <a class="service-category-card service-category-link" href="#price-hair">
+              <a class="service-category-card service-category-link" href="#price-cuts">
                 <div class="service-category-top">
-                  <p class="service-category-title">Juuksed</p>
-                  <strong>alates 25 €</strong>
+                  <p class="service-category-title">Lõikus</p>
+                  <strong>alates 5 €</strong>
                 </div>
-                <p class="service-category-copy">Lõikused, värvimine ja hooldus puhta vormi ning rahuliku rütmiga.</p>
+                <p class="service-category-copy">Naiste, meeste ja laste lõikused, pesu ning kerge päevaviimistlus.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-color-no-cut">
+                <div class="service-category-top">
+                  <p class="service-category-title">Värvimine</p>
+                  <strong>alates 33 €</strong>
+                </div>
+                <p class="service-category-copy">Värvimine ilma lõikuseta või koos lõikusega, juurekasv ja salgutamine.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-perm">
+                <div class="service-category-top">
+                  <p class="service-category-title">Keemiline lokk</p>
+                  <strong>alates 43 €</strong>
+                </div>
+                <p class="service-category-copy">Keemiline lokk lühikestele, poolpikkadele ja pikkadele juustele.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-styling">
+                <div class="service-category-top">
+                  <p class="service-category-title">Soengud</p>
+                  <strong>alates 20 €</strong>
+                </div>
+                <p class="service-category-copy">Päevasoeng, lokid, pidulikud ja pruudisoengud eri sündmusteks.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-brows">
+                <div class="service-category-top">
+                  <p class="service-category-title">Ripsmed ja kulmud</p>
+                  <strong>alates 7 €</strong>
+                </div>
+                <p class="service-category-copy">Kulmude ja ripsmete värvimine, kitkumine ning korrigeerimine.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-manicure">
+                <div class="service-category-top">
+                  <p class="service-category-title">Geellakk ja geelküünte modelleerimine</p>
+                  <strong>alates 7 €</strong>
+                </div>
+                <p class="service-category-copy">Geellakk, geelküünte paigaldus, hooldus ja parandus.</p>
               </a>
 
               <a class="service-category-card service-category-link" href="#price-manicure">
                 <div class="service-category-top">
                   <p class="service-category-title">Maniküür</p>
-                  <strong>alates 15 €</strong>
+                  <strong>alates 7 €</strong>
                 </div>
-                <p class="service-category-copy">Klassikaline maniküür, geellakk ja täpne elegantne tulemus.</p>
+                <p class="service-category-copy">Klassikaline maniküür, geellakk, eemaldus, paigaldus ja parandus.</p>
               </a>
 
               <a class="service-category-card service-category-link" href="#price-pedicure">
@@ -106,15 +136,7 @@
                   <p class="service-category-title">Pediküür</p>
                   <strong>alates 30 €</strong>
                 </div>
-                <p class="service-category-copy">Mugav jalahooldus ja püsiv tulemus igapäevaseks kandmiseks.</p>
-              </a>
-
-              <a class="service-category-card service-category-link" href="#price-massage">
-                <div class="service-category-top">
-                  <p class="service-category-title">Massaaž</p>
-                  <strong>alates 35 €</strong>
-                </div>
-                <p class="service-category-copy">Seansid lõõgastuseks, taastumiseks ja keha kerguse tunneteks.</p>
+                <p class="service-category-copy">Klassikaline, geellakiga ja meeste pediküür.</p>
               </a>
             </div>
           </div>
@@ -132,97 +154,494 @@
               <div class="price-showcase-inner">
                 <header class="price-panel-heading">
                   <p class="services-price-title price-panel-title">Hinnakiri</p>
-                  <p class="price-panel-script">Maniküür · Pediküür · Juuksed · Body</p>
+                  <p class="price-panel-script">
+                    <a href="#price-cuts">Lõikus</a>
+                    <span>·</span>
+                    <a href="#price-color-no-cut">Värvimine</a>
+                    <span>·</span>
+                    <a href="#price-perm">Keemiline lokk</a>
+                    <span>·</span>
+                    <a href="#price-styling">Soengud</a>
+                    <span>·</span>
+                    <a href="#price-brows">Kulmud ja ripsmed</a>
+                    <span>·</span>
+                    <a href="#price-manicure">Maniküür</a>
+                    <span>·</span>
+                    <a href="#price-pedicure">Pediküür</a>
+                  </p>
                   <div class="price-panel-divider"></div>
                 </header>
 
-                <section class="price-panel-section" id="price-hair">
-                  <h3 class="price-panel-section-title">Juuksed</h3>
-                  <p class="price-panel-section-note">Lõikused, värvimine ja hooldus sinu kuvandi ja rütmi järgi.</p>
+                <section class="price-panel-section" id="price-cuts">
+                  <h3 class="price-panel-section-title">Juuksur</h3>
+                  <p class="price-panel-section-note">Laste, meeste ja naiste lõikused ning igapäevane juuksehooldus.</p>
 
+                  <p class="price-panel-subgroup">Lapsed</p>
                   <div class="service-item service-item-panel">
                     <div class="service-item-main">
-                      <strong class="service-item-name">Naiste juukselõikus</strong>
-                      <p class="service-item-desc">Vorm, tekstuur ja kerge viimistlus ühe külastusega.</p>
+                      <strong class="service-item-name">Lõikus kuni 12a.</strong>
                     </div>
                     <div class="service-item-meta">
-                      <span class="service-item-time">60 min</span>
-                      <strong class="service-item-price">alates 25 €</strong>
+                      <strong class="service-item-price">15 €</strong>
                     </div>
                   </div>
 
+                  <p class="price-panel-subgroup">Mehed</p>
                   <div class="service-item service-item-panel">
                     <div class="service-item-main">
-                      <strong class="service-item-name">Ühtlane värvimine</strong>
-                      <p class="service-item-desc">Puhas toon, läige ja hoolduse soovitus pärast protseduuri.</p>
+                      <strong class="service-item-name">Lõikus</strong>
                     </div>
                     <div class="service-item-meta">
-                      <span class="service-item-time">120 min</span>
-                      <strong class="service-item-price">alates 45 €</strong>
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Masinalõikus</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">15 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Habeme ja vuntside piiramine</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">10 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pesu</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">5 €</strong>
                     </div>
                   </div>
 
+                  <p class="price-panel-subgroup">Naised</p>
                   <div class="service-item service-item-panel">
                     <div class="service-item-main">
-                      <strong class="service-item-name">Hooldus ja viimistlus</strong>
-                      <p class="service-item-desc">Kiire taastav hooldus ja pehme lõppmaht.</p>
+                      <strong class="service-item-name">Juuste lõikus</strong>
                     </div>
                     <div class="service-item-meta">
-                      <span class="service-item-time">45 min</span>
-                      <strong class="service-item-price">alates 30 €</strong>
+                      <strong class="service-item-price">25-30 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Juuste otste tasandamine</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Tuka lõikus</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">5 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Juuste pesu ja päeva soeng</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-color-no-cut">
+                  <h3 class="price-panel-section-title">Värvimine ilma lõikuseta</h3>
+                  <p class="price-panel-section-note">Hinnad sõltuvad juuste pikkusest ja valitud värvimistehnikast.</p>
+
+                  <p class="price-panel-subgroup">Juuste värvimine</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Lühikesed juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">35-40 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Keskmised juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">40-45 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Ülipikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-65 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Järelkasvu värvimine kuni 2 cm</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">35-40 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Juuste värvimine oma värviga</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">33 €</strong>
+                    </div>
+                  </div>
+
+                  <p class="price-panel-subgroup">Juuste salgutamine</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Lühikesed juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">40-45 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Keskmised juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-60 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Ülipikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">60-70 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-color-cut">
+                  <h3 class="price-panel-section-title">Värvimine koos lõikusega</h3>
+                  <p class="price-panel-section-note">Värvimine või salgutamine koos lõikusega ühes terviklikus teenuses.</p>
+
+                  <p class="price-panel-subgroup">Juuste värvimine</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Lühikesed juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">50-55 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Keskmised juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-60 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">60-65 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Ülipikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">65-75 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Järelkasvu värvimine kuni 2 cm</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Juuste värvimine oma värviga</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">43 €</strong>
+                    </div>
+                  </div>
+
+                  <p class="price-panel-subgroup">Juuste salgutamine</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Lühikesed juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">50-55 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Keskmised juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-60 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">60-65 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Ülipikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">65-75 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-perm">
+                  <h3 class="price-panel-section-title">Keemiline lokk</h3>
+                  <p class="price-panel-section-note">Hind sõltub juuste pikkusest ja soovitud loki tugevusest.</p>
+
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Lühikesed juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">43 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Poolpikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pikad juuksed</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">50-60 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-styling">
+                  <h3 class="price-panel-section-title">Soengud</h3>
+                  <p class="price-panel-section-note">Alates kiirest päevaviimistlusest kuni piduliku ja pruudi soenguni.</p>
+
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Päeva soeng</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Sirgendamine</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">25 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Loki soeng</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">25 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pidulik soeng</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">25-35 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Pruudi soeng</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">30-45 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-brows">
+                  <h3 class="price-panel-section-title">Ripsmed ja kulmud</h3>
+                  <p class="price-panel-section-note">Värvimine, kitkumine ja korrigeerimine igapäevase hoolduse jaoks.</p>
+
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Kulmude värvimine</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">7 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Ripsmete värvimine</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">7 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Kulmude kitkumine ja piiramine</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">8 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Kulmude värvimine, ripsmete värvimine ja korrigeerimine</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
                     </div>
                   </div>
                 </section>
 
               <section class="price-panel-section" id="price-manicure">
                 <h3 class="price-panel-section-title">Maniküür</h3>
-                <p class="price-panel-section-note">Täpne töö, mugavus ja püsiv hoolitsetud tulemus.</p>
+                <p class="price-panel-section-note">Klassikaline hooldus, kate, eemaldus ja töö kunstküüntega.</p>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Klassikaline maniküür</strong>
-                    <p class="service-item-desc">Puhas kuju, töötlus ja loomulikult hoolitsetud käed.</p>
+                    <strong class="service-item-name">Maniküür</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">60 min</span>
                     <strong class="service-item-price">15-20 €</strong>
                   </div>
                 </div>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Maniküür geellakiga</strong>
-                    <p class="service-item-desc">Püsiv kate koos tasanduse ja pehme läikega.</p>
+                    <strong class="service-item-name">Küünte lakkimine</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">90 min</span>
+                    <strong class="service-item-price">7 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Maniküür geellakiga</strong>
+                  </div>
+                  <div class="service-item-meta">
                     <strong class="service-item-price">30 €</strong>
                   </div>
                 </div>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Paigaldus või hooldus</strong>
-                    <p class="service-item-desc">Pikkuse ja vormi tugevdamine elegantset joont säilitades.</p>
+                    <strong class="service-item-name">Geellaki eemaldus koos klassikalise maniküüriga</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">120 min</span>
+                    <strong class="service-item-price">25 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Geellaki eemaldus</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">15 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Geelküünte paigaldus</strong>
+                  </div>
+                  <div class="service-item-meta">
                     <strong class="service-item-price">40-50 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Geelküünte hooldus</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">35-40 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Kunstküünte eemaldamine</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">25 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Ühe küüne parandus</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">7 €</strong>
                   </div>
                 </div>
               </section>
 
               <section class="price-panel-section" id="price-pedicure">
                 <h3 class="price-panel-section-title">Pediküür</h3>
-                <p class="price-panel-section-note">Mugav jalahooldus ja kauapüsiv korrektne tulemus.</p>
+                <p class="price-panel-section-note">Jalahooldus klassikalise ja geellaki variandiga.</p>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Klassikaline pediküür</strong>
-                    <p class="service-item-desc">Jalahooldus, puhas töötlus ja värske kerge tunne.</p>
+                    <strong class="service-item-name">Pediküür</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">75 min</span>
                     <strong class="service-item-price">30-35 €</strong>
                   </div>
                 </div>
@@ -230,49 +649,27 @@
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
                     <strong class="service-item-name">Pediküür geellakiga</strong>
-                    <p class="service-item-desc">Klassikaline hooldus koos püsiva kattega avatud jalanõude hooajaks.</p>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">90 min</span>
                     <strong class="service-item-price">35-40 €</strong>
                   </div>
                 </div>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Meeste pediküür</strong>
-                    <p class="service-item-desc">Praktiline hooldus ilma katteta, puhtuse ja mugavuse rõhuga.</p>
+                    <strong class="service-item-name">Geellaki eemaldus koos klassikalise pediküüriga</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">75 min</span>
                     <strong class="service-item-price">30-35 €</strong>
                   </div>
                 </div>
-              </section>
-
-              <section class="price-panel-section" id="price-massage">
-                <h3 class="price-panel-section-title">Massaaž</h3>
-                <p class="price-panel-section-note">Seansid lõõgastuseks, taastumiseks ja ümberlülitumiseks.</p>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Selja kiirmassaaž</strong>
-                    <p class="service-item-desc">Leevendab pingeid õlgades ja seljas, kui vajad kiiret taastust.</p>
+                    <strong class="service-item-name">Meeste pediküür</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">30 min</span>
-                    <strong class="service-item-price">35 €</strong>
-                  </div>
-                </div>
-
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Lõõgastav kehamassaaž</strong>
-                    <p class="service-item-desc">Pehme sügav rütm puhkuseks, kerguseks ja rahulikuks enesetundeks.</p>
-                  </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">60 min</span>
-                    <strong class="service-item-price">55 €</strong>
+                    <strong class="service-item-price">30-35 €</strong>
                   </div>
                 </div>
               </section>
@@ -286,16 +683,22 @@
         <div class="container booking-shell reveal">
           <div class="booking-copy">
             <p class="eyebrow">Broneerimine</p>
-            <h2>Broneeri sobiv aeg ja vali endale mugavaim suhtluskanal.</h2>
+            <h2>Broneeri sobiv aeg kalendri ja vormi kaudu.</h2>
             <p>
-              Võid jätta vormi või kirjutada meile otse. See on eriti mugav telefonist,
-              kui soovid kiiresti täpsustada meistri, aja või teenuse.
+              Vali sobiv päev, märgi teenus ja saada päring vormi kaudu. Nii on broneerimine selge ja kiire.
             </p>
+          </div>
+
+          <div class="booking-bottom">
             <div class="booking-calendar">
               <div class="calendar-head">
                 <div>
                   <p class="calendar-label">Broneerimiskalender</p>
                   <h3 class="calendar-title" data-calendar-title>Aprill 2026</h3>
+                </div>
+                <div class="calendar-nav" aria-label="Kuude vahetamine">
+                  <button class="calendar-nav-button" type="button" data-calendar-prev aria-label="Eelmine kuu">‹</button>
+                  <button class="calendar-nav-button" type="button" data-calendar-next aria-label="Järgmine kuu">›</button>
                 </div>
                 <div class="calendar-legend">
                   <span><i class="legend-dot legend-dot-soft"></i>Palju vabu aegu</span>
@@ -318,65 +721,51 @@
                 <span data-selected-info>Saadaval 4 aega: 11:00, 13:30, 16:00, 18:30</span>
               </div>
             </div>
-          </div>
 
-          <div class="booking-side">
-            <div class="booking-methods">
-              <a class="booking-method-card" href="https://wa.me/37255555555" target="_blank" rel="noreferrer">
-                <span class="booking-method-label">WhatsApp</span>
-                <strong class="booking-method-name">Kiire vestlus</strong>
-                <span class="booking-method-note">Sobib broneerimiseks, aja täpsustamiseks ja kinnituseks.</span>
-              </a>
-
-              <a class="booking-method-card" href="https://t.me/alessannailu" target="_blank" rel="noreferrer">
-                <span class="booking-method-label">Telegram</span>
-                <strong class="booking-method-name">Sõnumid ja fotod</strong>
-                <span class="booking-method-note">Hea valik, kui soovid saata referentsi või täpsustada teenust.</span>
-              </a>
-
-              <a class="booking-method-card" href="tel:+37255555555">
-                <span class="booking-method-label">Kõne</span>
-                <strong class="booking-method-name">Kiire broneering</strong>
-                <span class="booking-method-note">Parim lahendus, kui soovid aega võimalikult kiiresti.</span>
-              </a>
-
-              <a class="booking-method-card" href="https://instagram.com/alessannailu" target="_blank" rel="noreferrer">
-                <span class="booking-method-label">Instagram Direct</span>
-                <strong class="booking-method-name">Broneerimine directis</strong>
-                <span class="booking-method-note">Küsi stiili, hoolduse või vabade aegade kohta otse Instagramis.</span>
-              </a>
+            <div class="booking-side">
+              <aside class="booking-steps-card" aria-label="Kuidas broneerimine käib">
+                <p class="booking-steps-label">3 sammu</p>
+                <strong>Kuidas broneerimine käib</strong>
+                <ul>
+                  <li><span>01</span><em>Vali päev kalendrist</em></li>
+                  <li><span>02</span><em>Täida lühike vorm</em></li>
+                  <li><span>03</span><em>Saadame kinnituse</em></li>
+                </ul>
+              </aside>
+              <form class="booking-form">
+                <label>
+                  <span>Sinu nimi</span>
+                  <input type="text" name="name" placeholder="Anna" />
+                </label>
+                <label>
+                  <span>Telefon</span>
+                  <input type="tel" name="phone" placeholder="+372 439 8384" />
+                </label>
+                <label>
+                  <span>Teenuse kategooria</span>
+                  <select name="service">
+                    <option>Lõikus</option>
+                    <option>Värvimine</option>
+                    <option>Keemiline lokk</option>
+                    <option>Soengud</option>
+                    <option>Ripsmed ja kulmud</option>
+                    <option>Maniküür</option>
+                    <option>Pediküür</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Valitud kuupäev</span>
+                  <input type="text" name="date" data-booking-date placeholder="Vali kalendrist sobiv päev" />
+                </label>
+                <label>
+                  <span>Vaba aeg</span>
+                  <select name="time" data-booking-time required>
+                    <option value="">Vali kõigepealt päev</option>
+                  </select>
+                </label>
+                <button class="button" type="submit">Saada päring</button>
+              </form>
             </div>
-
-            <form class="booking-form">
-              <label>
-                <span>Sinu nimi</span>
-                <input type="text" name="name" placeholder="Anna" />
-              </label>
-              <label>
-                <span>Telefon</span>
-                <input type="tel" name="phone" placeholder="+372 5555 5555" />
-              </label>
-              <label>
-                <span>Teenuse kategooria</span>
-                <select name="service">
-                  <option>Juuksed</option>
-                  <option>Maniküür</option>
-                  <option>Pediküür</option>
-                  <option>Massaaž</option>
-                </select>
-              </label>
-              <label>
-                <span>Valitud kuupäev</span>
-                <input type="text" name="date" data-booking-date placeholder="Vali kalendrist sobiv päev" />
-              </label>
-              <button class="button" type="submit">Saada päring</button>
-            </form>
-
-            <aside class="booking-highlight">
-              <p class="booking-highlight-label">Kuidas on mugavam</p>
-              <strong>Vastame nii vormile kui ka sõnumitele</strong>
-              <span>Kui otsekontakt on mugavam, vali WhatsApp, Telegram, kõne või Instagram Direct.</span>
-            </aside>
           </div>
         </div>
       </section>
@@ -392,57 +781,57 @@
             <div class="contact-details">
               <article class="contact-card">
                 <p class="contact-label">Aadress</p>
-                <strong>Tallinn, kesklinn, Eesti</strong>
-                <span>Täpse sissepääsu saadame pärast broneeringu kinnitamist.</span>
+                <strong>Tallinna mnt 70, Pärnu, Estonia, 80034</strong>
+                <span>Salong asub Pärnus aadressil Tallinna mnt 70.</span>
               </article>
 
               <article class="contact-card">
                 <p class="contact-label">Telefon</p>
-                <strong><a href="tel:+37255555555">+372 5555 5555</a></strong>
-                <span>Helista, kui soovid kiiresti aega või täpsustada teenuseid.</span>
+                <strong><a href="tel:+3724398384">439 8384</a></strong>
+                <span>Helista broneerimiseks või teenuste täpsustamiseks.</span>
               </article>
 
               <article class="contact-card">
-                <p class="contact-label">Veebiarendaja</p>
-                <strong><a href="mailto:denis.zukov@alessannailu.com">denis.zukov@alessannailu.com</a></strong>
-                <span>Olen selle veebilehe arendaja. Kui tekivad tehnilised probleemid, vead või küsimused saidi töö kohta, võtke minuga ühendust.</span>
+                <p class="contact-label">Email</p>
+                <strong><a href="mailto:alessanna.ilusalong@gmail.com">alessanna.ilusalong@gmail.com</a></strong>
+                <span>Kirjuta broneeringu, teenuste ja vabade aegade kohta.</span>
               </article>
 
               <article class="contact-card">
                 <p class="contact-label">Lahtiolekuajad</p>
-                <strong>E-P: 09:00-21:00</strong>
-                <span>Ette broneerides leiame paindlikult sobiva aja kogu päeva jooksul.</span>
+                <strong>E-R: 10:00-18:00 · L: 10:00-16:00</strong>
+                <span>Broneeringuid võtame vastu märgitud lahtiolekuaegadel.</span>
               </article>
 
               <article class="contact-card">
-                <p class="contact-label">Parkimine ja orientiir</p>
-                <strong>Linnaparkla kõrval</strong>
-                <span>Mugav ligipääs kesklinna poolt. Täpsema juhise saadame pärast kinnitamist.</span>
+                <p class="contact-label">Parkimine</p>
+                <strong>Tasuta parkimine</strong>
+                <span>Autoga tulles saab parkida salongi juures.</span>
               </article>
 
               <div class="contact-quick-links">
-                <a class="button button-ghost contact-quick-link" href="https://wa.me/37255555555" target="_blank" rel="noreferrer">WhatsApp</a>
-                <a class="button button-ghost contact-quick-link" href="https://t.me/alessannailu" target="_blank" rel="noreferrer">Telegram</a>
-                <a class="button button-ghost contact-quick-link" href="tel:+37255555555">Helista</a>
-                <a class="button button-ghost contact-quick-link" href="https://instagram.com/alessannailu" target="_blank" rel="noreferrer">Instagram</a>
+                <a class="button button-ghost contact-quick-link" href="tel:+3724398384">Helista</a>
+                <a class="button button-ghost contact-quick-link" href="mailto:alessanna.ilusalong@gmail.com">Email</a>
+                <a class="button button-ghost contact-quick-link" href="https://www.facebook.com/salenta" target="_blank" rel="noreferrer">Facebook</a>
+                <a class="button button-ghost contact-quick-link" href="https://www.google.com/maps/search/?api=1&query=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034" target="_blank" rel="noreferrer">Kaart</a>
               </div>
             </div>
 
             <div class="contact-map-card contact-card contact-map">
               <iframe
                 title="Alessanna Ilusalongi kaart"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=24.727%2C59.428%2C24.769%2C59.444&layer=mapnik&marker=59.4370%2C24.7536"
+                src="https://www.google.com/maps?q=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034&output=embed"
                 loading="lazy"
                 referrerpolicy="no-referrer-when-downgrade"
               ></iframe>
               <div class="contact-map-footer">
                 <div>
                   <p class="contact-label">Kaart</p>
-                  <span>Tallinna kesklinna mugav asukoht enne või pärast päevatoimetusi.</span>
+                  <span>Tallinna mnt 70, Pärnu, Estonia, 80034. Kaardil on märgitud salongi aadress.</span>
                 </div>
                 <a
                   class="button button-small"
-                  href="https://www.openstreetmap.org/?mlat=59.4370&mlon=24.7536#map=15/59.4370/24.7536"
+                  href="https://www.google.com/maps/search/?api=1&query=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -458,8 +847,34 @@
     <footer class="site-footer">
       <div class="container">
         <div class="footer-bottom">
-          <p>Alessanna Ilusalong</p>
-          <p>alessannailu.com</p>
+          <div class="footer-brand">
+            <strong>Alessanna Ilusalong</strong>
+            <span>Tallinna mnt 70, Pärnu</span>
+          </div>
+          <div class="footer-social" aria-label="Kontaktid">
+            <a class="footer-social-link" href="tel:+3724398384" aria-label="Helista">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6.6 3.6 8.9 3a1.7 1.7 0 0 1 1.9.9l1.2 2.7a1.7 1.7 0 0 1-.4 1.9l-1.1 1.1a10.8 10.8 0 0 0 4.9 4.9l1.1-1.1a1.7 1.7 0 0 1 1.9-.4l2.7 1.2a1.7 1.7 0 0 1 .9 1.9l-.6 2.3a2.1 2.1 0 0 1-2 1.6A16.4 16.4 0 0 1 4 4.6a2.1 2.1 0 0 1 2.6-1Z" />
+              </svg>
+            </a>
+            <a class="footer-social-link" href="mailto:alessanna.ilusalong@gmail.com" aria-label="Saada email">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3.8 6.5h16.4v11H3.8z" />
+                <path d="m4.4 7 7.6 6 7.6-6" />
+              </svg>
+            </a>
+            <a class="footer-social-link" href="https://www.facebook.com/salenta" target="_blank" rel="noreferrer" aria-label="Facebook">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.2 8.2h2.4V4.7a12.6 12.6 0 0 0-3.5-.2c-3.4 0-5.7 2.1-5.7 6v3.4H3.6v3.9h3.8V24h4.7v-6.2h3.7l.6-3.9h-4.3v-3c0-1.1.3-2.7 2.1-2.7Z" />
+              </svg>
+            </a>
+            <a class="footer-social-link" href="https://www.google.com/maps/search/?api=1&query=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034" target="_blank" rel="noreferrer" aria-label="Ava kaart">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 21s6.2-5.4 6.2-11.1A6.2 6.2 0 0 0 5.8 9.9C5.8 15.6 12 21 12 21Z" />
+                <path d="M12 12.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z" />
+              </svg>
+            </a>
+          </div>
         </div>
       </div>
     </footer>

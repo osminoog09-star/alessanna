@@ -8,6 +8,9 @@ const calendarTitle = document.querySelector("[data-calendar-title]");
 const selectedDayLabel = document.querySelector("[data-selected-day]");
 const selectedInfoLabel = document.querySelector("[data-selected-info]");
 const bookingDateInput = document.querySelector("[data-booking-date]");
+const bookingTimeSelect = document.querySelector("[data-booking-time]");
+const calendarPrev = document.querySelector("[data-calendar-prev]");
+const calendarNext = document.querySelector("[data-calendar-next]");
 const servicesToggle = document.querySelector("[data-services-toggle]");
 const servicesPanel = document.querySelector("[data-services-panel]");
 const priceToggle = document.querySelector("[data-price-toggle]");
@@ -59,6 +62,7 @@ const translations = {
       7: "7 окон",
     },
     selectedPrefix: "Доступно",
+    timePlaceholder: "Выберите время",
     submitSuccess: "Заявка отправлена",
   },
   et: {
@@ -105,6 +109,7 @@ const translations = {
       7: "7 aega",
     },
     selectedPrefix: "Saadaval",
+    timePlaceholder: "Vali aeg",
     submitSuccess: "Päring saadetud",
   },
 };
@@ -302,104 +307,199 @@ if (servicesToggle && servicesPanel && priceToggle && pricePanel) {
 
 if (calendarGrid && calendarTitle) {
   const currentDate = new Date();
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startOffset = (firstDay.getDay() + 6) % 7;
-  const totalCells = Math.ceil((startOffset + lastDay.getDate()) / 7) * 7;
+  const selectedDate = {
+    year: currentDate.getFullYear(),
+    month: currentDate.getMonth(),
+    day: null,
+  };
+  const minVisibleYear = currentDate.getFullYear();
+  const minVisibleMonth = currentDate.getMonth();
+  let visibleYear = currentDate.getFullYear();
+  let visibleMonth = currentDate.getMonth();
+  let selectedButton = null;
 
-  const formatDate = (dayNumber) =>
+  const formatDate = (dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) =>
     locale === "et"
-      ? `${dayNumber}. ${t.monthNamesDate[month]}`
-      : `${dayNumber} ${t.monthNamesDate[month]}`;
+      ? `${dayNumber}. ${t.monthNamesDate[monthNumber]} ${yearNumber}`
+      : `${dayNumber} ${t.monthNamesDate[monthNumber]} ${yearNumber}`;
 
-  const createDayData = (state, slotsCount, slots, buttonLabel = t.buttonLabels[state]) => ({
+  const createDayData = (state, slots, buttonLabel = t.buttonLabels[state]) => ({
     state,
     buttonLabel,
-    noteLabel: t.noteLabels[slotsCount],
+    noteLabel: t.noteLabels[slots.length] || `${slots.length}`,
     slots,
   });
 
   const availabilityMap = {
-    2: createDayData("soft", 6, "10:00, 12:00, 15:30"),
-    4: createDayData("busy", 2, "14:00, 18:00"),
-    7: createDayData("featured", 3, "11:00, 13:00, 17:00"),
-    9: createDayData("soft", 5, "09:30, 12:30, 16:30"),
-    12: createDayData("featured", 4, "11:00, 13:30, 16:00, 18:30"),
-    15: createDayData("busy", 1, "19:00"),
-    18: createDayData("soft", 7, "10:00, 11:30, 15:00"),
-    21: createDayData("featured", 3, "10:30, 14:00, 17:30"),
-    24: createDayData("busy", 2, "12:00, 16:00"),
-    27: createDayData("soft", 5, "09:00, 13:00, 18:00"),
-    30: createDayData("featured", 3, "10:00, 12:30, 15:00"),
+    2: createDayData("soft", ["10:00", "12:00", "15:30", "17:00", "17:30", "18:00"]),
+    4: createDayData("busy", ["14:00", "18:00"]),
+    7: createDayData("featured", ["11:00", "13:00", "17:00"]),
+    9: createDayData("soft", ["09:30", "12:30", "16:30", "17:30", "18:00"]),
+    12: createDayData("featured", ["11:00", "13:30", "16:00", "18:30"]),
+    15: createDayData("busy", ["17:00"]),
+    18: createDayData("soft", ["10:00", "11:30", "15:00", "16:30", "17:30", "18:00", "18:30"]),
+    21: createDayData("featured", ["10:30", "14:00", "17:30"]),
+    24: createDayData("busy", ["12:00", "16:00"]),
+    27: createDayData("soft", ["09:00", "13:00", "15:00", "17:00", "18:00"]),
+    30: createDayData("featured", ["10:00", "12:30", "15:00"]),
   };
 
-  let selectedButton = null;
+  const defaultSlots = {
+    soft: ["10:00", "14:00", "17:00", "18:00"],
+    busy: ["12:00", "18:00"],
+    featured: ["10:30", "13:00", "16:30"],
+  };
 
-  const updateSelection = (button, dayNumber) => {
+  const getDayData = (dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) => {
+    const customDayData =
+      monthNumber === currentDate.getMonth() && yearNumber === currentDate.getFullYear()
+        ? availabilityMap[dayNumber]
+        : null;
+
+    if (customDayData) {
+      return customDayData;
+    }
+
+    const state = (dayNumber + monthNumber) % 6 === 0 ? "busy" : (dayNumber + monthNumber) % 4 === 0 ? "featured" : "soft";
+    return createDayData(state, defaultSlots[state]);
+  };
+
+  const updateTimeOptions = (dayData) => {
+    if (!bookingTimeSelect) {
+      return;
+    }
+
+    bookingTimeSelect.innerHTML = "";
+
+    const placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    placeholderOption.textContent = t.timePlaceholder;
+    placeholderOption.disabled = true;
+    placeholderOption.selected = true;
+    bookingTimeSelect.append(placeholderOption);
+
+    dayData.slots.forEach((slot) => {
+      const option = document.createElement("option");
+      option.value = slot;
+      option.textContent = slot;
+      bookingTimeSelect.append(option);
+    });
+  };
+
+  const updateSelection = (button, dayNumber, monthNumber = visibleMonth, yearNumber = visibleYear) => {
     if (selectedButton) {
       selectedButton.classList.remove("is-selected");
     }
 
-    const dayData = availabilityMap[dayNumber] || createDayData("soft", 3, "10:00, 13:00, 17:00");
+    const dayData = getDayData(dayNumber, monthNumber, yearNumber);
 
     selectedButton = button;
     selectedButton.classList.add("is-selected");
+    selectedDate.year = yearNumber;
+    selectedDate.month = monthNumber;
+    selectedDate.day = dayNumber;
 
-    const formattedDate = formatDate(dayNumber);
+    const formattedDate = formatDate(dayNumber, monthNumber, yearNumber);
+    const slotsText = dayData.slots.join(", ");
 
     if (selectedDayLabel) {
       selectedDayLabel.textContent = formattedDate;
     }
 
     if (selectedInfoLabel) {
-      selectedInfoLabel.textContent = `${t.selectedPrefix} ${dayData.noteLabel}: ${dayData.slots}`;
+      selectedInfoLabel.textContent = `${t.selectedPrefix} ${dayData.noteLabel}: ${slotsText}`;
     }
 
     if (bookingDateInput) {
       bookingDateInput.value = formattedDate;
     }
+
+    updateTimeOptions(dayData);
   };
 
-  calendarGrid.innerHTML = "";
-  calendarTitle.textContent = `${t.monthNamesTitle[month]} ${year}`;
+  const renderCalendar = () => {
+    const firstDay = new Date(visibleYear, visibleMonth, 1);
+    const lastDay = new Date(visibleYear, visibleMonth + 1, 0);
+    const isCurrentMonth = visibleYear === minVisibleYear && visibleMonth === minVisibleMonth;
+    const startOffset = (firstDay.getDay() + 6) % 7;
+    const totalCells = Math.ceil((startOffset + lastDay.getDate()) / 7) * 7;
 
-  for (let cellIndex = 0; cellIndex < totalCells; cellIndex += 1) {
-    const dayNumber = cellIndex - startOffset + 1;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "calendar-day";
+    selectedButton = null;
+    calendarGrid.innerHTML = "";
+    calendarTitle.textContent = `${t.monthNamesTitle[visibleMonth]} ${visibleYear}`;
 
-    if (dayNumber < 1 || dayNumber > lastDay.getDate()) {
-      button.classList.add("is-outside");
-      button.tabIndex = -1;
+    if (calendarPrev) {
+      calendarPrev.disabled = isCurrentMonth;
+      calendarPrev.setAttribute("aria-disabled", String(isCurrentMonth));
+    }
+
+    for (let cellIndex = 0; cellIndex < totalCells; cellIndex += 1) {
+      const dayNumber = cellIndex - startOffset + 1;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "calendar-day";
+
+      if (dayNumber < 1 || dayNumber > lastDay.getDate()) {
+        button.classList.add("is-outside");
+        button.tabIndex = -1;
+        calendarGrid.append(button);
+        continue;
+      }
+
+      const dayData = getDayData(dayNumber, visibleMonth, visibleYear);
+      const slotsText = dayData.slots.join(", ");
+
+      button.dataset.day = String(dayNumber);
+      button.classList.add(`is-${dayData.state}`);
+      button.innerHTML = `
+        <span class="calendar-date">${dayNumber}</span>
+        <span class="calendar-meta">${dayData.buttonLabel}</span>
+        <span class="calendar-slots">${slotsText}</span>
+      `;
+
+      button.addEventListener("click", () => updateSelection(button, dayNumber, visibleMonth, visibleYear));
       calendarGrid.append(button);
-      continue;
+
+      const shouldSelectSavedDay =
+        selectedDate.day === dayNumber &&
+        selectedDate.month === visibleMonth &&
+        selectedDate.year === visibleYear;
+
+      if (shouldSelectSavedDay || (!selectedDate.day && dayNumber === currentDate.getDate())) {
+        updateSelection(button, dayNumber, visibleMonth, visibleYear);
+      }
     }
 
-    const dayData =
-      availabilityMap[dayNumber] ||
-      createDayData(
-        dayNumber % 5 === 0 ? "busy" : "soft",
-        dayNumber % 5 === 0 ? 2 : 4,
-        dayNumber % 5 === 0 ? "12:00, 18:00" : "10:00, 14:00, 17:00"
-      );
+    if (!selectedButton) {
+      const currentDayButton = isCurrentMonth
+        ? calendarGrid.querySelector(`.calendar-day[data-day="${currentDate.getDate()}"]`)
+        : null;
+      const firstAvailableButton = currentDayButton || calendarGrid.querySelector(".calendar-day:not(.is-outside)");
+      const firstAvailableDay = firstAvailableButton?.querySelector(".calendar-date")?.textContent;
 
-    button.classList.add(`is-${dayData.state}`);
-    button.innerHTML = `
-      <span class="calendar-date">${dayNumber}</span>
-      <span class="calendar-meta">${dayData.buttonLabel}</span>
-      <span class="calendar-slots">${dayData.slots}</span>
-    `;
-
-    button.addEventListener("click", () => updateSelection(button, dayNumber));
-    calendarGrid.append(button);
-
-    if (dayNumber === 12) {
-      updateSelection(button, dayNumber);
+      if (firstAvailableButton && firstAvailableDay) {
+        updateSelection(firstAvailableButton, Number(firstAvailableDay), visibleMonth, visibleYear);
+      }
     }
-  }
+  };
+
+  const moveCalendarMonth = (offset) => {
+    const nextVisibleMonth = new Date(visibleYear, visibleMonth + offset, 1);
+    const minVisibleDate = new Date(minVisibleYear, minVisibleMonth, 1);
+
+    if (nextVisibleMonth < minVisibleDate) {
+      return;
+    }
+
+    visibleYear = nextVisibleMonth.getFullYear();
+    visibleMonth = nextVisibleMonth.getMonth();
+    renderCalendar();
+  };
+
+  calendarPrev?.addEventListener("click", () => moveCalendarMonth(-1));
+  calendarNext?.addEventListener("click", () => moveCalendarMonth(1));
+
+  renderCalendar();
 }
 
 if (bookingForm) {

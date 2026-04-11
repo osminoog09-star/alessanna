@@ -6,7 +6,7 @@
     <title>Alessanna Ilusalong</title>
     <meta
       name="description"
-      content="Alessanna Ilusalong: волосы, маникюр, педикюр и массаж в премиальной атмосфере в центре Таллина."
+      content="Alessanna Ilusalong: стрижка, окрашивание, брови и ресницы, маникюр и педикюр в Пярну."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,58 +20,48 @@
     <div class="page-glow page-glow-left"></div>
     <div class="page-glow page-glow-right"></div>
 
-    <header class="site-header">
-      <div class="container nav-shell">
-        <a class="brand" href="#top" aria-label="Alessanna Ilusalong">
-          <span class="brand-mark">A</span>
-          <span class="brand-text">
-            <strong>Alessanna</strong>
-            <em>Ilusalong</em>
-          </span>
-        </a>
-
-        <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false">
-          <span></span>
-          <span></span>
-        </button>
-
-        <nav class="site-nav">
-          <a href="#services">Услуги</a>
-          <a href="#contact">Контакты</a>
-        </nav>
-
-        <div class="header-tools">
-          <div class="lang-switch" aria-label="Выбор языка">
-            <a class="lang-link is-active" href="alessanna.html">RU</a>
-            <a class="lang-link" href="alessanna-et.html">ET</a>
-          </div>
-          <a class="button button-small" href="#booking">Записаться</a>
-        </div>
+    <div class="floating-lang-wrap">
+      <div class="lang-switch" aria-label="Выбор языка">
+        <a class="lang-link is-active" href="alessanna.html">RU</a>
+        <a class="lang-link" href="alessanna-et.html">ET</a>
       </div>
-    </header>
+    </div>
 
     <main id="top">
       <section class="hero hero-services">
         <div class="container hero-grid">
-          <div class="hero-copy hero-copy-compact hero-services-actions reveal">
-            <button
-              class="button button-mawe hero-service-link services-toggle"
-              type="button"
-              data-services-toggle
-              aria-expanded="false"
-              aria-controls="services-categories-panel"
-            >
-              Услуги
-            </button>
-            <button
-              class="button button-mawe hero-service-link price-toggle"
-              type="button"
-              data-price-toggle
-              aria-expanded="false"
-              aria-controls="services-price-panel"
-            >
-              Прайс-лист
-            </button>
+          <div class="hero-copy hero-copy-compact reveal">
+            <div class="salon-wordmark" aria-label="Alessanna Ilusalong">
+              <img
+                class="salon-wordmark-image"
+                src="assets/alessanna-wordmark.png"
+                alt="Alessanna"
+                fetchpriority="high"
+                decoding="async"
+              />
+              <p class="salon-wordmark-subtitle">I L U S A L O N G</p>
+            </div>
+
+            <div class="hero-services-actions">
+              <button
+                class="button button-mawe hero-service-link services-toggle"
+                type="button"
+                data-services-toggle
+                aria-expanded="false"
+                aria-controls="services-categories-panel"
+              >
+                Услуги
+              </button>
+              <button
+                class="button button-mawe hero-service-link price-toggle"
+                type="button"
+                data-price-toggle
+                aria-expanded="false"
+                aria-controls="services-price-panel"
+              >
+                Прайс-лист
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -85,20 +75,60 @@
             </div>
 
             <div class="service-category-grid services-drop-item">
-              <a class="service-category-card service-category-link" href="#price-hair">
+              <a class="service-category-card service-category-link" href="#price-cuts">
                 <div class="service-category-top">
-                  <p class="service-category-title">Волосы</p>
-                  <strong>от 25 €</strong>
+                  <p class="service-category-title">Стрижка</p>
+                  <strong>от 5 €</strong>
                 </div>
-                <p class="service-category-copy">Стрижки, окрашивание и уход с чистой формой и спокойной подачей.</p>
+                <p class="service-category-copy">Женские, мужские и детские стрижки, мытьё и лёгкая дневная укладка.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-color-no-cut">
+                <div class="service-category-top">
+                  <p class="service-category-title">Окрашивание</p>
+                  <strong>от 33 €</strong>
+                </div>
+                <p class="service-category-copy">Окрашивание без стрижки и со стрижкой, работа с корнями и мелирование.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-perm">
+                <div class="service-category-top">
+                  <p class="service-category-title">Химическая завивка</p>
+                  <strong>от 43 €</strong>
+                </div>
+                <p class="service-category-copy">Химическая завивка для короткой, средней и длинной длины волос.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-styling">
+                <div class="service-category-top">
+                  <p class="service-category-title">Укладки</p>
+                  <strong>от 20 €</strong>
+                </div>
+                <p class="service-category-copy">Дневные, локоны, праздничные и свадебные укладки под событие.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-brows">
+                <div class="service-category-top">
+                  <p class="service-category-title">Брови и ресницы</p>
+                  <strong>от 7 €</strong>
+                </div>
+                <p class="service-category-copy">Окрашивание, коррекция и оформление бровей и ресниц.</p>
+              </a>
+
+              <a class="service-category-card service-category-link" href="#price-manicure">
+                <div class="service-category-top">
+                  <p class="service-category-title">Гель лак и моделирование гель лаком</p>
+                  <strong>от 7 €</strong>
+                </div>
+                <p class="service-category-copy">Покрытие гель-лаком, моделирование, коррекция и ремонт ногтей.</p>
               </a>
 
               <a class="service-category-card service-category-link" href="#price-manicure">
                 <div class="service-category-top">
                   <p class="service-category-title">Маникюр</p>
-                  <strong>от 15 €</strong>
+                  <strong>от 7 €</strong>
                 </div>
-                <p class="service-category-copy">Классический маникюр, гель-лак и аккуратная архитектура ногтей.</p>
+                <p class="service-category-copy">Классический маникюр, гель-лак, снятие, наращивание и ремонт.</p>
               </a>
 
               <a class="service-category-card service-category-link" href="#price-pedicure">
@@ -106,15 +136,7 @@
                   <p class="service-category-title">Педикюр</p>
                   <strong>от 30 €</strong>
                 </div>
-                <p class="service-category-copy">Комфортный уход за стопами и стойкий результат для ежедневной жизни.</p>
-              </a>
-
-              <a class="service-category-card service-category-link" href="#price-massage">
-                <div class="service-category-top">
-                  <p class="service-category-title">Массаж</p>
-                  <strong>от 35 €</strong>
-                </div>
-                <p class="service-category-copy">Сеансы для расслабления, восстановления и ощущения лёгкости в теле.</p>
+                <p class="service-category-copy">Классический, с гель-лаком и мужской педикюр.</p>
               </a>
             </div>
           </div>
@@ -132,97 +154,494 @@
               <div class="price-showcase-inner">
                 <header class="price-panel-heading">
                   <p class="services-price-title price-panel-title">Прайс-лист</p>
-                  <p class="price-panel-script">Maniküür · Pediküür · Juuksed · Body</p>
+                  <p class="price-panel-script">
+                    <a href="#price-cuts">Стрижка</a>
+                    <span>·</span>
+                    <a href="#price-color-no-cut">Окрашивание</a>
+                    <span>·</span>
+                    <a href="#price-perm">Химическая завивка</a>
+                    <span>·</span>
+                    <a href="#price-styling">Укладки</a>
+                    <span>·</span>
+                    <a href="#price-brows">Брови и ресницы</a>
+                    <span>·</span>
+                    <a href="#price-manicure">Маникюр</a>
+                    <span>·</span>
+                    <a href="#price-pedicure">Педикюр</a>
+                  </p>
                   <div class="price-panel-divider"></div>
                 </header>
 
-                <section class="price-panel-section" id="price-hair">
-                  <h3 class="price-panel-section-title">Волосы</h3>
-                  <p class="price-panel-section-note">Стрижки, окрашивание и уход под ваш образ и ритм жизни.</p>
+                <section class="price-panel-section" id="price-cuts">
+                  <h3 class="price-panel-section-title">Стрижки</h3>
+                  <p class="price-panel-section-note">Детские, мужские и женские стрижки, а также базовый уход и дневная укладка.</p>
 
+                  <p class="price-panel-subgroup">Дети</p>
                   <div class="service-item service-item-panel">
                     <div class="service-item-main">
-                      <strong class="service-item-name">Женская стрижка</strong>
-                      <p class="service-item-desc">Форма, текстура и лёгкая укладка в одном визите.</p>
+                      <strong class="service-item-name">Стрижка до 12 лет</strong>
                     </div>
                     <div class="service-item-meta">
-                      <span class="service-item-time">60 мин</span>
-                      <strong class="service-item-price">от 25 €</strong>
+                      <strong class="service-item-price">15 €</strong>
                     </div>
                   </div>
 
+                  <p class="price-panel-subgroup">Мужчины</p>
                   <div class="service-item service-item-panel">
                     <div class="service-item-main">
-                      <strong class="service-item-name">Окрашивание в один тон</strong>
-                      <p class="service-item-desc">Чистый оттенок, блеск и подбор домашнего ухода после процедуры.</p>
+                      <strong class="service-item-name">Стрижка</strong>
                     </div>
                     <div class="service-item-meta">
-                      <span class="service-item-time">120 мин</span>
-                      <strong class="service-item-price">от 45 €</strong>
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Машинная стрижка</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">15 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Подравнивание бороды и усов</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">10 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Мытьё волос</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">5 €</strong>
                     </div>
                   </div>
 
+                  <p class="price-panel-subgroup">Женщины</p>
                   <div class="service-item service-item-panel">
                     <div class="service-item-main">
-                      <strong class="service-item-name">Уход и укладка</strong>
-                      <p class="service-item-desc">Быстрое восстановление волос и мягкий финальный объём.</p>
+                      <strong class="service-item-name">Стрижка волос</strong>
                     </div>
                     <div class="service-item-meta">
-                      <span class="service-item-time">45 мин</span>
-                      <strong class="service-item-price">от 30 €</strong>
+                      <strong class="service-item-price">25-30 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Подравнивание кончиков</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Стрижка чёлки</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">5 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Мытьё и дневная укладка</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-color-no-cut">
+                  <h3 class="price-panel-section-title">Окрашивание без стрижки</h3>
+                  <p class="price-panel-section-note">Цены зависят от длины волос и выбранной техники окрашивания.</p>
+
+                  <p class="price-panel-subgroup">Окрашивание волос</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Короткие волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">35-40 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Средние волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">40-45 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Очень длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-65 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание отросших корней до 2 см</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">35-40 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание своей краской</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">33 €</strong>
+                    </div>
+                  </div>
+
+                  <p class="price-panel-subgroup">Мелирование</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Короткие волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">40-45 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Средние волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-60 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Очень длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">60-70 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-color-cut">
+                  <h3 class="price-panel-section-title">Окрашивание со стрижкой</h3>
+                  <p class="price-panel-section-note">Комплексное окрашивание или мелирование сразу вместе со стрижкой.</p>
+
+                  <p class="price-panel-subgroup">Окрашивание волос</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Короткие волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">50-55 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Средние волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-60 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">60-65 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Очень длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">65-75 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание отросших корней до 2 см</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание своей краской</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">43 €</strong>
+                    </div>
+                  </div>
+
+                  <p class="price-panel-subgroup">Мелирование</p>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Короткие волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">50-55 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Средние волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">55-60 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">60-65 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Очень длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">65-75 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-perm">
+                  <h3 class="price-panel-section-title">Химическая завивка</h3>
+                  <p class="price-panel-section-note">Стоимость зависит от длины волос и желаемой формы локона.</p>
+
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Короткие волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">43 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Средние волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">45-50 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Длинные волосы</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">50-60 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-styling">
+                  <h3 class="price-panel-section-title">Укладки</h3>
+                  <p class="price-panel-section-note">От дневной укладки до свадебного образа и праздничных локонов.</p>
+
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Дневная укладка</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Выпрямление</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">25 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Укладка с локонами</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">25 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Праздничная укладка</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">25-35 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Свадебная укладка</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">30-45 €</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="price-panel-section" id="price-brows">
+                  <h3 class="price-panel-section-title">Брови и ресницы</h3>
+                  <p class="price-panel-section-note">Окрашивание, коррекция и оформление для повседневного ухода.</p>
+
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание бровей</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">7 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание ресниц</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">7 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Коррекция и оформление бровей</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">8 €</strong>
+                    </div>
+                  </div>
+                  <div class="service-item service-item-panel">
+                    <div class="service-item-main">
+                      <strong class="service-item-name">Окрашивание бровей, окрашивание ресниц и коррекция</strong>
+                    </div>
+                    <div class="service-item-meta">
+                      <strong class="service-item-price">20 €</strong>
                     </div>
                   </div>
                 </section>
 
               <section class="price-panel-section" id="price-manicure">
                 <h3 class="price-panel-section-title">Маникюр</h3>
-                <p class="price-panel-section-note">Точная работа, комфорт и стойкий ухоженный результат.</p>
+                <p class="price-panel-section-note">Классический уход, покрытие, снятие и работа с искусственными ногтями.</p>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Классический маникюр</strong>
-                    <p class="service-item-desc">Чистая форма, обработка и естественный ухоженный вид рук.</p>
+                    <strong class="service-item-name">Маникюр</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">60 мин</span>
                     <strong class="service-item-price">15-20 €</strong>
                   </div>
                 </div>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Маникюр с гель-лаком</strong>
-                    <p class="service-item-desc">Стойкое покрытие с выравниванием и мягким блеском.</p>
+                    <strong class="service-item-name">Покрытие лаком</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">90 мин</span>
+                    <strong class="service-item-price">7 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Маникюр с гель-лаком</strong>
+                  </div>
+                  <div class="service-item-meta">
                     <strong class="service-item-price">30 €</strong>
                   </div>
                 </div>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Наращивание или коррекция</strong>
-                    <p class="service-item-desc">Усиление длины и формы с сохранением аккуратного силуэта ногтей.</p>
+                    <strong class="service-item-name">Снятие гель-лака с классическим маникюром</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">120 мин</span>
+                    <strong class="service-item-price">25 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Снятие гель-лака</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">15 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Наращивание гелевых ногтей</strong>
+                  </div>
+                  <div class="service-item-meta">
                     <strong class="service-item-price">40-50 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Коррекция гелевых ногтей</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">35-40 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Снятие искусственных ногтей</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">25 €</strong>
+                  </div>
+                </div>
+
+                <div class="service-item service-item-panel">
+                  <div class="service-item-main">
+                    <strong class="service-item-name">Ремонт одного ногтя</strong>
+                  </div>
+                  <div class="service-item-meta">
+                    <strong class="service-item-price">7 €</strong>
                   </div>
                 </div>
               </section>
 
               <section class="price-panel-section" id="price-pedicure">
                 <h3 class="price-panel-section-title">Педикюр</h3>
-                <p class="price-panel-section-note">Комфортный уход за стопами и долговечный аккуратный результат.</p>
+                <p class="price-panel-section-note">Уход за стопами с классическим и гелевым покрытием.</p>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Классический педикюр</strong>
-                    <p class="service-item-desc">Уход за стопами, чистая обработка и лёгкое чувство свежести.</p>
+                    <strong class="service-item-name">Педикюр</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">75 мин</span>
                     <strong class="service-item-price">30-35 €</strong>
                   </div>
                 </div>
@@ -230,49 +649,27 @@
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
                     <strong class="service-item-name">Педикюр с гель-лаком</strong>
-                    <p class="service-item-desc">Классический уход плюс стойкое покрытие для открытой обуви.</p>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">90 мин</span>
                     <strong class="service-item-price">35-40 €</strong>
                   </div>
                 </div>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Мужской педикюр</strong>
-                    <p class="service-item-desc">Функциональный уход без покрытия с акцентом на чистоту и комфорт.</p>
+                    <strong class="service-item-name">Снятие гель-лака с классическим педикюром</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">75 мин</span>
                     <strong class="service-item-price">30-35 €</strong>
                   </div>
                 </div>
-              </section>
-
-              <section class="price-panel-section" id="price-massage">
-                <h3 class="price-panel-section-title">Массаж</h3>
-                <p class="price-panel-section-note">Сеансы для расслабления, восстановления и перезагрузки.</p>
 
                 <div class="service-item service-item-panel">
                   <div class="service-item-main">
-                    <strong class="service-item-name">Экспресс массаж спины</strong>
-                    <p class="service-item-desc">Снимает напряжение в плечах и спине, когда нужно быстро восстановиться.</p>
+                    <strong class="service-item-name">Мужской педикюр</strong>
                   </div>
                   <div class="service-item-meta">
-                    <span class="service-item-time">30 мин</span>
-                    <strong class="service-item-price">35 €</strong>
-                  </div>
-                </div>
-
-                <div class="service-item service-item-panel">
-                  <div class="service-item-main">
-                    <strong class="service-item-name">Расслабляющий массаж тела</strong>
-                    <p class="service-item-desc">Глубокий мягкий ритм для отдыха, лёгкости и ощущения спокойствия.</p>
-                  </div>
-                  <div class="service-item-meta">
-                    <span class="service-item-time">60 мин</span>
-                    <strong class="service-item-price">55 €</strong>
+                    <strong class="service-item-price">30-35 €</strong>
                   </div>
                 </div>
               </section>
@@ -286,16 +683,22 @@
         <div class="container booking-shell reveal">
           <div class="booking-copy">
             <p class="eyebrow">Запись</p>
-            <h2>Запишитесь на удобное время и выберите привычный способ связи.</h2>
+            <h2>Запишитесь на удобное время через календарь и форму.</h2>
             <p>
-              Можно оставить форму, а можно написать напрямую в удобный канал. Это особенно удобно с телефона,
-              если нужно быстро уточнить мастера, время или услугу.
+              Выберите подходящий день, укажите услугу и оставьте заявку в форме. Так запись получается понятной и быстрой.
             </p>
+          </div>
+
+          <div class="booking-bottom">
             <div class="booking-calendar">
               <div class="calendar-head">
                 <div>
                   <p class="calendar-label">Календарь записи</p>
                   <h3 class="calendar-title" data-calendar-title>Апрель 2026</h3>
+                </div>
+                <div class="calendar-nav" aria-label="Переключение месяцев">
+                  <button class="calendar-nav-button" type="button" data-calendar-prev aria-label="Предыдущий месяц">‹</button>
+                  <button class="calendar-nav-button" type="button" data-calendar-next aria-label="Следующий месяц">›</button>
                 </div>
                 <div class="calendar-legend">
                   <span><i class="legend-dot legend-dot-soft"></i>Много окон</span>
@@ -318,65 +721,51 @@
                 <span data-selected-info>Доступно 4 окна: 11:00, 13:30, 16:00, 18:30</span>
               </div>
             </div>
-          </div>
 
-          <div class="booking-side">
-            <div class="booking-methods">
-              <a class="booking-method-card" href="https://wa.me/37255555555" target="_blank" rel="noreferrer">
-                <span class="booking-method-label">WhatsApp</span>
-                <strong class="booking-method-name">Быстрый диалог</strong>
-                <span class="booking-method-note">Подходит для записи, уточнения времени и подтверждения визита.</span>
-              </a>
-
-              <a class="booking-method-card" href="https://t.me/alessannailu" target="_blank" rel="noreferrer">
-                <span class="booking-method-label">Telegram</span>
-                <strong class="booking-method-name">Сообщения и фото</strong>
-                <span class="booking-method-note">Удобно, если хотите уточнить услугу или прислать референс.</span>
-              </a>
-
-              <a class="booking-method-card" href="tel:+37255555555">
-                <span class="booking-method-label">Звонок</span>
-                <strong class="booking-method-name">Срочная запись</strong>
-                <span class="booking-method-note">Лучший вариант, если хотите записаться на ближайшее время.</span>
-              </a>
-
-              <a class="booking-method-card" href="https://instagram.com/alessannailu" target="_blank" rel="noreferrer">
-                <span class="booking-method-label">Instagram Direct</span>
-                <strong class="booking-method-name">Запись через direct</strong>
-                <span class="booking-method-note">Можно задать вопросы по стилю, уходу и доступным окнам.</span>
-              </a>
+            <div class="booking-side">
+              <aside class="booking-steps-card" aria-label="Как проходит запись">
+                <p class="booking-steps-label">3 шага</p>
+                <strong>Как проходит запись</strong>
+                <ul>
+                  <li><span>01</span><em>Выберите день в календаре</em></li>
+                  <li><span>02</span><em>Заполните короткую форму</em></li>
+                  <li><span>03</span><em>Мы подтвердим время визита</em></li>
+                </ul>
+              </aside>
+              <form class="booking-form">
+                <label>
+                  <span>Ваше имя</span>
+                  <input type="text" name="name" placeholder="Анна" />
+                </label>
+                <label>
+                  <span>Телефон</span>
+                  <input type="tel" name="phone" placeholder="+372 439 8384" />
+                </label>
+                <label>
+                  <span>Категория услуги</span>
+                  <select name="service">
+                    <option>Стрижка</option>
+                    <option>Окрашивание</option>
+                    <option>Химическая завивка</option>
+                    <option>Укладки</option>
+                    <option>Брови и ресницы</option>
+                    <option>Маникюр</option>
+                    <option>Педикюр</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Выбранная дата</span>
+                  <input type="text" name="date" data-booking-date placeholder="Выберите день в календаре" />
+                </label>
+                <label>
+                  <span>Свободное время</span>
+                  <select name="time" data-booking-time required>
+                    <option value="">Выберите день в календаре</option>
+                  </select>
+                </label>
+                <button class="button" type="submit">Отправить заявку</button>
+              </form>
             </div>
-
-            <form class="booking-form">
-              <label>
-                <span>Ваше имя</span>
-                <input type="text" name="name" placeholder="Анна" />
-              </label>
-              <label>
-                <span>Телефон</span>
-                <input type="tel" name="phone" placeholder="+372 5555 5555" />
-              </label>
-              <label>
-                <span>Категория услуги</span>
-                <select name="service">
-                  <option>Волосы</option>
-                  <option>Маникюр</option>
-                  <option>Педикюр</option>
-                  <option>Массаж</option>
-                </select>
-              </label>
-              <label>
-                <span>Выбранная дата</span>
-                <input type="text" name="date" data-booking-date placeholder="Выберите день в календаре" />
-              </label>
-              <button class="button" type="submit">Отправить заявку</button>
-            </form>
-
-            <aside class="booking-highlight">
-              <p class="booking-highlight-label">Как удобнее</p>
-              <strong>Мы отвечаем и в форме, и в мессенджерах</strong>
-              <span>Если удобнее написать напрямую, выбирайте WhatsApp, Telegram, звонок или Instagram Direct.</span>
-            </aside>
           </div>
         </div>
       </section>
@@ -392,57 +781,57 @@
             <div class="contact-details">
               <article class="contact-card">
                 <p class="contact-label">Адрес</p>
-                <strong>Tallinn, Kesklinn, Estonia</strong>
-                <span>Работаем в центре города. Точный вход отправляем после подтверждения записи.</span>
+                <strong>Tallinna mnt 70, Pärnu, Estonia, 80034</strong>
+                <span>Салон находится в Пярну по адресу Tallinna mnt 70.</span>
               </article>
 
               <article class="contact-card">
                 <p class="contact-label">Телефон</p>
-                <strong><a href="tel:+37255555555">+372 5555 5555</a></strong>
-                <span>Можно позвонить для быстрой записи или уточнения по услугам.</span>
+                <strong><a href="tel:+3724398384">439 8384</a></strong>
+                <span>Можно позвонить для записи или уточнения по услугам.</span>
               </article>
 
               <article class="contact-card">
-                <p class="contact-label">Разработчик сайта</p>
-                <strong><a href="mailto:denis.zukov@alessannailu.com">denis.zukov@alessannailu.com</a></strong>
-                <span>Я разработчик сайта. При возникновении технических проблем, ошибок или вопросов по работе сайта свяжитесь со мной.</span>
+                <p class="contact-label">Email</p>
+                <strong><a href="mailto:alessanna.ilusalong@gmail.com">alessanna.ilusalong@gmail.com</a></strong>
+                <span>Пишите по вопросам записи, услуг и свободного времени.</span>
               </article>
 
               <article class="contact-card">
                 <p class="contact-label">Часы работы</p>
-                <strong>Пн-Вс: 09:00-21:00</strong>
-                <span>При записи заранее можно подобрать более удобное окно в течение дня.</span>
+                <strong>Пн-Пт: 10:00-18:00 · Сб: 10:00-16:00</strong>
+                <span>Запись принимаем в указанные часы работы.</span>
               </article>
 
               <article class="contact-card">
-                <p class="contact-label">Парковка и ориентир</p>
-                <strong>Городская парковка рядом</strong>
-                <span>Удобный подъезд со стороны центра. После подтверждения записи подскажем ориентир точнее.</span>
+                <p class="contact-label">Парковка</p>
+                <strong>Бесплатная парковка</strong>
+                <span>Можно приехать на машине и оставить её рядом с салоном.</span>
               </article>
 
               <div class="contact-quick-links">
-                <a class="button button-ghost contact-quick-link" href="https://wa.me/37255555555" target="_blank" rel="noreferrer">WhatsApp</a>
-                <a class="button button-ghost contact-quick-link" href="https://t.me/alessannailu" target="_blank" rel="noreferrer">Telegram</a>
-                <a class="button button-ghost contact-quick-link" href="tel:+37255555555">Позвонить</a>
-                <a class="button button-ghost contact-quick-link" href="https://instagram.com/alessannailu" target="_blank" rel="noreferrer">Instagram</a>
+                <a class="button button-ghost contact-quick-link" href="tel:+3724398384">Позвонить</a>
+                <a class="button button-ghost contact-quick-link" href="mailto:alessanna.ilusalong@gmail.com">Email</a>
+                <a class="button button-ghost contact-quick-link" href="https://www.facebook.com/salenta" target="_blank" rel="noreferrer">Facebook</a>
+                <a class="button button-ghost contact-quick-link" href="https://www.google.com/maps/search/?api=1&query=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034" target="_blank" rel="noreferrer">Карта</a>
               </div>
             </div>
 
             <div class="contact-map-card contact-card contact-map">
               <iframe
                 title="Карта Alessanna Ilusalong"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=24.727%2C59.428%2C24.769%2C59.444&layer=mapnik&marker=59.4370%2C24.7536"
+                src="https://www.google.com/maps?q=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034&output=embed"
                 loading="lazy"
                 referrerpolicy="no-referrer-when-downgrade"
               ></iframe>
               <div class="contact-map-footer">
                 <div>
                   <p class="contact-label">Карта</p>
-                  <span>Центр Таллина, удобная локация для записи до или после дел в городе.</span>
+                  <span>Tallinna mnt 70, Pärnu, Estonia, 80034. На карте отмечен адрес салона.</span>
                 </div>
                 <a
                   class="button button-small"
-                  href="https://www.openstreetmap.org/?mlat=59.4370&mlon=24.7536#map=15/59.4370/24.7536"
+                  href="https://www.google.com/maps/search/?api=1&query=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -458,8 +847,34 @@
     <footer class="site-footer">
       <div class="container">
         <div class="footer-bottom">
-          <p>Alessanna Ilusalong</p>
-          <p>alessannailu.com</p>
+          <div class="footer-brand">
+            <strong>Alessanna Ilusalong</strong>
+            <span>Tallinna mnt 70, Pärnu</span>
+          </div>
+          <div class="footer-social" aria-label="Контакты">
+            <a class="footer-social-link" href="tel:+3724398384" aria-label="Позвонить">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6.6 3.6 8.9 3a1.7 1.7 0 0 1 1.9.9l1.2 2.7a1.7 1.7 0 0 1-.4 1.9l-1.1 1.1a10.8 10.8 0 0 0 4.9 4.9l1.1-1.1a1.7 1.7 0 0 1 1.9-.4l2.7 1.2a1.7 1.7 0 0 1 .9 1.9l-.6 2.3a2.1 2.1 0 0 1-2 1.6A16.4 16.4 0 0 1 4 4.6a2.1 2.1 0 0 1 2.6-1Z" />
+              </svg>
+            </a>
+            <a class="footer-social-link" href="mailto:alessanna.ilusalong@gmail.com" aria-label="Написать email">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3.8 6.5h16.4v11H3.8z" />
+                <path d="m4.4 7 7.6 6 7.6-6" />
+              </svg>
+            </a>
+            <a class="footer-social-link" href="https://www.facebook.com/salenta" target="_blank" rel="noreferrer" aria-label="Facebook">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.2 8.2h2.4V4.7a12.6 12.6 0 0 0-3.5-.2c-3.4 0-5.7 2.1-5.7 6v3.4H3.6v3.9h3.8V24h4.7v-6.2h3.7l.6-3.9h-4.3v-3c0-1.1.3-2.7 2.1-2.7Z" />
+              </svg>
+            </a>
+            <a class="footer-social-link" href="https://www.google.com/maps/search/?api=1&query=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034" target="_blank" rel="noreferrer" aria-label="Открыть карту">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 21s6.2-5.4 6.2-11.1A6.2 6.2 0 0 0 5.8 9.9C5.8 15.6 12 21 12 21Z" />
+                <path d="M12 12.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z" />
+              </svg>
+            </a>
+          </div>
         </div>
       </div>
     </footer>
