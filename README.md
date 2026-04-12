@@ -7,7 +7,7 @@ Premium salon stack: **public site** (static HTML at repo root), **REST API** (l
 | Host | What | How |
 |------|------|-----|
 | **https://alessannailu.com** | Marketing site (`index.html`, `styles.css`, `script.js`, …) | **GitHub Pages** via **GitHub Actions** (`.github/workflows/pages.yml`) — publishes only whitelisted static files, not the whole repo. |
-| **https://work.alessannailu.com** | Staff CRM (Vite app in **`work/`**) | **Vercel** — root **`vercel.json`**, repo root as project root, **`outputDirectory`**: **`work/dist`**. |
+| **https://work.alessannailu.com** | Staff CRM (Vite app in **`work/`**) | **Vercel** — see **`work/vercel.json`** when **Root Directory** is **`work`** (`outputDirectory`: **`dist`**). If **Root Directory** is empty, use repo-root **`vercel.json`** (`outputDirectory`: **`work/dist`**). |
 
 **DNS (do not mix):**
 
@@ -16,7 +16,13 @@ Premium salon stack: **public site** (static HTML at repo root), **REST API** (l
 
 **GitHub Pages setup:** Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**. After the first run of **Deploy GitHub Pages**, set **Custom domain** to `alessannailu.com` and enable **HTTPS** (GitHub will use the **`CNAME`** file from the published artifact).
 
-**Vercel setup:** **Root Directory** empty (repository root). **Framework** preset: Other (not “Vite” at repo root). **Build Command** / **Output Directory** are taken from **`vercel.json`**. Set **`installCommand`** override only if the dashboard conflicts — the file sets **`installCommand`: `true`** so the root `package.json` (with native modules like `better-sqlite3`) is **not** installed on Vercel. Env vars for CRM: **`VITE_SUPABASE_URL`**, **`VITE_SUPABASE_ANON_KEY`**.
+**Vercel setup (pick one):**
+
+1. **Root Directory = `work`** (common): Vercel reads **`work/vercel.json`** — **`buildCommand`** `npm run build`, **`outputDirectory`** **`dist`**, **`framework`**: **Vite**. Do **not** use **`work/dist`** here (that path is wrong when the project root is already **`work/`**).
+
+2. **Root Directory empty**: Repo-root **`vercel.json`** — **`cd work && …`**, **`outputDirectory`** **`work/dist`**, **`installCommand`**: **`true`** so the root `package.json` (e.g. `better-sqlite3`) is not installed on Vercel.
+
+Env vars for CRM: **`VITE_SUPABASE_URL`**, **`VITE_SUPABASE_ANON_KEY`**.
 
 **Why Actions for Pages?** If you publish the **entire** repo from branch `/`, `https://alessannailu.com/work/` would expose the **Vite source** `work/index.html` (broken on static hosting). The workflow publishes only the real landing files and replaces **`/work/`** with **redirect stubs** to **work.alessannailu.com**.
 
