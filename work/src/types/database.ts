@@ -104,7 +104,10 @@ export type Database = {
       categories: { Row: CategoryRow; Insert: Partial<CategoryRow>; Update: Partial<CategoryRow> };
     };
     Functions: {
-      verify_staff_phone: { Args: { phone_input: string }; Returns: Record<string, unknown> | null };
+      verify_staff_phone: {
+        Args: { phone_input: string };
+        Returns: boolean | Record<string, unknown> | null;
+      };
     };
   };
 };

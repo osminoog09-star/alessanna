@@ -55,8 +55,8 @@ function staffTableRowToMember(raw: Record<string, unknown>): StaffMember {
 }
 
 /**
- * `verify_staff_phone` must return a JSON staff row (object with `id`).
- * Booleans and null mean access denied.
+ * Legacy: `verify_staff_phone` may return a staff row as JSON (object with `id`).
+ * If RPC returns only `true`, the app loads the row from `staff` separately.
  */
 function parseStaffFromRpcData(data: unknown): StaffMember | null {
   if (data == null || data === false || data === true) return null;
@@ -108,22 +108,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false, errorKey: "login.phoneInvalidLength" };
     }
 
-    const { data, error } = await supabase.rpc("verify_staff_phone", {
+    const { data: rpcData, error: rpcError } = await supabase.rpc("verify_staff_phone", {
       phone_input: cleanPhone,
     });
 
-    if (error) {
-      console.error(error);
-      return { ok: false, errorKey: "auth.error.rpcFailed", message: error.message };
+    if (rpcError) {
+      console.error(rpcError);
+      return { ok: false, errorKey: "auth.error.rpcFailed", message: rpcError.message };
     }
 
-    const row = parseStaffFromRpcData(data);
-    if (!row) {
-      return { ok: false, errorKey: "auth.error.accessDenied" };
+    const rpcSaysOk =
+      rpcData === true ||
+      rpcData === "true" ||
+      (typeof rpcData === "string" && rpcData.trim().toLowerCase() === "true");
+
+    let member: StaffMember | null = null;
+
+    if (rpcSaysOk) {
+      const { data: user, error } = await supabase
+        .from("staff")
+        .select("*")
+        .eq("phone", cleanPhone)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      console.log("Clean phone:", cleanPhone);
+      console.log("Fetched user:", user);
+      console.log("Fetch error:", error);
+
+      if (error) {
+        console.error(error);
+      }
+      if (user && typeof user === "object" && user !== null && "id" in user) {
+        member = staffTableRowToMember(user as Record<string, unknown>);
+      }
+    } else {
+      member = parseStaffFromRpcData(rpcData);
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
-    setStaffMember(row);
+    if (!member) {
+      return { ok: false, errorKey: "auth.error.accessDenied", displayError: "Доступ запрещён" };
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(member));
+    setStaffMember(member);
     return { ok: true };
   }, []);
 
