@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "echo 'static site — no install'",
-  "buildCommand": "echo 'static site — no build'",
-  "outputDirectory": "."
+  "installCommand": "true",
+  "buildCommand": "node scripts/vercel-static-bundle.mjs",
+  "outputDirectory": "vercel-static-out"
 }
