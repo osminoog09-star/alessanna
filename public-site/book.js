@@ -19,12 +19,12 @@ const supabase = url && key ? createClient(url, key) : null;
 
 let state = {
   services: [],
-  employees: [],
+  staff: [],
   links: [],
   schedules: [],
-  bookings: [],
+  appointments: [],
   serviceId: null,
-  employeeId: null,
+  staffId: null,
   slotStart: null,
 };
 
@@ -57,9 +57,9 @@ function mergeWindows(windows) {
   return out;
 }
 
-function approvedWindows(schedules, employeeId, weekday) {
+function approvedWindows(schedules, staffId, weekday) {
   const raw = schedules
-    .filter((s) => s.employee_id === employeeId && s.day === weekday && s.status === "approved")
+    .filter((s) => s.staff_id === staffId && Number(s.day_of_week) === weekday)
     .map((s) => ({
       start: minutesFromTime(s.start_time),
       end: minutesFromTime(s.end_time),
@@ -77,14 +77,12 @@ function addMinutes(d, m) {
   return new Date(d.getTime() + m * 60000);
 }
 
-function buildSlots(day, employeeId, durationMin) {
+function buildSlots(day, staffId, durationMin) {
   const weekday = day.getDay();
-  const windows = approvedWindows(state.schedules, employeeId, weekday);
-  const existing = state.bookings.filter((b) => {
-    if (b.employee_id !== employeeId || b.status === "cancelled") return false;
-    const iso = b.appointment_at || b.start_at;
-    if (!iso) return false;
-    const t = new Date(iso);
+  const windows = approvedWindows(state.schedules, staffId, weekday);
+  const existing = state.appointments.filter((b) => {
+    if (b.staff_id !== staffId || b.status === "cancelled") return false;
+    const t = new Date(b.start_time);
     return t.toDateString() === day.toDateString();
   });
 
@@ -95,9 +93,8 @@ function buildSlots(day, employeeId, durationMin) {
       const start = addMinutes(base, m);
       const end = addMinutes(start, durationMin);
       const clash = existing.some((b) => {
-        const iso = b.appointment_at || b.start_at;
-        const bs = new Date(iso);
-        const be = new Date(b.end_at);
+        const bs = new Date(b.start_time);
+        const be = new Date(b.end_time);
         return start < be && end > bs;
       });
       if (!clash) slots.push(start);
@@ -108,19 +105,19 @@ function buildSlots(day, employeeId, durationMin) {
 
 async function load() {
   if (!supabase) return;
-  const [sv, em, lk, sch, bk] = await Promise.all([
+  const [sv, st, lk, sch, ap] = await Promise.all([
     supabase.from("services").select("*").eq("active", true).order("sort_order"),
-    supabase.from("employees").select("*").eq("active", true).order("name"),
-    supabase.from("employee_services").select("*"),
-    supabase.from("schedules").select("*").eq("status", "approved"),
-    supabase.from("bookings").select("*").in("status", ["pending", "confirmed"]),
+    supabase.from("staff").select("*").eq("is_active", true).order("name"),
+    supabase.from("staff_services").select("*"),
+    supabase.from("staff_schedule").select("*"),
+    supabase.from("appointments").select("*").in("status", ["pending", "confirmed"]),
   ]);
 
   state.services = sv.data || [];
-  state.employees = em.data || [];
+  state.staff = st.data || [];
   state.links = lk.data || [];
   state.schedules = sch.data || [];
-  state.bookings = bk.data || [];
+  state.appointments = ap.data || [];
 
   renderServices();
 }
@@ -136,22 +133,22 @@ function renderServices() {
       state.serviceId = s.id;
       document.querySelectorAll("#services-list .card").forEach((c) => c.classList.remove("is-picked"));
       btn.classList.add("is-picked");
-      renderEmployees();
+      renderStaff();
       showStep(2);
     });
     servicesEl.appendChild(btn);
   });
 }
 
-function employeesForService(serviceId) {
-  const linked = state.links.filter((l) => l.service_id === serviceId).map((l) => l.employee_id);
-  if (!linked.length) return state.employees;
-  return state.employees.filter((e) => linked.includes(e.id));
+function staffForService(serviceId) {
+  const linked = state.links.filter((l) => l.service_id === serviceId).map((l) => l.staff_id);
+  if (!linked.length) return state.staff;
+  return state.staff.filter((e) => linked.includes(e.id));
 }
 
-function renderEmployees() {
+function renderStaff() {
   employeesEl.innerHTML = "";
-  const list = employeesForService(state.serviceId);
+  const list = staffForService(state.serviceId);
   if (!list.length) {
     employeesEl.innerHTML = "<p class='muted'>Aktiivseid meistreid pole.</p>";
     return;
@@ -162,7 +159,7 @@ function renderEmployees() {
     btn.className = "card";
     btn.textContent = e.name;
     btn.addEventListener("click", () => {
-      state.employeeId = e.id;
+      state.staffId = e.id;
       document.querySelectorAll("#employees-list .card").forEach((c) => c.classList.remove("is-picked"));
       btn.classList.add("is-picked");
       renderSlots();
@@ -185,7 +182,7 @@ function renderSlots() {
   slotHint.textContent = "Vabad ajad (järgmised 14 päeva, 30 min samm).";
 
   for (const day of days) {
-    const slots = buildSlots(day, state.employeeId, duration);
+    const slots = buildSlots(day, state.staffId, duration);
     if (!slots.length) continue;
     const h = document.createElement("div");
     h.className = "muted";
@@ -205,7 +202,7 @@ function renderSlots() {
     });
   }
   if (!slotsEl.querySelector(".slot-btn")) {
-    slotHint.textContent = "Hetkel pole kinnitatud graafikut või vabu aegu. Proovi teist meistrit.";
+    slotHint.textContent = "Hetkel pole graafikut või vabu aegu. Proovi teist meistrit.";
   }
 }
 
@@ -229,14 +226,13 @@ form?.addEventListener("submit", async (e) => {
   const start = state.slotStart;
   const end = addMinutes(start, svc.duration_min + (svc.buffer_after_min || 0));
 
-  const { error } = await supabase.from("bookings").insert({
+  const { error } = await supabase.from("appointments").insert({
     client_name,
     client_phone,
-    employee_id: state.employeeId,
+    staff_id: state.staffId,
     service_id: state.serviceId,
-    appointment_at: start.toISOString(),
-    start_at: start.toISOString(),
-    end_at: end.toISOString(),
+    start_time: start.toISOString(),
+    end_time: end.toISOString(),
     status: "confirmed",
     source: "online",
   });
@@ -248,7 +244,6 @@ form?.addEventListener("submit", async (e) => {
 
   form.hidden = true;
   doneMsg.hidden = false;
-  await load();
 });
 
-if (supabase) await load();
+void load();

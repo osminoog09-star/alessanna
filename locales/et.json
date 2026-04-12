@@ -30,7 +30,8 @@
       "phoneRequired": "Sisesta telefoninumber.",
       "denied": "Juurdepääs keelatud",
       "failed": "Sisselogimine ebaõnnestus",
-      "rpcFailed": "{{message}}"
+      "rpcFailed": "{{message}}",
+      "accessDenied": "Juurdepääs keelatud"
     }
   },
   "nav": {
@@ -43,7 +44,7 @@
     "adminTimeOff": "Vabad ajad",
     "analytics": "Analüütika",
     "logout": "Logi välja",
-    "staffHint": "Töötaja: kalender ja broneeringud. Täielik juurdepääs juhil."
+    "workerHint": "Meistri režiim: ainult oma broneeringud ja kalender. Täielik juurdepääs juhil."
   },
   "preview": {
     "label": "Vaata kui",
@@ -51,8 +52,11 @@
     "banner": "Eelvaade: {{role}}"
   },
   "adminStaff": {
-    "subtitle": "Staff tabel: telefon, nimi, roll, teenused.",
+    "subtitle": "Staff tabel: telefon, nimi, roll, aktiivsus, teenused.",
     "name": "Nimi",
+    "active": "Aktiivne",
+    "yes": "jah",
+    "no": "ei",
     "services": "Teenused",
     "edit": "Muuda"
   },
@@ -79,7 +83,13 @@
     "fillAll": "Lisa nimi ja vali aeg.",
     "success": "Broneering loodud!"
   },
-  "role": { "admin": "Admin", "manager": "Juht", "staff": "Töötaja" },
+  "role": {
+    "label": "Roll",
+    "admin": "Admin",
+    "manager": "Juht",
+    "worker": "Meister",
+    "staff": "Meister"
+  },
   "dashboard": {
     "title": "Töölaud",
     "subtitle": "Täna ja eesolevad broneeringud.",

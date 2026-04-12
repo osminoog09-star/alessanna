@@ -37,8 +37,8 @@ const navAll: NavItem[] = [
 
 export function Layout() {
   const { t, i18n } = useTranslation();
-  const { staffMember, logout, isStaffOnly, isAdmin } = useAuth();
-  const { canManage, previewRole, setPreviewRole, isStaffOnlyEffective } = useEffectiveRole();
+  const { staffMember, logout, isAdmin } = useAuth();
+  const { canManage, previewRole, setPreviewRole, isWorkerOnlyEffective } = useEffectiveRole();
 
   const nav = navAll.filter((item) => {
     if (item.manageOnly && !canManage) return false;
@@ -50,7 +50,7 @@ export function Layout() {
     if (base === "ru" || base === "et") document.documentElement.lang = base;
   }, [i18n.language]);
 
-  const previewOptions: Role[] = ["admin", "manager", "staff"];
+  const previewOptions: Role[] = ["admin", "manager", "worker"];
 
   return (
     <div className="flex min-h-screen bg-black">
@@ -118,8 +118,8 @@ export function Layout() {
             </select>
           </div>
         )}
-        {isStaffOnlyEffective && (
-          <p className="border-t border-zinc-800 p-3 text-xs text-zinc-600">{t("nav.staffHint")}</p>
+        {isWorkerOnlyEffective && (
+          <p className="border-t border-zinc-800 p-3 text-xs text-zinc-600">{t("nav.workerHint")}</p>
         )}
       </aside>
       <main className="relative min-w-0 flex-1 overflow-auto p-6 lg:p-8">

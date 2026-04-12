@@ -2,19 +2,19 @@ import type { Role, ServiceRow, StaffMember, StaffRole, StaffServiceRow } from "
 
 export type { Role, StaffRole };
 
-const ALLOWED: readonly StaffRole[] = ["admin", "manager", "staff"];
-
 function mapRoleToken(x: unknown): StaffRole | null {
   if (typeof x !== "string") return null;
   const l = x.toLowerCase().trim();
-  if (l === "viewer" || l === "employee") return "staff";
-  if (l === "admin" || l === "manager" || l === "staff") return l;
+  if (l === "viewer") return null;
+  if (l === "employee" || l === "staff") return "worker";
+  if (l === "admin" || l === "manager" || l === "worker") return l;
   return null;
 }
 
-function attachStaffForManagers(roles: StaffRole[]): StaffRole[] {
-  if (roles.includes("manager") && !roles.includes("staff")) {
-    return [...roles, "staff"];
+/** Managers can also take appointments like line staff. */
+function attachWorkerForManagers(roles: StaffRole[]): StaffRole[] {
+  if (roles.includes("manager") && !roles.includes("worker")) {
+    return [...roles, "worker"];
   }
   return roles;
 }
@@ -23,11 +23,11 @@ export function normalizeRoles(raw: unknown): StaffRole[] {
   if (Array.isArray(raw)) {
     const out = raw.map(mapRoleToken).filter((x): x is StaffRole => x != null);
     const uniq = [...new Set(out)];
-    return attachStaffForManagers(uniq.length ? uniq : ["staff"]);
+    return attachWorkerForManagers(uniq.length ? uniq : ["worker"]);
   }
   const single = mapRoleToken(raw);
-  if (single) return attachStaffForManagers([single]);
-  return ["staff"];
+  if (single) return attachWorkerForManagers([single]);
+  return ["worker"];
 }
 
 export function normalizeStaffMember(row: StaffMember | (Record<string, unknown> & { id?: string })): StaffMember {
@@ -53,9 +53,10 @@ export function hasStaffRole(
   return normalizeRoles(member.roles).includes(role);
 }
 
-export function isStaffOnlyView(roles: StaffRole[] | undefined): boolean {
+/** Line staff only: worker, not manager/admin (after normalization). */
+export function isWorkerOnlyView(roles: StaffRole[] | undefined): boolean {
   const r = normalizeRoles(roles);
-  return r.includes("staff") && !r.includes("manager") && !r.includes("admin");
+  return r.includes("worker") && !r.includes("manager") && !r.includes("admin");
 }
 
 export function sanitizeRolesForSave(
@@ -65,16 +66,12 @@ export function sanitizeRolesForSave(
 ): StaffRole[] {
   const norm = normalizeRoles(edited);
   const storedNorm = normalizeRoles(storedRoles);
-  if (editorIsAdmin) return attachStaffForManagers(norm.length ? norm : ["staff"]);
+  if (editorIsAdmin) return attachWorkerForManagers(norm.length ? norm : ["worker"]);
   let out = norm.filter((r) => r !== "admin");
   if (storedNorm.includes("admin")) out = [...new Set([...out, "admin"])];
-  return attachStaffForManagers(out.length ? out : ["staff"]);
+  return attachWorkerForManagers(out.length ? out : ["worker"]);
 }
 
-/**
- * Active staff for a service: linked in `staff_services`, or no links for that service (all active),
- * or active manager/admin without a link.
- */
 export function staffEligibleForService(
   staffList: StaffMember[],
   links: StaffServiceRow[],

@@ -29,7 +29,7 @@ type View = "day" | "week";
 export function CalendarPage() {
   const { t } = useTranslation();
   const { staffMember } = useAuth();
-  const { canManage, isStaffOnlyEffective } = useEffectiveRole();
+  const { canManage, isWorkerOnlyEffective } = useEffectiveRole();
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [staffId, setStaffId] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function CalendarPage() {
 
   const load = useCallback(async () => {
     let apQuery = supabase.from("appointments").select("*").neq("status", "cancelled");
-    if (isStaffOnlyEffective && staffMember) {
+    if (isWorkerOnlyEffective && staffMember) {
       apQuery = apQuery.eq("staff_id", staffMember.id);
     }
     const [st, sch, to, ap, sv, ss] = await Promise.all([
@@ -66,7 +66,7 @@ export function CalendarPage() {
     if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
     if (sv.data) setServices(sv.data as ServiceRow[]);
     setLoading(false);
-  }, [isStaffOnlyEffective, staffMember]);
+  }, [isWorkerOnlyEffective, staffMember]);
 
   useEffect(() => {
     void load();
@@ -96,15 +96,15 @@ export function CalendarPage() {
   );
 
   const dayViewStaff = useMemo(() => {
-    if (isStaffOnlyEffective && staffMember) {
+    if (isWorkerOnlyEffective && staffMember) {
       const self = staff.filter((e) => e.id === staffMember.id && e.active);
       return self.length ? self : staff.filter((e) => e.id === staffMember.id);
     }
     return staffForCalendar;
-  }, [isStaffOnlyEffective, staffMember, staff, staffForCalendar]);
+  }, [isWorkerOnlyEffective, staffMember, staff, staffForCalendar]);
 
   useEffect(() => {
-    if (isStaffOnlyEffective && staffMember) {
+    if (isWorkerOnlyEffective && staffMember) {
       setStaffId(staffMember.id);
       return;
     }
@@ -120,16 +120,16 @@ export function CalendarPage() {
     if (staffId == null || !activeStaffForCalendar.some((e) => e.id === staffId)) {
       setStaffId(activeStaffForCalendar[0].id);
     }
-  }, [activeStaffForCalendar, staffMember, staffId, isStaffOnlyEffective]);
+  }, [activeStaffForCalendar, staffMember, staffId, isWorkerOnlyEffective]);
 
   const canUseCalendar = staffMember ? effectiveCanWorkCalendar(staffMember.roles) : false;
 
   const filteredAppointments = useMemo(() => {
-    if (isStaffOnlyEffective && staffMember) {
+    if (isWorkerOnlyEffective && staffMember) {
       return appointments.filter((b) => b.staff_id === staffMember.id);
     }
     return appointments;
-  }, [appointments, staffMember, isStaffOnlyEffective]);
+  }, [appointments, staffMember, isWorkerOnlyEffective]);
 
   const weekStart = startOfWeek(cursor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(cursor, { weekStartsOn: 1 });
@@ -231,7 +231,7 @@ export function CalendarPage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
-        {staffMember && !isStaffOnlyEffective && services.length > 0 && (
+        {staffMember && !isWorkerOnlyEffective && services.length > 0 && (
           <label className="flex items-center gap-2 text-sm text-zinc-400">
             {t("calendar.bookingService")}
             <select
@@ -247,7 +247,7 @@ export function CalendarPage() {
             </select>
           </label>
         )}
-        {staffMember && !isStaffOnlyEffective && view === "week" && (
+        {staffMember && !isWorkerOnlyEffective && view === "week" && (
           <label className="flex items-center gap-2 text-sm text-zinc-400">
             {t("calendar.staff")}
             <select
@@ -301,7 +301,7 @@ export function CalendarPage() {
           onEmptyClick={(start, sid) => setModal({ start, staffId: sid })}
           canCreate={canUseCalendar}
           canDrag={canUseCalendar}
-          lockToStaffId={isStaffOnlyEffective && staffMember ? staffMember.id : null}
+          lockToStaffId={isWorkerOnlyEffective && staffMember ? staffMember.id : null}
         />
       ) : staffId == null ? (
         <p className="text-zinc-500">{t("common.loading")}</p>

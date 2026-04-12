@@ -1,6 +1,7 @@
 /** Types aligned with supabase/migrations (staff, appointments, staff_services, …). */
 
-export type Role = "admin" | "manager" | "staff";
+export type Role = "admin" | "manager" | "worker";
+/** Same as Role; kept for clarity in staff-member shapes. */
 export type StaffRole = Role;
 
 /** Logged-in / roster person (from `staff` + normalized roles). */
@@ -91,7 +92,7 @@ export type Database = {
       categories: { Row: CategoryRow; Insert: Partial<CategoryRow>; Update: Partial<CategoryRow> };
     };
     Functions: {
-      verify_staff_phone: { Args: { phone_input: string }; Returns: string | null };
+      verify_staff_phone: { Args: { phone_input: string }; Returns: Record<string, unknown> | null };
     };
   };
 };

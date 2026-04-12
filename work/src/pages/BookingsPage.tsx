@@ -12,7 +12,7 @@ type StaffName = { id: string; name: string };
 export function BookingsPage() {
   const { t } = useTranslation();
   const { staffMember } = useAuth();
-  const { canManage, isStaffOnlyEffective } = useEffectiveRole();
+  const { canManage, isWorkerOnlyEffective } = useEffectiveRole();
   const [rows, setRows] = useState<AppointmentRow[]>([]);
   const [staffNames, setStaffNames] = useState<StaffName[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
@@ -20,7 +20,7 @@ export function BookingsPage() {
 
   const load = useCallback(async () => {
     let q = supabase.from("appointments").select("*").order("start_time", { ascending: false });
-    if (isStaffOnlyEffective && staffMember) {
+    if (isWorkerOnlyEffective && staffMember) {
       q = q.eq("staff_id", staffMember.id);
     }
     const [b, e, s] = await Promise.all([
@@ -32,7 +32,7 @@ export function BookingsPage() {
     if (e.data) setStaffNames(e.data as StaffName[]);
     if (s.data) setServices(s.data as ServiceRow[]);
     setLoading(false);
-  }, [isStaffOnlyEffective, staffMember]);
+  }, [isWorkerOnlyEffective, staffMember]);
 
   useEffect(() => {
     void load();
@@ -47,13 +47,13 @@ export function BookingsPage() {
     if (!row) return;
     if (canManage) {
       /* ok */
-    } else if (isStaffOnlyEffective && staffMember && row.staff_id === staffMember.id) {
+    } else if (isWorkerOnlyEffective && staffMember && row.staff_id === staffMember.id) {
       /* ok */
     } else {
       return;
     }
     let q = supabase.from("appointments").update({ status: "cancelled" }).eq("id", id);
-    if (!canManage && isStaffOnlyEffective && staffMember) {
+    if (!canManage && isWorkerOnlyEffective && staffMember) {
       q = q.eq("staff_id", staffMember.id);
     }
     await q;
@@ -86,7 +86,7 @@ export function BookingsPage() {
                 <th className="px-4 py-3">{t("bookings.staff")}</th>
                 <th className="px-4 py-3">{t("bookings.service")}</th>
                 <th className="px-4 py-3">{t("bookings.status")}</th>
-                {(canManage || (isStaffOnlyEffective && staffMember)) && <th className="px-4 py-3" />}
+                {(canManage || (isWorkerOnlyEffective && staffMember)) && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
@@ -103,7 +103,7 @@ export function BookingsPage() {
                     <td className="px-4 py-3 text-zinc-400">{em?.name ?? t("common.dash")}</td>
                     <td className="px-4 py-3 text-zinc-400">{sv?.name_et ?? t("common.dash")}</td>
                     <td className="px-4 py-3 capitalize text-zinc-400">{statusLabel(b.status)}</td>
-                    {(canManage || (isStaffOnlyEffective && staffMember)) && (
+                    {(canManage || (isWorkerOnlyEffective && staffMember)) && (
                       <td className="px-4 py-3">
                         {b.status !== "cancelled" && (
                           <button

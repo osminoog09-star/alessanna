@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { hasStaffRole, isStaffOnlyView, normalizeRoles, normalizeStaffMember } from "../lib/roles";
+import { hasStaffRole, isWorkerOnlyView, normalizeStaffMember } from "../lib/roles";
 import type { StaffMember } from "../types/database";
 
 const STORAGE_KEY = "alessanna_crm_staff";
@@ -22,10 +22,10 @@ type AuthState = {
   loading: boolean;
   login: (phone: string) => Promise<LoginResult>;
   logout: () => void;
-  /** Real privileges (ignores role preview). */
   canManage: boolean;
   isAdmin: boolean;
-  isStaffOnly: boolean;
+  /** True when real (non-preview) role is worker-only. */
+  isWorkerOnly: boolean;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -40,75 +40,42 @@ function parseStored(): StaffMember | null {
   }
 }
 
-function rpcBooleanSuccess(data: unknown): boolean {
-  return (
-    data === true ||
-    data === "true" ||
-    (Array.isArray(data) && data[0] === true)
-  );
-}
-
-function normalizePhoneDigits(p: string | null | undefined): string {
-  return (p ?? "").replace(/\D/g, "");
-}
-
 function staffTableRowToMember(raw: Record<string, unknown>): StaffMember {
-  const roleField = raw.role ?? raw.roles;
-  const roles = normalizeRoles(roleField);
   return normalizeStaffMember({
     id: String(raw.id),
     name: String(raw.name ?? ""),
     phone: raw.phone != null ? String(raw.phone) : null,
-    active: Boolean(raw.is_active ?? raw.active ?? true),
-    roles,
-  });
+    is_active: raw.is_active,
+    role: raw.role ?? raw.roles,
+  } as StaffMember);
 }
 
-async function fetchStaffByCleanPhone(cleanPhone: string): Promise<StaffMember | null> {
-  if (!cleanPhone) return null;
-
-  const normalize = (p: string) => p.replace(/\D/g, "");
-
-  const { data, error } = await supabase.from("staff").select("*").eq("is_active", true);
-
-  if (error || !data?.length) return null;
-
-  const rows = data as Record<string, unknown>[];
-  const found = rows.find((e) => normalize(String(e.phone ?? "")).endsWith(cleanPhone));
-
-  if (!found) return null;
-
-  return staffTableRowToMember(found);
-}
-
+/**
+ * `verify_staff_phone` must return a JSON staff row (object with `id`).
+ * Booleans and null mean access denied.
+ */
 function parseStaffFromRpcData(data: unknown): StaffMember | null {
-  if (data == null || data === false || data === "false") return null;
+  if (data == null || data === false || data === true) return null;
 
   if (typeof data === "string") {
-    if (data === "true" || data.length === 0) return null;
+    const s = data.trim();
+    if (!s || s === "null" || s === "false") return null;
     try {
-      const parsed = JSON.parse(data) as unknown;
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "id" in parsed) {
-        return normalizeStaffMember(parsed as StaffMember);
-      }
-      if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object" && "id" in parsed[0]) {
-        return normalizeStaffMember(parsed[0] as StaffMember);
-      }
+      return parseStaffFromRpcData(JSON.parse(s) as unknown);
     } catch {
       return null;
     }
-    return null;
   }
 
   if (Array.isArray(data)) {
     const first = data[0];
     if (first && typeof first === "object" && !Array.isArray(first) && "id" in first) {
-      return normalizeStaffMember(first as StaffMember);
+      return staffTableRowToMember(first as Record<string, unknown>);
     }
     return null;
   }
 
-  if (typeof data === "object" && "id" in data) {
+  if (typeof data === "object" && data !== null && "id" in data) {
     return staffTableRowToMember(data as Record<string, unknown>);
   }
 
@@ -130,6 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone) {
+      return { ok: false, errorKey: "auth.error.phoneRequired" };
+    }
 
     const { data, error } = await supabase.rpc("verify_staff_phone", {
       phone_input: cleanPhone,
@@ -137,36 +107,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error(error);
-      return { ok: false, displayError: "Ошибка сервера" };
+      return { ok: false, errorKey: "auth.error.rpcFailed", message: error.message };
     }
 
-    let row = parseStaffFromRpcData(data);
-
-    const isValid =
-      rpcBooleanSuccess(data) ||
-      row != null ||
-      (Array.isArray(data) &&
-        data.length > 0 &&
-        typeof data[0] === "object" &&
-        data[0] !== null &&
-        "id" in data[0]);
-
-    if (!row && cleanPhone.length > 0) {
-      const fromStaff = await fetchStaffByCleanPhone(cleanPhone);
-      if (fromStaff) row = fromStaff;
+    const row = parseStaffFromRpcData(data);
+    if (!row) {
+      return { ok: false, errorKey: "auth.error.accessDenied" };
     }
 
-    if (row) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
-      setStaffMember(row);
-      return { ok: true };
-    }
-
-    if (!isValid) {
-      return { ok: false, displayError: "Доступ запрещён" };
-    }
-
-    return { ok: false, displayError: "Доступ запрещён" };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
+    setStaffMember(row);
+    return { ok: true };
   }, []);
 
   const logout = useCallback(() => {
@@ -182,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       canManage: hasStaffRole(staffMember, "admin") || hasStaffRole(staffMember, "manager"),
       isAdmin: hasStaffRole(staffMember, "admin"),
-      isStaffOnly: isStaffOnlyView(staffMember?.roles),
+      isWorkerOnly: isWorkerOnlyView(staffMember?.roles),
     }),
     [staffMember, loading, login, logout]
   );

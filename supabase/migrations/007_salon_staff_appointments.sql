@@ -10,7 +10,7 @@ create table if not exists public.staff (
   id uuid primary key default gen_random_uuid(),
   phone text,
   name text not null,
-  role text not null default 'staff' check (role in ('admin', 'manager', 'staff')),
+  role text not null default 'worker' check (role in ('admin', 'manager', 'worker')),
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );

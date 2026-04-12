@@ -19,11 +19,10 @@ export function AdminStaffPage() {
   const [err, setErr] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<UiRole>("staff");
+  const [role, setRole] = useState<UiRole>("worker");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editRole, setEditRole] = useState<UiRole>("staff");
 
   const load = useCallback(async () => {
     setErr(null);
@@ -49,11 +48,16 @@ export function AdminStaffPage() {
 
   const activeServices = useMemo(() => services.filter((s) => s.active), [services]);
 
+  function normalizeDbRole(r: string): UiRole {
+    if (r === "staff") return "worker";
+    if (r === "admin" || r === "manager" || r === "worker") return r;
+    return "worker";
+  }
+
   function startEdit(r: StaffTableRow) {
     setEditingId(r.id);
     setEditName(r.name);
     setEditPhone(r.phone ?? "");
-    setEditRole((r.role as UiRole) ?? "staff");
   }
 
   async function saveEdit() {
@@ -64,7 +68,6 @@ export function AdminStaffPage() {
       .update({
         name: editName.trim(),
         phone: digitsOnly(editPhone) || null,
-        role: editRole,
       })
       .eq("id", editingId);
     if (error) {
@@ -72,6 +75,26 @@ export function AdminStaffPage() {
       return;
     }
     setEditingId(null);
+    void load();
+  }
+
+  async function updateStaffRole(id: string, newRole: UiRole) {
+    setErr(null);
+    const { error } = await supabase.from("staff").update({ role: newRole }).eq("id", id);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    void load();
+  }
+
+  async function updateStaffActive(id: string, is_active: boolean) {
+    setErr(null);
+    const { error } = await supabase.from("staff").update({ is_active }).eq("id", id);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
     void load();
   }
 
@@ -96,17 +119,7 @@ export function AdminStaffPage() {
     }
     setPhone("");
     setName("");
-    setRole("staff");
-    void load();
-  }
-
-  async function toggleActive(row: StaffTableRow) {
-    setErr(null);
-    const { error } = await supabase.from("staff").update({ is_active: !row.is_active }).eq("id", row.id);
-    if (error) {
-      setErr(error.message);
-      return;
-    }
+    setRole("worker");
     void load();
   }
 
@@ -173,7 +186,7 @@ export function AdminStaffPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-zinc-500">{t("role.staff")}</label>
+          <label className="block text-xs text-zinc-500">{t("role.label")}</label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as UiRole)}
@@ -181,7 +194,7 @@ export function AdminStaffPage() {
           >
             <option value="admin">{t("role.admin")}</option>
             <option value="manager">{t("role.manager")}</option>
-            <option value="staff">{t("role.staff")}</option>
+            <option value="worker">{t("role.worker")}</option>
           </select>
         </div>
         <button type="submit" className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">
@@ -195,8 +208,8 @@ export function AdminStaffPage() {
             <tr>
               <th className="border-b border-zinc-800 px-3 py-2">{t("login.phone")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.name")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">role</th>
-              <th className="border-b border-zinc-800 px-3 py-2">active</th>
+              <th className="border-b border-zinc-800 px-3 py-2">{t("role.label")}</th>
+              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.active")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.services")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">actions</th>
             </tr>
@@ -227,21 +240,27 @@ export function AdminStaffPage() {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  {editingId === r.id ? (
-                    <select
-                      value={editRole}
-                      onChange={(e) => setEditRole(e.target.value as UiRole)}
-                      className="rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
-                    >
-                      <option value="admin">{t("role.admin")}</option>
-                      <option value="manager">{t("role.manager")}</option>
-                      <option value="staff">{t("role.staff")}</option>
-                    </select>
-                  ) : (
-                    r.role
-                  )}
+                  <select
+                    value={normalizeDbRole(r.role)}
+                    onChange={(e) => void updateStaffRole(r.id, e.target.value as UiRole)}
+                    className="max-w-[10rem] rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-white"
+                  >
+                    <option value="admin">{t("role.admin")}</option>
+                    <option value="manager">{t("role.manager")}</option>
+                    <option value="worker">{t("role.worker")}</option>
+                  </select>
                 </td>
-                <td className="px-3 py-2">{r.is_active ? "yes" : "no"}</td>
+                <td className="px-3 py-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={r.is_active}
+                      onChange={(e) => void updateStaffActive(r.id, e.target.checked)}
+                      className="rounded border-zinc-600"
+                    />
+                    <span className="text-zinc-400">{r.is_active ? t("adminStaff.yes") : t("adminStaff.no")}</span>
+                  </label>
+                </td>
                 <td className="max-w-xs px-3 py-2">
                   <div className="flex flex-wrap gap-2">
                     {activeServices.map((s) => (
@@ -270,9 +289,6 @@ export function AdminStaffPage() {
                     <>
                       <button type="button" className="text-sky-400 underline" onClick={() => startEdit(r)}>
                         {t("adminStaff.edit")}
-                      </button>
-                      <button type="button" className="text-zinc-400 underline" onClick={() => void toggleActive(r)}>
-                        {r.is_active ? "deactivate" : "activate"}
                       </button>
                       <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
                         delete

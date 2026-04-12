@@ -10,19 +10,19 @@ import { useEffectiveRole } from "../context/EffectiveRoleContext";
 export function DashboardPage() {
   const { t } = useTranslation();
   const { staffMember } = useAuth();
-  const { isStaffOnlyEffective } = useEffectiveRole();
+  const { isWorkerOnlyEffective } = useEffectiveRole();
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     let q = supabase.from("appointments").select("*");
-    if (isStaffOnlyEffective && staffMember) {
+    if (isWorkerOnlyEffective && staffMember) {
       q = q.eq("staff_id", staffMember.id);
     }
     const { data, error } = await q;
     if (!error && data) setAppointments(data as AppointmentRow[]);
     setLoading(false);
-  }, [isStaffOnlyEffective, staffMember]);
+  }, [isWorkerOnlyEffective, staffMember]);
 
   useEffect(() => {
     void load();

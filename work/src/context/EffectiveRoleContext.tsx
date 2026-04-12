@@ -10,7 +10,7 @@ import type { Role } from "../types/database";
 import {
   effectiveCanManage,
   effectiveIsAdmin,
-  effectiveIsStaffOnly,
+  effectiveIsWorkerOnly,
   getEffectiveRole,
 } from "../lib/effectiveRole";
 import { useAuth } from "./AuthContext";
@@ -21,7 +21,8 @@ type Ctx = {
   effectiveRole: Role | null;
   canManage: boolean;
   isAdminEffective: boolean;
-  isStaffOnlyEffective: boolean;
+  /** Effective user is line worker only (own appointments / locked calendar). */
+  isWorkerOnlyEffective: boolean;
 };
 
 const EffectiveRoleContext = createContext<Ctx | null>(null);
@@ -46,7 +47,7 @@ export function EffectiveRoleProvider({ children }: { children: ReactNode }) {
       effectiveRole,
       canManage: effectiveCanManage(effectiveRole),
       isAdminEffective: effectiveIsAdmin(effectiveRole),
-      isStaffOnlyEffective: effectiveIsStaffOnly(effectiveRole),
+      isWorkerOnlyEffective: effectiveIsWorkerOnly(effectiveRole),
     }),
     [previewRole, setPreviewRole, effectiveRole]
   );
