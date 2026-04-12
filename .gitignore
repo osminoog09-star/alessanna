@@ -13,6 +13,9 @@ Desktop.ini
 *.log
 *.tmp
 
+# Статический вывод для Vercel (генерируется scripts/vercel-static-bundle.mjs)
+vercel-static-out/
+
 # Платформа
 node_modules/
 work-crm/node_modules/

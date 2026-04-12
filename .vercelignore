@@ -1,8 +1,24 @@
+# Зависимости и репозиторий — не нужны для статической сборки
 node_modules
 work/node_modules
 work-crm/node_modules
-work/dist
-work-crm/.next
-work-crm/out
-data
 .git
+
+# Секреты и локальные данные
+.env
+.env.*
+.env.local
+*.pem
+data
+
+# Артефакт предыдущей сборки
+vercel-static-out
+
+# Не публикуем: сервер, CRM, миграции, легаси
+server
+work
+work-crm
+supabase
+legacy-work-qr
+.cursor
+.github

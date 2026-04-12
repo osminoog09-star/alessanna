@@ -12,7 +12,8 @@
     "crm:dev": "npm run dev --prefix work-crm",
     "work:install": "npm install --prefix work",
     "work:dev": "npm run dev --prefix work",
-    "work:build": "npm run build --prefix work"
+    "work:build": "npm run build --prefix work",
+    "vercel:static": "node scripts/vercel-static-bundle.mjs"
   },
   "engines": {
     "node": ">=18"
