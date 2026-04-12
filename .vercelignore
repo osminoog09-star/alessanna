@@ -14,9 +14,8 @@ data
 # Артефакт предыдущей сборки
 vercel-static-out
 
-# Не публикуем: сервер, CRM, миграции, легаси
+# Не публикуем: API-сервер, легаси Next CRM, прочее (Vite CRM в work/ нужен для сборки)
 server
-work
 work-crm
 supabase
 legacy-work-qr

@@ -16,6 +16,9 @@ Desktop.ini
 # Статический вывод для Vercel (генерируется scripts/vercel-static-bundle.mjs)
 vercel-static-out/
 
+# Vite CRM (built on deploy / locally)
+work/dist/
+
 # Платформа
 node_modules/
 work-crm/node_modules/

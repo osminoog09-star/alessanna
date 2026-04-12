@@ -67,6 +67,26 @@ Without the server (static files only), behaviour falls back to **mailto**.
 - Google OAuth + Calendar push; Telegram/WhatsApp send on booking events.
 - Payments, analytics, loyalty (new modules + tables).
 
+## Vercel (CRM in `work/`)
+
+The repo root **`vercel.json`** builds the **Vite** app under **`work/`** and publishes **`work/dist`**:
+
+- **`installCommand`**: `true` — skips `npm install` at the repo root (avoids native deps like `better-sqlite3` on Vercel).
+- **`buildCommand`**: `cd work && npm install && npm run build`
+- **`outputDirectory`**: `work/dist` (must match Vite `outDir`; do **not** set Vercel’s UI “Output Directory” to plain `dist` unless Root Directory is `work`).
+- No **`framework`** preset — the Vite preset expects `dist` at the repo root and can trigger **“No Output Directory”** / 404 when the app lives in **`work/`**.
+- SPA **`rewrites`** send client routes to `index.html`.
+
+Keep the Vercel project **root** at the **repository root** (leave **Root Directory** empty). Set **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`** in the Vercel environment for the CRM.
+
+Local check:
+
+```bash
+cd work
+npm install
+npm run build
+```
+
 ## Security
 
 - Do not expose the repo root with `express.static` — only whitelisted public files are served from Node (see `server/index.js`).
