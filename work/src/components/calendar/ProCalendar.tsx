@@ -33,6 +33,7 @@ type ProCalendarBooking = {
   end_time: string;
 };
 import { staffCanPerformService } from "../../lib/roles";
+import { listingSlotMinutes } from "../../lib/serviceListing";
 import { appointmentInterval, intervalsOverlap, workingWindowsForWeekday } from "../../lib/slots";
 import type { StaffTimeOffRow } from "../../types/database";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -338,9 +339,7 @@ export function ProCalendar({
       }
 
       const svc = services.find((s) => s.id === booking.service_id);
-      const duration = svc
-        ? Math.max(1, svc.duration ?? 60) + Math.max(0, svc.buffer_after_min ?? 0)
-        : 70;
+      const duration = svc ? listingSlotMinutes(svc) : 70;
       const slotStart = setMinutes(setHours(startOfDay(day), parsed.hour), 0);
       const slotEnd = addMinutes(slotStart, duration);
 
