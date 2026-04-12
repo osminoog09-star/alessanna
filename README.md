@@ -22,7 +22,12 @@ Premium salon stack: **public site** (static HTML at repo root), **REST API** (l
 
 2. **Root Directory empty**: Repo-root **`vercel.json`** — **`cd work && …`**, **`outputDirectory`** **`work/dist`**, **`installCommand`**: **`true`** so the root `package.json` (e.g. `better-sqlite3`) is not installed on Vercel.
 
-Env vars for CRM: **`VITE_SUPABASE_URL`**, **`VITE_SUPABASE_ANON_KEY`**.
+Env vars for CRM (Vercel → **Settings → Environment Variables**; enable for **Production** and **Preview** — Vite embeds them at **build** time):
+
+- **`VITE_SUPABASE_URL`** — e.g. `https://eclrkusmwcrtnxqhzpky.supabase.co`
+- **`VITE_SUPABASE_ANON_KEY`** — Supabase **publishable** / **anon** key (safe in the browser; protect data with **RLS**)
+
+Local dev: copy **`work/.env.example`** → **`work/.env`** and set the key (`work/.env` is gitignored).
 
 **Why Actions for Pages?** If you publish the **entire** repo from branch `/`, `https://alessannailu.com/work/` would expose the **Vite source** `work/index.html` (broken on static hosting). The workflow publishes only the real landing files and replaces **`/work/`** with **redirect stubs** to **work.alessannailu.com**.
 
