@@ -40,6 +40,7 @@
     "employees": "Henkilöstö",
     "services": "Palvelut",
     "analytics": "Analytiikka",
+    "adminStaff": "Admin · henkilöstö",
     "logout": "Kirjaudu ulos",
     "employeeHint": "Työntekijä: lähetä aikataulutoiveet; esihenkilö hyväksyy."
   },

@@ -45,6 +45,7 @@
     "employees": "Employees",
     "services": "Services",
     "analytics": "Analytics",
+    "adminStaff": "Admin · Staff",
     "logout": "Log out",
     "employeeHint": "Employee view: propose schedules; managers approve."
   },

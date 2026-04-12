@@ -9,11 +9,18 @@ import { BookingsPage } from "./pages/BookingsPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { AdminStaffPage } from "./pages/AdminStaffPage";
 
 /** Block direct URL access (nav is already hidden in Layout for staff-only). */
 function RequireManage({ children }: { children: React.ReactNode }) {
   const { canManage } = useAuth();
   if (!canManage) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -68,6 +75,14 @@ export default function App() {
             <RequireManage>
               <AnalyticsPage />
             </RequireManage>
+          }
+        />
+        <Route
+          path="admin/staff"
+          element={
+            <RequireAdmin>
+              <AdminStaffPage />
+            </RequireAdmin>
           }
         />
       </Route>

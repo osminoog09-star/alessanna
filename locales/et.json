@@ -40,6 +40,7 @@
     "employees": "Töötajad",
     "services": "Teenused",
     "analytics": "Analüütika",
+    "adminStaff": "Admin · personal",
     "logout": "Logi välja",
     "employeeHint": "Töötaja: esita graafikutaotlused; juht kinnitab."
   },

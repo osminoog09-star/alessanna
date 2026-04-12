@@ -12,14 +12,17 @@ const navAll = [
   { to: "/employees", key: "employees" },
   { to: "/services", key: "services" },
   { to: "/analytics", key: "analytics" },
+  { to: "/admin/staff", key: "adminStaff", requireAdmin: true },
 ] as const;
 
 const EMPLOYEE_HIDDEN = new Set(["employees", "services", "analytics"]);
 
 export function Layout() {
   const { t, i18n } = useTranslation();
-  const { employee, logout, canManage, isStaffOnly } = useAuth();
-  const nav = isStaffOnly ? navAll.filter((i) => !EMPLOYEE_HIDDEN.has(i.key)) : navAll;
+  const { employee, logout, canManage, isStaffOnly, isAdmin } = useAuth();
+  const nav = (isStaffOnly ? navAll.filter((i) => !EMPLOYEE_HIDDEN.has(i.key)) : navAll).filter(
+    (i) => !("requireAdmin" in i && i.requireAdmin && !isAdmin)
+  );
 
   useEffect(() => {
     const base = (i18n.language || "ru").split("-")[0];
