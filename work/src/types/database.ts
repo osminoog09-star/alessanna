@@ -3,6 +3,9 @@
 /** CRM access roles (stored in DB, e.g. `employees.roles` text[]). */
 export type StaffRole = "admin" | "manager" | "staff";
 
+/** Alias for clarity in UI / guards (no `viewer` — legacy tokens map to `staff` in `normalizeRoles`). */
+export type Role = StaffRole;
+
 export type EmployeeRow = {
   id: number;
   name: string;

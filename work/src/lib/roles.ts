@@ -1,10 +1,10 @@
-import type { EmployeeRow, EmployeeServiceRow, ServiceRow, StaffRole } from "../types/database";
+import type { EmployeeRow, EmployeeServiceRow, Role, ServiceRow, StaffRole } from "../types/database";
 
-export type { StaffRole };
+export type { Role, StaffRole };
 
 const ALLOWED: readonly StaffRole[] = ["admin", "manager", "staff"];
 
-/** Map legacy / invalid tokens to canonical roles. */
+/** Map legacy DB tokens to canonical roles (`viewer` / `employee` → `staff`). Not a real `viewer` role in the app. */
 function mapRoleToken(x: unknown): StaffRole | null {
   if (typeof x !== "string") return null;
   const l = x.toLowerCase().trim();
