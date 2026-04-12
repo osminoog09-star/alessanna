@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="description" content="AlesSanna internal staff panel" />
+  <title>AlesSanna · Work</title>
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="work.css" />
+</head>
+<body>
+  <div id="view-login" class="work-login">
+    <div class="work-login__card">
+      <p class="work-login__brand">AlesSanna</p>
+      <h1 class="work-login__title">Staff sign-in</h1>
+      <p class="work-login__lead">Enter the phone number registered for your account.</p>
+      <form id="form-login" novalidate>
+        <label class="work-login__label" for="login-phone">Phone</label>
+        <input
+          class="work-login__input"
+          id="login-phone"
+          name="phone"
+          type="tel"
+          inputmode="numeric"
+          autocomplete="tel"
+          placeholder="e.g. 55686845"
+          required
+        />
+        <button type="submit" class="work-login__btn" id="login-submit">Log in</button>
+        <p id="login-error" class="work-login__error" hidden></p>
+      </form>
+    </div>
+  </div>
+
+  <div id="view-app" class="work-app" hidden>
+    <aside class="work-sidebar" aria-label="Panel navigation">
+      <div class="work-sidebar__brand">Work</div>
+      <div id="sidebar-session" class="work-sidebar__session" aria-live="polite"></div>
+      <nav class="work-sidebar__nav" aria-label="Sections">
+        <button type="button" class="work-nav-btn is-active" data-nav="dashboard">Dashboard</button>
+        <button type="button" class="work-nav-btn" data-nav="bookings">Bookings</button>
+        <button type="button" class="work-nav-btn" data-nav="employees" id="nav-employees">Employees</button>
+        <button type="button" class="work-nav-btn" data-nav="services" id="nav-services">Services</button>
+      </nav>
+      <div class="work-sidebar__foot">
+        <button type="button" class="work-btn-ghost" id="btn-logout">Log out</button>
+      </div>
+    </aside>
+
+    <main class="work-main">
+      <h1 class="work-main__title" id="main-title">Dashboard</h1>
+
+      <section class="work-panel-page is-visible" data-panel="dashboard" aria-label="Dashboard">
+        <div class="work-panel work-dash-user" id="dash-user-bar">
+          <p class="work-panel__title">Signed in</p>
+          <p class="work-dash-user__line"><span class="work-muted">Name</span> <strong id="dash-user-name">—</strong></p>
+          <p class="work-dash-user__line"><span class="work-muted">Role</span> <strong id="dash-user-role">—</strong></p>
+        </div>
+
+        <div id="panel-admin-users" class="work-panel" hidden>
+          <p class="work-panel__title">Staff accounts</p>
+          <p class="work-muted">Add logins and assign role (manager or employee).</p>
+          <form id="form-add-user" class="work-admin-form">
+            <input class="work-login__input" name="name" type="text" placeholder="Name" required />
+            <input class="work-login__input" name="phone" type="tel" inputmode="numeric" placeholder="Phone" required />
+            <select class="work-login__input" name="role" aria-label="Role">
+              <option value="manager">Manager</option>
+              <option value="employee">Employee</option>
+            </select>
+            <input
+              class="work-login__input"
+              name="staffName"
+              type="text"
+              placeholder="Schedule name (employee — e.g. Galina)"
+              title="Must match the name used for bookings / staff column"
+            />
+            <button type="submit" class="work-login__btn work-login__btn--inline">Add user</button>
+          </form>
+          <div class="work-table-wrap work-admin-table">
+            <table class="work-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Role</th>
+                  <th>Schedule</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="work-grid-stats">
+          <div class="work-stat">
+            <div class="work-stat__label">Bookings today</div>
+            <div class="work-stat__value" id="dash-bookings">—</div>
+          </div>
+          <div class="work-stat">
+            <div class="work-stat__label">Revenue today</div>
+            <div class="work-stat__value" id="dash-revenue">—</div>
+          </div>
+          <div class="work-stat">
+            <div class="work-stat__label">Upcoming</div>
+            <div class="work-stat__value" id="dash-upcoming">—</div>
+          </div>
+        </div>
+        <p class="work-muted">Demo data is stored in your browser (localStorage / sessionStorage).</p>
+      </section>
+
+      <section class="work-panel-page" data-panel="bookings" aria-label="Bookings and schedule">
+        <div class="work-toolbar">
+          <button type="button" class="work-login__btn work-login__btn--inline" id="bookings-new">New booking</button>
+        </div>
+        <div class="work-cal-layout">
+          <div class="work-cal-panel">
+            <div class="work-cal-head">
+              <button type="button" class="work-btn-icon" id="cal-prev" aria-label="Previous month">‹</button>
+              <h2 class="work-cal-month" id="cal-month-label">—</h2>
+              <button type="button" class="work-btn-icon" id="cal-next" aria-label="Next month">›</button>
+              <button type="button" class="work-btn-secondary" id="cal-today">Today</button>
+            </div>
+            <div class="work-cal-weekdays" aria-hidden="true">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+            <div class="work-cal-grid" id="cal-grid"></div>
+          </div>
+          <div class="work-cal-side">
+            <div class="work-panel">
+              <h3 class="work-panel__title" id="cal-selected-label">Select a day</h3>
+              <ul class="work-cal-day-list" id="cal-day-bookings"></ul>
+              <button type="button" class="work-login__btn work-login__btn--inline" id="cal-add-booking">New booking</button>
+            </div>
+          </div>
+        </div>
+        <div class="work-table-wrap work-bookings-table">
+          <table class="work-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Client</th>
+                <th>Service</th>
+                <th id="th-booking-staff">Staff</th>
+              </tr>
+            </thead>
+            <tbody id="bookings-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="work-panel-page" data-panel="employees" aria-label="Employees">
+        <p class="work-muted work-panel-hint" id="employees-hint"></p>
+        <div class="work-table-wrap">
+          <table class="work-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody id="employees-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="work-panel-page" data-panel="services" aria-label="Services">
+        <p class="work-muted work-panel-hint" id="services-hint"></p>
+        <div class="work-table-wrap">
+          <table class="work-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody id="services-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="work-dialog" id="dlg-booking" aria-labelledby="dlg-booking-title">
+    <form class="work-dialog__inner" id="form-booking">
+      <h2 class="work-dialog__title" id="dlg-booking-title">New booking</h2>
+      <div class="work-form-row">
+        <label class="work-login__label" for="bk-date">Date</label>
+        <input class="work-login__input" type="date" id="bk-date" name="date" required />
+      </div>
+      <div class="work-form-row">
+        <label class="work-login__label" for="bk-time">Time</label>
+        <input class="work-login__input" type="time" id="bk-time" name="time" required />
+      </div>
+      <div class="work-form-row">
+        <label class="work-login__label" for="bk-client">Client name</label>
+        <input class="work-login__input" type="text" id="bk-client" name="client" required autocomplete="name" />
+      </div>
+      <div class="work-form-row">
+        <label class="work-login__label" for="bk-service">Service</label>
+        <select class="work-login__input" id="bk-service" name="service" required></select>
+      </div>
+      <div class="work-form-row" id="bk-staff-row">
+        <label class="work-login__label" for="bk-staff">Staff</label>
+        <select class="work-login__input" id="bk-staff" name="staff"></select>
+      </div>
+      <p class="work-dialog__error" id="bk-form-error" hidden></p>
+      <div class="work-dialog__actions">
+        <button type="button" class="work-btn-secondary" id="bk-cancel">Cancel</button>
+        <button type="submit" class="work-login__btn work-login__btn--inline" id="bk-save">Save booking</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="work.js"></script>
+</body>
+</html>

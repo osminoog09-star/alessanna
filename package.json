@@ -1,0 +1,31 @@
+{
+  "name": "alessanna-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Alessanna salon: public site + CRM /work + booking API",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "crm:install": "npm install --prefix work-crm",
+    "crm:build": "npm run build --prefix work-crm",
+    "crm:dev": "npm run dev --prefix work-crm",
+    "work:install": "npm install --prefix work",
+    "work:dev": "npm run dev --prefix work",
+    "work:build": "npm run build --prefix work"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.6.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "stripe": "^17.5.0"
+  }
+}

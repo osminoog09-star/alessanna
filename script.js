@@ -10,7 +10,10 @@
  *      и ссылка внутри становится доступной с клавиатуры (tabIndex 0 / -1).
  *   3) Бургер: .nav-toggle переключает .nav.is-open и body.nav-open (блокировка скролла).
  *   4) Вкладки услуг: .tab-btn с aria-controls показывает соответствующий .tab-panel (hidden).
- *   5) .reveal: IntersectionObserver добавляет .is-visible при появлении в зоне видимости.
+ *   5) .reveal: IntersectionObserver добавляет .is-visible при появлении в зоне видимости
+ *      (у .hero-inner.hero-animate каскад только у дочерних блоков — см. styles.css).
+ *   5b) Прайс #teenused: клик по строке добавляет/убирает услугу в [data-selected-services-list],
+ *      синхронизирует select[name=service] и скрытое services_detail; #meistrid — выбор мастера.
  *   6) Бронирование: если на странице есть все нужные элементы — календарь, форма, обработчики.
  *
  * Как отключить календарь: удалите секцию #broneeri или уберите data-calendar-grid — скрипт
@@ -24,34 +27,64 @@
   var header = document.getElementById("header");
   var nav = document.querySelector(".nav");
   var navToggle = document.querySelector(".nav-toggle");
-  var navLinks = document.querySelectorAll(".nav-list a, .nav-panel-wrap .nav-cta");
+  var navBackdrop = document.getElementById("nav-backdrop");
   var yearEl = document.getElementById("year");
   var mobileBar = document.querySelector(".mobile-book-bar");
   var mobileBookLink = mobileBar ? mobileBar.querySelector("a") : null;
+  var reduceMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   if (yearEl) {
     yearEl.textContent = String(new Date().getFullYear());
   }
 
+  /** Отступ снизу для закреплённой корзины «Ваш выбор» + учёт моб. полосы «Запись» */
+  function updateSelectionDockOffset() {
+    if (!document.body.classList.contains("selection-dock-active")) {
+      document.documentElement.style.removeProperty("--selection-dock-bottom");
+      return;
+    }
+    var isMobile = window.matchMedia("(max-width: 900px)").matches;
+    var barOn = mobileBar && mobileBar.classList.contains("is-visible");
+    var bottom = isMobile && barOn ? "5.5rem" : isMobile ? "1rem" : "1.35rem";
+    document.documentElement.style.setProperty("--selection-dock-bottom", bottom);
+  }
+
   /** Прокрутка: подложка шапки + появление нижней кнопки «Запись» на телефоне */
   function onScroll() {
-    if (!header) return;
-    header.classList.toggle("is-scrolled", window.scrollY > 40);
+    var y = window.scrollY;
+    if (header) {
+      header.classList.toggle("is-scrolled", y > 40);
+    }
     if (mobileBar) {
-      var showBar = window.scrollY > 320;
+      var showBar = y > 320;
       mobileBar.classList.toggle("is-visible", showBar);
       if (mobileBookLink) {
         mobileBookLink.tabIndex = showBar ? 0 : -1;
       }
     }
+    updateSelectionDockOffset();
   }
 
   window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", function () {
+    onScroll();
+  });
   onScroll();
 
-  /** Открытое мобильное меню: body.nav-open отключает прокрутку (см. styles.css) */
+  /** Открытое меню: body.nav-open + подложка #nav-backdrop (см. styles.css) */
   function setNavOpen(open) {
     document.body.classList.toggle("nav-open", open);
+    if (navBackdrop) {
+      if (open) navBackdrop.removeAttribute("hidden");
+      else navBackdrop.setAttribute("hidden", "");
+    }
+  }
+
+  function closeNav() {
+    if (!nav || !navToggle) return;
+    nav.classList.remove("is-open");
+    navToggle.setAttribute("aria-expanded", "false");
+    setNavOpen(false);
   }
 
   if (navToggle && nav) {
@@ -61,11 +94,17 @@
       setNavOpen(open);
     });
 
-    navLinks.forEach(function (link) {
+    if (navBackdrop) {
+      navBackdrop.addEventListener("click", closeNav);
+    }
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && nav.classList.contains("is-open")) closeNav();
+    });
+
+    document.querySelectorAll(".nav-list a, .nav-drawer-cta, .header-actions .nav-cta").forEach(function (link) {
       link.addEventListener("click", function () {
-        nav.classList.remove("is-open");
-        navToggle.setAttribute("aria-expanded", "false");
-        setNavOpen(false);
+        closeNav();
       });
     });
   }
@@ -115,6 +154,393 @@
   }
 
   /* =============================================================================
+   * Teenused + meistrid → nimekiri ja vorm (klõps praisil / nimel)
+   * ============================================================================= */
+  (function initServiceAndMasterPicks() {
+    var teenused = document.getElementById("teenused");
+    var summary = document.querySelector("[data-selection-summary]");
+    var listEl = document.querySelector("[data-selected-services-list]");
+    var emptyEl = document.querySelector("[data-selected-services-empty]");
+    var masterDisplay = document.querySelector("[data-selected-master-display]");
+    var detailField = document.querySelector("[data-field-services-detail]");
+    var bookingForm = document.getElementById("booking-form");
+    if (!teenused || !summary || !listEl || !emptyEl || !bookingForm) return;
+
+    var serviceSelect = bookingForm.querySelector('select[name="service"]');
+    if (!serviceSelect) return;
+
+    var masterSelect = bookingForm.querySelector("[data-master-select]");
+
+    var selLang = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
+    var selRu = selLang === "ru";
+    var selEn = selLang === "en";
+    var selFi = selLang === "fi";
+    var UI = {
+      remove: selRu
+        ? "Убрать из списка"
+        : selEn
+          ? "Remove from list"
+          : selFi
+            ? "Poista listasta"
+            : "Eemalda nimekirjast",
+      masterNone: "—",
+    };
+
+    var PANEL_TO_SERVICE = {
+      "panel-cuts": "hair-cut",
+      "panel-color": "hair-color",
+      "panel-perm": "perm",
+      "panel-styling": "styling",
+      "panel-brows": "brows-lashes",
+      "panel-manicure": "manicure",
+      "panel-pedicure": "pedicure",
+    };
+
+    var MASTERS_PICK = [
+      { id: "galina", name: "Galina" },
+      { id: "irina", name: "Irina" },
+      { id: "viktoria", name: "Viktoria" },
+      { id: "anne", name: "Anne" },
+      { id: "alesja", name: "Alesja" },
+      { id: "aljona", name: "Aljona" },
+    ];
+
+    /** Meistrid teenusekategooriate järgi (sama loogika mis #meistrid plokis) */
+    var CATEGORY_TO_MASTER_IDS = {
+      "hair-cut": ["galina", "irina", "viktoria", "anne"],
+      "hair-color": ["galina", "irina", "viktoria", "anne"],
+      perm: ["galina", "irina", "viktoria", "anne"],
+      styling: ["galina", "irina", "viktoria", "anne"],
+      manicure: ["alesja", "aljona", "viktoria"],
+      pedicure: ["alesja", "aljona", "viktoria"],
+      "brows-lashes": ["irina", "anne", "alesja"],
+    };
+
+    var mastersWrap = summary.querySelector("[data-summary-masters-wrap]");
+    var chipsEl = summary.querySelector("[data-summary-master-chips]");
+    var dockToggle = summary.querySelector("[data-selection-dock-toggle]");
+    var dockCollapseKey = "alessanna-selection-dock-collapsed";
+
+    function readDockCollapsedPref() {
+      try {
+        return window.localStorage.getItem(dockCollapseKey) === "1";
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function persistDockCollapsed(collapsed) {
+      try {
+        window.localStorage.setItem(dockCollapseKey, collapsed ? "1" : "0");
+      } catch (err) {}
+    }
+
+    function setDockCollapsed(collapsed) {
+      if (!picked.length) {
+        summary.classList.remove("selection-summary--dock-collapsed");
+        document.body.classList.remove("selection-dock-panel-collapsed");
+        if (dockToggle) dockToggle.setAttribute("aria-expanded", "true");
+        return;
+      }
+      summary.classList.toggle("selection-summary--dock-collapsed", collapsed);
+      document.body.classList.toggle("selection-dock-panel-collapsed", collapsed);
+      if (dockToggle) dockToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      persistDockCollapsed(collapsed);
+      if (typeof updateSelectionDockOffset === "function") updateSelectionDockOffset();
+    }
+
+    function updateCartCountBadge() {
+      var n = picked.length;
+      document.querySelectorAll("[data-cart-count]").forEach(function (el) {
+        el.textContent = String(n);
+        el.hidden = n === 0;
+      });
+    }
+
+    var nameToId = {};
+    for (var mi = 0; mi < MASTERS_PICK.length; mi++) {
+      nameToId[MASTERS_PICK[mi].name.toLowerCase()] = MASTERS_PICK[mi].id;
+    }
+
+    var picked = [];
+
+    function pickKey(panelId, label) {
+      return panelId + "|" + label.trim();
+    }
+
+    function masterNameById(id) {
+      for (var i = 0; i < MASTERS_PICK.length; i++) {
+        if (MASTERS_PICK[i].id === id) return MASTERS_PICK[i].name;
+      }
+      return UI.masterNone;
+    }
+
+    function setMasterDisplayText(text) {
+      if (masterDisplay) masterDisplay.textContent = text || UI.masterNone;
+    }
+
+    function mastersForPickedCategories() {
+      var set = {};
+      for (var i = 0; i < picked.length; i++) {
+        var ids = CATEGORY_TO_MASTER_IDS[picked[i].category];
+        if (!ids) continue;
+        for (var j = 0; j < ids.length; j++) set[ids[j]] = true;
+      }
+      var out = [];
+      for (var id in set) {
+        if (Object.prototype.hasOwnProperty.call(set, id)) out.push(id);
+      }
+      out.sort(function (a, b) {
+        return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
+      });
+      return out;
+    }
+
+    function updateDock() {
+      var has = picked.length > 0;
+      summary.classList.toggle("selection-summary--dock", has);
+      document.body.classList.toggle("selection-dock-active", has);
+      updateCartCountBadge();
+      if (!has) {
+        summary.classList.remove("selection-summary--dock-collapsed");
+        document.body.classList.remove("selection-dock-panel-collapsed");
+        if (dockToggle) dockToggle.setAttribute("aria-expanded", "true");
+        summary.removeAttribute("data-dock-inited");
+      } else if (!summary.hasAttribute("data-dock-inited")) {
+        summary.setAttribute("data-dock-inited", "");
+        setDockCollapsed(readDockCollapsedPref());
+        return;
+      }
+      if (typeof updateSelectionDockOffset === "function") updateSelectionDockOffset();
+    }
+
+    if (dockToggle) {
+      dockToggle.addEventListener("click", function () {
+        if (!picked.length) return;
+        var collapsed = summary.classList.toggle("selection-summary--dock-collapsed");
+        document.body.classList.toggle("selection-dock-panel-collapsed", collapsed);
+        dockToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        persistDockCollapsed(collapsed);
+        if (typeof updateSelectionDockOffset === "function") updateSelectionDockOffset();
+      });
+    }
+
+    function renderMasterChips() {
+      if (!mastersWrap || !chipsEl) return;
+      if (!picked.length) {
+        mastersWrap.hidden = true;
+        chipsEl.innerHTML = "";
+        return;
+      }
+      var ids = mastersForPickedCategories();
+      if (!ids.length) {
+        mastersWrap.hidden = true;
+        chipsEl.innerHTML = "";
+        return;
+      }
+      mastersWrap.hidden = false;
+      chipsEl.innerHTML = "";
+      var current = masterSelect ? masterSelect.value : "";
+      for (var c = 0; c < ids.length; c++) {
+        (function (mid) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "master-suggest-chip";
+          btn.setAttribute("role", "radio");
+          btn.setAttribute("aria-checked", current === mid ? "true" : "false");
+          btn.setAttribute("data-master-id", mid);
+          btn.textContent = masterNameById(mid);
+          btn.addEventListener("click", function () {
+            if (masterSelect && masterSelect.value === mid) applyMaster("");
+            else applyMaster(mid);
+          });
+          chipsEl.appendChild(btn);
+        })(ids[c]);
+      }
+    }
+
+    function syncFormCategory() {
+      if (!picked.length) return;
+      serviceSelect.value = picked[picked.length - 1].category;
+    }
+
+    function syncHiddenField() {
+      if (!detailField) return;
+      detailField.value = picked
+        .map(function (p) {
+          return p.label + " (" + p.price + ")";
+        })
+        .join("; ");
+    }
+
+    function syncMenuRowsPickedClass() {
+      var keys = {};
+      for (var i = 0; i < picked.length; i++) keys[picked[i].key] = true;
+      var rows = teenused.querySelectorAll(".menu-list li.menu-pick-row");
+      for (var r = 0; r < rows.length; r++) {
+        var li = rows[r];
+        var k = li.getAttribute("data-pick-key");
+        var on = !!(k && keys[k]);
+        li.classList.toggle("is-picked", on);
+        li.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+    }
+
+    function renderList() {
+      listEl.innerHTML = "";
+      if (!picked.length) {
+        listEl.hidden = true;
+        emptyEl.hidden = false;
+      } else {
+        listEl.hidden = false;
+        emptyEl.hidden = true;
+        for (var j = 0; j < picked.length; j++) {
+          (function (item) {
+            var li = document.createElement("li");
+            li.className = "pick-chip";
+            var text = document.createElement("span");
+            text.className = "pick-chip-text";
+            text.textContent = item.label + " — " + item.price;
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "pick-chip-remove";
+            btn.setAttribute("aria-label", UI.remove + ": " + item.label);
+            btn.appendChild(document.createTextNode("\u00d7"));
+            btn.addEventListener("click", function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              removeByKey(item.key);
+            });
+            li.appendChild(text);
+            li.appendChild(btn);
+            listEl.appendChild(li);
+          })(picked[j]);
+        }
+      }
+      syncHiddenField();
+      syncMenuRowsPickedClass();
+      updateDock();
+      renderMasterChips();
+    }
+
+    function removeByKey(key) {
+      picked = picked.filter(function (p) {
+        return p.key !== key;
+      });
+      if (picked.length) syncFormCategory();
+      renderList();
+    }
+
+    function togglePick(li) {
+      var panel = li.closest(".tab-panel");
+      if (!panel || !panel.id) return;
+      var category = PANEL_TO_SERVICE[panel.id];
+      if (!category) return;
+      var nameSpan = li.querySelector("span:not(.price)");
+      var priceEl = li.querySelector(".price");
+      if (!nameSpan || !priceEl) return;
+      var label = nameSpan.textContent.trim();
+      var price = priceEl.textContent.trim();
+      var key = pickKey(panel.id, label);
+      var idx = -1;
+      for (var i = 0; i < picked.length; i++) {
+        if (picked[i].key === key) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx >= 0) {
+        picked.splice(idx, 1);
+      } else {
+        picked.push({ key: key, label: label, price: price, category: category });
+      }
+      syncFormCategory();
+      renderList();
+    }
+
+    teenused.querySelectorAll(".menu-list li").forEach(function (li) {
+      if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
+      var nameSpan = li.querySelector("span:not(.price)");
+      var priceEl = li.querySelector(".price");
+      if (!nameSpan || !priceEl) return;
+      var panel = li.closest(".tab-panel");
+      if (!panel || !PANEL_TO_SERVICE[panel.id]) return;
+      li.classList.add("menu-pick-row");
+      li.setAttribute("role", "button");
+      li.tabIndex = 0;
+      li.setAttribute("data-pick-key", pickKey(panel.id, nameSpan.textContent.trim()));
+      li.addEventListener("click", function () {
+        togglePick(li);
+      });
+      li.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          togglePick(li);
+        }
+      });
+    });
+
+    function highlightTeam(masterId) {
+      var lis = document.querySelectorAll("#meistrid .team-names li");
+      for (var t = 0; t < lis.length; t++) {
+        var li = lis[t];
+        var txt = li.textContent.trim().toLowerCase();
+        var id = nameToId[txt];
+        li.classList.toggle("is-master-picked", !!(masterId && id === masterId));
+      }
+    }
+
+    function applyMaster(id) {
+      if (!masterSelect) return;
+      masterSelect.value = id || "";
+      setMasterDisplayText(id ? masterNameById(id) : UI.masterNone);
+      highlightTeam(id || "");
+      masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    var teamRoot = document.getElementById("meistrid");
+    if (teamRoot) {
+      var teamLis = teamRoot.querySelectorAll(".team-names li");
+      for (var tl = 0; tl < teamLis.length; tl++) {
+        (function (li) {
+          var id = nameToId[li.textContent.trim().toLowerCase()];
+          if (!id) return;
+          li.setAttribute("role", "button");
+          li.tabIndex = 0;
+          li.setAttribute("aria-pressed", "false");
+          li.addEventListener("click", function () {
+            if (masterSelect && masterSelect.value === id) applyMaster("");
+            else applyMaster(id);
+          });
+          li.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              li.click();
+            }
+          });
+        })(teamLis[tl]);
+      }
+    }
+
+    if (masterSelect) {
+      masterSelect.addEventListener("change", function () {
+        var v = masterSelect.value;
+        highlightTeam(v);
+        setMasterDisplayText(v ? masterNameById(v) : UI.masterNone);
+        renderMasterChips();
+        var lis2 = document.querySelectorAll("#meistrid .team-names li");
+        for (var u = 0; u < lis2.length; u++) {
+          var li2 = lis2[u];
+          var tid = nameToId[li2.textContent.trim().toLowerCase()];
+          li2.setAttribute("aria-pressed", v && tid === v ? "true" : "false");
+        }
+      });
+    }
+
+    renderList();
+  })();
+
+  /* =============================================================================
    * Календарь бронирования (демонстрация, без сервера)
    * =============================================================================
    * Логика: пока в select[data-master-select] пусто — все дни «закрыты» (как на макете).
@@ -136,12 +562,16 @@
   var notePrimary = document.querySelector("[data-calendar-note-primary]");
   var noteSecondary = document.querySelector("[data-calendar-note-secondary]");
   var bookingForm = document.getElementById("booking-form");
+  var serviceSelectEl = bookingForm ? bookingForm.querySelector('[name="service"]') : null;
 
   /* Если чего-то не хватает в DOM — весь блок календаря не инициализируется */
-  if (bookingSection && gridEl && titleEl && prevBtn && nextBtn && masterSelect && dateInput && timeSelect && bookingForm) {
-    /* Язык страницы: ru.html → русские подписи в календаре и тема письма */
-    var htmlLang = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
-    var isRu = htmlLang === "ru";
+  if (bookingSection && gridEl && titleEl && prevBtn && nextBtn && masterSelect && dateInput && timeSelect && bookingForm && serviceSelectEl) {
+    /* Язык: <html lang> с /ru /et /fi /en + подписи календаря и mailto */
+    var pageLang = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
+    if (pageLang !== "ru" && pageLang !== "et" && pageLang !== "fi" && pageLang !== "en") pageLang = "et";
+    var isRu = pageLang === "ru";
+    var isEn = pageLang === "en";
+    var isFi = pageLang === "fi";
 
     var MONTHS_ET = [
       "jaanuar", "veebruar", "märts", "aprill", "mai", "juuni",
@@ -154,6 +584,14 @@
     var MONTHS_TITLE_RU = [
       "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
       "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+    ];
+    var MONTHS_TITLE_EN = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    var MONTHS_TITLE_FI = [
+      "Tammikuu", "Helmikuu", "Maaliskuu", "Huhtikuu", "Toukokuu", "Kesäkuu",
+      "Heinäkuu", "Elokuu", "Syyskuu", "Lokakuu", "Marraskuu", "Joulukuu"
     ];
 
     var MSGS = isRu
@@ -169,18 +607,44 @@
           best: "Лучший день",
           slotsAvailable: "Доступно:",
         }
-      : {
-          noTime: "Pole vaba aega",
-          noTimeShort: "Pole aega",
-          pickMaster: "Vali meister, et näha vabu päevi",
-          pickDay: "Vali kalendrist sobiv päev",
-          pickTimeFirst: "Vali kõigepealt päev",
-          pickTime: "Vali kellaaeg",
-          many: "Palju vabu aegu",
-          busy: "Peaaegu täis",
-          best: "Soovituspäev",
-          slotsAvailable: "Saadaval:",
-        };
+      : isEn
+        ? {
+            noTime: "No available times",
+            noTimeShort: "None",
+            pickMaster: "Choose a stylist to see available days",
+            pickDay: "Pick a day in the calendar",
+            pickTimeFirst: "Pick a day first",
+            pickTime: "Pick a time",
+            many: "Many openings",
+            busy: "Almost full",
+            best: "Recommended day",
+            slotsAvailable: "Available:",
+          }
+        : isFi
+          ? {
+              noTime: "Ei vapaita aikoja",
+              noTimeShort: "Ei aikoja",
+              pickMaster: "Valitse stylisti nähdäksesi vapaat päivät",
+              pickDay: "Valitse päivä kalenterista",
+              pickTimeFirst: "Valitse ensin päivä",
+              pickTime: "Valitse aika",
+              many: "Paljon vapaita",
+              busy: "Lähes täynnä",
+              best: "Suositeltu päivä",
+              slotsAvailable: "Vapaana:",
+            }
+          : {
+              noTime: "Pole vaba aega",
+              noTimeShort: "Pole aega",
+              pickMaster: "Vali meister, et näha vabu päevi",
+              pickDay: "Vali kalendrist sobiv päev",
+              pickTimeFirst: "Vali kõigepealt päev",
+              pickTime: "Vali kellaaeg",
+              many: "Palju vabu aegu",
+              busy: "Peaaegu täis",
+              best: "Soovituspäev",
+              slotsAvailable: "Saadaval:",
+            };
 
     /* Список мастеров: id — для hash в dayAvailability; name — текст в option */
     var MASTERS = [
@@ -193,6 +657,11 @@
     ];
 
     var SLOT_POOL = ["10:00", "11:30", "13:00", "14:30", "16:00", "17:30"];
+
+    var apiBooking = false;
+    var serviceIdBySlug = {};
+    var monthDays = null;
+    var monthCacheKey = "";
 
     var now = new Date();
     var viewY = now.getFullYear();
@@ -235,6 +704,20 @@
       if (dt.getDay() === 0) {
         return { tier: "off", slots: [] };
       }
+      if (apiBooking && monthDays) {
+        var keyApi = dateKey(y, m, d);
+        var entry = monthDays[keyApi];
+        var slApi = entry && entry.slots ? entry.slots : [];
+        if (!slApi.length) {
+          return { tier: "none", slots: [] };
+        }
+        var n = slApi.length;
+        var tierApi = n >= 4 ? "soft" : n >= 2 ? "busy" : "featured";
+        return { tier: tierApi, slots: slApi.slice() };
+      }
+      if (apiBooking) {
+        return { tier: "none", slots: [] };
+      }
       var seed = hashSeed(masterId + "|" + dateKey(y, m, d));
       var r = seed % 10;
       if (r < 2) {
@@ -256,12 +739,24 @@
       if (isRu) {
         return d + " " + MONTHS_RU[m] + " " + y;
       }
+      if (isEn) {
+        return MONTHS_TITLE_EN[m] + " " + d + ", " + y;
+      }
+      if (isFi) {
+        return d + ". " + MONTHS_TITLE_FI[m] + " " + y;
+      }
       return d + ". " + MONTHS_ET[m] + " " + y;
     }
 
     function monthTitle(y, m) {
       if (isRu) {
         return MONTHS_TITLE_RU[m] + " " + y;
+      }
+      if (isEn) {
+        return MONTHS_TITLE_EN[m] + " " + y;
+      }
+      if (isFi) {
+        return MONTHS_TITLE_FI[m] + " " + y;
       }
       return MONTHS_ET[m].charAt(0).toUpperCase() + MONTHS_ET[m].slice(1) + " " + y;
     }
@@ -343,12 +838,67 @@
       return MSGS.best;
     }
 
+    function invalidateMonthCache() {
+      monthCacheKey = "";
+      monthDays = null;
+    }
+
+    function ensureMonthThenRender() {
+      if (!apiBooking || !masterSelect.value || !serviceSelectEl.value) {
+        monthDays = null;
+        renderCalendarBody();
+        return;
+      }
+      var sid = serviceIdBySlug[serviceSelectEl.value];
+      if (!sid) {
+        monthDays = null;
+        renderCalendarBody();
+        return;
+      }
+      var mid = masterSelect.value;
+      var cacheK = mid + "|" + sid + "|" + viewY + "|" + viewM;
+      if (monthCacheKey === cacheK && monthDays) {
+        renderCalendarBody();
+        return;
+      }
+      monthCacheKey = cacheK;
+      fetch(
+        "/api/public/calendar-month?employeeId=" +
+          encodeURIComponent(mid) +
+          "&serviceId=" +
+          encodeURIComponent(sid) +
+          "&y=" +
+          viewY +
+          "&m=" +
+          viewM
+      )
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (data) {
+          monthDays = data.days || {};
+          renderCalendarBody();
+        })
+        .catch(function () {
+          monthDays = {};
+          renderCalendarBody();
+        });
+    }
+
+    function renderCalendar() {
+      if (apiBooking) {
+        ensureMonthThenRender();
+      } else {
+        renderCalendarBody();
+      }
+    }
+
     /**
      * Строит сетку: пустые ячейки до 1-го числа (понедельник = первый столбец),
      * затем кнопки по дням месяца. Замыкание (function (d) { ... })(day) фиксирует номер дня
      * для обработчика клика — иначе в цикле «var day» дал бы всем последнее значение.
      */
-    function renderCalendar() {
+    function renderCalendarBody() {
       titleEl.textContent = monthTitle(viewY, viewM);
       updateNavButtons();
       gridEl.innerHTML = "";
@@ -413,13 +963,78 @@
       setNotes();
     }
 
-    /* Первая option «Выберите мастера» уже в HTML; сюда дописываем имена */
-    MASTERS.forEach(function (m) {
-      var opt = document.createElement("option");
-      opt.value = m.id;
-      opt.textContent = m.name;
-      masterSelect.appendChild(opt);
-    });
+    function setupDemoMasters() {
+      MASTERS.forEach(function (m) {
+        var opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.name;
+        masterSelect.appendChild(opt);
+      });
+    }
+
+    /** Rebuild master dropdown from API for the selected service (employee_services filter). */
+    function refillMastersForCurrentService() {
+      var slug = serviceSelectEl.value;
+      var svcId = serviceIdBySlug[slug];
+      var url = "/api/public/employees";
+      if (svcId) url += "?serviceId=" + encodeURIComponent(String(svcId));
+      return fetch(url)
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (emps) {
+          var prev = masterSelect.value;
+          while (masterSelect.children.length > 1) {
+            masterSelect.removeChild(masterSelect.lastChild);
+          }
+          for (var ej = 0; ej < emps.length; ej++) {
+            var o = document.createElement("option");
+            o.value = String(emps[ej].id);
+            o.textContent = emps[ej].name;
+            masterSelect.appendChild(o);
+          }
+          var stillValid = false;
+          for (var k = 1; k < masterSelect.options.length; k++) {
+            if (masterSelect.options[k].value === prev) {
+              stillValid = true;
+              break;
+            }
+          }
+          masterSelect.value = stillValid ? prev : emps.length ? String(emps[0].id) : "";
+        });
+    }
+
+    function startBookingWidget() {
+      fetch("/api/health")
+        .then(function (r) {
+          return r.ok;
+        })
+        .then(function (ok) {
+          if (!ok) throw new Error("no-api");
+          return fetch("/api/public/services").then(function (r) {
+            return r.json();
+          });
+        })
+        .then(function (services) {
+          serviceIdBySlug = {};
+          for (var si = 0; si < services.length; si++) {
+            if (services[si].slug) serviceIdBySlug[services[si].slug] = services[si].id;
+          }
+          return refillMastersForCurrentService();
+        })
+        .then(function () {
+          apiBooking = true;
+          renderCalendar();
+        })
+        .catch(function () {
+          apiBooking = false;
+          invalidateMonthCache();
+          setupDemoMasters();
+          renderCalendar();
+        });
+    }
+
+    startBookingWidget();
 
     prevBtn.addEventListener("click", function () {
       if (prevBtn.disabled) return;
@@ -428,6 +1043,7 @@
         viewM = 11;
         viewY--;
       }
+      invalidateMonthCache();
       clearSelection();
       renderCalendar();
     });
@@ -439,16 +1055,32 @@
         viewM = 0;
         viewY++;
       }
+      invalidateMonthCache();
       clearSelection();
       renderCalendar();
     });
 
     masterSelect.addEventListener("change", function () {
+      invalidateMonthCache();
       clearSelection();
       renderCalendar();
     });
 
-    /* Проверка полей вручную (novalidate на форме); затем mailto с телом из FormData */
+    serviceSelectEl.addEventListener("change", function () {
+      if (apiBooking) {
+        refillMastersForCurrentService().then(function () {
+          invalidateMonthCache();
+          clearSelection();
+          renderCalendar();
+        });
+      } else {
+        invalidateMonthCache();
+        clearSelection();
+        renderCalendar();
+      }
+    });
+
+    /* Сервер: POST /api/public/bookings; иначе mailto (статический сайт) */
     bookingForm.addEventListener("submit", function (e) {
       e.preventDefault();
       if (!masterSelect.value) {
@@ -463,16 +1095,88 @@
         timeSelect.focus();
         return;
       }
+      if (apiBooking) {
+        var slug = serviceSelectEl.value;
+        var svcId = serviceIdBySlug[slug];
+        if (!svcId) {
+          serviceSelectEl.focus();
+          return;
+        }
+        var nameEl = bookingForm.querySelector('[name="name"]');
+        var phoneEl = bookingForm.querySelector('[name="phone"]');
+        var detailEl = bookingForm.querySelector("[data-field-services-detail]");
+        fetch("/api/public/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: Number(masterSelect.value),
+            serviceId: svcId,
+            date: selectedKey,
+            time: timeSelect.value,
+            clientName: nameEl ? nameEl.value.trim() : "",
+            clientPhone: phoneEl ? phoneEl.value.trim() : "",
+            notes: detailEl ? detailEl.value.trim() : "",
+          }),
+        })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              return { ok: r.ok, status: r.status, j: j };
+            });
+          })
+          .then(function (x) {
+            if (x.ok) {
+              var okMsg = isRu
+                ? "Запись подтверждена. Ждём вас в салоне."
+                : isEn
+                  ? "Booking confirmed. See you at the salon."
+                  : isFi
+                    ? "Varaus vahvistettu. Nähdään salongilla."
+                    : "Broneering kinnitatud. Täname!";
+              window.alert(okMsg);
+              bookingForm.reset();
+              invalidateMonthCache();
+              clearSelection();
+              renderCalendar();
+            } else {
+              var err =
+                (x.j && x.j.error) ||
+                (isRu
+                  ? "Не удалось забронировать. Выберите другое время."
+                  : isEn
+                    ? "Booking failed. Please pick another time."
+                    : isFi
+                      ? "Varaus epäonnistui. Valitse toinen aika."
+                      : "Broneering ebaõnnestus.");
+              window.alert(err);
+            }
+          })
+          .catch(function () {
+            window.alert(
+              isRu
+                ? "Сеть или сервер недоступны."
+                : isEn
+                  ? "Network or server unavailable."
+                  : isFi
+                    ? "Verkko tai palvelin ei tavoitettavissa."
+                    : "Võrgu viga."
+            );
+          });
+        return;
+      }
       var fd = new FormData(bookingForm);
       var lines = [];
       fd.forEach(function (val, key) {
         lines.push(key + ": " + val);
       });
-      var subject = isRu ? encodeURIComponent("Запись AlesSanna") : encodeURIComponent("Broneering AlesSanna");
+      var subject = isRu
+        ? encodeURIComponent("Запись AlesSanna")
+        : isEn
+          ? encodeURIComponent("Booking AlesSanna")
+          : isFi
+            ? encodeURIComponent("Varaus AlesSanna")
+            : encodeURIComponent("Broneering AlesSanna");
       var body = encodeURIComponent(lines.join("\n"));
       window.location.href = "mailto:alessanna.ilusalong@gmail.com?subject=" + subject + "&body=" + body;
     });
-
-    renderCalendar();
   }
 })();

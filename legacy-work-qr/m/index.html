@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>AlesSanna · Kinnita sisselogimine</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --text: #ecece8;
+      --muted: #8a8884;
+      --gold: #c4a574;
+      --line: rgba(255, 255, 255, 0.1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.25rem;
+      padding-bottom: 2.5rem;
+    }
+    .wrap { max-width: 22rem; margin: 0 auto; }
+    .brand {
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0 0 0.5rem;
+    }
+    h1 { font-size: 1.35rem; font-weight: 500; margin: 0 0 0.5rem; }
+    .muted { color: var(--muted); font-size: 0.88rem; line-height: 1.55; margin: 0 0 1.25rem; }
+    .err { color: #c77; font-size: 0.9rem; }
+    .list { display: flex; flex-direction: column; gap: 0.5rem; }
+    button.pick {
+      width: 100%;
+      text-align: left;
+      padding: 0.85rem 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--line);
+      background: #141414;
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+    }
+    button.pick:active { background: #1c1c1c; }
+    .role { display: block; font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 0.25rem; }
+    .done { color: var(--gold); margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="brand">AlesSanna</p>
+    <h1>Kinnita sisselogimine</h1>
+    <p class="muted">Valige oma konto. Töölaual avaneb CRM mõne sekundi jooksul.</p>
+    <div id="root"></div>
+  </div>
+  <script src="confirm.js"></script>
+</body>
+</html>

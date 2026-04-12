@@ -15,7 +15,7 @@
     • Календарь: data-* атрибуты не переименовывать — на них завязан script.js.
 
   Якорная навигация (href="#..." в шапке и футере должны совпадать с id секций):
-    #hero #teenused #meistrid #meist #kinkekaardid #tagasiside #broneeri #kontakt
+    #hero #teenused #meistrid #galerii #meist #kinkekaardid #tagasiside #broneeri #kontakt · mave.html (MAVE)
 
   Доступность:
     • .skip-link — пропуск к основному содержимому (фокус с клавиатуры).
@@ -31,44 +31,60 @@
   <meta name="description" content="AlesSanna Ilusalong — luksuslik ilusalong Pärnus. Elegantsus, ilu, hoolitsus." />
   <title>AlesSanna Ilusalong | Pärnu</title>
   <meta name="theme-color" content="#0a0a0a" />
+  <!-- __SEO_EXTRAS__ -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="/translations.js" defer></script>
 </head>
 <body>
   <!-- Ссылка видна только при Tab с начала страницы — см. .skip-link в CSS -->
-  <a class="skip-link" href="#main">Liigu põhisisu juurde</a>
+  <a class="skip-link" href="#main" data-i18n="site.skip">Liigu põhisisu juurde</a>
 
   <!-- Шапка: id="header" нужен script.js для класса .is-scrolled при прокрутке -->
   <header class="site-header" id="header">
     <div class="container header-inner">
-      <a class="logo-link" href="#hero">AlesSanna <small>ilusalong</small></a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" id="nav-toggle">Menüü</button>
-      <nav class="nav" id="site-nav" aria-label="Põhinavigatsioon">
-        <ul class="nav-list">
-          <li><a href="#teenused">Teenused</a></li>
-          <li><a href="#meistrid">Meistrid</a></li>
-          <li><a href="#kinkekaardid">Kinkekaardid</a></li>
-          <li><a href="#tagasiside">Tagasiside</a></li>
-          <li><a href="#kontakt">Kontakt</a></li>
-        </ul>
-        <div class="nav-panel-wrap">
-          <span class="lang-switch" aria-label="Keel">
-            <a href="ru.html">RU</a>
-            <a href="index.html" class="is-active">ET</a>
-          </span>
-          <a href="#broneeri" class="nav-cta">Broneeri aeg</a>
-        </div>
-      </nav>
+      <a class="logo-link" href="#hero">AlesSanna <small data-i18n="site.brandSmall">ilusalong</small></a>
+      <div class="header-actions">
+        <span class="lang-switch" data-i18n-attr="aria-label:common.language">
+          <a href="ru.html">RU</a>
+          <a href="index.html" class="is-active">ET</a>
+        </span>
+        <a href="#broneeri" class="nav-cta" data-i18n="site.ctaBook">Broneeri aeg</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" id="nav-toggle" data-i18n="site.menu">Menüü</button>
+      </div>
     </div>
   </header>
+  <!-- Nav väljaspool headerit: vältimaks fixed-paneeli lõikumist headeri kontekstis -->
+  <nav class="nav" id="site-nav" data-i18n-attr="aria-label:site.navLabel">
+    <ul class="nav-list">
+      <li><a href="#teenused" data-i18n="site.navServices">Teenused</a></li>
+      <li><a href="#meistrid" data-i18n="site.navMasters">Meistrid</a></li>
+      <li><a href="#galerii" data-i18n="site.navGallery">Galerii</a></li>
+      <li><a href="#meist" data-i18n="site.navSalon">Salong</a></li>
+      <li><a href="mave.html">MAVE</a></li>
+      <li><a href="#kinkekaardid" data-i18n="site.navGift">Kinkekaardid</a></li>
+      <li><a href="#tagasiside" data-i18n="site.navReviews">Tagasiside</a></li>
+      <li><a href="#kontakt" data-i18n="site.navContact">Kontakt</a></li>
+    </ul>
+    <div class="nav-panel-wrap">
+      <div class="site-switcher" data-i18n-attr="aria-label:site.siteSwitcherLabel">
+        <a href="index.html" class="is-active" data-i18n="site.siteSwitcherSalon">Ilusalong</a>
+        <span class="site-switcher-sep" aria-hidden="true">/</span>
+        <a href="mave.html">MAVE</a>
+      </div>
+      <a href="#broneeri" class="btn btn-outline nav-drawer-cta" data-i18n="site.ctaBook">Broneeri aeg</a>
+    </div>
+  </nav>
+  <button type="button" class="nav-backdrop" id="nav-backdrop" data-i18n-attr="aria-label:site.closeMenu" tabindex="-1" hidden></button>
 
   <main id="main">
     <!-- Hero: бренд текстом (без баннера-картинки с полосой услуг). Декор SVG — не ссылка. -->
     <section class="hero" id="hero">
-      <div class="hero-bg" aria-hidden="true"></div>
-      <div class="hero-inner reveal">
+      <div class="hero-bg" aria-hidden="true"><div class="hero-bg-motion"></div></div>
+      <div class="hero-inner reveal hero-animate">
+        <p class="hero-eyebrow" data-i18n="site.heroEyebrow">Pärnu · Tallinna mnt 70</p>
         <!-- Текстовый hero в стиле бренда: без PNG-полосы услуг (её путают с кликабельным меню) -->
         <div class="hero-brand-wrap">
           <svg class="hero-flourish" width="48" height="112" viewBox="0 0 48 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -79,15 +95,16 @@
           </svg>
           <div class="hero-brand-text">
             <h1 class="hero-wordmark">AlesSanna</h1>
-            <p class="hero-subbrand">ILUSALONG</p>
+            <p class="hero-subbrand" data-i18n="site.heroSubbrand">ILUSALONG</p>
           </div>
         </div>
-        <p class="hero-lead">
-          Luksuslik iluteenus Pärnus — juuksed, küüned ja hooldused rahulikus, stiilses õhkkonnas.
+        <p class="hero-display" data-i18n="site.heroDisplay">Vaikne ruum, kus ilu saab oma aega</p>
+        <p class="hero-lead" data-i18n="site.heroLead">
+          Aeglane hetk, peen käsitöö ja õhk, mis seab esikohale teie heaolu. Siin ei kiirustata — valitakse materjale, kuulatakse soove ja hoitakse vaikust.
         </p>
         <div class="hero-actions">
-          <a href="#broneeri" class="btn btn-primary">Broneeri aeg</a>
-          <a href="#teenused" class="btn btn-outline">Teenused</a>
+          <a href="#broneeri" class="btn btn-primary" data-i18n="site.btnBook">Broneeri aeg</a>
+          <a href="#teenused" class="btn btn-outline" data-i18n="site.btnServices">Teenused</a>
         </div>
       </div>
     </section>
@@ -95,8 +112,9 @@
     <!-- Короткая полоса доверия: адрес, часы, телефон (не дублирует навигацию) -->
     <div class="trust-strip">
       <div class="container trust-inner">
-        <span>Tallinna mnt 70 · Pärnu</span>
-        <span>E–R 10–18 · L 10–16</span>
+        <span data-i18n="site.trustAddress">Tallinna mnt 70 · Pärnu</span>
+        <span data-i18n="site.trustHours">E–R 10–18 · L 10–16</span>
+        <span><a href="mave.html" data-i18n="site.trustMave">AlesSanna &amp; Mave</a></span>
         <span><a href="tel:+3724398384">439 8384</a></span>
       </div>
     </div>
@@ -108,75 +126,243 @@
           <span class="section-kicker">Teenused</span>
           <span class="section-ornament" aria-hidden="true"></span>
           <h2 class="section-title">Vali kategooria</h2>
-          <p class="section-lead">Täielik hinnakiri ja broneerimine on ka meie kodulehel. Siin on lühike ülevaade.</p>
+          <p class="section-lead">Iga teenus on kohtumine detailiga — valige suund ja vaadake hoolikalt koostatud menüüd. Täielik hinnakiri: <a href="https://alessannailu.com/alessanna-et.html#services" target="_blank" rel="noopener noreferrer">alessannailu.com</a>.</p>
         </div>
         <div class="tabs-bar reveal" role="tablist" aria-label="Teenuste kategooriad">
-          <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="panel-hair" id="tab-hair">Juuksed</button>
-          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-nails" id="tab-nails">Küüned</button>
-          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-care" id="tab-care">Hooldused</button>
+          <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="panel-cuts" id="tab-cuts">Lõikus</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-color" id="tab-color">Värvimine</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-perm" id="tab-perm">Keemiline lokk</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-styling" id="tab-styling">Soengud</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-brows" id="tab-brows">Kulmud</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-manicure" id="tab-manicure">Maniküür</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-pedicure" id="tab-pedicure">Pediküür</button>
         </div>
-        <div id="panel-hair" class="tab-panel reveal is-active" role="tabpanel" aria-labelledby="tab-hair">
+        <div id="panel-cuts" class="tab-panel reveal is-active" role="tabpanel" aria-labelledby="tab-cuts">
           <ul class="menu-list">
-            <li><span>Naiste lõikus</span><span class="price">25–30 €</span></li>
-            <li><span>Meeste lõikus</span><span class="price">20 €</span></li>
-            <li><span>Värvimine (keskmine pikkus)</span><span class="price">40–45 €</span></li>
+            <li class="menu-subhead">Lapsed</li>
+            <li><span>Lõikus kuni 12a.</span><span class="price">15 €</span></li>
+            <li class="menu-subhead">Mehed</li>
+            <li><span>Lõikus</span><span class="price">20 €</span></li>
+            <li><span>Masinalõikus</span><span class="price">15 €</span></li>
+            <li><span>Habeme ja vuntside piiramine</span><span class="price">10 €</span></li>
+            <li><span>Pesu</span><span class="price">5 €</span></li>
+            <li class="menu-subhead">Naised</li>
+            <li><span>Juuste lõikus</span><span class="price">25-30 €</span></li>
+            <li><span>Juuste otste tasandamine</span><span class="price">20 €</span></li>
+            <li><span>Tuka lõikus</span><span class="price">5 €</span></li>
+            <li><span>Juuste pesu ja päeva soeng</span><span class="price">20 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-color" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-color" hidden>
+          <ul class="menu-list">
+            <li class="menu-section-title">Värvimine ilma lõikuseta</li>
+            <li class="menu-subhead">Juuste värvimine</li>
+            <li><span>Lühikesed juuksed</span><span class="price">35-40 €</span></li>
+            <li><span>Keskmised juuksed</span><span class="price">40-45 €</span></li>
+            <li><span>Pikad juuksed</span><span class="price">45-50 €</span></li>
+            <li><span>Ülipikad juuksed</span><span class="price">55-65 €</span></li>
+            <li><span>Järelkasvu värvimine kuni 2 cm</span><span class="price">35-40 €</span></li>
+            <li><span>Juuste värvimine oma värviga</span><span class="price">33 €</span></li>
+            <li class="menu-subhead">Juuste salgutamine</li>
+            <li><span>Lühikesed juuksed</span><span class="price">40-45 €</span></li>
+            <li><span>Keskmised juuksed</span><span class="price">45-50 €</span></li>
+            <li><span>Pikad juuksed</span><span class="price">55-60 €</span></li>
+            <li><span>Ülipikad juuksed</span><span class="price">60-70 €</span></li>
+            <li class="menu-section-title">Värvimine koos lõikusega</li>
+            <li class="menu-subhead">Juuste värvimine</li>
+            <li><span>Lühikesed juuksed</span><span class="price">50-55 €</span></li>
+            <li><span>Keskmised juuksed</span><span class="price">55-60 €</span></li>
+            <li><span>Pikad juuksed</span><span class="price">60-65 €</span></li>
+            <li><span>Ülipikad juuksed</span><span class="price">65-75 €</span></li>
+            <li><span>Järelkasvu värvimine kuni 2 cm</span><span class="price">45-50 €</span></li>
+            <li><span>Juuste värvimine oma värviga</span><span class="price">43 €</span></li>
+            <li class="menu-subhead">Juuste salgutamine</li>
+            <li><span>Lühikesed juuksed</span><span class="price">50-55 €</span></li>
+            <li><span>Keskmised juuksed</span><span class="price">55-60 €</span></li>
+            <li><span>Pikad juuksed</span><span class="price">60-65 €</span></li>
+            <li><span>Ülipikad juuksed</span><span class="price">65-75 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-perm" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-perm" hidden>
+          <ul class="menu-list">
+            <li><span>Lühikesed juuksed</span><span class="price">43 €</span></li>
+            <li><span>Poolpikad juuksed</span><span class="price">45-50 €</span></li>
+            <li><span>Pikad juuksed</span><span class="price">50-60 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-styling" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-styling" hidden>
+          <ul class="menu-list">
             <li><span>Päeva soeng</span><span class="price">20 €</span></li>
+            <li><span>Sirgendamine</span><span class="price">25 €</span></li>
+            <li><span>Loki soeng</span><span class="price">25 €</span></li>
+            <li><span>Pidulik soeng</span><span class="price">25-35 €</span></li>
+            <li><span>Pruudi soeng</span><span class="price">30-45 €</span></li>
           </ul>
         </div>
-        <div id="panel-nails" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-nails" hidden>
-          <ul class="menu-list">
-            <li><span>Maniküür</span><span class="price">15–20 €</span></li>
-            <li><span>Maniküür geellakiga</span><span class="price">30 €</span></li>
-            <li><span>Pediküür</span><span class="price">30–35 €</span></li>
-            <li><span>Geellaki eemaldus</span><span class="price">15 €</span></li>
-          </ul>
-        </div>
-        <div id="panel-care" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-care" hidden>
+        <div id="panel-brows" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-brows" hidden>
           <ul class="menu-list">
             <li><span>Kulmude värvimine</span><span class="price">7 €</span></li>
             <li><span>Ripsmete värvimine</span><span class="price">7 €</span></li>
-            <li><span>Kulmude korrigeerimine</span><span class="price">8 €</span></li>
+            <li><span>Kulmude kitkumine ja piiramine</span><span class="price">8 €</span></li>
+            <li><span>Kulmude värvimine, ripsmete värvimine ja korrigeerimine</span><span class="price">20 €</span></li>
           </ul>
         </div>
+        <div id="panel-manicure" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-manicure" hidden>
+          <ul class="menu-list">
+            <li><span>Maniküür</span><span class="price">15-20 €</span></li>
+            <li><span>Küünte lakkimine</span><span class="price">7 €</span></li>
+            <li><span>Maniküür geellakiga</span><span class="price">30 €</span></li>
+            <li><span>Geellaki eemaldus koos klassikalise maniküüriga</span><span class="price">25 €</span></li>
+            <li><span>Geellaki eemaldus</span><span class="price">15 €</span></li>
+            <li><span>Geelküünte paigaldus</span><span class="price">40-50 €</span></li>
+            <li><span>Geelküünte hooldus</span><span class="price">35-40 €</span></li>
+            <li><span>Kunstküünte eemaldamine</span><span class="price">25 €</span></li>
+            <li><span>Ühe küüne parandus</span><span class="price">7 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-pedicure" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-pedicure" hidden>
+          <ul class="menu-list">
+            <li><span>Pediküür</span><span class="price">30-35 €</span></li>
+            <li><span>Pediküür geellakiga</span><span class="price">35-40 €</span></li>
+            <li><span>Geellaki eemaldus koos klassikalise pediküüriga</span><span class="price">30-35 €</span></li>
+            <li><span>Meeste pediküür</span><span class="price">30-35 €</span></li>
+          </ul>
+        </div>
+        <div class="selection-summary reveal" data-selection-summary aria-live="polite">
+          <button type="button" class="selection-dock-toggle" data-selection-dock-toggle aria-expanded="true" aria-controls="selection-dock-panel" title="Peida või näita">
+            <span class="selection-dock-toggle-chevron" aria-hidden="true"></span>
+            <span class="selection-dock-toggle-label">Teie valik</span>
+            <span class="selection-dock-toggle-count" data-cart-count hidden>0</span>
+          </button>
+          <div class="selection-dock-body" id="selection-dock-panel">
+            <p class="selection-summary-kicker">Teie valik</p>
+            <p class="selection-summary-hint">Klõpsake teenusel, et lisada või eemaldada nimekirjast.</p>
+            <ul class="pick-list" data-selected-services-list hidden></ul>
+            <p class="pick-list-empty" data-selected-services-empty>Teenuseid pole veel valitud.</p>
+            <div class="selection-masters" data-summary-masters-wrap hidden>
+              <p class="selection-masters-label" id="summary-masters-label" data-summary-masters-label>Soovitatav meister teenuste järgi</p>
+              <div class="selection-masters-chips" data-summary-master-chips role="radiogroup" aria-labelledby="summary-masters-label"></div>
+            </div>
+            <div class="selection-master-row">
+              <span class="selection-master-label">Meister:</span>
+              <strong class="selection-master-value" data-selected-master-display>—</strong>
+            </div>
+            <a href="#broneeri" class="btn btn-outline selection-summary-cta">Broneerimise juurde</a>
+          </div>
+        </div>
+
         <p class="menu-footnote reveal">
-          Vaata täielikku <a href="https://alessannailu.com/alessanna-et.html#services" target="_blank" rel="noopener noreferrer">hinnakirja ja teenuseid veebis</a>.
+          Täielik hinnakiri: <a href="https://alessannailu.com/alessanna-et.html#services" target="_blank" rel="noopener noreferrer">alessannailu.com</a>.
         </p>
       </div>
     </section>
 
-    <!-- Команда: список имён без карточек; имена можно менять, класс .team-names сохранять -->
+    <!-- Команда: .team-groups → .team-group + заголовок + ul.team-names (script.js клик по li) -->
     <section class="section" id="meistrid">
       <div class="container">
         <div class="section-head reveal">
           <span class="section-kicker">Meeskond</span>
           <span class="section-ornament" aria-hidden="true"></span>
           <h2 class="section-title">Meistrid</h2>
-          <p class="section-lead">Kogenud spetsialistid, kes hoolivad detailidest.</p>
+          <p class="section-lead">
+            Iga meister toob oma käe ja kuulamise oskuse. Klõpsake nimel, et kanda valik broneeringusse — sama nimi võib esineda mitmes suunas.
+          </p>
         </div>
         <div class="team-block reveal">
-          <ul class="team-names">
-            <li>Galina</li>
-            <li>Irina</li>
-            <li>Viktoria</li>
-            <li>Anne</li>
-            <li>Alesja</li>
-            <li>Aljona</li>
-          </ul>
+          <div class="team-groups" aria-label="Meistrid teenuste kaupa">
+            <div class="team-group">
+              <h3 class="team-group-title">Juuksed</h3>
+              <p class="team-group-desc">Lõikus, värvimine, keemiline lokk, soengud</p>
+              <ul class="team-names">
+                <li>Galina</li>
+                <li>Irina</li>
+                <li>Viktoria</li>
+                <li>Anne</li>
+              </ul>
+            </div>
+            <div class="team-group">
+              <h3 class="team-group-title">Küüned</h3>
+              <p class="team-group-desc">Maniküür, pediküür, geellakk</p>
+              <ul class="team-names">
+                <li>Alesja</li>
+                <li>Aljona</li>
+                <li>Viktoria</li>
+              </ul>
+            </div>
+            <div class="team-group">
+              <h3 class="team-group-title">Kulmud ja ripsmed</h3>
+              <p class="team-group-desc">Värvimine, korrigeerimine</p>
+              <ul class="team-names">
+                <li>Irina</li>
+                <li>Anne</li>
+                <li>Alesja</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Короткий блок «о салоне» -->
+    <!-- Galerii: illustratiivsed tööd (välislingid, lazy) -->
+    <section class="section section--gallery" id="galerii">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-kicker">Galerii</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Hetked salongist</h2>
+        </div>
+        <p class="gallery-intro reveal">Tekstuurid, valgus ja vaikus — väike valik atmosfäärist ja tulemustest, mida meie ruumis loome.</p>
+        <div class="gallery-grid">
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=900&amp;q=80" width="900" height="1200" alt="Salongi interjöör, pehme valgus" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Interjöör</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&amp;q=80" width="600" height="750" alt="Hoolikalt viimistletud küüned" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Detailid</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600&amp;q=80" width="600" height="750" alt="Juuksurisessioon" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Juuksed</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1604654894610-df63bc536371?w=600&amp;q=80" width="600" height="750" alt="Maniküür ja geellakk" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Küüned</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&amp;q=80" width="600" height="750" alt="Stiilne soeng" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Siluett</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- О салоне -->
     <section class="section" id="meist">
-      <div class="container container--narrow">
+      <div class="container">
         <div class="section-head reveal">
           <span class="section-kicker">Salong</span>
           <span class="section-ornament" aria-hidden="true"></span>
           <h2 class="section-title">Meist</h2>
         </div>
-        <p class="section-lead reveal" style="text-align: center">
-          AlesSanna on Pärnu keskuses asuv ilusalong, kus kohtuvad professionaalsus, vaikus ja elegantne interjöör. Töötame kvaliteetsete materjalidega ja võtame aega teie soovide kuulamiseks.
-        </p>
+        <div class="about-editorial reveal">
+          <div>
+            <p class="about-editorial__lead">AlesSanna on koht, kus aeg aeglustub ja tähelepanu suunatakse ainult teie vastu.</p>
+            <div class="about-editorial__divider" aria-hidden="true"></div>
+            <p class="about-editorial__body">
+              Asume Pärnu südames — vaikses, mõtlikus ruumis, kus materjalid on valitud vastupidavuse ja esteetika järgi. Me ei täida lihtsalt broneeringuid: loome hetki, kus tunnete end hoituna ja kergendatuna.
+            </p>
+            <p class="about-editorial__body">
+              Olgu teie soov juuksed, küüned või õrn hooldus — iga kohtumine algab kuulamisega ja lõpeb tulemusega, mis näeb välja loomulik ja kallis.
+            </p>
+          </div>
+          <aside class="about-editorial__aside" aria-label="Filosoofia">
+            <blockquote class="about-editorial__quote">
+              «Ilu ei ole kiirus. See on ruum, kus saab hingata.»
+              <footer>AlesSanna</footer>
+            </blockquote>
+          </aside>
+        </div>
       </div>
     </section>
 
@@ -188,7 +374,7 @@
             <span class="section-kicker">Kingitus</span>
             <h2 class="section-title" style="font-size: 1.5rem">Kinkekaardid</h2>
           </div>
-          <p>Kinkige heaolu — kinkekaarti saab osta salongis. Küsi meilt suurusi ja kehtivusaega.</p>
+          <p>Kinkige aega ja tähelepanu — kinkekaart on kutse peatuda. Suurused ja kehtivus selguvad salongis või telefonitsi.</p>
           <a href="tel:+3724398384" class="btn btn-outline">Helista ja küsi</a>
         </div>
       </div>
@@ -200,24 +386,36 @@
         <div class="section-head reveal">
           <span class="section-kicker">Tagasiside</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Kliendid meist</h2>
+          <h2 class="section-title">Sõnad, mis jäävad meelde</h2>
+          <p class="section-lead" style="max-width: 36ch; margin-inline: auto">Tagasiside, mis kõlab vaikselt — nagu meie ruumiski.</p>
         </div>
         <div class="reviews-grid">
           <blockquote class="review reveal">
             <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Vaikne, stiilne atmosfäär ja täiuslik tulemus. Tunnen end alati hoituna.»</p>
+            <p class="review-text">«Õhk on vaikne, valgus pehme — tulemus täiuslik. Tunnen end alati hoituna.»</p>
             <footer class="review-author">— Karlotta</footer>
           </blockquote>
           <blockquote class="review reveal">
             <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Professionaalsus igas detailis. Minu lemmik salong Pärnus.»</p>
+            <p class="review-text">«Igas liigutuses on kogemus. See on minu Pärnu pelgupaik.»</p>
             <footer class="review-author">— Merilin</footer>
           </blockquote>
           <blockquote class="review reveal">
             <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Delikaatne lähenemine ja luksuslik kogemus algusest lõpuni.»</p>
+            <p class="review-text">«Delikaatne käsi, vaikne rütm — luksus, mis ei karju.»</p>
             <footer class="review-author">— Liis</footer>
           </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--cta" aria-labelledby="cta-luxury-title">
+      <div class="container">
+        <div class="cta-luxury reveal">
+          <p class="cta-luxury__kicker">Broneering</p>
+          <h2 class="cta-luxury__title" id="cta-luxury-title">Valige aeg, mis sobib teie rütmiga</h2>
+          <p class="cta-luxury__text">Jätke päring — kinnitame detailid helistades või kirjas. Teie vaikus enne kohtumist on meie jaoks sama oluline kui tulemus.</p>
+          <a href="#broneeri" class="btn btn-primary">Broneeri aeg</a>
         </div>
       </div>
     </section>
@@ -238,10 +436,10 @@
         <div class="section-head reveal">
           <span class="section-kicker">Broneering</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Broneeri sobiv aeg kalendri ja vormi kaudu</h2>
+          <h2 class="section-title">Kalender ja lühike vorm</h2>
         </div>
         <p class="booking-intro reveal">
-          Vali kalendrist päev, täida lühike vorm — pärast päringut võtame ühendust ja kinnitame aja telefoni või e-posti teel.
+          Valige päev, mis sobib teie graafikuga. Pärast saadetud päringut võtame ühendust, et kinnitada aeg ja üksikasjad — rahulikult, ilma kiirustamata.
         </p>
 
         <div class="booking-shell reveal">
@@ -285,6 +483,7 @@
             </aside>
 
             <form class="booking-form" id="booking-form" novalidate>
+              <input type="hidden" name="services_detail" value="" data-field-services-detail />
               <label>
                 <span>Sinu nimi</span>
                 <input type="text" name="name" autocomplete="name" placeholder="Anna" />
@@ -390,6 +589,9 @@
     <div class="container footer-inner">
       <ul class="footer-links">
         <li><a href="#teenused">Teenused</a></li>
+        <li><a href="#galerii">Galerii</a></li>
+        <li><a href="#meist">Salong</a></li>
+        <li><a href="mave.html">MAVE pood</a></li>
         <li><a href="#broneeri">Broneeri</a></li>
         <li><a href="#kontakt">Kontakt</a></li>
       </ul>

@@ -1,0 +1,138 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+  background: #0a0a0a;
+  color: #ececec;
+}
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #222;
+}
+.brand {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+.tag {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #888;
+}
+.shell {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+.warn {
+  background: #2a1f10;
+  border: 1px solid #5c4018;
+  color: #f5e6c8;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0;
+}
+.step {
+  display: none;
+  padding: 1rem 0;
+}
+.step.is-active {
+  display: block;
+}
+.step h2 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #aaa;
+}
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.card {
+  text-align: left;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #2a2a2e;
+  background: #141414;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+.card:hover {
+  border-color: #3d3d44;
+}
+.card.is-picked {
+  border-color: #5b9cf8;
+  box-shadow: 0 0 0 1px #5b9cf8;
+}
+.muted {
+  color: #888;
+  font-size: 0.85rem;
+}
+.slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.slot-btn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #1a1a1c;
+  color: #ddd;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.slot-btn:hover {
+  border-color: #5b9cf8;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #999;
+}
+.form input {
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #0f0f10;
+  color: #fff;
+  font: inherit;
+}
+.form button {
+  margin-top: 0.5rem;
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #5b9cf8;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ok {
+  color: #6ee7b7;
+}

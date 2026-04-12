@@ -21,7 +21,7 @@
   <meta name="theme-color" content="#0a0a0a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -31,31 +31,45 @@
   <header class="site-header" id="header">
     <div class="container header-inner">
       <a class="logo-link" href="#hero">AlesSanna <small>ilusalong</small></a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" id="nav-toggle">Меню</button>
-      <nav class="nav" id="site-nav" aria-label="Основная навигация">
-        <ul class="nav-list">
-          <li><a href="#teenused">Услуги</a></li>
-          <li><a href="#meistrid">Мастера</a></li>
-          <li><a href="#kinkekaardid">Подарочные карты</a></li>
-          <li><a href="#tagasiside">Отзывы</a></li>
-          <li><a href="#kontakt">Контакты</a></li>
-        </ul>
-        <div class="nav-panel-wrap">
-          <span class="lang-switch" aria-label="Язык">
-            <a href="ru.html" class="is-active">RU</a>
-            <a href="index.html">ET</a>
-          </span>
-          <a href="#broneeri" class="nav-cta">Записаться</a>
-        </div>
-      </nav>
+      <div class="header-actions">
+        <span class="lang-switch" aria-label="Язык">
+          <a href="ru.html" class="is-active">RU</a>
+          <a href="index.html">ET</a>
+        </span>
+        <a href="#broneeri" class="nav-cta">Записаться</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" id="nav-toggle">Меню</button>
+      </div>
     </div>
   </header>
+  <!-- Вне header: иначе fixed-панель навигации может обрезаться контекстом шапки -->
+  <nav class="nav" id="site-nav" aria-label="Основная навигация">
+    <ul class="nav-list">
+      <li><a href="#teenused">Услуги</a></li>
+      <li><a href="#meistrid">Мастера</a></li>
+      <li><a href="#galerii">Галерея</a></li>
+      <li><a href="#meist">О салоне</a></li>
+      <li><a href="mave-ru.html">MAVE</a></li>
+      <li><a href="#kinkekaardid">Подарки</a></li>
+      <li><a href="#tagasiside">Отзывы</a></li>
+      <li><a href="#kontakt">Контакты</a></li>
+    </ul>
+    <div class="nav-panel-wrap">
+      <div class="site-switcher" aria-label="Выбор сайта">
+        <a href="ru.html" class="is-active">Салон</a>
+        <span class="site-switcher-sep" aria-hidden="true">/</span>
+        <a href="mave-ru.html">MAVE</a>
+      </div>
+      <a href="#broneeri" class="btn btn-outline nav-drawer-cta">Записаться</a>
+    </div>
+  </nav>
+  <button type="button" class="nav-backdrop" id="nav-backdrop" aria-label="Закрыть меню" tabindex="-1" hidden></button>
 
   <main id="main">
     <section class="hero" id="hero">
-      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-bg" aria-hidden="true"><div class="hero-bg-motion"></div></div>
       <!-- Hero: текстовый бренд + SVG-декор; язык интерфейса — русский в .hero-lead и кнопках -->
-      <div class="hero-inner reveal">
+      <div class="hero-inner reveal hero-animate">
+        <p class="hero-eyebrow">Пярну · Tallinna mnt 70</p>
         <div class="hero-brand-wrap">
           <svg class="hero-flourish" width="48" height="112" viewBox="0 0 48 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
             <path d="M24 108V18" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" />
@@ -68,8 +82,9 @@
             <p class="hero-subbrand">ILUSALONG</p>
           </div>
         </div>
+        <p class="hero-display">Пространство, где красота дышит спокойно</p>
         <p class="hero-lead">
-          Премиальный сервис в Пярну — волосы, ногти и уход в спокойной, стильной атмосфере.
+          Неторопливый ритм, бережные руки и воздух, в котором на первом месте ваше самочувствие. Здесь не гонятся за минутами — выбирают материалы, слушают пожелания и хранят тишину.
         </p>
         <div class="hero-actions">
           <a href="#broneeri" class="btn btn-primary">Записаться</a>
@@ -82,6 +97,7 @@
       <div class="container trust-inner">
         <span>Tallinna mnt 70 · Пярну</span>
         <span>Пн–Пт 10–18 · Сб 10–16</span>
+        <span><a href="mave-ru.html">AlesSanna &amp; Mave</a></span>
         <span><a href="tel:+3724398384">439 8384</a></span>
       </div>
     </div>
@@ -92,38 +108,133 @@
           <span class="section-kicker">Услуги</span>
           <span class="section-ornament" aria-hidden="true"></span>
           <h2 class="section-title">Выберите категорию</h2>
-          <p class="section-lead">Полный прайс и запись — на основном сайте. Ниже краткий обзор.</p>
+          <p class="section-lead">Каждая услуга — встреча с деталью: выберите направление и откройте собранное меню. Актуальные цены — на <a href="https://alessannailu.com/alessanna.html#services" target="_blank" rel="noopener noreferrer">alessannailu.com</a>.</p>
         </div>
         <div class="tabs-bar reveal" role="tablist" aria-label="Категории услуг">
-          <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="panel-hair" id="tab-hair">Волосы</button>
-          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-nails" id="tab-nails">Ногти</button>
-          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-care" id="tab-care">Уход</button>
+          <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="panel-cuts" id="tab-cuts">Стрижка</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-color" id="tab-color">Окрашивание</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-perm" id="tab-perm">Завивка</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-styling" id="tab-styling">Укладки</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-brows" id="tab-brows">Брови</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-manicure" id="tab-manicure">Маникюр</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-pedicure" id="tab-pedicure">Педикюр</button>
         </div>
-        <div id="panel-hair" class="tab-panel reveal is-active" role="tabpanel" aria-labelledby="tab-hair">
+        <div id="panel-cuts" class="tab-panel reveal is-active" role="tabpanel" aria-labelledby="tab-cuts">
           <ul class="menu-list">
-            <li><span>Женская стрижка</span><span class="price">25–30 €</span></li>
-            <li><span>Мужская стрижка</span><span class="price">20 €</span></li>
-            <li><span>Окрашивание (средняя длина)</span><span class="price">40–45 €</span></li>
-            <li><span>Укладка</span><span class="price">20 €</span></li>
+            <li class="menu-subhead">Дети</li>
+            <li><span>Стрижка до 12 лет</span><span class="price">15 €</span></li>
+            <li class="menu-subhead">Мужчины</li>
+            <li><span>Стрижка</span><span class="price">20 €</span></li>
+            <li><span>Машинная стрижка</span><span class="price">15 €</span></li>
+            <li><span>Подравнивание бороды и усов</span><span class="price">10 €</span></li>
+            <li><span>Мытьё волос</span><span class="price">5 €</span></li>
+            <li class="menu-subhead">Женщины</li>
+            <li><span>Стрижка волос</span><span class="price">25-30 €</span></li>
+            <li><span>Подравнивание кончиков</span><span class="price">20 €</span></li>
+            <li><span>Стрижка чёлки</span><span class="price">5 €</span></li>
+            <li><span>Мытьё и дневная укладка</span><span class="price">20 €</span></li>
           </ul>
         </div>
-        <div id="panel-nails" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-nails" hidden>
+        <div id="panel-color" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-color" hidden>
           <ul class="menu-list">
-            <li><span>Маникюр</span><span class="price">15–20 €</span></li>
-            <li><span>Маникюр с гель-лаком</span><span class="price">30 €</span></li>
-            <li><span>Педикюр</span><span class="price">30–35 €</span></li>
-            <li><span>Снятие гель-лака</span><span class="price">15 €</span></li>
+            <li class="menu-section-title">Окрашивание без стрижки</li>
+            <li class="menu-subhead">Окрашивание волос</li>
+            <li><span>Короткие волосы</span><span class="price">35-40 €</span></li>
+            <li><span>Средние волосы</span><span class="price">40-45 €</span></li>
+            <li><span>Длинные волосы</span><span class="price">45-50 €</span></li>
+            <li><span>Очень длинные волосы</span><span class="price">55-65 €</span></li>
+            <li><span>Окрашивание отросших корней до 2 см</span><span class="price">35-40 €</span></li>
+            <li><span>Окрашивание своей краской</span><span class="price">33 €</span></li>
+            <li class="menu-subhead">Мелирование</li>
+            <li><span>Короткие волосы</span><span class="price">40-45 €</span></li>
+            <li><span>Средние волосы</span><span class="price">45-50 €</span></li>
+            <li><span>Длинные волосы</span><span class="price">55-60 €</span></li>
+            <li><span>Очень длинные волосы</span><span class="price">60-70 €</span></li>
+            <li class="menu-section-title">Окрашивание со стрижкой</li>
+            <li class="menu-subhead">Окрашивание волос</li>
+            <li><span>Короткие волосы</span><span class="price">50-55 €</span></li>
+            <li><span>Средние волосы</span><span class="price">55-60 €</span></li>
+            <li><span>Длинные волосы</span><span class="price">60-65 €</span></li>
+            <li><span>Очень длинные волосы</span><span class="price">65-75 €</span></li>
+            <li><span>Окрашивание отросших корней до 2 см</span><span class="price">45-50 €</span></li>
+            <li><span>Окрашивание своей краской</span><span class="price">43 €</span></li>
+            <li class="menu-subhead">Мелирование</li>
+            <li><span>Короткие волосы</span><span class="price">50-55 €</span></li>
+            <li><span>Средние волосы</span><span class="price">55-60 €</span></li>
+            <li><span>Длинные волосы</span><span class="price">60-65 €</span></li>
+            <li><span>Очень длинные волосы</span><span class="price">65-75 €</span></li>
           </ul>
         </div>
-        <div id="panel-care" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-care" hidden>
+        <div id="panel-perm" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-perm" hidden>
+          <ul class="menu-list">
+            <li><span>Короткие волосы</span><span class="price">43 €</span></li>
+            <li><span>Средние волосы</span><span class="price">45-50 €</span></li>
+            <li><span>Длинные волосы</span><span class="price">50-60 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-styling" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-styling" hidden>
+          <ul class="menu-list">
+            <li><span>Дневная укладка</span><span class="price">20 €</span></li>
+            <li><span>Выпрямление</span><span class="price">25 €</span></li>
+            <li><span>Укладка с локонами</span><span class="price">25 €</span></li>
+            <li><span>Праздничная укладка</span><span class="price">25-35 €</span></li>
+            <li><span>Свадебная укладка</span><span class="price">30-45 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-brows" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-brows" hidden>
           <ul class="menu-list">
             <li><span>Окрашивание бровей</span><span class="price">7 €</span></li>
             <li><span>Окрашивание ресниц</span><span class="price">7 €</span></li>
-            <li><span>Коррекция бровей</span><span class="price">8 €</span></li>
+            <li><span>Коррекция и оформление бровей</span><span class="price">8 €</span></li>
+            <li><span>Окрашивание бровей, окрашивание ресниц и коррекция</span><span class="price">20 €</span></li>
           </ul>
         </div>
+        <div id="panel-manicure" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-manicure" hidden>
+          <ul class="menu-list">
+            <li><span>Маникюр</span><span class="price">15-20 €</span></li>
+            <li><span>Покрытие лаком</span><span class="price">7 €</span></li>
+            <li><span>Маникюр с гель-лаком</span><span class="price">30 €</span></li>
+            <li><span>Снятие гель-лака с классическим маникюром</span><span class="price">25 €</span></li>
+            <li><span>Снятие гель-лака</span><span class="price">15 €</span></li>
+            <li><span>Наращивание гелевых ногтей</span><span class="price">40-50 €</span></li>
+            <li><span>Коррекция гелевых ногтей</span><span class="price">35-40 €</span></li>
+            <li><span>Снятие искусственных ногтей</span><span class="price">25 €</span></li>
+            <li><span>Ремонт одного ногтя</span><span class="price">7 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-pedicure" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-pedicure" hidden>
+          <ul class="menu-list">
+            <li><span>Педикюр</span><span class="price">30-35 €</span></li>
+            <li><span>Педикюр с гель-лаком</span><span class="price">35-40 €</span></li>
+            <li><span>Снятие гель-лака с классическим педикюром</span><span class="price">30-35 €</span></li>
+            <li><span>Мужской педикюр</span><span class="price">30-35 €</span></li>
+          </ul>
+        </div>
+        <div class="selection-summary reveal" data-selection-summary aria-live="polite">
+          <button type="button" class="selection-dock-toggle" data-selection-dock-toggle aria-expanded="true" aria-controls="selection-dock-panel" title="Свернуть или развернуть">
+            <span class="selection-dock-toggle-chevron" aria-hidden="true"></span>
+            <span class="selection-dock-toggle-label">Ваш выбор</span>
+            <span class="selection-dock-toggle-count" data-cart-count hidden>0</span>
+          </button>
+          <div class="selection-dock-body" id="selection-dock-panel">
+            <p class="selection-summary-kicker">Ваш выбор</p>
+            <p class="selection-summary-hint">Нажмите на услугу в прайсе, чтобы добавить или убрать её из списка.</p>
+            <ul class="pick-list" data-selected-services-list hidden></ul>
+            <p class="pick-list-empty" data-selected-services-empty>Услуги пока не выбраны.</p>
+            <div class="selection-masters" data-summary-masters-wrap hidden>
+              <p class="selection-masters-label" id="summary-masters-label" data-summary-masters-label>Мастера по выбранным услугам</p>
+              <div class="selection-masters-chips" data-summary-master-chips role="radiogroup" aria-labelledby="summary-masters-label"></div>
+            </div>
+            <div class="selection-master-row">
+              <span class="selection-master-label">Мастер:</span>
+              <strong class="selection-master-value" data-selected-master-display>—</strong>
+            </div>
+            <a href="#broneeri" class="btn btn-outline selection-summary-cta">К записи</a>
+          </div>
+        </div>
+
         <p class="menu-footnote reveal">
-          Полный <a href="https://alessannailu.com/alessanna.html#services" target="_blank" rel="noopener noreferrer">прайс и услуги на сайте</a>.
+          Актуальные цены всегда на <a href="https://alessannailu.com/alessanna.html#services" target="_blank" rel="noopener noreferrer">официальном сайте салона</a>.
         </p>
       </div>
     </section>
@@ -134,31 +245,103 @@
           <span class="section-kicker">Команда</span>
           <span class="section-ornament" aria-hidden="true"></span>
           <h2 class="section-title">Мастера</h2>
-          <p class="section-lead">Опытные специалисты, внимательные к деталям.</p>
+          <p class="section-lead">
+            У каждого мастера — свой почерк и умение слышать. Нажмите на имя, чтобы перенести выбор в форму записи — один специалист может быть в нескольких направлениях.
+          </p>
         </div>
         <div class="team-block reveal">
-          <ul class="team-names">
-            <li>Galina</li>
-            <li>Irina</li>
-            <li>Viktoria</li>
-            <li>Anne</li>
-            <li>Alesja</li>
-            <li>Aljona</li>
-          </ul>
+          <div class="team-groups" aria-label="Мастера по категориям услуг">
+            <div class="team-group">
+              <h3 class="team-group-title">Волосы</h3>
+              <p class="team-group-desc">Стрижка, окрашивание, химическая завивка, укладки</p>
+              <ul class="team-names">
+                <li>Galina</li>
+                <li>Irina</li>
+                <li>Viktoria</li>
+                <li>Anne</li>
+              </ul>
+            </div>
+            <div class="team-group">
+              <h3 class="team-group-title">Ногти</h3>
+              <p class="team-group-desc">Маникюр, педикюр, гель-лак</p>
+              <ul class="team-names">
+                <li>Alesja</li>
+                <li>Aljona</li>
+                <li>Viktoria</li>
+              </ul>
+            </div>
+            <div class="team-group">
+              <h3 class="team-group-title">Брови и ресницы</h3>
+              <p class="team-group-desc">Окрашивание, коррекция</p>
+              <ul class="team-names">
+                <li>Irina</li>
+                <li>Anne</li>
+                <li>Alesja</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--gallery" id="galerii">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-kicker">Галерея</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Моменты салона</h2>
+        </div>
+        <p class="gallery-intro reveal">Текстуры, свет и тишина — немного атмосферы и результатов, которые рождаются в нашем пространстве.</p>
+        <div class="gallery-grid">
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=900&amp;q=80" width="900" height="1200" alt="Интерьер салона в мягком свете" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Интерьер</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&amp;q=80" width="600" height="750" alt="Ухоженные ногти, детальный кадр" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Детали</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600&amp;q=80" width="600" height="750" alt="Работа с волосами" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Волосы</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1604654894610-df63bc536371?w=600&amp;q=80" width="600" height="750" alt="Маникюр" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Ногти</figcaption>
+          </figure>
+          <figure class="gallery-item reveal">
+            <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&amp;q=80" width="600" height="750" alt="Стильная укладка" loading="lazy" decoding="async" />
+            <figcaption class="gallery-caption">Силуэт</figcaption>
+          </figure>
         </div>
       </div>
     </section>
 
     <section class="section" id="meist">
-      <div class="container container--narrow">
+      <div class="container">
         <div class="section-head reveal">
           <span class="section-kicker">Салон</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">О нас</h2>
+          <h2 class="section-title">О салоне</h2>
         </div>
-        <p class="section-lead reveal" style="text-align: center">
-          AlesSanna — салон в центре Пярну, где сочетаются профессионализм, тишина и элегантный интерьер. Мы работаем с качественными материалами и уделяем время вашим пожеланиям.
-        </p>
+        <div class="about-editorial reveal">
+          <div>
+            <p class="about-editorial__lead">AlesSanna — место, где время замедляется, а внимание обращено только к вам.</p>
+            <div class="about-editorial__divider" aria-hidden="true"></div>
+            <p class="about-editorial__body">
+              Мы в центре Пярну — в спокойном, собранном пространстве, где материалы выбирают по долговечности и эстетике. Мы не просто закрываем запись: создаём паузы, в которых чувствуешь опору и лёгкость.
+            </p>
+            <p class="about-editorial__body">
+              Волосы, ногти или деликатный уход — каждая встреча начинается с внимательного разговора и заканчивается результатом, который выглядит естественно и дорого.
+            </p>
+          </div>
+          <aside class="about-editorial__aside" aria-label="Философия">
+            <blockquote class="about-editorial__quote">
+              «Красота не в спешке. Это место, где можно выдохнуть.»
+              <footer>AlesSanna</footer>
+            </blockquote>
+          </aside>
+        </div>
       </div>
     </section>
 
@@ -169,7 +352,7 @@
             <span class="section-kicker">Подарок</span>
             <h2 class="section-title" style="font-size: 1.5rem">Подарочные карты</h2>
           </div>
-          <p>Подарите заботу — карты можно приобрести в салоне. Уточняйте номинал и срок действия по телефону.</p>
+          <p>Подарите время и внимание — карта это приглашение остановиться. Номинал и срок уточняйте в салоне или по телефону.</p>
           <a href="tel:+3724398384" class="btn btn-outline">Позвонить</a>
         </div>
       </div>
@@ -180,24 +363,36 @@
         <div class="section-head reveal">
           <span class="section-kicker">Отзывы</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Клиенты о нас</h2>
+          <h2 class="section-title">Слова, которые остаются</h2>
+          <p class="section-lead" style="max-width: 36ch; margin-inline: auto">Отзывы звучат тихо — как и наше пространство.</p>
         </div>
         <div class="reviews-grid">
           <blockquote class="review reveal">
             <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Тихая, стильная атмосфера и безупречный результат. Всегда чувствую заботу.»</p>
+            <p class="review-text">«Воздух тихий, свет мягкий — результат безупречен. Всегда чувствую заботу.»</p>
             <footer class="review-author">— Karlotta</footer>
           </blockquote>
           <blockquote class="review reveal">
             <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Профессионализм в каждой детали. Мой любимый салон в Пярну.»</p>
+            <p class="review-text">«В каждом движении — опыт. Это моё убежище в Пярну.»</p>
             <footer class="review-author">— Merilin</footer>
           </blockquote>
           <blockquote class="review reveal">
             <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Деликатный подход и ощущение люкса от начала до конца.»</p>
+            <p class="review-text">«Деликатность, спокойный ритм — люкс, который не кричит.»</p>
             <footer class="review-author">— Liis</footer>
           </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--cta" aria-labelledby="cta-luxury-title">
+      <div class="container">
+        <div class="cta-luxury reveal">
+          <p class="cta-luxury__kicker">Запись</p>
+          <h2 class="cta-luxury__title" id="cta-luxury-title">Выберите время под ваш ритм</h2>
+          <p class="cta-luxury__text">Оставьте заявку — мы подтвердим детали звонком или письмом. Ваша тишина до визита для нас так же важна, как результат.</p>
+          <a href="#broneeri" class="btn btn-primary">Записаться</a>
         </div>
       </div>
     </section>
@@ -207,10 +402,10 @@
         <div class="section-head reveal">
           <span class="section-kicker">Запись</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Запишитесь на удобное время через календарь и форму</h2>
+          <h2 class="section-title">Календарь и короткая форма</h2>
         </div>
         <p class="booking-intro reveal">
-          Выберите день в календаре, укажите услугу и мастера и отправьте заявку — мы свяжемся для подтверждения времени.
+          Выберите день, который совпадает с вашим графиком. После заявки мы свяжемся, чтобы спокойно подтвердить время и детали — без суеты.
         </p>
 
         <div class="booking-shell reveal">
@@ -254,6 +449,7 @@
             </aside>
 
             <form class="booking-form" id="booking-form" novalidate>
+              <input type="hidden" name="services_detail" value="" data-field-services-detail />
               <label>
                 <span>Ваше имя</span>
                 <input type="text" name="name" autocomplete="name" placeholder="Анна" />
@@ -269,7 +465,7 @@
                   <option value="hair-color">Окрашивание</option>
                   <option value="perm">Химическая завивка</option>
                   <option value="styling">Укладки</option>
-                  <option value="brows-lashes">Ресницы и брови</option>
+                  <option value="brows-lashes">Брови и ресницы</option>
                   <option value="manicure">Маникюр</option>
                   <option value="pedicure">Педикюр</option>
                 </select>
@@ -357,6 +553,9 @@
     <div class="container footer-inner">
       <ul class="footer-links">
         <li><a href="#teenused">Услуги</a></li>
+        <li><a href="#galerii">Галерея</a></li>
+        <li><a href="#meist">О салоне</a></li>
+        <li><a href="mave-ru.html">MAVE магазин</a></li>
         <li><a href="#broneeri">Запись</a></li>
         <li><a href="#kontakt">Контакты</a></li>
       </ul>

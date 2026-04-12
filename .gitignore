@@ -12,3 +12,13 @@ Desktop.ini
 # Логи и временные файлы
 *.log
 *.tmp
+
+# Платформа
+node_modules/
+work-crm/node_modules/
+work-crm/.next/
+work-crm/out/
+.env
+data/*.db
+data/*.db-shm
+data/*.db-wal

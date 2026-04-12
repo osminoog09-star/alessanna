@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Broneeri aeg · AlesSanna</title>
+  <link rel="stylesheet" href="./book.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">AlesSanna</a>
+    <p class="tag">Online broneering (Supabase)</p>
+  </header>
+
+  <main class="shell">
+    <p id="config-warn" class="warn" hidden>
+      Lisa <code>public-site/config.js</code> failis oma Supabase URL ja anon võti (vt README).
+    </p>
+
+    <ol class="steps">
+      <li class="step is-active" data-step="1">
+        <h2>1. Teenus</h2>
+        <div id="services-list" class="cards"></div>
+      </li>
+      <li class="step" data-step="2">
+        <h2>2. Meister</h2>
+        <div id="employees-list" class="cards"></div>
+      </li>
+      <li class="step" data-step="3">
+        <h2>3. Aeg</h2>
+        <p class="muted" id="slot-hint"></p>
+        <div id="slots-list" class="slots"></div>
+      </li>
+      <li class="step" data-step="4">
+        <h2>4. Kinnita</h2>
+        <form id="confirm-form" class="form">
+          <label>Nimi <input name="client_name" required /></label>
+          <label>Telefon <input name="client_phone" type="tel" required /></label>
+          <button type="submit">Broneeri</button>
+        </form>
+        <p id="done-msg" class="ok" hidden>Broneering salvestatud.</p>
+      </li>
+    </ol>
+  </main>
+
+  <script src="./config.js"></script>
+  <script type="module" src="./book.js"></script>
+</body>
+</html>

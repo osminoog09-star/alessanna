@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>AlesSanna · Work</title>
+  <link rel="stylesheet" href="app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="view-login" class="qr-login">
+    <div class="qr-login__grid">
+      <div class="qr-login__left">
+        <p class="brand brand--hero">AlesSanna</p>
+        <h1 class="qr-login__title">Secure staff access</h1>
+        <p class="muted qr-login__lead">
+          Töölaua avamiseks skaneerige QR-kood telefoniga. Paroolid ei ole vajalikud — kinnitage identiteet ainult teie meeskonna seadmes.
+        </p>
+        <p class="qr-login__hint muted">Avalikust kodulehest siia ei viidata.</p>
+      </div>
+      <div class="qr-login__right">
+        <div class="qr-login__glow" aria-hidden="true"></div>
+        <div class="qr-login__box">
+          <p class="qr-login__box-label">QR-kood</p>
+          <div id="qr-canvas-host" class="qr-canvas-host"></div>
+          <p class="qr-login__instr">Scan with your phone to login</p>
+          <p class="qr-login__sub muted">Avage AlesSanna töötaja link või kaamera; telefon suunatakse kinnituselehele.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-app" class="layout" hidden>
+    <aside class="sidebar">
+      <p class="brand">AlesSanna</p>
+      <p class="user-line"><span id="user-email"></span> · <span id="user-role"></span></p>
+      <nav class="nav" id="main-nav">
+        <button type="button" data-view="dash" class="nav-btn is-active">Ülevaade</button>
+        <button type="button" data-view="book" class="nav-btn">Broneeringud</button>
+        <button type="button" data-view="svc" class="nav-btn nav-manager">Teenused</button>
+        <button type="button" data-view="emp" class="nav-btn nav-manager">Töötajad</button>
+        <button type="button" data-view="hours" class="nav-btn nav-manager">Lahtiolek</button>
+        <button type="button" data-view="help" class="nav-btn">Abi / KKK</button>
+      </nav>
+      <button type="button" id="btn-logout" class="btn ghost">Logi välja</button>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <h2 id="page-title">Ülevaade</h2>
+        <button type="button" id="help-toggle" class="icon-btn" title="Kiirabi (?)" aria-label="Kiirabi">?</button>
+      </header>
+
+      <section id="page-dash" class="page is-visible">
+        <div class="cards" id="stat-cards"></div>
+        <p class="muted" id="dash-hint"></p>
+      </section>
+
+      <section id="page-book" class="page">
+        <div class="toolbar">
+          <button type="button" id="btn-new-booking" class="btn primary">Uus broneering</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Aeg</th>
+                <th>Klient</th>
+                <th>Teenus</th>
+                <th>Meister</th>
+                <th>Allikas</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="bookings-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-svc" class="page">
+        <p class="muted nav-manager">Hind sentides (€ = sent / 100). Puhver = minutit pärast visiiti.</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nimi</th>
+                <th>Slug</th>
+                <th>Min</th>
+                <th>Puhver</th>
+                <th>Hind (¢)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="services-body"></tbody>
+          </table>
+        </div>
+        <form id="form-service" class="card stack nav-manager">
+          <h3>Uus teenus</h3>
+          <div class="row">
+            <label><span>Slug</span><input name="slug" placeholder="hair-cut" /></label>
+            <label><span>Nimi (ET)</span><input name="name_et" required /></label>
+          </div>
+          <div class="row">
+            <label><span>Kestus min</span><input name="duration_min" type="number" value="60" /></label>
+            <label><span>Puhver min</span><input name="buffer_after_min" type="number" value="10" /></label>
+            <label><span>Hind sentides</span><input name="price_cents" type="number" value="3500" /></label>
+          </div>
+          <button type="submit" class="btn primary">Salvesta teenus</button>
+        </form>
+      </section>
+
+      <section id="page-emp" class="page">
+        <form id="form-employee" class="card stack nav-manager">
+          <h3>Uus töötaja</h3>
+          <div class="row">
+            <label><span>Nimi</span><input name="name" required /></label>
+            <label><span>Slug</span><input name="slug" placeholder="optional" /></label>
+          </div>
+          <div class="row">
+            <label><span>Telefon</span><input name="phone" /></label>
+            <label><span>E-post</span><input name="email" type="email" /></label>
+          </div>
+          <button type="submit" class="btn primary">Lisa</button>
+        </form>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nimi</th>
+                <th>Telefon</th>
+                <th>Aktiivne</th>
+              </tr>
+            </thead>
+            <tbody id="employees-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-hours" class="page">
+        <p class="muted">Nädalapäev: 1 = E … 6 = L. Formaat: avamine/sulgemine minutites keskööst (10:00 = 600).</p>
+        <pre id="hours-json" class="code"></pre>
+        <p class="muted nav-manager">Muudatuste salvestamiseks laiendage API-d või kasutage otse andmebaasi — see vaade on lugemiseks.</p>
+      </section>
+
+      <section id="page-help" class="page">
+        <div id="faq-list" class="faq"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="drawer-help" class="drawer" hidden>
+    <div class="drawer-backdrop" data-close-drawer></div>
+    <div class="drawer-panel">
+      <header class="drawer-head">
+        <h3>Kiirabi</h3>
+        <button type="button" class="icon-btn" data-close-drawer aria-label="Sulge">×</button>
+      </header>
+      <div id="faq-drawer-list" class="faq compact"></div>
+    </div>
+  </div>
+
+  <dialog id="dlg-booking" class="modal">
+    <form id="form-booking-modal" class="stack">
+      <h3>Uus broneering</h3>
+      <input type="hidden" name="booking_id" value="" />
+      <label><span>Meister</span><select name="employeeId" id="modal-employee" required></select></label>
+      <label><span>Teenus</span><select name="serviceId" id="modal-service" required></select></label>
+      <label><span>Kuupäev</span><input name="date" type="date" required /></label>
+      <label><span>Kellaaeg</span><input name="time" placeholder="10:00" required /></label>
+      <label><span>Klient</span><input name="clientName" required /></label>
+      <label><span>Telefon</span><input name="clientPhone" /></label>
+      <label><span>Märkused</span><textarea name="notes" rows="2"></textarea></label>
+      <div class="row end">
+        <button type="button" class="btn ghost" id="modal-booking-cancel">Tühista</button>
+        <button type="submit" class="btn primary">Salvesta</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
