@@ -1,0 +1,8 @@
+node_modules
+work/node_modules
+work-crm/node_modules
+work/dist
+work-crm/.next
+work-crm/out
+data
+.git

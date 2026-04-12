@@ -2,7 +2,7 @@
   "name": "alessanna-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "Alessanna salon: public site + CRM /work + booking API",
+  "description": "Alessanna salon: public static site + CRM (work/) + booking API (local server)",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
