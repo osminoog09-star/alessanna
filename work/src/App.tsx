@@ -56,9 +56,9 @@ export default function App() {
         <Route
           path="employees"
           element={
-            <RequireManage>
+            <RequireAdmin>
               <EmployeesPage />
-            </RequireManage>
+            </RequireAdmin>
           }
         />
         <Route

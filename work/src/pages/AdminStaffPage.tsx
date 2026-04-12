@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 
 /** Row shape for Supabase `public.staff`. */
@@ -11,13 +12,14 @@ export type StaffRow = {
   created_at?: string;
 };
 
-type UiRole = "admin" | "staff";
+type UiRole = "admin" | "manager" | "staff";
 
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
 export function AdminStaffPage() {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -130,8 +132,9 @@ export function AdminStaffPage() {
             onChange={(e) => setRole(e.target.value as UiRole)}
             className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
           >
-            <option value="staff">staff</option>
-            <option value="admin">admin</option>
+            <option value="admin">{t("role.admin")}</option>
+            <option value="manager">{t("role.manager")}</option>
+            <option value="staff">{t("role.staff")}</option>
           </select>
         </div>
         <button type="submit" className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">

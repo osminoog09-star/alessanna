@@ -95,7 +95,7 @@ export function CalendarPage() {
     }
   }, [activeStaffForCalendar, employee, employeeId, isStaffOnly]);
 
-  const canUseCalendar = canManage || hasStaffRole(employee, "employee");
+  const canUseCalendar = canManage || hasStaffRole(employee, "staff");
 
   const filteredBookings = useMemo(() => {
     if (isStaffOnly && employee) {

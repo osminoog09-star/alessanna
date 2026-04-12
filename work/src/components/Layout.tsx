@@ -5,24 +5,37 @@ import { useAuth } from "../context/AuthContext";
 import { normalizeRoles } from "../lib/roles";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
-const navAll = [
+type NavKey = "dashboard" | "calendar" | "bookings" | "employees" | "services" | "analytics" | "adminStaff";
+
+type NavItem = {
+  to: string;
+  key: NavKey;
+  end?: boolean;
+  /** Only admins (staff roster + Admin Staff). */
+  adminOnly?: boolean;
+  /** Admins and managers — not plain `staff`. */
+  managerUp?: boolean;
+};
+
+const navAll: NavItem[] = [
   { to: "/", key: "dashboard", end: true },
   { to: "/calendar", key: "calendar" },
   { to: "/bookings", key: "bookings" },
-  { to: "/employees", key: "employees" },
-  { to: "/services", key: "services" },
-  { to: "/analytics", key: "analytics" },
-  { to: "/admin/staff", key: "adminStaff", requireAdmin: true },
-] as const;
-
-const EMPLOYEE_HIDDEN = new Set(["employees", "services", "analytics"]);
+  { to: "/employees", key: "employees", adminOnly: true },
+  { to: "/services", key: "services", managerUp: true },
+  { to: "/analytics", key: "analytics", managerUp: true },
+  { to: "/admin/staff", key: "adminStaff", adminOnly: true },
+];
 
 export function Layout() {
   const { t, i18n } = useTranslation();
   const { employee, logout, canManage, isStaffOnly, isAdmin } = useAuth();
-  const nav = (isStaffOnly ? navAll.filter((i) => !EMPLOYEE_HIDDEN.has(i.key)) : navAll).filter(
-    (i) => !("requireAdmin" in i && i.requireAdmin && !isAdmin)
-  );
+
+  const nav = navAll.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
+    if (item.managerUp && !canManage) return false;
+    return true;
+  });
 
   useEffect(() => {
     const base = (i18n.language || "ru").split("-")[0];
@@ -73,8 +86,8 @@ export function Layout() {
             {t("nav.logout")}
           </button>
         </div>
-        {!canManage && (
-          <p className="border-t border-zinc-800 p-3 text-xs text-zinc-600">{t("nav.employeeHint")}</p>
+        {isStaffOnly && (
+          <p className="border-t border-zinc-800 p-3 text-xs text-zinc-600">{t("nav.staffHint")}</p>
         )}
       </aside>
       <main className="min-w-0 flex-1 overflow-auto p-6 lg:p-8">

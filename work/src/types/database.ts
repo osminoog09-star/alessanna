@@ -1,6 +1,7 @@
 /** Manual types aligned with supabase/migrations (001 + 002 + 004 roles array). */
 
-export type StaffRole = "admin" | "manager" | "employee";
+/** CRM access roles (stored in DB, e.g. `employees.roles` text[]). */
+export type StaffRole = "admin" | "manager" | "staff";
 
 export type EmployeeRow = {
   id: number;

@@ -6,11 +6,11 @@ import type { EmployeeRow, ServiceRow, EmployeeServiceRow, StaffRole } from "../
 import { useEmployeesDirectoryRealtime } from "../hooks/useSalonRealtime";
 import { hasStaffRole, normalizeEmployeeRow, normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
 
-const ROLE_OPTIONS: StaffRole[] = ["admin", "manager", "employee"];
+const ROLE_OPTIONS: StaffRole[] = ["admin", "manager", "staff"];
 
 export function EmployeesPage() {
   const { t } = useTranslation();
-  const { canManage, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [serverEmployees, setServerEmployees] = useState<EmployeeRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
@@ -40,7 +40,7 @@ export function EmployeesPage() {
   useEmployeesDirectoryRealtime(load);
 
   async function saveRow(em: EmployeeRow) {
-    if (!canManage) return;
+    if (!isAdmin) return;
     const stored = serverEmployees.find((x) => x.id === em.id)?.roles;
     await supabase
       .from("employees")
@@ -58,14 +58,14 @@ export function EmployeesPage() {
   }
 
   async function persistRoles(nextRow: EmployeeRow, storedSnapshot: StaffRole[] | undefined) {
-    if (!canManage) return;
+    if (!isAdmin) return;
     const roles = sanitizeRolesForSave(normalizeRoles(nextRow.roles), isAdmin, storedSnapshot);
     await supabase.from("employees").update({ roles }).eq("id", nextRow.id);
     load();
   }
 
   function toggleRole(em: EmployeeRow, role: StaffRole, checked: boolean) {
-    if (!canManage) return;
+    if (!isAdmin) return;
     if (role === "admin" && !isAdmin) return;
     let next = normalizeRoles(em.roles);
     if (checked) next = [...new Set([...next, role])];
@@ -78,7 +78,7 @@ export function EmployeesPage() {
   }
 
   async function toggleService(employeeId: number, serviceId: number, on: boolean) {
-    if (!canManage) return;
+    if (!isAdmin) return;
     if (on) {
       await supabase.from("employee_services").insert({ employee_id: employeeId, service_id: serviceId });
     } else {
@@ -92,13 +92,13 @@ export function EmployeesPage() {
   }
 
   async function addEmployee() {
-    if (!canManage) return;
+    if (!isAdmin) return;
     await supabase.from("employees").insert({
       name: t("employees.newStaffDefault"),
       phone: "",
       email: null,
       active: true,
-      roles: ["employee"],
+      roles: ["staff"],
       payroll_type: "percent",
       commission: 0,
       fixed_salary: 0,
@@ -111,7 +111,7 @@ export function EmployeesPage() {
   }
 
   async function deleteEmployeePermanently(em: EmployeeRow) {
-    if (!canManage) return;
+    if (!isAdmin) return;
     if (!isAdmin && hasStaffRole(em, "admin")) return;
     if (!window.confirm(t("employees.deleteConfirm", { name: em.name }))) return;
     const { count, error: cErr } = await supabase
@@ -142,7 +142,7 @@ export function EmployeesPage() {
           <h1 className="text-2xl font-semibold text-white">{t("employees.title")}</h1>
           <p className="text-sm text-zinc-500">{t("employees.subtitle")}</p>
         </div>
-        {canManage && (
+        {isAdmin && (
           <button
             type="button"
             onClick={() => void addEmployee()}
@@ -160,7 +160,7 @@ export function EmployeesPage() {
               <label className="block text-xs text-zinc-500">
                 {t("employees.name")}
                 <input
-                  disabled={!canManage}
+                  disabled={!isAdmin}
                   value={em.name}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -173,7 +173,7 @@ export function EmployeesPage() {
               <label className="block text-xs text-zinc-500">
                 {t("employees.phone")}
                 <input
-                  disabled={!canManage}
+                  disabled={!isAdmin}
                   value={em.phone ?? ""}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -186,7 +186,7 @@ export function EmployeesPage() {
               <label className="flex items-center gap-2 text-sm text-zinc-400">
                 <input
                   type="checkbox"
-                  disabled={!canManage}
+                  disabled={!isAdmin}
                   checked={em.active}
                   onChange={(e) => {
                     const active = e.target.checked;
@@ -197,7 +197,7 @@ export function EmployeesPage() {
                 {t("employees.activeBookable")}
               </label>
               <fieldset
-                disabled={!canManage}
+                disabled={!isAdmin}
                 className="md:col-span-2 lg:col-span-3 rounded-lg border border-zinc-800 p-3"
               >
                 <legend className="px-1 text-xs text-zinc-500">{t("employees.accessRoles")}</legend>
@@ -225,7 +225,7 @@ export function EmployeesPage() {
               <label className="block text-xs text-zinc-500">
                 {t("employees.payroll")}
                 <select
-                  disabled={!canManage}
+                  disabled={!isAdmin}
                   value={em.payroll_type}
                   onChange={(e) => {
                     const payroll_type = e.target.value as EmployeeRow["payroll_type"];
@@ -243,7 +243,7 @@ export function EmployeesPage() {
                 {t("employees.commission")}
                 <input
                   type="number"
-                  disabled={!canManage}
+                  disabled={!isAdmin}
                   value={em.commission}
                   onChange={(e) => {
                     const commission = Number(e.target.value);
@@ -257,7 +257,7 @@ export function EmployeesPage() {
                 {t("employees.fixedSalary")}
                 <input
                   type="number"
-                  disabled={!canManage}
+                  disabled={!isAdmin}
                   value={em.fixed_salary}
                   onChange={(e) => {
                     const fixed_salary = Number(e.target.value);
@@ -268,7 +268,7 @@ export function EmployeesPage() {
                 />
               </label>
             </div>
-            {canManage && (
+            {isAdmin && (
               <div className="mt-4 border-t border-zinc-800 pt-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                   {t("employees.skillsServices")}

@@ -42,9 +42,9 @@
     "analytics": "Analüütika",
     "adminStaff": "Admin · personal",
     "logout": "Logi välja",
-    "employeeHint": "Töötaja: esita graafikutaotlused; juht kinnitab."
+    "staffHint": "Töötaja: ainult kalender ja broneeringud. Teenused ja analüütika — juhil."
   },
-  "role": { "admin": "admin", "manager": "juht", "employee": "töötaja" },
+  "role": { "admin": "Admin", "manager": "Juht", "staff": "Töötaja" },
   "dashboard": {
     "title": "Töölaud",
     "subtitle": "Täna ja eesolevad broneeringud.",

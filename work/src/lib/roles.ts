@@ -2,16 +2,26 @@ import type { EmployeeRow, EmployeeServiceRow, ServiceRow, StaffRole } from "../
 
 export type { StaffRole };
 
-const ALLOWED: readonly StaffRole[] = ["admin", "manager", "employee"];
+const ALLOWED: readonly StaffRole[] = ["admin", "manager", "staff"];
+
+/** Map legacy / invalid tokens to canonical roles. */
+function mapRoleToken(x: unknown): StaffRole | null {
+  if (typeof x !== "string") return null;
+  const l = x.toLowerCase().trim();
+  if (l === "viewer" || l === "employee") return "staff";
+  if (l === "admin" || l === "manager" || l === "staff") return l;
+  return null;
+}
 
 export function normalizeRoles(raw: unknown): StaffRole[] {
   if (Array.isArray(raw)) {
-    const out = raw.filter((x): x is StaffRole => typeof x === "string" && (ALLOWED as string[]).includes(x));
+    const out = raw.map(mapRoleToken).filter((x): x is StaffRole => x != null);
     const uniq = [...new Set(out)];
-    return uniq.length ? uniq : ["employee"];
+    return uniq.length ? uniq : ["staff"];
   }
-  if (raw === "admin" || raw === "manager" || raw === "employee") return [raw];
-  return ["employee"];
+  const single = mapRoleToken(raw);
+  if (single) return [single];
+  return ["staff"];
 }
 
 /** Merge stored CRM row (legacy single `role` or Postgres/JSON shapes). */
@@ -29,10 +39,10 @@ export function hasStaffRole(employee: Pick<EmployeeRow, "roles"> | null | undef
   return normalizeRoles(employee.roles).includes(role);
 }
 
-/** Narrow UI: only staff without manager/admin capabilities. */
+/** Logged-in user has only `staff` (no manager/admin caps). */
 export function isStaffOnlyView(roles: StaffRole[] | undefined): boolean {
   const r = normalizeRoles(roles);
-  return r.includes("employee") && !r.includes("manager") && !r.includes("admin");
+  return r.includes("staff") && !r.includes("manager") && !r.includes("admin");
 }
 
 /** Managers cannot add/remove admin; admins can set any combination. */
@@ -43,10 +53,10 @@ export function sanitizeRolesForSave(
 ): StaffRole[] {
   const norm = normalizeRoles(edited);
   const storedNorm = normalizeRoles(storedRoles);
-  if (editorIsAdmin) return norm.length ? norm : ["employee"];
+  if (editorIsAdmin) return norm.length ? norm : ["staff"];
   let out = norm.filter((r) => r !== "admin");
   if (storedNorm.includes("admin")) out = [...new Set([...out, "admin"])];
-  return out.length ? out : ["employee"];
+  return out.length ? out : ["staff"];
 }
 
 /** Staff who may perform `serviceId` for booking/calendar. */

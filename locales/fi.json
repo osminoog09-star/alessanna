@@ -42,9 +42,9 @@
     "analytics": "Analytiikka",
     "adminStaff": "Admin · henkilöstö",
     "logout": "Kirjaudu ulos",
-    "employeeHint": "Työntekijä: lähetä aikataulutoiveet; esihenkilö hyväksyy."
+    "staffHint": "Henkilöstö: vain kalenteri ja varaukset. Palvelut ja analytiikka — esihenkilöllä."
   },
-  "role": { "admin": "ylläpitäjä", "manager": "esihenkilö", "employee": "työntekijä" },
+  "role": { "admin": "Ylläpitäjä", "manager": "Esihenkilö", "staff": "Työntekijä" },
   "dashboard": {
     "title": "Etusivu",
     "subtitle": "Tänään ja tulevat varaukset.",
