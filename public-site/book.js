@@ -1,7 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const url = globalThis.SALON_SUPABASE_URL;
-const key = globalThis.SALON_SUPABASE_ANON_KEY;
+function salonSupabaseCfg() {
+  const sc = globalThis.SUPABASE_CONFIG;
+  let url = sc && String(sc.url || "").trim() ? String(sc.url).trim() : "";
+  let key = sc && String(sc.anonKey || "").trim() ? String(sc.anonKey).trim() : "";
+  try {
+    const im = typeof import.meta !== "undefined" && import.meta.env;
+    if (im) {
+      if (!url) url = String(im.VITE_SUPABASE_URL || "").trim();
+      if (!key) key = String(im.VITE_SUPABASE_ANON_KEY || "").trim();
+    }
+  } catch (_) {}
+  if (!url) url = String(globalThis.SALON_SUPABASE_URL || globalThis.VITE_SUPABASE_URL || "").trim();
+  if (!key) key = String(globalThis.SALON_SUPABASE_ANON_KEY || globalThis.VITE_SUPABASE_ANON_KEY || "").trim();
+  return { url: url.replace(/\/+$/, ""), key };
+}
+
+const { url, key } = salonSupabaseCfg();
 
 const warn = document.getElementById("config-warn");
 const servicesEl = document.getElementById("services-list");

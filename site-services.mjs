@@ -1,15 +1,29 @@
 /**
- * Marketing site: service_listings + category embed (Supabase JS + Realtime).
- * Config: supabase-public-config.js sets SALON_SUPABASE_URL / SALON_SUPABASE_ANON_KEY.
+ * Marketing site: price list from Supabase (service_listings, fallback legacy `services`) + categories.
+ * Config: supabase-public-config.js sets window.SUPABASE_CONFIG { url, anonKey }.
+ * Fallback: import.meta.env (Vite), then SALON_* / VITE_* globals.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const POLL_FALLBACK_MS = 60000;
 
 function cfg() {
-  const url = globalThis.SALON_SUPABASE_URL || globalThis.VITE_SUPABASE_URL;
-  const key = globalThis.SALON_SUPABASE_ANON_KEY || globalThis.VITE_SUPABASE_ANON_KEY;
-  return { url: url ? String(url).replace(/\/+$/, "") : "", key: key || "" };
+  const sc = globalThis.SUPABASE_CONFIG;
+  let url = sc && String(sc.url || "").trim() ? String(sc.url).trim() : "";
+  let key = sc && String(sc.anonKey || "").trim() ? String(sc.anonKey).trim() : "";
+  try {
+    const im = typeof import.meta !== "undefined" && import.meta.env;
+    if (im) {
+      if (!url) url = String(im.VITE_SUPABASE_URL || "").trim();
+      if (!key) key = String(im.VITE_SUPABASE_ANON_KEY || "").trim();
+    }
+  } catch (_) {
+    /* non-bundled module: import.meta.env may be absent */
+  }
+  if (!url) url = String(globalThis.SALON_SUPABASE_URL || globalThis.VITE_SUPABASE_URL || "").trim();
+  if (!key) key = String(globalThis.SALON_SUPABASE_ANON_KEY || globalThis.VITE_SUPABASE_ANON_KEY || "").trim();
+  url = url.replace(/\/+$/, "");
+  return { url, key };
 }
 
 function fmtPrice(p) {
@@ -131,9 +145,30 @@ function render(groups) {
   window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
 }
 
-async function run(client) {
-  const warn = document.getElementById("teenused-config-warn");
-  const { data, error } = await client
+/** Normalize legacy `public.services` (+ optional categories join) to service_listings shape. */
+function mapLegacyServiceRows(raw) {
+  const rows = raw || [];
+  return rows.map(function (r) {
+    const cat =
+      r.categories && r.categories.name != null
+        ? { name: String(r.categories.name).trim() }
+        : r.category && String(r.category).trim()
+          ? { name: String(r.category).trim() }
+          : null;
+    const priceCents = Number(r.price_cents);
+    const price = Number.isFinite(priceCents) ? priceCents / 100 : null;
+    return {
+      id: String(r.id),
+      name: r.name_et != null ? String(r.name_et) : String(r.name || ""),
+      price,
+      duration: r.duration_min != null ? r.duration_min : r.duration,
+      category: cat && cat.name ? cat : null,
+    };
+  });
+}
+
+async function fetchPriceList(client) {
+  const listings = await client
     .from("service_listings")
     .select(
       `
@@ -148,11 +183,42 @@ async function run(client) {
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
+  if (!listings.error) {
+    return { data: listings.data || [], error: null };
+  }
+
+  const legacy = await client
+    .from("services")
+    .select("id,name_et,price_cents,duration_min,active,sort_order,category,categories(name)")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+
+  if (!legacy.error) {
+    return { data: mapLegacyServiceRows(legacy.data), error: null };
+  }
+
+  const legacyNoJoin = await client
+    .from("services")
+    .select("id,name_et,price_cents,duration_min,active,sort_order,category")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+
+  if (!legacyNoJoin.error) {
+    return { data: mapLegacyServiceRows(legacyNoJoin.data), error: null };
+  }
+
+  return { data: null, error: listings.error };
+}
+
+async function run(client) {
+  const warn = document.getElementById("teenused-config-warn");
+  const { data, error } = await fetchPriceList(client);
+
   if (error) {
     if (warn) {
       warn.hidden = false;
       warn.textContent =
-        "Teenuste laadimine ebaõnnestus. Kontrolli Supabase URL / anon võti, RLS ja Realtime (service_listings, service_categories).";
+        "Teenuste laadimine ebaõnnestus. Kontrolli Supabase URL / anon võti (SUPABASE_CONFIG), RLS ja tabelid service_listings või services (+ kategooriad).";
     }
     window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
     return;
@@ -178,6 +244,8 @@ function main() {
     .channel("site-service-catalog")
     .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, refresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "service_categories" }, refresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "services" }, refresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, refresh)
     .subscribe();
 
   setInterval(refresh, POLL_FALLBACK_MS);
