@@ -3,7 +3,7 @@ export type CalendarServiceBlock = {
   id: string;
   appointment_id: string;
   staff_id: string;
-  service_id: number;
+  service_id: string;
   start_time: string;
   end_time: string;
   client_name: string;
@@ -16,11 +16,11 @@ export type SupabaseAppointmentServiceJoinRow = {
   id: string;
   appointment_id: string;
   staff_id: string;
-  service_id: number;
+  service_id: string;
   start_time: string;
   end_time: string;
   appointments: { id: string; status: string; client_name: string; client_phone: string | null } | null;
-  services: { id: number; name_et: string } | null;
+  service_listings: { id: string; name: string } | null;
   staff: { id: string; name: string } | null;
 };
 
@@ -38,7 +38,7 @@ export function mapAppointmentServiceRowsToBlocks(
       start_time: r.start_time,
       end_time: r.end_time,
       client_name: r.appointments?.client_name ?? "",
-      service_name_et: r.services?.name_et ?? "",
+      service_name_et: r.service_listings?.name ?? "",
       staff_name: r.staff?.name ?? "",
       appointment_status: r.appointments?.status ?? "confirmed",
     }));

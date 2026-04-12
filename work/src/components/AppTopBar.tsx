@@ -9,10 +9,18 @@ import { StaffLoginModal } from "./StaffLoginModal";
 type Props = {
   /** Optional: calendar page registers multi-staff quick pick (reception + managers). */
   calendarStaffQuick?: CalendarStaffBarState | null;
+  receptionNavCompact?: boolean;
+  onToggleReceptionNav?: () => void;
+  showReceptionNavToggle?: boolean;
 };
 
 /** Top bar: session role, login/switch, logout to reception, optional staff quick-pick. */
-export function AppTopBar({ calendarStaffQuick }: Props) {
+export function AppTopBar({
+  calendarStaffQuick,
+  receptionNavCompact = false,
+  onToggleReceptionNav,
+  showReceptionNavToggle = false,
+}: Props) {
   const { t } = useTranslation();
   const { isReceptionMode, logout } = useAuth();
   const { effectiveRole, previewRole } = useEffectiveRole();
@@ -55,6 +63,20 @@ export function AppTopBar({ calendarStaffQuick }: Props) {
         )}
 
         <LanguageSwitcher className="shrink-0" variant="compact" />
+
+        {showReceptionNavToggle && onToggleReceptionNav && (
+          <button
+            type="button"
+            onClick={onToggleReceptionNav}
+            className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+              receptionNavCompact
+                ? "border-amber-600/60 bg-amber-950/50 text-amber-100"
+                : "border-zinc-700 text-zinc-400 hover:bg-zinc-900"
+            }`}
+          >
+            {receptionNavCompact ? t("reception.switchToCrmMode") : t("reception.switchToReceptionMode")}
+          </button>
+        )}
 
         <button
           type="button"

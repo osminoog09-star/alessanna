@@ -23,12 +23,8 @@
     { name: "Anne", role: "Manager" },
   ];
 
-  var SEED_SERVICES = [
-    { name: "Lõikus", price: "35 €" },
-    { name: "Värvimine", price: "85 €" },
-    { name: "Maniküür", price: "35 €" },
-    { name: "Pediküür", price: "45 €" },
-  ];
+  /** No bundled catalog — use CRM (Supabase) or add rows in this demo’s admin UI / localStorage. */
+  var SEED_SERVICES = [];
 
   var mock = {
     stats: { bookingsToday: 0, revenueTodayCents: 0, upcoming: 0 },

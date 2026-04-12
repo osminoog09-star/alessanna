@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -16,7 +16,9 @@ type NavKey =
   | "adminServices"
   | "adminSchedule"
   | "adminTimeOff"
-  | "analytics";
+  | "analytics"
+  | "finance"
+  | "clients";
 
 type NavItem = {
   to: string;
@@ -34,7 +36,12 @@ const navAll: NavItem[] = [
   { to: "/admin/schedule", key: "adminSchedule", manageOnly: true },
   { to: "/admin/time-off", key: "adminTimeOff", manageOnly: true },
   { to: "/analytics", key: "analytics", manageOnly: true },
+  { to: "/finance", key: "finance", manageOnly: true },
+  { to: "/clients", key: "clients", manageOnly: true },
 ];
+
+const RECEPTION_NAV_KEYS = new Set<NavKey>(["dashboard", "calendar", "bookings"]);
+const RECEPTION_STORAGE = "crm_reception_nav";
 
 export function Layout() {
   const { t, i18n } = useTranslation();
@@ -42,16 +49,43 @@ export function Layout() {
   const { canManage, previewRole, setPreviewRole, isWorkerOnlyEffective, isReceptionMode } =
     useEffectiveRole();
   const [calendarStaffBar, setCalendarStaffBar] = useState<CalendarStaffBarState | null>(null);
+  const [receptionNavCompact, setReceptionNavCompact] = useState(false);
+
+  useEffect(() => {
+    try {
+      setReceptionNavCompact(localStorage.getItem(RECEPTION_STORAGE) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleReceptionNav = useCallback(() => {
+    setReceptionNavCompact((v) => {
+      const n = !v;
+      try {
+        localStorage.setItem(RECEPTION_STORAGE, n ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return n;
+    });
+  }, []);
 
   const outletContext = useMemo<AppOutletContext>(
     () => ({ setCalendarStaffBar }),
     [setCalendarStaffBar]
   );
 
-  const nav = navAll.filter((item) => {
-    if (item.manageOnly && !canManage) return false;
-    return true;
-  });
+  const nav = useMemo(() => {
+    let n = navAll.filter((item) => {
+      if (item.manageOnly && !canManage) return false;
+      return true;
+    });
+    if (staffMember && canManage && receptionNavCompact) {
+      n = n.filter((item) => RECEPTION_NAV_KEYS.has(item.key));
+    }
+    return n;
+  }, [canManage, staffMember, receptionNavCompact]);
 
   useEffect(() => {
     const base = (i18n.language || "ru").split("-")[0];
@@ -62,7 +96,12 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-black">
-      <AppTopBar calendarStaffQuick={calendarStaffBar} />
+      <AppTopBar
+        calendarStaffQuick={calendarStaffBar}
+        receptionNavCompact={receptionNavCompact}
+        onToggleReceptionNav={toggleReceptionNav}
+        showReceptionNavToggle={Boolean(staffMember && canManage)}
+      />
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950">
           <div className="border-b border-zinc-800 p-4">

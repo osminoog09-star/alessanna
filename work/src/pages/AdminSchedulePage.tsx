@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { useStaffDirectoryRealtime } from "../hooks/useSalonRealtime";
 import type { StaffScheduleRow, StaffTableRow } from "../types/database";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -56,6 +57,8 @@ export function AdminSchedulePage() {
   useEffect(() => {
     void loadStaff();
   }, [loadStaff]);
+
+  useStaffDirectoryRealtime(loadStaff);
 
   useEffect(() => {
     if (staffId) void loadSchedule(staffId);

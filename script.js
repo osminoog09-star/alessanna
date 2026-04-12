@@ -109,24 +109,26 @@
     });
   }
 
-  /* Вкладки: aria-controls у кнопки = id панели; неактивные панели с атрибутом hidden */
-  document.querySelectorAll(".tab-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var targetId = btn.getAttribute("aria-controls");
-      if (!targetId) return;
+  /* Вкладки: переключение только внутри своей <section> (ET + RU + динамический Supabase-mount) */
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".tab-btn");
+    if (!btn) return;
+    var targetId = btn.getAttribute("aria-controls");
+    if (!targetId) return;
+    var section = btn.closest("section");
+    if (!section) return;
 
-      document.querySelectorAll(".tab-btn").forEach(function (b) {
-        b.classList.remove("is-active");
-        b.setAttribute("aria-selected", "false");
-      });
-      btn.classList.add("is-active");
-      btn.setAttribute("aria-selected", "true");
+    section.querySelectorAll(".tab-btn").forEach(function (b) {
+      b.classList.remove("is-active");
+      b.setAttribute("aria-selected", "false");
+    });
+    btn.classList.add("is-active");
+    btn.setAttribute("aria-selected", "true");
 
-      document.querySelectorAll(".tab-panel").forEach(function (panel) {
-        var show = panel.id === targetId;
-        panel.hidden = !show;
-        panel.classList.toggle("is-active", show);
-      });
+    section.querySelectorAll(".tab-panel").forEach(function (panel) {
+      var show = panel.id === targetId;
+      panel.hidden = !show;
+      panel.classList.toggle("is-active", show);
     });
   });
 
@@ -283,8 +285,11 @@
       var set = {};
       for (var i = 0; i < picked.length; i++) {
         var ids = CATEGORY_TO_MASTER_IDS[picked[i].category];
-        if (!ids) continue;
-        for (var j = 0; j < ids.length; j++) set[ids[j]] = true;
+        if (ids && ids.length) {
+          for (var j = 0; j < ids.length; j++) set[ids[j]] = true;
+        } else {
+          for (var k = 0; k < MASTERS_PICK.length; k++) set[MASTERS_PICK[k].id] = true;
+        }
       }
       var out = [];
       for (var id in set) {
@@ -434,7 +439,7 @@
     function togglePick(li) {
       var panel = li.closest(".tab-panel");
       if (!panel || !panel.id) return;
-      var category = PANEL_TO_SERVICE[panel.id];
+      var category = panel.getAttribute("data-pick-category") || PANEL_TO_SERVICE[panel.id];
       if (!category) return;
       var nameSpan = li.querySelector("span:not(.price)");
       var priceEl = li.querySelector(".price");
@@ -458,26 +463,43 @@
       renderList();
     }
 
-    teenused.querySelectorAll(".menu-list li").forEach(function (li) {
-      if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
-      var nameSpan = li.querySelector("span:not(.price)");
-      var priceEl = li.querySelector(".price");
-      if (!nameSpan || !priceEl) return;
-      var panel = li.closest(".tab-panel");
-      if (!panel || !PANEL_TO_SERVICE[panel.id]) return;
-      li.classList.add("menu-pick-row");
-      li.setAttribute("role", "button");
-      li.tabIndex = 0;
-      li.setAttribute("data-pick-key", pickKey(panel.id, nameSpan.textContent.trim()));
-      li.addEventListener("click", function () {
+    function decoratePickRows() {
+      teenused.querySelectorAll(".menu-list li").forEach(function (li) {
+        if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
+        var nameSpan = li.querySelector("span:not(.price)");
+        var priceEl = li.querySelector(".price");
+        if (!nameSpan || !priceEl) return;
+        var panel = li.closest(".tab-panel");
+        if (!panel) return;
+        var cat = panel.getAttribute("data-pick-category") || PANEL_TO_SERVICE[panel.id];
+        if (!cat) return;
+        li.classList.add("menu-pick-row");
+        li.setAttribute("role", "button");
+        li.tabIndex = 0;
+        li.setAttribute("data-pick-key", pickKey(panel.id, nameSpan.textContent.trim()));
+      });
+    }
+
+    decoratePickRows();
+
+    if (!teenused._teenusedPickDelegation) {
+      teenused._teenusedPickDelegation = true;
+      teenused.addEventListener("click", function (e) {
+        var li = e.target.closest(".menu-list li.menu-pick-row");
+        if (!li || !teenused.contains(li)) return;
         togglePick(li);
       });
-      li.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          togglePick(li);
-        }
+      teenused.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        var li = e.target.closest(".menu-list li.menu-pick-row");
+        if (!li || !teenused.contains(li)) return;
+        e.preventDefault();
+        togglePick(li);
       });
+    }
+
+    window.addEventListener("teenused-supabase-ready", function () {
+      decoratePickRows();
     });
 
     function highlightTeam(masterId) {

@@ -56,6 +56,8 @@
     "adminSchedule": "Graafik",
     "adminTimeOff": "Vabad ajad",
     "analytics": "Analüütika",
+    "finance": "Rahandus",
+    "clients": "Kliendid",
     "logout": "Logi välja",
     "workerHint": "Meistri režiim: ainult oma broneeringud ja kalender. Täielik juurdepääs juhil."
   },
@@ -67,7 +69,11 @@
     "loginTitle": "Töötaja sisselogimine",
     "sidebarHint": "Kalender ja broneeringud on saadaval ilma sisselogimata. Logi sisse administraatori jaoks.",
     "dashboardSubtitle": "Ülevaade kõigist broneeringutest. Logi sisse isiklike andmete jaoks.",
-    "quickStaff": "Meister"
+    "quickStaff": "Meister",
+    "enterCompact": "Vastuvõtu režiim",
+    "exitCompact": "Täielik CRM",
+    "switchToReceptionMode": "Vastuvõtu režiim",
+    "switchToCrmMode": "Täielik CRM"
   },
   "preview": {
     "label": "Vaata kui",
@@ -75,13 +81,22 @@
     "banner": "Eelvaade: {{role}}"
   },
   "adminStaff": {
-    "subtitle": "Staff tabel: telefon, nimi, roll, aktiivsus, teenused.",
+    "subtitle": "Staff tabel: telefon, nimi, roll, tasu (% / üür), aktiivsus, teenused.",
+    "phoneNameRequired": "Lisa telefon ja nimi.",
+    "deleteStaffConfirm": "Kustutada töötaja «{{name}}» jäädavalt?",
     "name": "Nimi",
     "active": "Aktiivne",
     "yes": "jah",
     "no": "ei",
     "services": "Teenused",
-    "edit": "Muuda"
+    "edit": "Muuda",
+    "actions": "Tegevused",
+    "deleteShort": "Kustuta",
+    "payModel": "Tasu",
+    "payPercentage": "Protsent",
+    "payRent": "Üür",
+    "percentRate": "% meister",
+    "rentPerDay": "Üür/päev €"
   },
   "adminSchedule": {
     "subtitle": "Nädala graafik (staff_schedule)."
@@ -144,7 +159,43 @@
     "reason": "Põhjus",
     "overlapAppointment": "Kattub broneeringuga.",
     "overlapTimeOff": "Kattub teise blokeeringuga.",
-    "invalidRange": "Sisesta korrektne intervall (lõpp peab olema pärast algust)."
+    "invalidRange": "Sisesta korrektne intervall (lõpp peab olema pärast algust).",
+    "type": "Tüüp",
+    "typeManual": "Käsitsi blokk",
+    "typeDayOff": "Vaba päev",
+    "typeSick": "Haigusleht"
+  },
+  "timeOffType": {
+    "sick_leave": "Haigus",
+    "day_off": "Vaba päev"
+  },
+  "closeDay": {
+    "title": "Sulge päev",
+    "subtitle": "Valitud meistrite jaoks terve päev blokeeritud.",
+    "date": "Kuupäev",
+    "all": "Kõik",
+    "none": "Tühista",
+    "pickStaff": "Vali vähemalt üks töötaja.",
+    "confirm": "Sulge",
+    "invalidDate": "Vigane kuupäev.",
+    "blockReason": "Salong suletud"
+  },
+  "finance": {
+    "title": "Rahandus",
+    "subtitle": "Tulu, meistri osa (%) ja üür tööpäevade järgi.",
+    "month": "Kuu",
+    "revenue": "Tulu",
+    "staffShare": "Meistri osa",
+    "ownerShare": "Salongi jääk",
+    "workDays": "Tööp.",
+    "rentTotal": "Üür × päevad",
+    "hint": "Tööpäevad: päevad broneeringutega (staff_work_days). Protsent kinnitatud tulust."
+  },
+  "clients": {
+    "title": "Kliendid",
+    "subtitle": "Külastuste ajalugu telefoni järgi.",
+    "empty": "Kliente pole — ilmuvad broneeringuga koos telefoniga.",
+    "noVisits": "Külastusi pole."
   },
   "calendar": {
     "title": "Kalender",
@@ -166,7 +217,11 @@
     "to": "Kuni",
     "submitRequest": "Saada taotlus",
     "statusPending": "ootel",
-    "statusApproved": "kinnitatud"
+    "statusApproved": "kinnitatud",
+    "closeDay": "Sulge päev",
+    "sickLeave": "Haigusleht",
+    "sickLeaveConfirm": "Blokeeri tänane päev haigusena?",
+    "sickLeaveReason": "Haigusleht"
   },
   "weekday": {
     "0": "P", "1": "E", "2": "T", "3": "K", "4": "N", "5": "R", "6": "L"
@@ -178,6 +233,7 @@
     "all": "Kõik",
     "staffFilter": "Töötaja",
     "allEmployees": "Kõik töötajad",
+    "allStaff": "Kõik meistrid",
     "hint": "Lohista kaarti ajaks muutmiseks · Tühi lahter — uus broneering",
     "createBookingAria": "Loo broneering kell {{hour}}:00"
   },
@@ -239,7 +295,9 @@
     "title": "Analüütika",
     "subtitle": "Broneeringud ja tulu töötajate kaupa, populaarsed teenused.",
     "revenueByEmployee": "Tulu ja broneeringud töötajate kaupa",
+    "revenueByStaff": "Tulu ja broneeringud meistrite kaupa",
     "colEmployee": "Töötaja",
+    "colStaff": "Meister",
     "colBookings": "Broneeringuid",
     "colRevenue": "Tulu (teenused)",
     "colEarnings": "Arvestatud väljamaksed",
@@ -250,7 +308,8 @@
     "revenueNote": "Tulu veerg: ainult kinnitatud broneeringud. Broneeringute arv: kõik tühistamata.",
     "utilizationTitle": "Koormus (viimased 30 päeva)",
     "utilizationHint": "Teenuste kestuste summa broneeringute järgi (minutid, sh puhver). Ei võrrelda automaatselt graafikuga.",
-    "colBookedMinutes": "Broneeritud, min"
+    "colBookedMinutes": "Broneeritud, min",
+    "colLoadApprox": "Koormus ≈"
   },
   "modal": {
     "newBooking": "Uus broneering",

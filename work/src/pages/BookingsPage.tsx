@@ -10,11 +10,11 @@ type LineRow = {
   id: string;
   appointment_id: string;
   staff_id: string;
-  service_id: number;
+  service_id: string;
   start_time: string;
   end_time: string;
   appointments: { status: string; client_name: string } | null;
-  services: { name_et: string } | null;
+  service_listings: { name: string } | null;
   staff: { name: string } | null;
 };
 
@@ -32,7 +32,7 @@ export function BookingsPage() {
         `
         id, appointment_id, staff_id, service_id, start_time, end_time,
         appointments ( status, client_name ),
-        services ( name_et ),
+        service_listings ( name ),
         staff ( name )
       `
       )
@@ -114,7 +114,7 @@ export function BookingsPage() {
                     </td>
                     <td className="px-4 py-3 text-white">{r.appointments?.client_name ?? t("common.dash")}</td>
                     <td className="px-4 py-3 text-zinc-400">{r.staff?.name ?? t("common.dash")}</td>
-                    <td className="px-4 py-3 text-zinc-400">{r.services?.name_et ?? t("common.dash")}</td>
+                    <td className="px-4 py-3 text-zinc-400">{r.service_listings?.name ?? t("common.dash")}</td>
                     <td className="px-4 py-3 capitalize text-zinc-400">{statusLabel(st)}</td>
                     {canShowCancel && (
                       <td className="px-4 py-3">

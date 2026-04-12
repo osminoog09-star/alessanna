@@ -1,4 +1,4 @@
-import type { Role, ServiceRow, StaffMember, StaffRole, StaffServiceRow } from "../types/database";
+import type { Role, ServiceListingRow, StaffMember, StaffRole, StaffServiceRow } from "../types/database";
 
 export type { Role, StaffRole };
 
@@ -87,7 +87,7 @@ export function sanitizeRolesForSave(
 export function staffEligibleForService(
   staffList: StaffMember[],
   links: StaffServiceRow[],
-  serviceId: number | null
+  serviceId: string | null
 ): StaffMember[] {
   const active = staffList.filter((s) => s.active);
   if (serviceId == null) return active;
@@ -104,7 +104,7 @@ export function staffEligibleForService(
 export function staffCanPerformService(
   links: StaffServiceRow[],
   staffId: string,
-  serviceId: number,
+  serviceId: string,
   staffList?: StaffMember[]
 ): boolean {
   const forSvc = links.filter((l) => l.service_id === serviceId);
@@ -117,12 +117,12 @@ export function staffCanPerformService(
 }
 
 export function servicesEligibleForStaff(
-  services: ServiceRow[],
+  services: ServiceListingRow[],
   links: StaffServiceRow[],
   staffId: string,
   staffRow?: Pick<StaffMember, "roles" | "active"> | null
-): ServiceRow[] {
-  const active = services.filter((s) => s.active);
+): ServiceListingRow[] {
+  const active = services.filter((s) => s.is_active);
   const forSt = links.filter((l) => l.staff_id === staffId);
   if (forSt.length === 0) return active;
   if (

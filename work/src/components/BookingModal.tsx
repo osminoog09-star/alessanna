@@ -1,12 +1,14 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import type { StaffMember, StaffServiceRow, ServiceRow, StaffScheduleRow, StaffTimeOffRow } from "../types/database";
+import type { StaffMember, StaffServiceRow, ServiceListingRow, StaffScheduleRow, StaffTimeOffRow } from "../types/database";
 import { staffEligibleForService, servicesEligibleForStaff } from "../lib/roles";
-import { eurFromCents } from "../lib/format";
+import { eurFromEuroAmount } from "../lib/format";
+import { listingSlotMinutes } from "../lib/serviceListing";
 import { overlapsExistingAppointments } from "../lib/slots";
 import { isIntervalInsideWorkingWindows, overlapsTimeOff, workingMinuteWindowsForDay } from "../lib/salonCalendar";
 import { computeSequentialSegments, type ServiceStaffPick } from "../lib/appointmentChain";
+import { resolveClientIdForVisit } from "../lib/clientLink";
 
 function toLocalDatetimeValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -28,7 +30,7 @@ type Props = {
   initialStart: Date;
   initialStaffId: string;
   staffList: StaffMember[];
-  services: ServiceRow[];
+  services: ServiceListingRow[];
   links?: StaffServiceRow[];
   lockStaff?: boolean;
   variant?: "default" | "pro";
@@ -56,8 +58,8 @@ export function BookingModal({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
-  const [lineServiceIds, setLineServiceIds] = useState<number[]>([]);
-  const [staffByServiceId, setStaffByServiceId] = useState<Record<number, string>>({});
+  const [lineServiceIds, setLineServiceIds] = useState<string[]>([]);
+  const [staffByServiceId, setStaffByServiceId] = useState<Record<string, string>>({});
   const [startStr, setStartStr] = useState(() => toLocalDatetimeValue(initialStart));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -70,7 +72,7 @@ export function BookingModal({
   const eligibleServices = useMemo(() => {
     if (lockStaff)
       return servicesEligibleForStaff(services, links, initialStaffId, initialStaffRow);
-    return services.filter((s) => s.active);
+    return services.filter((s) => s.is_active);
   }, [services, links, lockStaff, initialStaffId, initialStaffRow]);
 
   useEffect(() => {
@@ -95,8 +97,7 @@ export function BookingModal({
         }
       }
       for (const k of Object.keys(next)) {
-        const id = Number(k);
-        if (!lineServiceIds.includes(id)) delete next[id];
+        if (!lineServiceIds.includes(k)) delete next[k];
       }
       return next;
     });
@@ -115,14 +116,14 @@ export function BookingModal({
 
   if (!open) return null;
 
-  function toggleServiceLine(serviceId: number, checked: boolean) {
+  function toggleServiceLine(serviceId: string, checked: boolean) {
     setLineServiceIds((prev) => {
       if (checked) return prev.includes(serviceId) ? prev : [...prev, serviceId];
       return prev.filter((x) => x !== serviceId);
     });
   }
 
-  function removeServiceLine(serviceId: number) {
+  function removeServiceLine(serviceId: string) {
     setLineServiceIds((prev) => prev.filter((x) => x !== serviceId));
   }
 
@@ -214,11 +215,14 @@ export function BookingModal({
       }
     }
 
+    const clientId = await resolveClientIdForVisit(clientName.trim(), clientPhone.trim() || null);
+
     const { data: apRow, error: apErr } = await supabase
       .from("appointments")
       .insert({
         client_name: clientName.trim(),
         client_phone: clientPhone.trim() || null,
+        client_id: clientId,
         status: "confirmed",
         source: "manual",
       })
@@ -241,11 +245,12 @@ export function BookingModal({
     }));
 
     const { error: lineErr } = await supabase.from("appointment_services").insert(lineInserts);
-    setSaving(false);
     if (lineErr) {
+      setSaving(false);
       setError(t("auth.error.rpcFailed", { message: lineErr.message }));
       return;
     }
+    setSaving(false);
     onSaved();
     onClose();
   }
@@ -279,8 +284,7 @@ export function BookingModal({
                     className="mt-1"
                   />
                   <span className="text-sm text-zinc-200">
-                    {s.name_et} · {eurFromCents(s.price_cents)} ({s.duration_min}+{s.buffer_after_min}{" "}
-                    {t("common.min")})
+                    {s.name} · {eurFromEuroAmount(Number(s.price ?? 0))} ({listingSlotMinutes(s)} {t("common.min")})
                   </span>
                 </label>
               ))}
@@ -293,7 +297,7 @@ export function BookingModal({
                     const s = services.find((x) => x.id === id);
                     return (
                       <li key={id} className="flex items-center justify-between text-sm text-zinc-300">
-                        <span>{s?.name_et ?? id}</span>
+                        <span>{s?.name ?? id}</span>
                         <button
                           type="button"
                           className="text-xs text-red-400 hover:text-red-300"
@@ -336,7 +340,7 @@ export function BookingModal({
                 const elig = staffEligibleForService(staffList, links, sid).filter((e) => e.active);
                 return (
                   <div key={sid}>
-                    <label className="text-xs text-zinc-500">{s?.name_et ?? sid}</label>
+                    <label className="text-xs text-zinc-500">{s?.name ?? sid}</label>
                     <select
                       value={staffByServiceId[sid] ?? ""}
                       disabled={lockStaff}
@@ -398,7 +402,7 @@ export function BookingModal({
                       <li key={i}>
                         {seg.start.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })} –{" "}
                         {seg.end.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })} ·{" "}
-                        {s?.name_et} · {st?.name}
+                        {s?.name} · {st?.name}
                       </li>
                     );
                   })}

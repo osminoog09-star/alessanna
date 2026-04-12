@@ -23,7 +23,12 @@ export function useBookingsRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   useEffect(
-    () => subscribeTables("crm-appointments", ["appointments", "appointment_services"], onChangeRef),
+    () =>
+      subscribeTables(
+        "crm-appointments",
+        ["appointments", "appointment_services", "clients"],
+        onChangeRef
+      ),
     []
   );
 }
@@ -41,7 +46,10 @@ export function useCalendarDataRealtime(onChange: () => void) {
           "staff_schedule",
           "staff_time_off",
           "staff_services",
-          "services",
+          "service_listings",
+          "service_categories",
+          "clients",
+          "staff_work_days",
         ],
         onChangeRef
       ),
@@ -54,7 +62,18 @@ export function useAnalyticsRealtime(onChange: () => void) {
   onChangeRef.current = onChange;
   useEffect(
     () =>
-      subscribeTables("crm-analytics", ["appointments", "appointment_services", "services", "staff"], onChangeRef),
+      subscribeTables(
+        "crm-analytics",
+        [
+          "appointments",
+          "appointment_services",
+          "service_listings",
+          "staff",
+          "clients",
+          "staff_work_days",
+        ],
+        onChangeRef
+      ),
     []
   );
 }
@@ -62,11 +81,31 @@ export function useAnalyticsRealtime(onChange: () => void) {
 export function useServicesCatalogRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => subscribeTables("crm-services", ["services"], onChangeRef), []);
+  useEffect(
+    () => subscribeTables("crm-services", ["service_listings", "service_categories"], onChangeRef),
+    []
+  );
 }
 
-export function useEmployeesDirectoryRealtime(onChange: () => void) {
+export function useStaffDirectoryRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   useEffect(() => subscribeTables("crm-staff-dir", ["staff", "staff_services"], onChangeRef), []);
+}
+
+/** @deprecated Use `useStaffDirectoryRealtime`. */
+export const useEmployeesDirectoryRealtime = useStaffDirectoryRealtime;
+
+export function useFinanceRealtime(onChange: () => void) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(
+    () =>
+      subscribeTables(
+        "crm-finance",
+        ["staff", "appointment_services", "appointments", "service_listings", "staff_work_days"],
+        onChangeRef
+      ),
+    []
+  );
 }

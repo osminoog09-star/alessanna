@@ -113,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (rpcError) {
-      console.error(rpcError);
       return { ok: false, errorKey: "auth.error.rpcFailed", message: rpcError.message };
     }
 
@@ -125,19 +124,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let member: StaffMember | null = null;
 
     if (rpcSaysOk) {
-      const { data: user, error } = await supabase
+      const { data: user, error: staffErr } = await supabase
         .from("staff")
         .select("*")
         .eq("phone", cleanPhone)
         .eq("is_active", true)
         .maybeSingle();
 
-      console.log("Clean phone:", cleanPhone);
-      console.log("Fetched user:", user);
-      console.log("Fetch error:", error);
-
-      if (error) {
-        console.error(error);
+      if (staffErr) {
+        return { ok: false, errorKey: "auth.error.rpcFailed", message: staffErr.message };
       }
       if (user && typeof user === "object" && user !== null && "id" in user) {
         member = staffTableRowToMember(user as Record<string, unknown>);

@@ -13,6 +13,8 @@ import { AdminStaffPage } from "./pages/AdminStaffPage";
 import { AdminSchedulePage } from "./pages/AdminSchedulePage";
 import { AdminTimeOffPage } from "./pages/AdminTimeOffPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
+import { FinancePage } from "./pages/FinancePage";
+import { ClientsPage } from "./pages/ClientsPage";
 
 function RequireManage({ children }: { children: React.ReactNode }) {
   const { canManage } = useEffectiveRole();
@@ -83,6 +85,22 @@ export default function App() {
           element={
             <RequireManage>
               <AnalyticsPage />
+            </RequireManage>
+          }
+        />
+        <Route
+          path="finance"
+          element={
+            <RequireManage>
+              <FinancePage />
+            </RequireManage>
+          }
+        />
+        <Route
+          path="clients"
+          element={
+            <RequireManage>
+              <ClientsPage />
             </RequireManage>
           }
         />

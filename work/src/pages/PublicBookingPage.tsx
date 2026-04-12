@@ -7,9 +7,11 @@ import { generateAvailableSlots, formatSlotRange, overlapsExistingAppointments }
 import { normalizeStaffMember, staffEligibleForService } from "../lib/roles";
 import { computeSequentialSegments } from "../lib/appointmentChain";
 import { isIntervalInsideWorkingWindows, overlapsTimeOff, workingMinuteWindowsForDay } from "../lib/salonCalendar";
-import { eurFromCents } from "../lib/format";
+import { eurFromEuroAmount } from "../lib/format";
+import { listingSlotMinutes } from "../lib/serviceListing";
+import { resolveClientIdForVisit } from "../lib/clientLink";
 import type {
-  ServiceRow,
+  ServiceListingRow,
   StaffMember,
   StaffScheduleRow,
   StaffServiceRow,
@@ -22,7 +24,7 @@ type BusyLike = { staff_id: string; start_time: string; end_time: string };
 
 export function PublicBookingPage() {
   const { t, i18n } = useTranslation();
-  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [services, setServices] = useState<ServiceListingRow[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
   const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
@@ -30,8 +32,8 @@ export function PublicBookingPage() {
   const [busyLines, setBusyLines] = useState<BusyLike[]>([]);
 
   const [step, setStep] = useState<Step>(1);
-  const [lineServiceIds, setLineServiceIds] = useState<number[]>([]);
-  const [staffByServiceId, setStaffByServiceId] = useState<Record<number, string>>({});
+  const [lineServiceIds, setLineServiceIds] = useState<string[]>([]);
+  const [staffByServiceId, setStaffByServiceId] = useState<Record<string, string>>({});
 
   const [dayStr, setDayStr] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [clientName, setClientName] = useState("");
@@ -48,13 +50,13 @@ export function PublicBookingPage() {
       return;
     }
     const [sv, st, lk, sc, to] = await Promise.all([
-      supabase.from("services").select("*").eq("active", true).order("sort_order"),
+      supabase.from("service_listings").select("*").eq("is_active", true).order("sort_order"),
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
     ]);
-    if (sv.data) setServices(sv.data as ServiceRow[]);
+    if (sv.data) setServices(sv.data as ServiceListingRow[]);
     if (st.data) {
       setStaff((st.data as Record<string, unknown>[]).map((r) => normalizeStaffMember(r as StaffMember)));
     }
@@ -108,15 +110,14 @@ export function PublicBookingPage() {
         }
       }
       for (const k of Object.keys(next)) {
-        const id = Number(k);
-        if (!lineServiceIds.includes(id)) delete next[id];
+        if (!lineServiceIds.includes(k)) delete next[k];
       }
       return next;
     });
   }, [step, lineServiceIds, staff, links]);
 
   const firstSvc = firstServiceId != null ? services.find((s) => s.id === firstServiceId) : null;
-  const durationMin = firstSvc ? firstSvc.duration_min + firstSvc.buffer_after_min : 60;
+  const durationMin = firstSvc ? listingSlotMinutes(firstSvc) : 60;
 
   const staffScheduleForGen = useMemo(() => {
     if (!firstStaffId) return [];
@@ -152,7 +153,7 @@ export function PublicBookingPage() {
     return computeSequentialSegments(pickedStart, picksOrdered, services);
   }, [pickedStart, picksOrdered, services]);
 
-  function toggleServiceLine(serviceId: number, checked: boolean) {
+  function toggleServiceLine(serviceId: string, checked: boolean) {
     setErr(null);
     setMsg(null);
     setLineServiceIds((prev) => {
@@ -162,7 +163,7 @@ export function PublicBookingPage() {
     setPickedStart(null);
   }
 
-  function removeServiceLine(serviceId: number) {
+  function removeServiceLine(serviceId: string) {
     setErr(null);
     setMsg(null);
     setLineServiceIds((prev) => prev.filter((x) => x !== serviceId));
@@ -250,11 +251,14 @@ export function PublicBookingPage() {
         }
       }
 
+      const clientId = await resolveClientIdForVisit(clientName.trim(), clientPhone.trim() || null);
+
       const { data: apRow, error: apErr } = await supabase
         .from("appointments")
         .insert({
           client_name: clientName.trim(),
           client_phone: clientPhone.trim() || null,
+          client_id: clientId,
           status: "confirmed",
           source: "online",
         })
@@ -339,8 +343,7 @@ export function PublicBookingPage() {
                       className="mt-1"
                     />
                     <span className="text-sm text-zinc-200">
-                      {s.name_et} · {eurFromCents(s.price_cents)} ({s.duration_min}+{s.buffer_after_min}{" "}
-                      {t("common.min")})
+                      {s.name} · {eurFromEuroAmount(Number(s.price ?? 0))} ({listingSlotMinutes(s)} {t("common.min")})
                     </span>
                   </label>
                 ))}
@@ -353,7 +356,7 @@ export function PublicBookingPage() {
                       const s = services.find((x) => x.id === id);
                       return (
                         <li key={id} className="flex items-center justify-between text-sm text-zinc-300">
-                          <span>{s?.name_et ?? id}</span>
+                          <span>{s?.name ?? id}</span>
                           <button
                             type="button"
                             className="text-xs text-red-400 hover:text-red-300"
@@ -389,7 +392,7 @@ export function PublicBookingPage() {
                   const elig = staffEligibleForService(staff, links, sid).filter((e) => e.active);
                   return (
                     <div key={sid}>
-                      <label className="text-xs text-zinc-500">{s?.name_et ?? sid}</label>
+                      <label className="text-xs text-zinc-500">{s?.name ?? sid}</label>
                       <select
                         value={staffByServiceId[sid] ?? ""}
                         onChange={(e) =>
@@ -482,7 +485,7 @@ export function PublicBookingPage() {
                         <li key={i}>
                           {seg.start.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })} –{" "}
                           {seg.end.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })} ·{" "}
-                          {s?.name_et} · {st?.name}
+                          {s?.name} · {st?.name}
                         </li>
                       );
                     })}

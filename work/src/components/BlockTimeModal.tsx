@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import type { StaffMember, StaffTimeOffRow } from "../types/database";
+import type { StaffMember, StaffTimeOffRow, TimeOffType } from "../types/database";
 import { appointmentInterval, intervalsOverlap } from "../lib/slots";
 
 function toLocalDatetimeValue(d: Date): string {
@@ -48,6 +48,7 @@ export function BlockTimeModal({
     toLocalDatetimeValue(new Date(initialStart.getTime() + 60 * 60 * 1000))
   );
   const [reason, setReason] = useState("");
+  const [timeOffType, setTimeOffType] = useState<TimeOffType>("manual_block");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -59,6 +60,7 @@ export function BlockTimeModal({
     setStartStr(toLocalDatetimeValue(initialStart));
     setEndStr(toLocalDatetimeValue(new Date(initialStart.getTime() + 60 * 60 * 1000)));
     setReason("");
+    setTimeOffType("manual_block");
     setError("");
   }, [open, initialStart, initialStaffId]);
 
@@ -104,6 +106,7 @@ export function BlockTimeModal({
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       reason: reason.trim() || null,
+      time_off_type: timeOffType,
     });
     setSaving(false);
     if (insErr) {
@@ -152,6 +155,18 @@ export function BlockTimeModal({
               onChange={(e) => setEndStr(e.target.value)}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
             />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500">{t("blockTimeModal.type")}</label>
+            <select
+              value={timeOffType}
+              onChange={(e) => setTimeOffType(e.target.value as TimeOffType)}
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+            >
+              <option value="manual_block">{t("blockTimeModal.typeManual")}</option>
+              <option value="day_off">{t("blockTimeModal.typeDayOff")}</option>
+              <option value="sick_leave">{t("blockTimeModal.typeSick")}</option>
+            </select>
           </div>
           <div>
             <label className="text-xs text-zinc-500">{t("blockTimeModal.reason")}</label>

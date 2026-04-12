@@ -1,10 +1,11 @@
 import { addMinutes } from "date-fns";
-import type { ServiceRow } from "../types/database";
+import type { ServiceListingRow } from "../types/database";
+import { listingBufferMinutes, listingDurationMinutes } from "./serviceListing";
 
-export type ServiceStaffPick = { serviceId: number; staffId: string };
+export type ServiceStaffPick = { serviceId: string; staffId: string };
 
 export type PlannedSegment = {
-  serviceId: number;
+  serviceId: string;
   staffId: string;
   start: Date;
   end: Date;
@@ -14,15 +15,15 @@ export type PlannedSegment = {
 export function computeSequentialSegments(
   chainStart: Date,
   ordered: ServiceStaffPick[],
-  services: ServiceRow[]
+  listings: ServiceListingRow[]
 ): PlannedSegment[] | null {
   const out: PlannedSegment[] = [];
   let t = chainStart;
   for (const item of ordered) {
-    const svc = services.find((s) => s.id === item.serviceId);
+    const svc = listings.find((s) => s.id === item.serviceId);
     if (!svc) return null;
     const start = t;
-    const end = addMinutes(start, svc.duration_min + svc.buffer_after_min);
+    const end = addMinutes(start, listingDurationMinutes(svc) + listingBufferMinutes(svc));
     out.push({ serviceId: item.serviceId, staffId: item.staffId, start, end });
     t = end;
   }

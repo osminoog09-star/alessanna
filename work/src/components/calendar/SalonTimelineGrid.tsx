@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, type CSSProperties } from "react";
 import { addMinutes, format, isSameDay, parseISO, startOfDay } from "date-fns";
 import { useTranslation } from "react-i18next";
 import type { CalendarServiceBlock } from "../../lib/calendarBlocks";
-import type { ServiceRow, StaffScheduleRow, StaffTimeOffRow } from "../../types/database";
+import type { ServiceListingRow, StaffScheduleRow, StaffTimeOffRow } from "../../types/database";
 import { appointmentInterval } from "../../lib/slots";
 import {
   blockPercentStyle,
@@ -17,8 +17,10 @@ const PX_PER_HOUR = 52;
 type Props = {
   day: Date;
   staffId: string;
+  /** Distinct appointment block color per staff column (day view). */
+  accentHue?: number;
   blocks: CalendarServiceBlock[];
-  services: ServiceRow[];
+  services: ServiceListingRow[];
   schedules: StaffScheduleRow[];
   timeOff: StaffTimeOffRow[];
   startHour?: number;
@@ -36,6 +38,7 @@ type Props = {
 export function SalonTimelineGrid({
   day,
   staffId,
+  accentHue,
   blocks,
   services,
   schedules,
@@ -92,7 +95,7 @@ export function SalonTimelineGrid({
 
   const serviceLabel = useCallback(
     (b: CalendarServiceBlock) =>
-      b.service_name_et || services.find((s) => s.id === b.service_id)?.name_et || t("common.service"),
+      b.service_name_et || services.find((s) => s.id === b.service_id)?.name || t("common.service"),
     [services, t]
   );
 
@@ -181,16 +184,29 @@ export function SalonTimelineGrid({
               const clipStart = iv.start < d0 ? d0 : iv.start;
               const clipEnd = iv.end > d1 ? d1 : iv.end;
               const st = blockPercentStyle(clipStart, clipEnd, day, startHour, endHour);
+              const typ = b.time_off_type ?? "manual_block";
+              const offVisual =
+                typ === "sick_leave"
+                  ? "border-amber-500/45 bg-amber-950/75 text-amber-50"
+                  : typ === "day_off"
+                    ? "border-violet-500/40 bg-violet-950/70 text-violet-50"
+                    : "border-red-500/40 bg-red-950/70 text-red-100";
               return (
                 <div
                   key={b.id}
                   data-calendar-block="timeoff"
-                  className="pointer-events-auto absolute left-1 right-1 z-[5] rounded-md border border-red-500/40 bg-red-950/70 px-1.5 py-1 text-[10px] text-red-100 shadow-sm backdrop-blur-sm"
+                  className={`pointer-events-auto absolute left-1 right-1 z-[5] rounded-md border px-1.5 py-1 text-[10px] shadow-sm backdrop-blur-sm ${offVisual}`}
                   style={{ top: st.top, height: st.height, minHeight: compact ? 18 : 22 }}
                   title={b.reason ?? t("salonCalendar.blocked")}
                 >
-                  <span className="font-medium">{t("salonCalendar.blocked")}</span>
-                  {b.reason && <span className="block truncate text-red-200/80">{b.reason}</span>}
+                  <span className="font-medium">
+                    {typ === "sick_leave"
+                      ? t("timeOffType.sick_leave")
+                      : typ === "day_off"
+                        ? t("timeOffType.day_off")
+                        : t("salonCalendar.blocked")}
+                  </span>
+                  {b.reason && <span className="block truncate opacity-90">{b.reason}</span>}
                 </div>
               );
             })}
@@ -202,23 +218,37 @@ export function SalonTimelineGrid({
               const clipStart = iv.start < d0 ? d0 : iv.start;
               const clipEnd = iv.end > d1 ? d1 : iv.end;
               const st = blockPercentStyle(clipStart, clipEnd, day, startHour, endHour);
+              const hue = accentHue ?? 200;
+              const apptStyle: CSSProperties = {
+                top: st.top,
+                height: st.height,
+                minHeight: compact ? 22 : 28,
+                borderColor: `hsla(${hue}, 65%, 48%, 0.55)`,
+                background: `linear-gradient(135deg, hsla(${hue}, 55%, 38%, 0.42), hsla(${hue}, 45%, 22%, 0.5))`,
+              };
               return (
                 <div
                   key={b.id}
                   data-calendar-block="appointment"
-                  className="pointer-events-auto absolute left-1 right-1 z-[6] flex flex-col justify-center rounded-md border border-sky-500/45 bg-gradient-to-br from-sky-600/35 to-sky-900/40 px-1.5 py-1 text-left shadow-md backdrop-blur-sm"
-                  style={{ top: st.top, height: st.height, minHeight: compact ? 22 : 28 }}
+                  className="pointer-events-auto absolute left-1 right-1 z-[6] flex flex-col justify-center rounded-md border px-1.5 py-1 text-left shadow-md backdrop-blur-sm"
+                  style={apptStyle}
                 >
-                  <p className={`truncate font-semibold text-sky-50 ${compact ? "text-[10px]" : "text-xs"}`}>
+                  <p
+                    className={`truncate font-semibold text-white ${compact ? "text-[10px]" : "text-xs"}`}
+                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
+                  >
                     {b.client_name}
                   </p>
-                  <p className={`truncate text-sky-200/85 ${compact ? "text-[9px]" : "text-[10px]"}`}>
+                  <p
+                    className={`truncate ${compact ? "text-[9px]" : "text-[10px]"}`}
+                    style={{ color: `hsla(${hue}, 80%, 88%, 0.95)` }}
+                  >
                     {serviceLabel(b)}
                   </p>
                   {!compact && b.staff_name && (
-                    <p className="truncate text-[9px] text-sky-400/90">{b.staff_name}</p>
+                    <p className="truncate text-[9px] text-white/75">{b.staff_name}</p>
                   )}
-                  <p className={`text-sky-300/70 ${compact ? "text-[9px]" : "text-[10px]"}`}>
+                  <p className={`text-white/70 ${compact ? "text-[9px]" : "text-[10px]"}`}>
                     {format(clipStart, "HH:mm")} – {format(clipEnd, "HH:mm")}
                   </p>
                   {canDeleteAppointments && onCancelVisit && (

@@ -1,4 +1,4 @@
-/** Types aligned with supabase/migrations (staff, appointments, staff_services, …). */
+/** Types aligned with supabase/migrations (staff, appointment_services, service_listings, …). */
 
 export type Role = "owner" | "admin" | "manager" | "worker";
 /** Same as Role; kept for clarity in staff-member shapes. */
@@ -14,6 +14,8 @@ export type StaffMember = {
   roles: StaffRole[];
 };
 
+export type StaffWorkType = "percentage" | "rent";
+
 /** Raw `staff` row (Supabase). */
 export type StaffTableRow = {
   id: string;
@@ -21,26 +23,29 @@ export type StaffTableRow = {
   name: string;
   role: Role;
   is_active: boolean;
+  work_type?: StaffWorkType | null;
+  percent_rate?: number | null;
+  rent_per_day?: number | null;
   created_at?: string;
 };
 
-export type CategoryRow = {
-  id: number;
+/** `service_categories` — website + CRM. */
+export type ServiceCategoryRow = {
+  id: string;
   name: string;
+  sort_order: number;
   created_at?: string;
 };
 
-export type ServiceRow = {
-  id: number;
-  slug: string | null;
-  name_et: string;
-  name_en: string | null;
-  category: string | null;
-  category_id: number | null;
-  duration_min: number;
+/** `service_listings` — single catalog for CRM, booking, website. */
+export type ServiceListingRow = {
+  id: string;
+  name: string;
+  price: number | null;
+  duration: number | null;
   buffer_after_min: number;
-  price_cents: number;
-  active: boolean;
+  category_id: string | null;
+  is_active: boolean;
   sort_order: number;
   created_at?: string;
 };
@@ -48,6 +53,7 @@ export type ServiceRow = {
 /** Visit header (one client, many lines in `appointment_services`). */
 export type AppointmentRow = {
   id: string;
+  client_id?: string | null;
   client_name: string;
   client_phone: string | null;
   status: "pending" | "confirmed" | "cancelled";
@@ -60,7 +66,7 @@ export type AppointmentRow = {
 export type AppointmentServiceRow = {
   id: string;
   appointment_id: string;
-  service_id: number;
+  service_id: string;
   staff_id: string;
   start_time: string;
   end_time: string;
@@ -74,24 +80,51 @@ export type StaffScheduleRow = {
   end_time: string;
 };
 
+export type TimeOffType = "sick_leave" | "day_off" | "manual_block";
+
 export type StaffTimeOffRow = {
   id: string;
   staff_id: string;
   start_time: string;
   end_time: string;
   reason: string | null;
+  time_off_type?: TimeOffType;
+};
+
+export type ClientRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  created_at?: string;
+};
+
+export type StaffWorkDayRow = {
+  id: string;
+  staff_id: string;
+  date: string;
+  is_working: boolean;
+  created_at?: string;
 };
 
 export type StaffServiceRow = {
   staff_id: string;
-  service_id: number;
+  service_id: string;
 };
 
 export type Database = {
   public: {
     Tables: {
       staff: { Row: StaffTableRow; Insert: Partial<StaffTableRow>; Update: Partial<StaffTableRow> };
-      services: { Row: ServiceRow; Insert: Partial<ServiceRow>; Update: Partial<ServiceRow> };
+      service_listings: {
+        Row: ServiceListingRow;
+        Insert: Partial<ServiceListingRow>;
+        Update: Partial<ServiceListingRow>;
+      };
+      service_categories: {
+        Row: ServiceCategoryRow;
+        Insert: Partial<ServiceCategoryRow>;
+        Update: Partial<ServiceCategoryRow>;
+      };
       staff_services: { Row: StaffServiceRow; Insert: StaffServiceRow; Update: Partial<StaffServiceRow> };
       staff_schedule: { Row: StaffScheduleRow; Insert: Partial<StaffScheduleRow>; Update: Partial<StaffScheduleRow> };
       staff_time_off: { Row: StaffTimeOffRow; Insert: Partial<StaffTimeOffRow>; Update: Partial<StaffTimeOffRow> };
@@ -101,7 +134,12 @@ export type Database = {
         Insert: Partial<AppointmentServiceRow>;
         Update: Partial<AppointmentServiceRow>;
       };
-      categories: { Row: CategoryRow; Insert: Partial<CategoryRow>; Update: Partial<CategoryRow> };
+      clients: { Row: ClientRow; Insert: Partial<ClientRow>; Update: Partial<ClientRow> };
+      staff_work_days: {
+        Row: StaffWorkDayRow;
+        Insert: Partial<StaffWorkDayRow>;
+        Update: Partial<StaffWorkDayRow>;
+      };
     };
     Functions: {
       verify_staff_phone: {

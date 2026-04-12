@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { addDays, format, startOfDay, startOfWeek, endOfWeek } from "date-fns";
+import { addDays, endOfDay, format, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { useAuth } from "../context/AuthContext";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
-import type { ServiceRow, StaffMember, StaffScheduleRow, StaffServiceRow, StaffTimeOffRow } from "../types/database";
+import type { ServiceListingRow, StaffMember, StaffScheduleRow, StaffServiceRow, StaffTimeOffRow } from "../types/database";
 import {
   mapAppointmentServiceRowsToBlocks,
   type CalendarServiceBlock,
@@ -16,7 +16,9 @@ import { normalizeStaffMember } from "../lib/roles";
 import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
 import { BookingModal } from "../components/BookingModal";
 import { BlockTimeModal } from "../components/BlockTimeModal";
+import { CloseDayModal } from "../components/CloseDayModal";
 import { SalonTimelineGrid } from "../components/calendar/SalonTimelineGrid";
+import { staffHueFromId } from "../lib/staffHue";
 import type { AppOutletContext } from "../types/appOutlet";
 
 type View = "day" | "week";
@@ -27,7 +29,7 @@ const GRID_END = 21;
 const APPOINTMENT_LINES_SELECT = `
   id, appointment_id, staff_id, service_id, start_time, end_time,
   appointments ( id, status, client_name, client_phone ),
-  services ( id, name_et ),
+  service_listings ( id, name ),
   staff ( id, name )
 `;
 
@@ -43,11 +45,12 @@ export function CalendarPage() {
   const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
   const [timeOff, setTimeOff] = useState<StaffTimeOffRow[]>([]);
   const [calendarBlocks, setCalendarBlocks] = useState<CalendarServiceBlock[]>([]);
-  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [services, setServices] = useState<ServiceListingRow[]>([]);
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingModal, setBookingModal] = useState<{ start: Date; staffId: string } | null>(null);
   const [blockModal, setBlockModal] = useState<{ start: Date; staffId: string } | null>(null);
+  const [closeDayOpen, setCloseDayOpen] = useState(false);
 
   const load = useCallback(async () => {
     let lineQuery = supabase.from("appointment_services").select(APPOINTMENT_LINES_SELECT);
@@ -59,7 +62,7 @@ export function CalendarPage() {
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
       lineQuery,
-      supabase.from("services").select("*").eq("active", true),
+      supabase.from("service_listings").select("*").eq("is_active", true),
       supabase.from("staff_services").select("*"),
     ]);
     if (st.data) {
@@ -71,7 +74,7 @@ export function CalendarPage() {
       setCalendarBlocks(mapAppointmentServiceRowsToBlocks(lines.data as SupabaseAppointmentServiceJoinRow[]));
     }
     if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
-    if (sv.data) setServices(sv.data as ServiceRow[]);
+    if (sv.data) setServices(sv.data as ServiceListingRow[]);
     setLoading(false);
   }, [isWorkerOnlyEffective, staffMember]);
 
@@ -144,6 +147,26 @@ export function CalendarPage() {
     [load, t]
   );
 
+  const takeSickLeaveToday = useCallback(async () => {
+    if (!staffMember) return;
+    if (!window.confirm(t("calendar.sickLeaveConfirm"))) return;
+    const day = startOfDay(new Date());
+    const { error } = await supabase.from("staff_time_off").insert({
+      staff_id: staffMember.id,
+      start_time: day.toISOString(),
+      end_time: endOfDay(day).toISOString(),
+      reason: t("calendar.sickLeaveReason"),
+      time_off_type: "sick_leave",
+    });
+    if (error) {
+      window.alert(t("auth.error.rpcFailed", { message: error.message }));
+      return;
+    }
+    void load();
+  }, [staffMember, load, t]);
+
+  const showMultiStaffDay = view === "day" && !isWorkerOnlyEffective && rosterStaff.length > 0;
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -193,6 +216,24 @@ export function CalendarPage() {
           >
             →
           </button>
+          {canManage && !isWorkerOnlyEffective && (
+            <button
+              type="button"
+              onClick={() => setCloseDayOpen(true)}
+              className="rounded-lg border border-amber-700/60 bg-amber-950/40 px-3 py-1.5 text-sm text-amber-100 hover:bg-amber-950/60"
+            >
+              {t("calendar.closeDay")}
+            </button>
+          )}
+          {isWorkerOnlyEffective && staffMember && (
+            <button
+              type="button"
+              onClick={() => void takeSickLeaveToday()}
+              className="rounded-lg border border-rose-800/60 bg-rose-950/30 px-3 py-1.5 text-sm text-rose-100 hover:bg-rose-950/50"
+            >
+              {t("calendar.sickLeave")}
+            </button>
+          )}
         </div>
       </header>
 
@@ -234,12 +275,38 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {loading || staffId == null ? (
+      {loading || (!showMultiStaffDay && staffId == null) ? (
         <p className="text-zinc-500">{t("common.loading")}</p>
+      ) : showMultiStaffDay ? (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {rosterStaff.map((em) => (
+            <div key={em.id} className="min-w-[min(100%,280px)] w-full max-w-sm shrink-0">
+              <p className="mb-1 text-center text-xs font-medium text-zinc-400">{em.name}</p>
+              <SalonTimelineGrid
+                day={startOfDay(cursor)}
+                staffId={em.id}
+                accentHue={staffHueFromId(em.id)}
+                blocks={filteredBlocks}
+                services={services}
+                schedules={schedules}
+                timeOff={timeOff}
+                startHour={GRID_START}
+                endHour={GRID_END}
+                onEmptyClick={(start, sid) => setBookingModal({ start, staffId: sid })}
+                onBlockTime={(start, sid) => setBlockModal({ start, staffId: sid })}
+                canCreate={canUseCalendar}
+                canBlockTime={canBlockTime}
+                canDeleteAppointments={canManage || isReceptionMode}
+                onCancelVisit={cancelAppointment}
+              />
+            </div>
+          ))}
+        </div>
       ) : view === "day" ? (
         <SalonTimelineGrid
           day={startOfDay(cursor)}
           staffId={staffId}
+          accentHue={staffHueFromId(staffId)}
           blocks={filteredBlocks}
           services={services}
           schedules={schedules}
@@ -260,6 +327,7 @@ export function CalendarPage() {
               key={day.toISOString()}
               day={day}
               staffId={staffId}
+              accentHue={staffHueFromId(staffId)}
               blocks={filteredBlocks}
               services={services}
               schedules={schedules}
@@ -306,6 +374,16 @@ export function CalendarPage() {
           lockStaff={isWorkerOnlyEffective}
           busyLines={filteredBlocks}
           timeOffRows={timeOff}
+        />
+      )}
+
+      {closeDayOpen && (
+        <CloseDayModal
+          open
+          onClose={() => setCloseDayOpen(false)}
+          onSaved={load}
+          staffList={staff}
+          initialDay={cursor}
         />
       )}
     </div>
