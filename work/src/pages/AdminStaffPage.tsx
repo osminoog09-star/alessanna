@@ -1,28 +1,24 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { hasStaffRole, normalizeEmployeeRow } from "../lib/roles";
-import type { EmployeeRow } from "../types/database";
 
-/**
- * Simple admin UI for staff directory.
- * Supabase table: `employees` (this is what `verify_staff_phone` and the CRM use — there is no separate `staff` table).
- */
+/** Row shape for Supabase `public.staff`. */
+export type StaffRow = {
+  id: number;
+  phone: string | null;
+  name: string;
+  role: string;
+  is_active: boolean;
+  created_at?: string;
+};
+
 type UiRole = "admin" | "staff";
-
-function toUiRole(row: EmployeeRow): UiRole {
-  return hasStaffRole(row, "admin") ? "admin" : "staff";
-}
-
-function toDbRoles(ui: UiRole): string[] {
-  return ui === "admin" ? ["admin", "employee"] : ["employee"];
-}
 
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
 export function AdminStaffPage() {
-  const [rows, setRows] = useState<EmployeeRow[]>([]);
+  const [rows, setRows] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
@@ -31,13 +27,17 @@ export function AdminStaffPage() {
 
   const load = useCallback(async () => {
     setErr(null);
-    const { data, error } = await supabase.from("employees").select("*").order("name");
+    const { data, error } = await supabase
+      .from("staff")
+      .select("*")
+      .order("created_at", { ascending: false });
+    console.log("STAFF LIST:", data);
     if (error) {
       setErr(error.message);
       setLoading(false);
       return;
     }
-    setRows((data as EmployeeRow[]).map(normalizeEmployeeRow));
+    setRows((data ?? []) as StaffRow[]);
     setLoading(false);
   }, []);
 
@@ -48,21 +48,17 @@ export function AdminStaffPage() {
   async function onAdd(e: FormEvent) {
     e.preventDefault();
     setErr(null);
-    const d = digitsOnly(phone);
+    const cleanPhone = digitsOnly(phone);
     const n = name.trim();
-    if (!d || !n) {
+    if (!cleanPhone || !n) {
       setErr("Phone and name are required.");
       return;
     }
-    const { error } = await supabase.from("employees").insert({
+    const { error } = await supabase.from("staff").insert({
+      phone: cleanPhone,
       name: n,
-      phone: d,
-      email: null,
-      active: true,
-      roles: toDbRoles(role),
-      payroll_type: "percent",
-      commission: 0,
-      fixed_salary: 0,
+      role,
+      is_active: true,
     });
     if (error) {
       setErr(error.message);
@@ -74,9 +70,9 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function toggleActive(row: EmployeeRow) {
+  async function toggleActive(row: StaffRow) {
     setErr(null);
-    const { error } = await supabase.from("employees").update({ active: !row.active }).eq("id", row.id);
+    const { error } = await supabase.from("staff").update({ is_active: !row.is_active }).eq("id", row.id);
     if (error) {
       setErr(error.message);
       return;
@@ -84,24 +80,10 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function remove(row: EmployeeRow) {
+  async function remove(row: StaffRow) {
     setErr(null);
     if (!window.confirm(`Delete ${row.name} permanently?`)) return;
-    const { count, error: cErr } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("employee_id", row.id);
-    if (cErr) {
-      setErr(cErr.message);
-      return;
-    }
-    if ((count ?? 0) > 0) {
-      setErr("Cannot delete: this person has bookings. Deactivate instead.");
-      return;
-    }
-    await supabase.from("employee_services").delete().eq("employee_id", row.id);
-    await supabase.from("schedules").delete().eq("employee_id", row.id);
-    const { error } = await supabase.from("employees").delete().eq("id", row.id);
+    const { error } = await supabase.from("staff").delete().eq("id", row.id);
     if (error) {
       setErr(error.message);
       return;
@@ -116,7 +98,7 @@ export function AdminStaffPage() {
       <header>
         <h1 className="text-xl font-semibold text-white">Admin · Staff</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Manage people in the <code className="text-zinc-400">employees</code> table (used for CRM login).
+          Manage people in the <code className="text-zinc-400">staff</code> table.
         </p>
       </header>
 
@@ -173,15 +155,15 @@ export function AdminStaffPage() {
               <tr key={r.id} className="border-b border-zinc-800/80">
                 <td className="px-3 py-2 font-mono text-zinc-300">{r.phone ?? "—"}</td>
                 <td className="px-3 py-2">{r.name}</td>
-                <td className="px-3 py-2">{toUiRole(r)}</td>
-                <td className="px-3 py-2">{r.active ? "true" : "false"}</td>
+                <td className="px-3 py-2">{r.role ?? "—"}</td>
+                <td className="px-3 py-2">{r.is_active ? "true" : "false"}</td>
                 <td className="space-x-2 px-3 py-2">
                   <button
                     type="button"
                     className="text-sky-400 underline"
                     onClick={() => void toggleActive(r)}
                   >
-                    {r.active ? "deactivate" : "activate"}
+                    {r.is_active ? "deactivate" : "activate"}
                   </button>
                   <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
                     delete
