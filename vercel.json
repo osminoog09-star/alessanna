@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "true",
-  "buildCommand": "node scripts/vercel-static-bundle.mjs",
-  "outputDirectory": "vercel-static-out"
+  "buildCommand": "cd work && npm install && npm run build",
+  "outputDirectory": "work/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
