@@ -3,11 +3,13 @@
 import { Suspense, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+type ConfirmPhase = "form" | "loading" | "done" | "err";
+
 function ConfirmContent() {
   const params = useSearchParams();
   const token = params.get("token");
   const [phone, setPhone] = useState("");
-  const [phase, setPhase] = useState<"form" | "loading" | "done" | "err">("form");
+  const [phase, setPhase] = useState<ConfirmPhase>("form");
   const [message, setMessage] = useState("");
 
   const submit = useCallback(async () => {
@@ -79,8 +81,8 @@ function ConfirmContent() {
             />
           </label>
           {message && <p className="error" style={{ marginTop: "0.75rem" }}>{message}</p>}
-          <button type="submit" className="btn btn--primary" style={{ marginTop: "1rem", width: "100%" }} disabled={phase === "loading"}>
-            {phase === "loading" ? "Checking…" : "Confirm"}
+          <button type="submit" className="btn btn--primary" style={{ marginTop: "1rem", width: "100%" }}>
+            Confirm
           </button>
         </form>
       )}

@@ -67,6 +67,16 @@ Without the server (static files only), behaviour falls back to **mailto**.
 - Google OAuth + Calendar push; Telegram/WhatsApp send on booking events.
 - Payments, analytics, loyalty (new modules + tables).
 
+## Deployment (production)
+
+- **GitHub Pages** — hosts the **public static site** at the **repository root** (`index.html`, `styles.css`, `script.js`, assets). Enable Pages on the `main` branch from `/` (root). A **`.nojekyll`** file is included so Jekyll does not strip files that start with `_`.
+- **Vercel** — deploy **only** the **Vite CRM** in **`work/`**:
+  1. Import this repo in Vercel.
+  2. Set **Root Directory** to **`work`** (required).
+  3. Framework preset **Vite**; **Build Command** `npm run build`; **Output Directory** `dist` (matches `work/vercel.json`).
+  Do **not** attach Vercel to the repo root without that setting — the root is the static marketing site, not the SPA build.
+- **`work-crm/`** — optional **Next.js** prototype / alternate stack; it is **not** the production CRM on Vercel. Production CRM is **`work/`**.
+
 ## Security
 
 - Do not expose the repo root with `express.static` — only whitelisted public files are served from Node (see `server/index.js`).
