@@ -18,8 +18,10 @@
     "title": "Töötaja sisselogimine",
     "subtitle": "Kasuta profiilis olevat telefoninumbrit.",
     "phone": "Telefon",
-    "placeholder": "Nt 55686845",
+    "placeholder": "Sisestage telefoninumber",
     "hint": "Sisesta number ilma riigikoodita",
+    "digitLengthHint": "Ainult numbrid, 8–10 märki",
+    "phoneInvalidLength": "Sisesta 8–10 numbrit (ilma riigikoodita).",
     "button": "Logi sisse",
     "signingIn": "Sisselogimine…",
     "configLine": "Seadista VITE_SUPABASE_URL ja VITE_SUPABASE_ANON_KEY failis work/.env."
@@ -34,6 +36,17 @@
       "accessDenied": "Juurdepääs keelatud"
     }
   },
+  "booking": {
+    "stepLabel": "Samm {{current}} / {{total}}",
+    "step1Title": "Vali üks või mitu teenust (järjekord säilib).",
+    "step2Title": "Määra iga teenuse meister.",
+    "step3Title": "Algusaeg ja kliendi andmed.",
+    "next": "Edasi",
+    "back": "Tagasi",
+    "selectedServices": "Valitud",
+    "timeChain": "Sinu visiit (järjestikku)",
+    "pickAtLeastOneService": "Vali vähemalt üks teenus."
+  },
   "nav": {
     "dashboard": "Töölaud",
     "calendar": "Kalender",
@@ -45,6 +58,16 @@
     "analytics": "Analüütika",
     "logout": "Logi välja",
     "workerHint": "Meistri režiim: ainult oma broneeringud ja kalender. Täielik juurdepääs juhil."
+  },
+  "reception": {
+    "sessionRole": "Seanss",
+    "loginSwitch": "Sisselogimine / kasutaja vahetus",
+    "switchUser": "Vaheta kasutajat",
+    "logoutToReception": "Välju vastuvõttu",
+    "loginTitle": "Töötaja sisselogimine",
+    "sidebarHint": "Kalender ja broneeringud on saadaval ilma sisselogimata. Logi sisse administraatori jaoks.",
+    "dashboardSubtitle": "Ülevaade kõigist broneeringutest. Logi sisse isiklike andmete jaoks.",
+    "quickStaff": "Meister"
   },
   "preview": {
     "label": "Vaata kui",
@@ -73,11 +96,12 @@
   },
   "publicBook": {
     "title": "Online broneering",
-    "subtitle": "Vali teenus, meister ja aeg.",
+    "subtitle": "Teenused, meister iga teenuse jaoks, siis aeg.",
     "staffLogin": "Personali sisselogimine",
     "pickStaff": "Vali meister",
     "day": "Kuupäev",
     "slots": "Vabad ajad",
+    "slotsFirstServiceHint": "Ajad põhinevad esimesel teenusel ja selle meistril; järgmised teenused järjest.",
     "noSlots": "Sellel päeval vabu aegu pole.",
     "confirm": "Broneeri",
     "fillAll": "Lisa nimi ja vali aeg.",
@@ -85,6 +109,8 @@
   },
   "role": {
     "label": "Roll",
+    "reception": "Vastuvõtt",
+    "owner": "Omanik",
     "admin": "Admin",
     "manager": "Juht",
     "worker": "Meister",
@@ -101,9 +127,28 @@
     "upcomingSection": "Tulekul",
     "noUpcoming": "Eesolevaid broneeringuid pole."
   },
+  "salonCalendar": {
+    "noSchedule": "Sellel päeval vahetust pole",
+    "blocked": "Hõivatud",
+    "blockTime": "Blokeeri aeg",
+    "cancelBooking": "Tühista broneering",
+    "cancelAppointmentConfirm": "Tühista see broneering?",
+    "legendAppointments": "Broneeringud",
+    "legendBlocked": "Blokeering",
+    "legendFree": "Vaba"
+  },
+  "blockTimeModal": {
+    "title": "Aja blokeering",
+    "start": "Algus",
+    "end": "Lõpp",
+    "reason": "Põhjus",
+    "overlapAppointment": "Kattub broneeringuga.",
+    "overlapTimeOff": "Kattub teise blokeeringuga.",
+    "invalidRange": "Sisesta korrektne intervall (lõpp peab olema pärast algust)."
+  },
   "calendar": {
     "title": "Kalender",
-    "subtitle": "Päev: ruudustik, lohistamine, filtrid. Nädal: ajad.",
+    "subtitle": "Päev ja nädal: ajatelg 9–21, broneeringud ja blokid.",
     "day": "Päev",
     "week": "Nädal",
     "today": "Täna",
@@ -147,7 +192,8 @@
     "cancel": "Tühista",
     "statusPending": "ootel",
     "statusConfirmed": "kinnitatud",
-    "statusCancelled": "tühistatud"
+    "statusCancelled": "tühistatud",
+    "cancelVisit": "Tühista kogu visiit"
   },
   "employees": {
     "title": "Töötajad",
@@ -208,6 +254,7 @@
   },
   "modal": {
     "newBooking": "Uus broneering",
+    "startTime": "Algus",
     "client": "Klient",
     "phone": "Telefon",
     "staff": "Töötaja",
@@ -215,6 +262,8 @@
     "pickService": "Vali teenus.",
     "pickStaff": "Selle teenuse jaoks pole meistreid. Lisa oskused töötajate lehel.",
     "overlap": "See aeg pole selle töötaja jaoks enam vaba. Värskenda ja vali teine aeg.",
+    "outsideWorkingHours": "Intervall jääb väljapoole graafiku tööaega.",
+    "timeOffOverlap": "Sel ajal on juba kättesaamatuse blokk.",
     "fillAll": "Täida kõik väljad."
   },
   "site": {

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { filterStaffLoginPhoneInput, isValidStaffLoginPhoneDigits } from "../lib/staffLoginPhone";
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -17,6 +18,11 @@ export function LoginPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    const digits = filterStaffLoginPhoneInput(phone);
+    if (!isValidStaffLoginPhoneDigits(digits)) {
+      setError(t("login.phoneInvalidLength"));
+      return;
+    }
     setPending(true);
     const r = await login(phone);
     setPending(false);
@@ -62,14 +68,18 @@ export function LoginPage() {
               inputMode="numeric"
               autoComplete="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(filterStaffLoginPhoneInput(e.target.value))}
+              maxLength={10}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
               placeholder={t("login.placeholder")}
-              aria-describedby="phone-hint"
+              aria-describedby="phone-hint phone-digit-rule"
               required
             />
             <p id="phone-hint" className="mt-1 text-xs text-zinc-600">
               {t("login.hint")}
+            </p>
+            <p id="phone-digit-rule" className="mt-0.5 text-xs text-zinc-600">
+              {t("login.digitLengthHint")}
             </p>
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}

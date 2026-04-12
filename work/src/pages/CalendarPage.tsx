@@ -1,59 +1,64 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { addDays, format, startOfDay, startOfWeek, endOfWeek, isSameDay, parseISO } from "date-fns";
+import { useOutletContext } from "react-router-dom";
+import { addDays, format, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { useAuth } from "../context/AuthContext";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
+import type { ServiceRow, StaffMember, StaffScheduleRow, StaffServiceRow, StaffTimeOffRow } from "../types/database";
 import {
-  buildSlotsForDay,
-  appointmentsForStaffOnDay,
-  formatSlotRange,
-  type Slot,
-} from "../lib/slots";
-import type {
-  AppointmentRow,
-  ServiceRow,
-  StaffMember,
-  StaffScheduleRow,
-  StaffServiceRow,
-  StaffTimeOffRow,
-} from "../types/database";
-import { staffEligibleForService, hasStaffRole, normalizeStaffMember } from "../lib/roles";
+  mapAppointmentServiceRowsToBlocks,
+  type CalendarServiceBlock,
+  type SupabaseAppointmentServiceJoinRow,
+} from "../lib/calendarBlocks";
+import { normalizeStaffMember } from "../lib/roles";
 import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
 import { BookingModal } from "../components/BookingModal";
-import { ProCalendar } from "../components/calendar/ProCalendar";
+import { BlockTimeModal } from "../components/BlockTimeModal";
+import { SalonTimelineGrid } from "../components/calendar/SalonTimelineGrid";
+import type { AppOutletContext } from "../types/appOutlet";
 
 type View = "day" | "week";
 
+const GRID_START = 9;
+const GRID_END = 21;
+
+const APPOINTMENT_LINES_SELECT = `
+  id, appointment_id, staff_id, service_id, start_time, end_time,
+  appointments ( id, status, client_name, client_phone ),
+  services ( id, name_et ),
+  staff ( id, name )
+`;
+
 export function CalendarPage() {
   const { t } = useTranslation();
-  const { staffMember } = useAuth();
+  const { staffMember, isReceptionMode } = useAuth();
   const { canManage, isWorkerOnlyEffective } = useEffectiveRole();
+  const { setCalendarStaffBar } = useOutletContext<Partial<AppOutletContext>>() ?? {};
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [staffId, setStaffId] = useState<string | null>(null);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
   const [timeOff, setTimeOff] = useState<StaffTimeOffRow[]>([]);
-  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [calendarBlocks, setCalendarBlocks] = useState<CalendarServiceBlock[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
-  const [calendarServiceId, setCalendarServiceId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<{ start: Date; staffId: string } | null>(null);
-  const [durationMin, setDurationMin] = useState(60);
+  const [bookingModal, setBookingModal] = useState<{ start: Date; staffId: string } | null>(null);
+  const [blockModal, setBlockModal] = useState<{ start: Date; staffId: string } | null>(null);
 
   const load = useCallback(async () => {
-    let apQuery = supabase.from("appointments").select("*").neq("status", "cancelled");
+    let lineQuery = supabase.from("appointment_services").select(APPOINTMENT_LINES_SELECT);
     if (isWorkerOnlyEffective && staffMember) {
-      apQuery = apQuery.eq("staff_id", staffMember.id);
+      lineQuery = lineQuery.eq("staff_id", staffMember.id);
     }
-    const [st, sch, to, ap, sv, ss] = await Promise.all([
+    const [st, sch, to, lines, sv, ss] = await Promise.all([
       supabase.from("staff").select("*").order("name"),
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
-      apQuery,
+      lineQuery,
       supabase.from("services").select("*").eq("active", true),
       supabase.from("staff_services").select("*"),
     ]);
@@ -62,7 +67,9 @@ export function CalendarPage() {
     }
     if (sch.data) setSchedules(sch.data as StaffScheduleRow[]);
     if (to.data) setTimeOff(to.data as StaffTimeOffRow[]);
-    if (ap.data) setAppointments(ap.data as AppointmentRow[]);
+    if (lines.data) {
+      setCalendarBlocks(mapAppointmentServiceRowsToBlocks(lines.data as SupabaseAppointmentServiceJoinRow[]));
+    }
     if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
     if (sv.data) setServices(sv.data as ServiceRow[]);
     setLoading(false);
@@ -74,109 +81,68 @@ export function CalendarPage() {
 
   useCalendarDataRealtime(load);
 
-  useEffect(() => {
-    if (calendarServiceId == null && services.length > 0) {
-      setCalendarServiceId(services[0].id);
-    }
-  }, [services, calendarServiceId]);
-
-  useEffect(() => {
-    const s = services.find((x) => x.id === calendarServiceId);
-    if (s) setDurationMin(s.duration_min);
-  }, [calendarServiceId, services]);
-
-  const staffForCalendar = useMemo(
-    () => staffEligibleForService(staff, staffServiceLinks, calendarServiceId),
-    [staff, staffServiceLinks, calendarServiceId]
-  );
-
-  const activeStaffForCalendar = useMemo(
-    () => staffForCalendar.filter((e) => e.active),
-    [staffForCalendar]
-  );
-
-  const dayViewStaff = useMemo(() => {
+  const rosterStaff = useMemo(() => {
     if (isWorkerOnlyEffective && staffMember) {
-      const self = staff.filter((e) => e.id === staffMember.id && e.active);
-      return self.length ? self : staff.filter((e) => e.id === staffMember.id);
+      const self = staff.find((e) => e.id === staffMember.id);
+      return self ? [self] : [];
     }
-    return staffForCalendar;
-  }, [isWorkerOnlyEffective, staffMember, staff, staffForCalendar]);
+    return [...staff].filter((e) => e.active).sort((a, b) => a.name.localeCompare(b.name));
+  }, [staff, staffMember, isWorkerOnlyEffective]);
 
   useEffect(() => {
+    if (!rosterStaff.length) return;
     if (isWorkerOnlyEffective && staffMember) {
       setStaffId(staffMember.id);
       return;
     }
-    if (!activeStaffForCalendar.length) return;
-    const selfInRoster =
-      staffMember &&
-      (hasStaffRole(staffMember, "manager") || hasStaffRole(staffMember, "admin")) &&
-      activeStaffForCalendar.some((e) => e.id === staffMember.id);
-    if (selfInRoster && (staffId == null || !activeStaffForCalendar.some((e) => e.id === staffId))) {
-      setStaffId(staffMember!.id);
+    if (staffId == null || !rosterStaff.some((e) => e.id === staffId)) {
+      setStaffId(rosterStaff[0].id);
+    }
+  }, [rosterStaff, staffId, staffMember, isWorkerOnlyEffective]);
+
+  useEffect(() => {
+    if (!setCalendarStaffBar) return;
+    if (staffId == null || rosterStaff.length < 2) {
+      setCalendarStaffBar(null);
       return;
     }
-    if (staffId == null || !activeStaffForCalendar.some((e) => e.id === staffId)) {
-      setStaffId(activeStaffForCalendar[0].id);
-    }
-  }, [activeStaffForCalendar, staffMember, staffId, isWorkerOnlyEffective]);
+    setCalendarStaffBar({
+      value: staffId,
+      onChange: (id) => setStaffId(id),
+      options: rosterStaff.map((e) => ({ id: e.id, name: e.name })),
+    });
+    return () => setCalendarStaffBar(null);
+  }, [staffId, rosterStaff, setCalendarStaffBar]);
 
-  const canUseCalendar = staffMember ? effectiveCanWorkCalendar(staffMember.roles) : false;
+  const canUseCalendar =
+    isReceptionMode || (staffMember != null && effectiveCanWorkCalendar(staffMember.roles));
 
-  const filteredAppointments = useMemo(() => {
+  const canBlockTime =
+    !isReceptionMode && staffMember != null && effectiveCanWorkCalendar(staffMember.roles);
+
+  const filteredBlocks = useMemo(() => {
     if (isWorkerOnlyEffective && staffMember) {
-      return appointments.filter((b) => b.staff_id === staffMember.id);
+      return calendarBlocks.filter((b) => b.staff_id === staffMember.id);
     }
-    return appointments;
-  }, [appointments, staffMember, isWorkerOnlyEffective]);
+    return calendarBlocks;
+  }, [calendarBlocks, staffMember, isWorkerOnlyEffective]);
 
   const weekStart = startOfWeek(cursor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(cursor, { weekStartsOn: 1 });
   const days =
-    view === "day"
-      ? [startOfDay(cursor)]
-      : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    view === "day" ? [startOfDay(cursor)] : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  function slotsForDay(day: Date): Slot[] {
-    if (staffId == null) return [];
-    const wd = day.getDay();
-    const existing = appointmentsForStaffOnDay(filteredAppointments, staffId, day);
-    const sched = schedules
-      .filter((s) => s.staff_id === staffId)
-      .map((s) => ({
-        day_of_week: s.day_of_week,
-        start_time: s.start_time,
-        end_time: s.end_time,
-      }));
-    return buildSlotsForDay(day, wd, sched, existing, durationMin, 30);
-  }
-
-  function appointmentBlocks(day: Date) {
-    if (staffId == null) return [];
-    return filteredAppointments.filter((b) => {
-      if (b.staff_id !== staffId) return false;
-      try {
-        return isSameDay(parseISO(b.start_time), day);
-      } catch {
-        return false;
+  const cancelAppointment = useCallback(
+    async (id: string) => {
+      const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", id);
+      if (error) {
+        window.alert(t("auth.error.rpcFailed", { message: error.message }));
+        return;
       }
-    });
-  }
-
-  const timeOffForDayView = useMemo(() => {
-    if (view !== "day") return timeOff;
-    const d0 = startOfDay(cursor);
-    return timeOff.filter((t) => {
-      try {
-        const a = parseISO(t.start_time);
-        const b = parseISO(t.end_time);
-        return isSameDay(a, d0) || isSameDay(b, d0) || (a <= d0 && b >= d0);
-      } catch {
-        return false;
-      }
-    });
-  }, [timeOff, view, cursor]);
+      void load();
+    },
+    [load, t]
+  );
 
   return (
     <div className="space-y-6">
@@ -231,23 +197,7 @@ export function CalendarPage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
-        {staffMember && !isWorkerOnlyEffective && services.length > 0 && (
-          <label className="flex items-center gap-2 text-sm text-zinc-400">
-            {t("calendar.bookingService")}
-            <select
-              value={calendarServiceId ?? ""}
-              onChange={(e) => setCalendarServiceId(Number(e.target.value))}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
-            >
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name_et}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {staffMember && !isWorkerOnlyEffective && view === "week" && (
+        {rosterStaff.length > 1 && (
           <label className="flex items-center gap-2 text-sm text-zinc-400">
             {t("calendar.staff")}
             <select
@@ -255,7 +205,7 @@ export function CalendarPage() {
               onChange={(e) => setStaffId(e.target.value)}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
             >
-              {activeStaffForCalendar.map((e) => (
+              {rosterStaff.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.name}
                 </option>
@@ -263,142 +213,101 @@ export function CalendarPage() {
             </select>
           </label>
         )}
-        <label className="flex items-center gap-2 text-sm text-zinc-400">
-          {t("calendar.slotLength")}
-          <select
-            value={durationMin}
-            onChange={(e) => setDurationMin(Number(e.target.value))}
-            className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
-          >
-            {[30, 45, 60, 90, 120].map((m) => (
-              <option key={m} value={m}>
-                {m} {t("common.min")}
-              </option>
-            ))}
-          </select>
-        </label>
         <span className="text-sm text-zinc-600">
           {view === "week"
             ? `${format(weekStart, "d MMM")} – ${format(weekEnd, "d MMM yyyy")}`
             : format(cursor, "EEEE d MMMM yyyy")}
         </span>
+        <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] text-zinc-500">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-sky-600/80 ring-1 ring-sky-500/50" />
+            {t("salonCalendar.legendAppointments")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-red-800/90 ring-1 ring-red-500/40" />
+            {t("salonCalendar.legendBlocked")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm border border-zinc-700 bg-zinc-900" />
+            {t("salonCalendar.legendFree")}
+          </span>
+        </div>
       </div>
 
-      {loading ? (
+      {loading || staffId == null ? (
         <p className="text-zinc-500">{t("common.loading")}</p>
       ) : view === "day" ? (
-        <ProCalendar
+        <SalonTimelineGrid
           day={startOfDay(cursor)}
-          appointments={filteredAppointments}
-          staff={dayViewStaff}
+          staffId={staffId}
+          blocks={filteredBlocks}
           services={services}
-          staffServiceLinks={staffServiceLinks}
           schedules={schedules}
-          timeOff={timeOffForDayView}
-          startHour={9}
-          endHour={18}
-          onRefresh={load}
-          onEmptyClick={(start, sid) => setModal({ start, staffId: sid })}
+          timeOff={timeOff}
+          startHour={GRID_START}
+          endHour={GRID_END}
+          onEmptyClick={(start, sid) => setBookingModal({ start, staffId: sid })}
+          onBlockTime={(start, sid) => setBlockModal({ start, staffId: sid })}
           canCreate={canUseCalendar}
-          canDrag={canUseCalendar}
-          lockToStaffId={isWorkerOnlyEffective && staffMember ? staffMember.id : null}
+          canBlockTime={canBlockTime}
+          canDeleteAppointments={canManage || isReceptionMode}
+          onCancelVisit={cancelAppointment}
         />
-      ) : staffId == null ? (
-        <p className="text-zinc-500">{t("common.loading")}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-7">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-7">
           {days.map((day) => (
-            <DayColumn
+            <SalonTimelineGrid
               key={day.toISOString()}
               day={day}
-              slots={slotsForDay(day)}
-              blocks={appointmentBlocks(day)}
+              staffId={staffId}
+              blocks={filteredBlocks}
               services={services}
-              onBookSlot={(start) => setModal({ start, staffId })}
-              canClick={canUseCalendar}
+              schedules={schedules}
+              timeOff={timeOff}
+              startHour={GRID_START}
+              endHour={GRID_END}
+              compact
+              onEmptyClick={(start, sid) => setBookingModal({ start, staffId: sid })}
+              onBlockTime={(start, sid) => setBlockModal({ start, staffId: sid })}
+              canCreate={canUseCalendar}
+              canBlockTime={canBlockTime}
+              canDeleteAppointments={canManage || isReceptionMode}
+              onCancelVisit={cancelAppointment}
             />
           ))}
         </div>
       )}
 
-      {modal && (
+      {bookingModal && (
         <BookingModal
           open
           variant="pro"
-          onClose={() => setModal(null)}
+          onClose={() => setBookingModal(null)}
           onSaved={load}
-          initialStart={modal.start}
-          initialStaffId={modal.staffId}
+          initialStart={bookingModal.start}
+          initialStaffId={bookingModal.staffId}
           staffList={staff}
           services={services}
           links={staffServiceLinks}
-          lockStaff={!canManage}
+          lockStaff={isWorkerOnlyEffective}
+          schedules={schedules}
+          timeOffRows={timeOff}
         />
       )}
-    </div>
-  );
-}
 
-function DayColumn({
-  day,
-  slots,
-  blocks,
-  services,
-  onBookSlot,
-  canClick,
-}: {
-  day: Date;
-  slots: Slot[];
-  blocks: AppointmentRow[];
-  services: ServiceRow[];
-  onBookSlot: (d: Date) => void;
-  canClick: boolean;
-}) {
-  const { t } = useTranslation();
-  const wd = String(day.getDay()) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
-  return (
-    <div className="flex min-h-[320px] flex-col rounded-xl border border-zinc-800 bg-zinc-950">
-      <div className="border-b border-zinc-800 px-3 py-2 text-center">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{t(`weekday.${wd}`)}</p>
-        <p className="text-lg font-semibold text-white">{format(day, "d")}</p>
-      </div>
-      <div className="max-h-[480px] flex-1 overflow-y-auto p-2">
-        {blocks.map((b) => {
-          const svc = services.find((s) => s.id === b.service_id);
-          return (
-            <div
-              key={b.id}
-              className="mb-1 rounded-lg border border-sky-900/50 bg-sky-950/40 px-2 py-1.5 text-xs text-sky-100"
-            >
-              <p className="font-medium">{b.client_name}</p>
-              <p className="text-sky-200/80">
-                {format(parseISO(b.start_time), "HH:mm")} · {svc?.name_et ?? t("common.service")}
-              </p>
-            </div>
-          );
-        })}
-        <p className="mb-2 mt-3 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-          {t("calendar.freeSlots")}
-        </p>
-        {slots.length === 0 && <p className="text-xs text-zinc-600">{t("calendar.noWorkingHours")}</p>}
-        <div className="flex flex-col gap-1">
-          {slots.map((s) => (
-            <button
-              key={s.start.toISOString()}
-              type="button"
-              disabled={!s.available || !canClick}
-              onClick={() => s.available && canClick && onBookSlot(s.start)}
-              className={`rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
-                s.available && canClick
-                  ? "bg-zinc-900 text-zinc-300 hover:bg-sky-900/40 hover:text-white"
-                  : "cursor-not-allowed bg-zinc-900/50 text-zinc-600 line-through"
-              }`}
-            >
-              {formatSlotRange(s)}
-            </button>
-          ))}
-        </div>
-      </div>
+      {blockModal && (
+        <BlockTimeModal
+          open
+          onClose={() => setBlockModal(null)}
+          onSaved={load}
+          initialStart={blockModal.start}
+          initialStaffId={blockModal.staffId}
+          staffList={staff}
+          lockStaff={isWorkerOnlyEffective}
+          busyLines={filteredBlocks}
+          timeOffRows={timeOff}
+        />
+      )}
     </div>
   );
 }

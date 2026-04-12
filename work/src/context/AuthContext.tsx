@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { hasStaffRole, isWorkerOnlyView, normalizeStaffMember } from "../lib/roles";
+import { hasStaffRole, isPrivilegedAdminRole, isWorkerOnlyView, normalizeStaffMember } from "../lib/roles";
+import { isValidStaffLoginPhoneDigits } from "../lib/staffLoginPhone";
 import type { StaffMember } from "../types/database";
 
 const STORAGE_KEY = "alessanna_crm_staff";
@@ -22,8 +23,11 @@ type AuthState = {
   loading: boolean;
   login: (phone: string) => Promise<LoginResult>;
   logout: () => void;
+  /** No staff session: reception desk mode (calendar + bookings only). */
+  isReceptionMode: boolean;
   canManage: boolean;
-  isAdmin: boolean;
+  /** Admin or owner: full CRM control + role preview. */
+  isPrivilegedAdmin: boolean;
   /** True when real (non-preview) role is worker-only. */
   isWorkerOnly: boolean;
 };
@@ -100,6 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!cleanPhone) {
       return { ok: false, errorKey: "auth.error.phoneRequired" };
     }
+    if (!isValidStaffLoginPhoneDigits(cleanPhone)) {
+      return { ok: false, errorKey: "login.phoneInvalidLength" };
+    }
 
     const { data, error } = await supabase.rpc("verify_staff_phone", {
       phone_input: cleanPhone,
@@ -131,8 +138,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       logout,
-      canManage: hasStaffRole(staffMember, "admin") || hasStaffRole(staffMember, "manager"),
-      isAdmin: hasStaffRole(staffMember, "admin"),
+      isReceptionMode: staffMember == null,
+      canManage:
+        hasStaffRole(staffMember, "owner") ||
+        hasStaffRole(staffMember, "admin") ||
+        hasStaffRole(staffMember, "manager"),
+      isPrivilegedAdmin: isPrivilegedAdminRole(staffMember?.roles),
       isWorkerOnly: isWorkerOnlyView(staffMember?.roles),
     }),
     [staffMember, loading, login, logout]

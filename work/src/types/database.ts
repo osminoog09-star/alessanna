@@ -1,6 +1,6 @@
 /** Types aligned with supabase/migrations (staff, appointments, staff_services, …). */
 
-export type Role = "admin" | "manager" | "worker";
+export type Role = "owner" | "admin" | "manager" | "worker";
 /** Same as Role; kept for clarity in staff-member shapes. */
 export type StaffRole = Role;
 
@@ -45,18 +45,25 @@ export type ServiceRow = {
   created_at?: string;
 };
 
+/** Visit header (one client, many lines in `appointment_services`). */
 export type AppointmentRow = {
   id: string;
-  staff_id: string;
-  service_id: number;
   client_name: string;
   client_phone: string | null;
-  start_time: string;
-  end_time: string;
   status: "pending" | "confirmed" | "cancelled";
   source: string;
   notes: string | null;
   created_at?: string;
+};
+
+/** Single scheduled service line within a visit. */
+export type AppointmentServiceRow = {
+  id: string;
+  appointment_id: string;
+  service_id: number;
+  staff_id: string;
+  start_time: string;
+  end_time: string;
 };
 
 export type StaffScheduleRow = {
@@ -89,6 +96,11 @@ export type Database = {
       staff_schedule: { Row: StaffScheduleRow; Insert: Partial<StaffScheduleRow>; Update: Partial<StaffScheduleRow> };
       staff_time_off: { Row: StaffTimeOffRow; Insert: Partial<StaffTimeOffRow>; Update: Partial<StaffTimeOffRow> };
       appointments: { Row: AppointmentRow; Insert: Partial<AppointmentRow>; Update: Partial<AppointmentRow> };
+      appointment_services: {
+        Row: AppointmentServiceRow;
+        Insert: Partial<AppointmentServiceRow>;
+        Update: Partial<AppointmentServiceRow>;
+      };
       categories: { Row: CategoryRow; Insert: Partial<CategoryRow>; Update: Partial<CategoryRow> };
     };
     Functions: {

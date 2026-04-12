@@ -20,9 +20,9 @@ function RequireManage({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function Protected({ children }: { children: React.ReactNode }) {
+function AppShell() {
   const { t } = useTranslation();
-  const { staffMember, loading } = useAuth();
+  const { loading } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black text-zinc-400">
@@ -30,8 +30,11 @@ function Protected({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!staffMember) return <Navigate to="/login" replace />;
-  return <EffectiveRoleProvider>{children}</EffectiveRoleProvider>;
+  return (
+    <EffectiveRoleProvider>
+      <Layout />
+    </EffectiveRoleProvider>
+  );
 }
 
 export default function App() {
@@ -39,14 +42,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/book" element={<PublicBookingPage />} />
-      <Route
-        path="/"
-        element={
-          <Protected>
-            <Layout />
-          </Protected>
-        }
-      >
+      <Route path="/" element={<AppShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="bookings" element={<BookingsPage />} />

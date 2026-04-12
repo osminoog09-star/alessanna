@@ -4,24 +4,34 @@ import { isBefore, parseISO, startOfDay, subDays } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useAnalyticsRealtime } from "../hooks/useSalonRealtime";
 import { eurFromCents } from "../lib/format";
-import type { AppointmentRow, ServiceRow } from "../types/database";
+import type { ServiceRow } from "../types/database";
 
 type StaffRow = { id: string; name: string };
 
+type LineRow = {
+  staff_id: string;
+  service_id: number;
+  start_time: string;
+  appointments: { status: string } | null;
+};
+
 export function AnalyticsPage() {
   const { t } = useTranslation();
-  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [lines, setLines] = useState<LineRow[]>([]);
   const [staffList, setStaffList] = useState<StaffRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const [b, e, s] = await Promise.all([
-      supabase.from("appointments").select("*").neq("status", "cancelled"),
+      supabase.from("appointment_services").select(`
+        staff_id, service_id, start_time,
+        appointments ( status )
+      `),
       supabase.from("staff").select("id,name").order("name"),
       supabase.from("services").select("*"),
     ]);
-    if (b.data) setAppointments(b.data as AppointmentRow[]);
+    if (b.data) setLines(b.data as LineRow[]);
     if (e.data) setStaffList(e.data as StaffRow[]);
     if (s.data) setServices(s.data as ServiceRow[]);
     setLoading(false);
@@ -33,38 +43,41 @@ export function AnalyticsPage() {
 
   useAnalyticsRealtime(load);
 
+  const activeLines = useMemo(
+    () => lines.filter((l) => l.appointments && l.appointments.status !== "cancelled"),
+    [lines]
+  );
+
   const byStaff = useMemo(() => {
     const map = new Map<string, { count: number; revenueCents: number }>();
-    for (const b of appointments) {
-      if (b.status === "cancelled") continue;
+    for (const b of activeLines) {
+      const st = b.appointments?.status;
       const svc = services.find((x) => x.id === b.service_id);
       const cents = svc?.price_cents ?? 0;
       const cur = map.get(b.staff_id) ?? { count: 0, revenueCents: 0 };
       cur.count += 1;
-      if (b.status === "confirmed") {
+      if (st === "confirmed") {
         cur.revenueCents += cents;
       }
       map.set(b.staff_id, cur);
     }
     return map;
-  }, [appointments, services]);
+  }, [activeLines, services]);
 
   const popularServices = useMemo(() => {
     const map = new Map<number, number>();
-    for (const b of appointments) {
-      if (b.status === "cancelled") continue;
+    for (const b of activeLines) {
       map.set(b.service_id, (map.get(b.service_id) ?? 0) + 1);
     }
     return [...map.entries()]
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, c) => c[1] - a[1])
       .slice(0, 10);
-  }, [appointments]);
+  }, [activeLines]);
 
   const utilization30d = useMemo(() => {
     const since = startOfDay(subDays(new Date(), 30));
     const map = new Map<string, number>();
-    for (const b of appointments) {
-      if (b.status === "cancelled") continue;
+    for (const b of activeLines) {
       try {
         const at = parseISO(b.start_time);
         if (isBefore(at, since)) continue;
@@ -76,7 +89,7 @@ export function AnalyticsPage() {
       map.set(b.staff_id, (map.get(b.staff_id) ?? 0) + mins);
     }
     return map;
-  }, [appointments, services]);
+  }, [activeLines, services]);
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 

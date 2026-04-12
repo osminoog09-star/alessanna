@@ -62,7 +62,7 @@ export function ServicesPage() {
     if (!canManage) return;
     if (!window.confirm(t("services.deleteConfirm", { name: s.name_et }))) return;
     const { count, error: cErr } = await supabase
-      .from("appointments")
+      .from("appointment_services")
       .select("id", { count: "exact", head: true })
       .eq("service_id", s.id);
     if (cErr) return;

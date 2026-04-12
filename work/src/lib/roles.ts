@@ -7,7 +7,7 @@ function mapRoleToken(x: unknown): StaffRole | null {
   const l = x.toLowerCase().trim();
   if (l === "viewer") return null;
   if (l === "employee" || l === "staff") return "worker";
-  if (l === "admin" || l === "manager" || l === "worker") return l;
+  if (l === "owner" || l === "admin" || l === "manager" || l === "worker") return l;
   return null;
 }
 
@@ -53,22 +53,34 @@ export function hasStaffRole(
   return normalizeRoles(member.roles).includes(role);
 }
 
-/** Line staff only: worker, not manager/admin (after normalization). */
+/** Admin or owner: full staff/settings control (managers excluded). */
+export function isPrivilegedAdminRole(roles: StaffRole[] | undefined | null): boolean {
+  const r = normalizeRoles(roles);
+  return r.includes("admin") || r.includes("owner");
+}
+
+/** Line staff only: worker, not manager/admin/owner (after normalization). */
 export function isWorkerOnlyView(roles: StaffRole[] | undefined): boolean {
   const r = normalizeRoles(roles);
-  return r.includes("worker") && !r.includes("manager") && !r.includes("admin");
+  return (
+    r.includes("worker") &&
+    !r.includes("manager") &&
+    !r.includes("admin") &&
+    !r.includes("owner")
+  );
 }
 
 export function sanitizeRolesForSave(
   edited: StaffRole[],
-  editorIsAdmin: boolean,
+  editorIsPrivilegedAdmin: boolean,
   storedRoles: StaffRole[] | undefined
 ): StaffRole[] {
   const norm = normalizeRoles(edited);
   const storedNorm = normalizeRoles(storedRoles);
-  if (editorIsAdmin) return attachWorkerForManagers(norm.length ? norm : ["worker"]);
-  let out = norm.filter((r) => r !== "admin");
+  if (editorIsPrivilegedAdmin) return attachWorkerForManagers(norm.length ? norm : ["worker"]);
+  let out = norm.filter((r) => r !== "admin" && r !== "owner");
   if (storedNorm.includes("admin")) out = [...new Set([...out, "admin"])];
+  if (storedNorm.includes("owner")) out = [...new Set([...out, "owner"])];
   return attachWorkerForManagers(out.length ? out : ["worker"]);
 }
 
@@ -85,7 +97,7 @@ export function staffEligibleForService(
   return active.filter((e) => {
     if (ids.has(e.id)) return true;
     const r = normalizeRoles(e.roles);
-    return r.includes("manager") || r.includes("admin");
+    return r.includes("manager") || r.includes("admin") || r.includes("owner");
   });
 }
 
@@ -101,7 +113,7 @@ export function staffCanPerformService(
   const st = staffList?.find((e) => e.id === staffId);
   if (!st?.active) return false;
   const r = normalizeRoles(st.roles);
-  return r.includes("manager") || r.includes("admin");
+  return r.includes("manager") || r.includes("admin") || r.includes("owner");
 }
 
 export function servicesEligibleForStaff(
@@ -115,7 +127,9 @@ export function servicesEligibleForStaff(
   if (forSt.length === 0) return active;
   if (
     staffRow?.active &&
-    (hasStaffRole(staffRow, "manager") || hasStaffRole(staffRow, "admin"))
+    (hasStaffRole(staffRow, "manager") ||
+      hasStaffRole(staffRow, "admin") ||
+      hasStaffRole(staffRow, "owner"))
   ) {
     return active;
   }

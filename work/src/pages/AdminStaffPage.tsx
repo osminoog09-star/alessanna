@@ -1,10 +1,19 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import type { ServiceRow, StaffServiceRow, StaffTableRow } from "../types/database";
 import type { Role } from "../types/database";
 
 type UiRole = Role;
+
+const ALL_ROLES: Role[] = ["owner", "admin", "manager", "worker"];
+const MANAGER_ASSIGABLE_ROLES: Role[] = ["manager", "worker"];
+
+function isProtectedAccountRole(role: string): boolean {
+  const x = role === "staff" ? "worker" : role;
+  return x === "admin" || x === "owner";
+}
 
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -12,6 +21,7 @@ function digitsOnly(phone: string): string {
 
 export function AdminStaffPage() {
   const { t } = useTranslation();
+  const { isPrivilegedAdmin } = useAuth();
   const [rows, setRows] = useState<StaffTableRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
@@ -48,9 +58,11 @@ export function AdminStaffPage() {
 
   const activeServices = useMemo(() => services.filter((s) => s.active), [services]);
 
+  const assignableRoles = isPrivilegedAdmin ? ALL_ROLES : MANAGER_ASSIGABLE_ROLES;
+
   function normalizeDbRole(r: string): UiRole {
     if (r === "staff") return "worker";
-    if (r === "admin" || r === "manager" || r === "worker") return r;
+    if (r === "owner" || r === "admin" || r === "manager" || r === "worker") return r;
     return "worker";
   }
 
@@ -80,6 +92,11 @@ export function AdminStaffPage() {
 
   async function updateStaffRole(id: string, newRole: UiRole) {
     setErr(null);
+    const target = rows.find((x) => x.id === id);
+    if (!isPrivilegedAdmin) {
+      if (target && isProtectedAccountRole(target.role)) return;
+      if (newRole === "admin" || newRole === "owner") return;
+    }
     const { error } = await supabase.from("staff").update({ role: newRole }).eq("id", id);
     if (error) {
       setErr(error.message);
@@ -125,6 +142,7 @@ export function AdminStaffPage() {
 
   async function remove(row: StaffTableRow) {
     setErr(null);
+    if (!isPrivilegedAdmin && isProtectedAccountRole(row.role)) return;
     if (!window.confirm(`Delete ${row.name} permanently?`)) return;
     const { error } = await supabase.from("staff").delete().eq("id", row.id);
     if (error) {
@@ -174,7 +192,7 @@ export function AdminStaffPage() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
-            placeholder="37255686845"
+            placeholder={t("login.placeholder")}
           />
         </div>
         <div>
@@ -192,9 +210,11 @@ export function AdminStaffPage() {
             onChange={(e) => setRole(e.target.value as UiRole)}
             className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
           >
-            <option value="admin">{t("role.admin")}</option>
-            <option value="manager">{t("role.manager")}</option>
-            <option value="worker">{t("role.worker")}</option>
+            {assignableRoles.map((opt) => (
+              <option key={opt} value={opt}>
+                {t(`role.${opt}`)}
+              </option>
+            ))}
           </select>
         </div>
         <button type="submit" className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">
@@ -240,15 +260,21 @@ export function AdminStaffPage() {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <select
-                    value={normalizeDbRole(r.role)}
-                    onChange={(e) => void updateStaffRole(r.id, e.target.value as UiRole)}
-                    className="max-w-[10rem] rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-white"
-                  >
-                    <option value="admin">{t("role.admin")}</option>
-                    <option value="manager">{t("role.manager")}</option>
-                    <option value="worker">{t("role.worker")}</option>
-                  </select>
+                  {!isPrivilegedAdmin && isProtectedAccountRole(r.role) ? (
+                    <span className="text-zinc-300">{t(`role.${normalizeDbRole(r.role)}`)}</span>
+                  ) : (
+                    <select
+                      value={normalizeDbRole(r.role)}
+                      onChange={(e) => void updateStaffRole(r.id, e.target.value as UiRole)}
+                      className="max-w-[10rem] rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-white"
+                    >
+                      {assignableRoles.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {t(`role.${opt}`)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   <label className="inline-flex cursor-pointer items-center gap-2 text-xs">
@@ -290,9 +316,11 @@ export function AdminStaffPage() {
                       <button type="button" className="text-sky-400 underline" onClick={() => startEdit(r)}>
                         {t("adminStaff.edit")}
                       </button>
-                      <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
-                        delete
-                      </button>
+                      {(!isProtectedAccountRole(r.role) || isPrivilegedAdmin) && (
+                        <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
+                          delete
+                        </button>
+                      )}
                     </>
                   )}
                 </td>

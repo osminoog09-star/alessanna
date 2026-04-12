@@ -12,7 +12,7 @@
 
   /** Default directory — edit here or use admin UI to add users */
   var SEED_USERS = [
-    { name: "Admin", phone: "55686845", role: "admin" },
+    { name: "Admin", phone: "12345678", role: "admin" },
     { name: "Manager", phone: "12345678", role: "manager" },
   ];
 

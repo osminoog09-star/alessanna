@@ -22,7 +22,10 @@ function subscribeTables(
 export function useBookingsRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => subscribeTables("crm-appointments", ["appointments"], onChangeRef), []);
+  useEffect(
+    () => subscribeTables("crm-appointments", ["appointments", "appointment_services"], onChangeRef),
+    []
+  );
 }
 
 export function useCalendarDataRealtime(onChange: () => void) {
@@ -32,7 +35,14 @@ export function useCalendarDataRealtime(onChange: () => void) {
     () =>
       subscribeTables(
         "crm-calendar",
-        ["appointments", "staff_schedule", "staff_time_off", "staff_services", "services"],
+        [
+          "appointments",
+          "appointment_services",
+          "staff_schedule",
+          "staff_time_off",
+          "staff_services",
+          "services",
+        ],
         onChangeRef
       ),
     []
@@ -42,7 +52,11 @@ export function useCalendarDataRealtime(onChange: () => void) {
 export function useAnalyticsRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => subscribeTables("crm-analytics", ["appointments", "services", "staff"], onChangeRef), []);
+  useEffect(
+    () =>
+      subscribeTables("crm-analytics", ["appointments", "appointment_services", "services", "staff"], onChangeRef),
+    []
+  );
 }
 
 export function useServicesCatalogRealtime(onChange: () => void) {
