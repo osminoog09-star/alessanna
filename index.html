@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<!--
+  =============================================================================
+  AlesSanna Ilusalong — одностраничный лендинг (эстонский язык интерфейса)
+  =============================================================================
+  Файлы рядом с этим HTML:
+    styles.css  — внешний вид (переменные :root, сетка, hero, календарь, форма).
+    script.js   — логика: шапка при скролле, бургер-меню, вкладки услуг,
+                  появление блоков .reveal, год в #year, мобильная полоса записи,
+                  отрисовка календаря и отправка формы (mailto).
+
+  Как править контент:
+    • Тексты секций — прямо в разметке ниже (абзацы, заголовки, пункты меню).
+    • Цвета и отступы — в styles.css (ищите по классу секции, напр. .hero, .section--booking).
+    • Календарь: data-* атрибуты не переименовывать — на них завязан script.js.
+
+  Якорная навигация (href="#..." в шапке и футере должны совпадать с id секций):
+    #hero #teenused #meistrid #meist #kinkekaardid #tagasiside #broneeri #kontakt
+
+  Доступность:
+    • .skip-link — пропуск к основному содержимому (фокус с клавиатуры).
+    • У вкладок услуг: role="tablist" / role="tab" / aria-controls → id панели.
+
+  Класс .reveal: блок изначально полупрозрачный; при прокрутке script.js добавляет .is-visible.
+  =============================================================================
+-->
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="AlesSanna Ilusalong — luksuslik ilusalong Pärnus. Elegantsus, ilu, hoolitsus." />
+  <title>AlesSanna Ilusalong | Pärnu</title>
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Ссылка видна только при Tab с начала страницы — см. .skip-link в CSS -->
+  <a class="skip-link" href="#main">Liigu põhisisu juurde</a>
+
+  <!-- Шапка: id="header" нужен script.js для класса .is-scrolled при прокрутке -->
+  <header class="site-header" id="header">
+    <div class="container header-inner">
+      <a class="logo-link" href="#hero">AlesSanna <small>ilusalong</small></a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" id="nav-toggle">Menüü</button>
+      <nav class="nav" id="site-nav" aria-label="Põhinavigatsioon">
+        <ul class="nav-list">
+          <li><a href="#teenused">Teenused</a></li>
+          <li><a href="#meistrid">Meistrid</a></li>
+          <li><a href="#kinkekaardid">Kinkekaardid</a></li>
+          <li><a href="#tagasiside">Tagasiside</a></li>
+          <li><a href="#kontakt">Kontakt</a></li>
+        </ul>
+        <div class="nav-panel-wrap">
+          <span class="lang-switch" aria-label="Keel">
+            <a href="ru.html">RU</a>
+            <a href="index.html" class="is-active">ET</a>
+          </span>
+          <a href="#broneeri" class="nav-cta">Broneeri aeg</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero: бренд текстом (без баннера-картинки с полосой услуг). Декор SVG — не ссылка. -->
+    <section class="hero" id="hero">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-inner reveal">
+        <!-- Текстовый hero в стиле бренда: без PNG-полосы услуг (её путают с кликабельным меню) -->
+        <div class="hero-brand-wrap">
+          <svg class="hero-flourish" width="48" height="112" viewBox="0 0 48 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <path d="M24 108V18" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" />
+            <path d="M24 52c-8-14-18-18-18-28s6-14 14-10c6 3 8 12 4 22" stroke="currentColor" stroke-width="0.75" fill="none" />
+            <path d="M24 48c10-12 16-10 18-20s-4-16-12-12c-5 3-8 14-6 24" stroke="currentColor" stroke-width="0.75" fill="none" />
+            <path d="M24 72c-6 10-4 20 2 24" stroke="currentColor" stroke-width="0.65" fill="none" opacity="0.7" />
+          </svg>
+          <div class="hero-brand-text">
+            <h1 class="hero-wordmark">AlesSanna</h1>
+            <p class="hero-subbrand">ILUSALONG</p>
+          </div>
+        </div>
+        <p class="hero-lead">
+          Luksuslik iluteenus Pärnus — juuksed, küüned ja hooldused rahulikus, stiilses õhkkonnas.
+        </p>
+        <div class="hero-actions">
+          <a href="#broneeri" class="btn btn-primary">Broneeri aeg</a>
+          <a href="#teenused" class="btn btn-outline">Teenused</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Короткая полоса доверия: адрес, часы, телефон (не дублирует навигацию) -->
+    <div class="trust-strip">
+      <div class="container trust-inner">
+        <span>Tallinna mnt 70 · Pärnu</span>
+        <span>E–R 10–18 · L 10–16</span>
+        <span><a href="tel:+3724398384">439 8384</a></span>
+      </div>
+    </div>
+
+    <!-- Услуги: кнопки .tab-btn с aria-controls="panel-*" переключают .tab-panel (см. script.js) -->
+    <section class="section" id="teenused">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-kicker">Teenused</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Vali kategooria</h2>
+          <p class="section-lead">Täielik hinnakiri ja broneerimine on ka meie kodulehel. Siin on lühike ülevaade.</p>
+        </div>
+        <div class="tabs-bar reveal" role="tablist" aria-label="Teenuste kategooriad">
+          <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="panel-hair" id="tab-hair">Juuksed</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-nails" id="tab-nails">Küüned</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-care" id="tab-care">Hooldused</button>
+        </div>
+        <div id="panel-hair" class="tab-panel reveal is-active" role="tabpanel" aria-labelledby="tab-hair">
+          <ul class="menu-list">
+            <li><span>Naiste lõikus</span><span class="price">25–30 €</span></li>
+            <li><span>Meeste lõikus</span><span class="price">20 €</span></li>
+            <li><span>Värvimine (keskmine pikkus)</span><span class="price">40–45 €</span></li>
+            <li><span>Päeva soeng</span><span class="price">20 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-nails" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-nails" hidden>
+          <ul class="menu-list">
+            <li><span>Maniküür</span><span class="price">15–20 €</span></li>
+            <li><span>Maniküür geellakiga</span><span class="price">30 €</span></li>
+            <li><span>Pediküür</span><span class="price">30–35 €</span></li>
+            <li><span>Geellaki eemaldus</span><span class="price">15 €</span></li>
+          </ul>
+        </div>
+        <div id="panel-care" class="tab-panel reveal" role="tabpanel" aria-labelledby="tab-care" hidden>
+          <ul class="menu-list">
+            <li><span>Kulmude värvimine</span><span class="price">7 €</span></li>
+            <li><span>Ripsmete värvimine</span><span class="price">7 €</span></li>
+            <li><span>Kulmude korrigeerimine</span><span class="price">8 €</span></li>
+          </ul>
+        </div>
+        <p class="menu-footnote reveal">
+          Vaata täielikku <a href="https://alessannailu.com/alessanna-et.html#services" target="_blank" rel="noopener noreferrer">hinnakirja ja teenuseid veebis</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- Команда: список имён без карточек; имена можно менять, класс .team-names сохранять -->
+    <section class="section" id="meistrid">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-kicker">Meeskond</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Meistrid</h2>
+          <p class="section-lead">Kogenud spetsialistid, kes hoolivad detailidest.</p>
+        </div>
+        <div class="team-block reveal">
+          <ul class="team-names">
+            <li>Galina</li>
+            <li>Irina</li>
+            <li>Viktoria</li>
+            <li>Anne</li>
+            <li>Alesja</li>
+            <li>Aljona</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Короткий блок «о салоне» -->
+    <section class="section" id="meist">
+      <div class="container container--narrow">
+        <div class="section-head reveal">
+          <span class="section-kicker">Salong</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Meist</h2>
+        </div>
+        <p class="section-lead reveal" style="text-align: center">
+          AlesSanna on Pärnu keskuses asuv ilusalong, kus kohtuvad professionaalsus, vaikus ja elegantne interjöör. Töötame kvaliteetsete materjalidega ja võtame aega teie soovide kuulamiseks.
+        </p>
+      </div>
+    </section>
+
+    <!-- Подарочные карты -->
+    <section class="section" id="kinkekaardid">
+      <div class="container">
+        <div class="gift-card reveal">
+          <div class="section-head" style="margin-bottom: 1rem">
+            <span class="section-kicker">Kingitus</span>
+            <h2 class="section-title" style="font-size: 1.5rem">Kinkekaardid</h2>
+          </div>
+          <p>Kinkige heaolu — kinkekaarti saab osta salongis. Küsi meilt suurusi ja kehtivusaega.</p>
+          <a href="tel:+3724398384" class="btn btn-outline">Helista ja küsi</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Отзывы: блоки .review с классом .reveal -->
+    <section class="section" id="tagasiside">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-kicker">Tagasiside</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Kliendid meist</h2>
+        </div>
+        <div class="reviews-grid">
+          <blockquote class="review reveal">
+            <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
+            <p class="review-text">«Vaikne, stiilne atmosfäär ja täiuslik tulemus. Tunnen end alati hoituna.»</p>
+            <footer class="review-author">— Karlotta</footer>
+          </blockquote>
+          <blockquote class="review reveal">
+            <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
+            <p class="review-text">«Professionaalsus igas detailis. Minu lemmik salong Pärnus.»</p>
+            <footer class="review-author">— Merilin</footer>
+          </blockquote>
+          <blockquote class="review reveal">
+            <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
+            <p class="review-text">«Delikaatne lähenemine ja luksuslik kogemus algusest lõpuni.»</p>
+            <footer class="review-author">— Liis</footer>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!--
+      Бронирование: календарь + форма. Обязательные для JS селекторы:
+        [data-calendar-grid] — сюда вставляются дни;
+        [data-calendar-title] — заголовок месяца;
+        data-calendar-prev / data-calendar-next — кнопки месяцев;
+        [data-master-select] — выбор мастера (пока не выбран — дни неактивны);
+        [data-booking-date] — выбранная дата (readonly, заполняет скрипт);
+        [data-booking-time] — слоты времени после выбора дня;
+        [data-calendar-note-primary|secondary] — подписи под сеткой;
+        form#booking-form — отправка через mailto (замените на API при необходимости).
+    -->
+    <section class="section section--booking" id="broneeri">
+      <div class="container container--booking">
+        <div class="section-head reveal">
+          <span class="section-kicker">Broneering</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Broneeri sobiv aeg kalendri ja vormi kaudu</h2>
+        </div>
+        <p class="booking-intro reveal">
+          Vali kalendrist päev, täida lühike vorm — pärast päringut võtame ühendust ja kinnitame aja telefoni või e-posti teel.
+        </p>
+
+        <div class="booking-shell reveal">
+          <div class="booking-calendar" aria-label="Broneerimiskalender">
+            <div class="calendar-head">
+              <div class="calendar-head-top">
+                <div>
+                  <p class="calendar-label">Broneerimiskalender</p>
+                  <h3 class="calendar-title" data-calendar-title>Aprill 2026</h3>
+                </div>
+                <div class="calendar-nav" aria-label="Kuude vahetamine">
+                  <button class="calendar-nav-button" type="button" data-calendar-prev aria-label="Eelmine kuu">‹</button>
+                  <button class="calendar-nav-button" type="button" data-calendar-next aria-label="Järgmine kuu">›</button>
+                </div>
+              </div>
+              <div class="calendar-legend">
+                <span><i class="legend-dot legend-dot-soft" aria-hidden="true"></i>Palju vabu aegu</span>
+                <span><i class="legend-dot legend-dot-busy" aria-hidden="true"></i>Peaaegu täis</span>
+                <span><i class="legend-dot legend-dot-featured" aria-hidden="true"></i>Soovitatud ajad</span>
+              </div>
+            </div>
+            <div class="calendar-weekdays" aria-hidden="true">
+              <span>E</span><span>T</span><span>K</span><span>N</span><span>R</span><span>L</span><span>P</span>
+            </div>
+            <div class="calendar-grid" data-calendar-grid></div>
+            <div class="calendar-note" aria-live="polite">
+              <span class="calendar-note-primary" data-calendar-note-primary>Pole vaba aega</span>
+              <span class="calendar-note-secondary" data-calendar-note-secondary>Vali meister, et näha vabu päevi</span>
+            </div>
+          </div>
+
+          <div class="booking-side">
+            <aside class="booking-steps-card" aria-label="Kuidas broneerimine käib">
+              <p class="booking-steps-label">3 sammu</p>
+              <strong class="booking-steps-title">Kuidas broneerimine käib</strong>
+              <ul class="booking-steps-list">
+                <li><span class="booking-steps-num">01</span><em>Vali päev kalendrist</em></li>
+                <li><span class="booking-steps-num">02</span><em>Täida lühike vorm</em></li>
+                <li><span class="booking-steps-num">03</span><em>Saadame kinnituse</em></li>
+              </ul>
+            </aside>
+
+            <form class="booking-form" id="booking-form" novalidate>
+              <label>
+                <span>Sinu nimi</span>
+                <input type="text" name="name" autocomplete="name" placeholder="Anna" />
+              </label>
+              <label>
+                <span>Telefon</span>
+                <input type="tel" name="phone" autocomplete="tel" placeholder="+372 439 8384" />
+              </label>
+              <label>
+                <span>Teenuse kategooria</span>
+                <select name="service">
+                  <option value="hair-cut">Lõikus</option>
+                  <option value="hair-color">Värvimine</option>
+                  <option value="perm">Keemiline lokk</option>
+                  <option value="styling">Soengud</option>
+                  <option value="brows-lashes">Ripsmed ja kulmud</option>
+                  <option value="manicure">Maniküür</option>
+                  <option value="pedicure">Pediküür</option>
+                </select>
+              </label>
+              <label>
+                <span>Meister</span>
+                <select name="master" data-master-select required>
+                  <option value="">Vali meister</option>
+                </select>
+              </label>
+              <label>
+                <span>Valitud kuupäev</span>
+                <input type="text" name="date" data-booking-date readonly placeholder="Vali kalendrist sobiv päev" />
+              </label>
+              <label>
+                <span>Vaba aeg</span>
+                <select name="time" data-booking-time>
+                  <option value="">Vali kõigepealt päev</option>
+                </select>
+              </label>
+              <button class="btn btn-primary booking-submit" type="submit">Saada päring</button>
+            </form>
+
+            <p class="booking-fallback">
+              Täielik broneerimine veebis:
+              <a href="https://alessannailu.com/alessanna-et.html#booking" target="_blank" rel="noopener noreferrer">alessannailu.com</a>
+              ·
+              <a href="tel:+3724398384">Helista</a>
+              ·
+              <a href="mailto:alessanna.ilusalong@gmail.com?subject=Broneering">Kirjuta</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Контакты + карта Google (iframe; адрес в параметре q=) -->
+    <section class="section section--contact" id="kontakt">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="section-kicker">Asukoht</span>
+          <span class="section-ornament" aria-hidden="true"></span>
+          <h2 class="section-title">Kontakt</h2>
+        </div>
+        <div class="contact-grid reveal">
+          <div class="contact-info">
+            <address class="contact-block">
+              <span class="contact-label">Aadress</span>
+              <p>Tallinna mnt 70<br />Pärnu, Eesti, 80034</p>
+              <p class="contact-hint">Salong asub Pärnus aadressil Tallinna mnt 70.</p>
+            </address>
+            <p class="contact-block">
+              <span class="contact-label">Telefon</span>
+              <a href="tel:+3724398384">439 8384</a>
+            </p>
+            <p class="contact-block">
+              <span class="contact-label">E-post</span>
+              <a href="mailto:alessanna.ilusalong@gmail.com">alessanna.ilusalong@gmail.com</a>
+            </p>
+            <p class="contact-block">
+              <span class="contact-label">Instagram</span>
+              <a href="https://www.instagram.com/alessanna.ilusalong/" target="_blank" rel="noopener noreferrer">@alessanna.ilusalong</a>
+            </p>
+            <div class="contact-block">
+              <span class="contact-label">Lahtiolekuajad</span>
+              <p>E–R 10:00–18:00 · L 10:00–16:00</p>
+              <p class="contact-hint">Broneeringuid võtame vastu märgitud lahtiolekuaegadel.</p>
+            </div>
+            <div class="contact-block">
+              <span class="contact-label">Parkimine</span>
+              <p>Tasuta parkimine salongi juures — võimalik tulla autoga.</p>
+            </div>
+          </div>
+          <div class="contact-map">
+            <iframe title="Asukoht kaardil" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034&output=embed"></iframe>
+          </div>
+        </div>
+        <div class="contact-cta reveal">
+          <a href="#broneeri" class="btn btn-primary">Broneeri aeg</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Футер: span#year заполняется текущим годом в script.js -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <ul class="footer-links">
+        <li><a href="#teenused">Teenused</a></li>
+        <li><a href="#broneeri">Broneeri</a></li>
+        <li><a href="#kontakt">Kontakt</a></li>
+      </ul>
+      <p class="footer-logo">AlesSanna</p>
+      <p class="footer-meta">Tallinna mnt 70 · Pärnu</p>
+      <p class="footer-copy">© <span id="year"></span> AlesSanna Ilusalong</p>
+    </div>
+  </footer>
+
+  <!-- Фиксированная кнопка внизу на мобильных; .is-visible вешает script.js после прокрутки -->
+  <div class="mobile-book-bar" role="region" aria-label="Kiire broneering">
+    <a href="#broneeri" class="btn btn-primary" tabindex="-1">Broneeri aeg</a>
+  </div>
+
+  <!-- defer: скрипт выполнится после разбора HTML; весь код в IIFE внутри script.js -->
+  <script src="script.js" defer></script>
+</body>
+</html>
