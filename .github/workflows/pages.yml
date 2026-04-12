@@ -1,0 +1,45 @@
+# Publishes ONLY the public marketing site to GitHub Pages.
+# The Vite CRM stays in /work for Vercel — it must NOT be served from Pages as raw source.
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble site (root static files + /work redirect stubs)
+        run: |
+          set -e
+          mkdir -p _site
+          cp index.html ru.html mave.html mave-ru.html _site/
+          cp styles.css script.js translations.js _site/
+          cp work.css work.js work.html _site/
+          cp .nojekyll CNAME _site/
+          cp -r .github/page-bundle/work _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

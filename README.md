@@ -1,6 +1,34 @@
 # Alessanna platform
 
-Premium salon stack: **public site** (existing HTML), **REST API**, **online booking** (auto-confirmed), **CRM** at **`/work`** (no public links), roles, SQLite DB, FAQ inside CRM. **Telegram / WhatsApp / Google Calendar** are stubbed — wire env vars when ready (see `server/notifications.js`, `server/googleCalendar.js`).
+Premium salon stack: **public site** (static HTML at repo root), **REST API** (local Node server), **online booking**, and **CRM** as a **Vite + React** app in **`work/`** (deployed on **Vercel** at **work.alessannailu.com**). The legacy **`work-crm/`** folder is an optional Next.js prototype — **not** used for production CRM hosting.
+
+## Production hosting (domains)
+
+| Host | What | How |
+|------|------|-----|
+| **https://alessannailu.com** | Marketing site (`index.html`, `styles.css`, `script.js`, …) | **GitHub Pages** via **GitHub Actions** (`.github/workflows/pages.yml`) — publishes only whitelisted static files, not the whole repo. |
+| **https://work.alessannailu.com** | Staff CRM (Vite app in **`work/`**) | **Vercel** — root **`vercel.json`**, repo root as project root, **`outputDirectory`**: **`work/dist`**. |
+
+**DNS (do not mix):**
+
+- **alessannailu.com** → GitHub Pages ([GitHub’s records](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)).
+- **work** subdomain → Vercel (CNAME to `cname.vercel-dns.com` or as shown in your Vercel project).
+
+**GitHub Pages setup:** Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**. After the first run of **Deploy GitHub Pages**, set **Custom domain** to `alessannailu.com` and enable **HTTPS** (GitHub will use the **`CNAME`** file from the published artifact).
+
+**Vercel setup:** **Root Directory** empty (repository root). **Framework** preset: Other (not “Vite” at repo root). **Build Command** / **Output Directory** are taken from **`vercel.json`**. Set **`installCommand`** override only if the dashboard conflicts — the file sets **`installCommand`: `true`** so the root `package.json` (with native modules like `better-sqlite3`) is **not** installed on Vercel. Env vars for CRM: **`VITE_SUPABASE_URL`**, **`VITE_SUPABASE_ANON_KEY`**.
+
+**Why Actions for Pages?** If you publish the **entire** repo from branch `/`, `https://alessannailu.com/work/` would expose the **Vite source** `work/index.html` (broken on static hosting). The workflow publishes only the real landing files and replaces **`/work/`** with **redirect stubs** to **work.alessannailu.com**.
+
+Local CRM build (before push):
+
+```bash
+cd work
+npm install
+npm run build
+```
+
+Expect **`work/dist/index.html`** (and assets under **`work/dist/assets/`**).
 
 ## Quick start
 
@@ -66,26 +94,6 @@ Without the server (static files only), behaviour falls back to **mailto**.
 - User admin UI (create logins per employee; today via DB/API).
 - Google OAuth + Calendar push; Telegram/WhatsApp send on booking events.
 - Payments, analytics, loyalty (new modules + tables).
-
-## Vercel (CRM in `work/`)
-
-The repo root **`vercel.json`** builds the **Vite** app under **`work/`** and publishes **`work/dist`**:
-
-- **`installCommand`**: `true` — skips `npm install` at the repo root (avoids native deps like `better-sqlite3` on Vercel).
-- **`buildCommand`**: `cd work && npm install && npm run build`
-- **`outputDirectory`**: `work/dist` (must match Vite `outDir`; do **not** set Vercel’s UI “Output Directory” to plain `dist` unless Root Directory is `work`).
-- No **`framework`** preset — the Vite preset expects `dist` at the repo root and can trigger **“No Output Directory”** / 404 when the app lives in **`work/`**.
-- SPA **`rewrites`** send client routes to `index.html`.
-
-Keep the Vercel project **root** at the **repository root** (leave **Root Directory** empty). Set **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`** in the Vercel environment for the CRM.
-
-Local check:
-
-```bash
-cd work
-npm install
-npm run build
-```
 
 ## Security
 
