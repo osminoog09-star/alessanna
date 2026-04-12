@@ -21,11 +21,17 @@ export function LoginPage() {
     const r = await login(phone);
     setPending(false);
     if (!r.ok) {
-      setError(
-        r.message != null && r.message !== ""
-          ? t(r.errorKey, { message: r.message })
-          : t(r.errorKey)
-      );
+      if (r.displayError) {
+        setError(r.displayError);
+      } else if (r.errorKey) {
+        setError(
+          r.message != null && r.message !== ""
+            ? t(r.errorKey, { message: r.message })
+            : t(r.errorKey)
+        );
+      } else {
+        setError("Доступ запрещён");
+      }
     }
   }
 

@@ -15,7 +15,7 @@ const STORAGE_KEY = "alessanna_crm_staff";
 
 export type LoginResult =
   | { ok: true }
-  | { ok: false; errorKey: string; message?: string };
+  | { ok: false; errorKey?: string; message?: string; displayError?: string };
 
 type AuthState = {
   employee: EmployeeRow | null;
@@ -52,16 +52,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured()) {
       return { ok: false, errorKey: "auth.error.notConfigured" };
     }
-    const digits = phone.replace(/\D/g, "");
-    if (!digits) return { ok: false, errorKey: "auth.error.phoneRequired" };
+
+    const cleanPhone = phone.replace(/\D/g, "");
 
     const { data, error } = await supabase.rpc("verify_staff_phone", {
-      phone_input: digits,
+      phone_input: cleanPhone,
     });
 
+    console.log("RPC result:", data);
+    console.log("RPC error:", error);
+
     if (error) {
-      if (import.meta.env.DEV) console.error(error);
-      return { ok: false, errorKey: "auth.error.rpcFailed", message: error.message };
+      console.error(error);
+      return { ok: false, displayError: "Ошибка сервера" };
+    }
+
+    // DB function returns a JSON employee row or null — not boolean `true`.
+    // If your RPC ever returns only `true`, you must also return the row payload for the session.
+    if (data === true) {
+      console.warn("verify_staff_phone returned boolean true; expected employee JSON. Treating as failure.");
+      return { ok: false, displayError: "Доступ запрещён" };
     }
 
     let row: EmployeeRow | null = null;
@@ -71,16 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         row = null;
       }
-    } else if (data && typeof data === "object" && "id" in data) {
+    } else if (data != null && typeof data === "object" && !Array.isArray(data) && "id" in data) {
       row = normalizeEmployeeRow(data as unknown as EmployeeRow);
     }
 
-    if (!row) {
-      return { ok: false, errorKey: "auth.error.denied" };
+    if (row) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
+      setEmployee(row);
+      return { ok: true };
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
-    setEmployee(row);
-    return { ok: true };
+
+    return { ok: false, displayError: "Доступ запрещён" };
   }, []);
 
   const logout = useCallback(() => {
