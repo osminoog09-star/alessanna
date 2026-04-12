@@ -3,19 +3,26 @@ import { format, parseISO, startOfDay, isSameDay } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useBookingsRealtime } from "../hooks/useSalonRealtime";
-import type { BookingRow } from "../types/database";
+import type { AppointmentRow } from "../types/database";
 import { useAuth } from "../context/AuthContext";
+import { useEffectiveRole } from "../context/EffectiveRoleContext";
+
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { employee, isStaffOnly } = useAuth();
-  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const { staffMember } = useAuth();
+  const { isStaffOnlyEffective } = useEffectiveRole();
+  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.from("bookings").select("*");
-    if (!error && data) setBookings(data as BookingRow[]);
+    let q = supabase.from("appointments").select("*");
+    if (isStaffOnlyEffective && staffMember) {
+      q = q.eq("staff_id", staffMember.id);
+    }
+    const { data, error } = await q;
+    if (!error && data) setAppointments(data as AppointmentRow[]);
     setLoading(false);
-  }, []);
+  }, [isStaffOnlyEffective, staffMember]);
 
   useEffect(() => {
     void load();
@@ -24,16 +31,11 @@ export function DashboardPage() {
   useBookingsRealtime(load);
 
   const today = startOfDay(new Date());
-  const mine = bookings.filter((b) => {
-    if (b.status === "cancelled") return false;
-    if (isStaffOnly && employee) return b.employee_id === employee.id;
-    return true;
-  });
+  const mine = appointments.filter((b) => b.status !== "cancelled");
 
-  const todayBookings = mine.filter((b) => {
-    const t = b.appointment_at || b.start_at;
+  const todayAppointments = mine.filter((b) => {
     try {
-      return isSameDay(parseISO(t), today);
+      return isSameDay(parseISO(b.start_time), today);
     } catch {
       return false;
     }
@@ -42,7 +44,7 @@ export function DashboardPage() {
   const upcoming = mine
     .filter((b) => {
       try {
-        return parseISO(b.appointment_at || b.start_at) >= new Date();
+        return parseISO(b.start_time) >= new Date();
       } catch {
         return false;
       }
@@ -65,7 +67,7 @@ export function DashboardPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                 {t("dashboard.today")}
               </p>
-              <p className="mt-2 text-3xl font-semibold text-white">{todayBookings.length}</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{todayAppointments.length}</p>
               <p className="text-sm text-zinc-500">{t("common.bookings")}</p>
             </div>
             <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
@@ -99,9 +101,7 @@ export function DashboardPage() {
               {upcoming.map((b) => (
                 <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
                   <span className="font-medium text-zinc-200">{b.client_name}</span>
-                  <span className="text-zinc-500">
-                    {format(parseISO(b.appointment_at || b.start_at), "EEE d MMM HH:mm")}
-                  </span>
+                  <span className="text-zinc-500">{format(parseISO(b.start_time), "EEE d MMM HH:mm")}</span>
                 </li>
               ))}
             </ul>

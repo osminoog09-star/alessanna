@@ -37,12 +37,47 @@
     "dashboard": "Обзор",
     "calendar": "Календарь",
     "bookings": "Записи",
-    "employees": "Сотрудники",
-    "services": "Услуги",
+    "adminStaff": "Персонал",
+    "adminServices": "Услуги",
+    "adminSchedule": "График",
+    "adminTimeOff": "Выходные",
     "analytics": "Аналитика",
-    "adminStaff": "Админ · персонал",
     "logout": "Выйти",
-    "staffHint": "Сотрудник: только календарь и записи. Услуги и аналитика — у менеджера."
+    "staffHint": "Режим сотрудника: календарь и записи. Полный доступ у менеджера."
+  },
+  "preview": {
+    "label": "Просмотр как",
+    "real": "Как в профиле",
+    "banner": "Режим предпросмотра: {{role}}"
+  },
+  "adminStaff": {
+    "subtitle": "Таблица staff: телефон, имя, роль, услуги.",
+    "name": "Имя",
+    "services": "Услуги",
+    "edit": "Изменить"
+  },
+  "adminSchedule": {
+    "subtitle": "Недельный график по сотруднику (staff_schedule)."
+  },
+  "adminTimeOff": {
+    "subtitle": "Блоки недоступности (staff_time_off).",
+    "start": "Начало",
+    "end": "Конец",
+    "reason": "Причина",
+    "delete": "Удалить",
+    "deleteConfirm": "Удалить этот блок?"
+  },
+  "publicBook": {
+    "title": "Онлайн-запись",
+    "subtitle": "Выберите услугу, мастера и время.",
+    "staffLogin": "Вход для персонала",
+    "pickStaff": "Выберите мастера",
+    "day": "Дата",
+    "slots": "Свободные слоты",
+    "noSlots": "Нет свободных окон на этот день.",
+    "confirm": "Записаться",
+    "fillAll": "Укажите имя и выберите слот.",
+    "success": "Запись создана. Ждём вас!"
   },
   "role": { "admin": "Админ", "manager": "Менеджер", "staff": "Сотрудник" },
   "dashboard": {

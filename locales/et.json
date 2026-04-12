@@ -37,12 +37,47 @@
     "dashboard": "Töölaud",
     "calendar": "Kalender",
     "bookings": "Broneeringud",
-    "employees": "Töötajad",
-    "services": "Teenused",
+    "adminStaff": "Personal",
+    "adminServices": "Teenused",
+    "adminSchedule": "Graafik",
+    "adminTimeOff": "Vabad ajad",
     "analytics": "Analüütika",
-    "adminStaff": "Admin · personal",
     "logout": "Logi välja",
-    "staffHint": "Töötaja: ainult kalender ja broneeringud. Teenused ja analüütika — juhil."
+    "staffHint": "Töötaja: kalender ja broneeringud. Täielik juurdepääs juhil."
+  },
+  "preview": {
+    "label": "Vaata kui",
+    "real": "Nagu profiilis",
+    "banner": "Eelvaade: {{role}}"
+  },
+  "adminStaff": {
+    "subtitle": "Staff tabel: telefon, nimi, roll, teenused.",
+    "name": "Nimi",
+    "services": "Teenused",
+    "edit": "Muuda"
+  },
+  "adminSchedule": {
+    "subtitle": "Nädala graafik (staff_schedule)."
+  },
+  "adminTimeOff": {
+    "subtitle": "Kättesaamatuse blokid (staff_time_off).",
+    "start": "Algus",
+    "end": "Lõpp",
+    "reason": "Põhjus",
+    "delete": "Kustuta",
+    "deleteConfirm": "Kustuta see blokk?"
+  },
+  "publicBook": {
+    "title": "Online broneering",
+    "subtitle": "Vali teenus, meister ja aeg.",
+    "staffLogin": "Personali sisselogimine",
+    "pickStaff": "Vali meister",
+    "day": "Kuupäev",
+    "slots": "Vabad ajad",
+    "noSlots": "Sellel päeval vabu aegu pole.",
+    "confirm": "Broneeri",
+    "fillAll": "Lisa nimi ja vali aeg.",
+    "success": "Broneering loodud!"
   },
   "role": { "admin": "Admin", "manager": "Juht", "staff": "Töötaja" },
   "dashboard": {

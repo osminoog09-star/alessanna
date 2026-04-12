@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { hasStaffRole, isStaffOnlyView, normalizeEmployeeRow, normalizeRoles } from "../lib/roles";
-import type { EmployeeRow } from "../types/database";
+import { hasStaffRole, isStaffOnlyView, normalizeRoles, normalizeStaffMember } from "../lib/roles";
+import type { StaffMember } from "../types/database";
 
 const STORAGE_KEY = "alessanna_crm_staff";
 
@@ -18,10 +18,11 @@ export type LoginResult =
   | { ok: false; errorKey?: string; message?: string; displayError?: string };
 
 type AuthState = {
-  employee: EmployeeRow | null;
+  staffMember: StaffMember | null;
   loading: boolean;
   login: (phone: string) => Promise<LoginResult>;
   logout: () => void;
+  /** Real privileges (ignores role preview). */
   canManage: boolean;
   isAdmin: boolean;
   isStaffOnly: boolean;
@@ -29,11 +30,11 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-function parseStored(): EmployeeRow | null {
+function parseStored(): StaffMember | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return normalizeEmployeeRow(JSON.parse(raw) as EmployeeRow);
+    return normalizeStaffMember(JSON.parse(raw) as StaffMember);
   } catch {
     return null;
   }
@@ -51,34 +52,24 @@ function normalizePhoneDigits(p: string | null | undefined): string {
   return (p ?? "").replace(/\D/g, "");
 }
 
-/** Map `staff` table row (phone, name, role, is_active, …) to app `EmployeeRow`. */
-function staffTableRowToEmployee(raw: Record<string, unknown>): EmployeeRow {
+function staffTableRowToMember(raw: Record<string, unknown>): StaffMember {
   const roleField = raw.role ?? raw.roles;
   const roles = normalizeRoles(roleField);
-
-  return normalizeEmployeeRow({
-    id: Number(raw.id),
+  return normalizeStaffMember({
+    id: String(raw.id),
     name: String(raw.name ?? ""),
     phone: raw.phone != null ? String(raw.phone) : null,
-    email: raw.email != null ? String(raw.email) : null,
     active: Boolean(raw.is_active ?? raw.active ?? true),
-    slug: raw.slug != null ? String(raw.slug) : null,
     roles,
-    payroll_type: raw.payroll_type === "fixed" ? "fixed" : "percent",
-    commission: Number(raw.commission ?? 0),
-    fixed_salary: Number(raw.fixed_salary ?? 0),
-  } as EmployeeRow);
+  });
 }
 
-async function fetchEmployeeByCleanPhone(cleanPhone: string): Promise<EmployeeRow | null> {
+async function fetchStaffByCleanPhone(cleanPhone: string): Promise<StaffMember | null> {
   if (!cleanPhone) return null;
 
   const normalize = (p: string) => p.replace(/\D/g, "");
 
   const { data, error } = await supabase.from("staff").select("*").eq("is_active", true);
-
-  console.log("FETCH STAFF RESULT:", data);
-  console.log("FETCH STAFF ERROR:", error);
 
   if (error || !data?.length) return null;
 
@@ -87,11 +78,10 @@ async function fetchEmployeeByCleanPhone(cleanPhone: string): Promise<EmployeeRo
 
   if (!found) return null;
 
-  return staffTableRowToEmployee(found);
+  return staffTableRowToMember(found);
 }
 
-/** Parse employee row from various RPC / PostgREST shapes. */
-function parseEmployeeFromRpcData(data: unknown): EmployeeRow | null {
+function parseStaffFromRpcData(data: unknown): StaffMember | null {
   if (data == null || data === false || data === "false") return null;
 
   if (typeof data === "string") {
@@ -99,10 +89,10 @@ function parseEmployeeFromRpcData(data: unknown): EmployeeRow | null {
     try {
       const parsed = JSON.parse(data) as unknown;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "id" in parsed) {
-        return normalizeEmployeeRow(parsed as EmployeeRow);
+        return normalizeStaffMember(parsed as StaffMember);
       }
       if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object" && "id" in parsed[0]) {
-        return normalizeEmployeeRow(parsed[0] as EmployeeRow);
+        return normalizeStaffMember(parsed[0] as StaffMember);
       }
     } catch {
       return null;
@@ -113,24 +103,24 @@ function parseEmployeeFromRpcData(data: unknown): EmployeeRow | null {
   if (Array.isArray(data)) {
     const first = data[0];
     if (first && typeof first === "object" && !Array.isArray(first) && "id" in first) {
-      return normalizeEmployeeRow(first as EmployeeRow);
+      return normalizeStaffMember(first as StaffMember);
     }
     return null;
   }
 
   if (typeof data === "object" && "id" in data) {
-    return normalizeEmployeeRow(data as EmployeeRow);
+    return staffTableRowToMember(data as Record<string, unknown>);
   }
 
   return null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [employee, setEmployee] = useState<EmployeeRow | null>(null);
+  const [staffMember, setStaffMember] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setEmployee(parseStored());
+    setStaffMember(parseStored());
     setLoading(false);
   }, []);
 
@@ -145,33 +135,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone_input: cleanPhone,
     });
 
-    console.log("RPC raw result:", data);
-
     if (error) {
       console.error(error);
       return { ok: false, displayError: "Ошибка сервера" };
     }
 
-    let row = parseEmployeeFromRpcData(data);
+    let row = parseStaffFromRpcData(data);
 
     const isValid =
       rpcBooleanSuccess(data) ||
       row != null ||
-      (Array.isArray(data) && data.length > 0 && typeof data[0] === "object" && data[0] !== null && "id" in data[0]);
+      (Array.isArray(data) &&
+        data.length > 0 &&
+        typeof data[0] === "object" &&
+        data[0] !== null &&
+        "id" in data[0]);
 
-    console.log("RPC isValid (expanded):", isValid);
-
-    if (rpcBooleanSuccess(data) && !row && cleanPhone.length > 0) {
-      const fromStaff = await fetchEmployeeByCleanPhone(cleanPhone);
-      if (fromStaff) {
-        row = fromStaff;
-      }
+    if (!row && cleanPhone.length > 0) {
+      const fromStaff = await fetchStaffByCleanPhone(cleanPhone);
+      if (fromStaff) row = fromStaff;
     }
 
     if (row) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
-      setEmployee(row);
+      setStaffMember(row);
       return { ok: true };
+    }
+
+    if (!isValid) {
+      return { ok: false, displayError: "Доступ запрещён" };
     }
 
     return { ok: false, displayError: "Доступ запрещён" };
@@ -179,20 +171,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
-    setEmployee(null);
+    setStaffMember(null);
   }, []);
 
   const value = useMemo<AuthState>(
     () => ({
-      employee,
+      staffMember,
       loading,
       login,
       logout,
-      canManage: hasStaffRole(employee, "admin") || hasStaffRole(employee, "manager"),
-      isAdmin: hasStaffRole(employee, "admin"),
-      isStaffOnly: isStaffOnlyView(employee?.roles),
+      canManage: hasStaffRole(staffMember, "admin") || hasStaffRole(staffMember, "manager"),
+      isAdmin: hasStaffRole(staffMember, "admin"),
+      isStaffOnly: isStaffOnlyView(staffMember?.roles),
     }),
-    [employee, loading, login, logout]
+    [staffMember, loading, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

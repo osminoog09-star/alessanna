@@ -7,12 +7,12 @@ import { LanguageSwitcher } from "../components/LanguageSwitcher";
 
 export function LoginPage() {
   const { t } = useTranslation();
-  const { employee, login } = useAuth();
+  const { staffMember, login } = useAuth();
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  if (employee) return <Navigate to="/" replace />;
+  if (staffMember) return <Navigate to="/" replace />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

@@ -19,40 +19,40 @@ function subscribeTables(
   };
 }
 
-/** Refetch when `bookings` changes (enable Realtime on `bookings` in Supabase). */
 export function useBookingsRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => subscribeTables("crm-bookings", ["bookings"], onChangeRef), []);
+  useEffect(() => subscribeTables("crm-appointments", ["appointments"], onChangeRef), []);
 }
 
-/** Calendar grid: bookings, schedules, skills, services. */
 export function useCalendarDataRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   useEffect(
-    () => subscribeTables("crm-calendar", ["bookings", "schedules", "employee_services", "services"], onChangeRef),
+    () =>
+      subscribeTables(
+        "crm-calendar",
+        ["appointments", "staff_schedule", "staff_time_off", "staff_services", "services"],
+        onChangeRef
+      ),
     []
   );
 }
 
-/** Analytics: revenue uses bookings + service prices; earnings table. */
 export function useAnalyticsRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => subscribeTables("crm-analytics", ["bookings", "services", "earnings"], onChangeRef), []);
+  useEffect(() => subscribeTables("crm-analytics", ["appointments", "services", "staff"], onChangeRef), []);
 }
 
-/** Services list / prices in CRM. */
 export function useServicesCatalogRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   useEffect(() => subscribeTables("crm-services", ["services"], onChangeRef), []);
 }
 
-/** Staff roster and skills (employee_services). */
 export function useEmployeesDirectoryRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => subscribeTables("crm-employees", ["employees", "employee_services"], onChangeRef), []);
+  useEffect(() => subscribeTables("crm-staff-dir", ["staff", "staff_services"], onChangeRef), []);
 }

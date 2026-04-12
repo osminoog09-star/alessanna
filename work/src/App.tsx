@@ -1,32 +1,28 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./context/AuthContext";
+import { EffectiveRoleProvider, useEffectiveRole } from "./context/EffectiveRoleContext";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { BookingsPage } from "./pages/BookingsPage";
-import { EmployeesPage } from "./pages/EmployeesPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { AdminStaffPage } from "./pages/AdminStaffPage";
+import { AdminSchedulePage } from "./pages/AdminSchedulePage";
+import { AdminTimeOffPage } from "./pages/AdminTimeOffPage";
+import { PublicBookingPage } from "./pages/PublicBookingPage";
 
-/** Block direct URL access (nav is already hidden in Layout for staff-only). */
 function RequireManage({ children }: { children: React.ReactNode }) {
-  const { canManage } = useAuth();
+  const { canManage } = useEffectiveRole();
   if (!canManage) return <Navigate to="/" replace />;
-  return <>{children}</>;
-}
-
-function RequireAdmin({ children }: { children: React.ReactNode }) {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
-  const { employee, loading } = useAuth();
+  const { staffMember, loading } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black text-zinc-400">
@@ -34,14 +30,15 @@ function Protected({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!employee) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+  if (!staffMember) return <Navigate to="/login" replace />;
+  return <EffectiveRoleProvider>{children}</EffectiveRoleProvider>;
 }
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/book" element={<PublicBookingPage />} />
       <Route
         path="/"
         element={
@@ -54,18 +51,34 @@ export default function App() {
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="bookings" element={<BookingsPage />} />
         <Route
-          path="employees"
+          path="admin/staff"
           element={
-            <RequireAdmin>
-              <EmployeesPage />
-            </RequireAdmin>
+            <RequireManage>
+              <AdminStaffPage />
+            </RequireManage>
           }
         />
         <Route
-          path="services"
+          path="admin/services"
           element={
             <RequireManage>
               <ServicesPage />
+            </RequireManage>
+          }
+        />
+        <Route
+          path="admin/schedule"
+          element={
+            <RequireManage>
+              <AdminSchedulePage />
+            </RequireManage>
+          }
+        />
+        <Route
+          path="admin/time-off"
+          element={
+            <RequireManage>
+              <AdminTimeOffPage />
             </RequireManage>
           }
         />
@@ -77,14 +90,7 @@ export default function App() {
             </RequireManage>
           }
         />
-        <Route
-          path="admin/staff"
-          element={
-            <RequireAdmin>
-              <AdminStaffPage />
-            </RequireAdmin>
-          }
-        />
+        <Route path="services" element={<Navigate to="/admin/services" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

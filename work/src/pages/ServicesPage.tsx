@@ -2,14 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { supabase } from "../lib/supabase";
-import { useAuth } from "../context/AuthContext";
+import { useEffectiveRole } from "../context/EffectiveRoleContext";
 import { useServicesCatalogRealtime } from "../hooks/useSalonRealtime";
 import type { CategoryRow, ServiceRow } from "../types/database";
 import { eurFromCents } from "../lib/format";
 
+const editableUi =
+  "border border-sky-600/45 ring-1 ring-sky-500/25 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/40";
+const fieldBase =
+  "mt-1 w-full rounded-lg bg-black px-3 py-2 text-sm text-white disabled:opacity-60";
+
 export function ServicesPage() {
   const { t } = useTranslation();
-  const { canManage } = useAuth();
+  const { canManage } = useEffectiveRole();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +62,7 @@ export function ServicesPage() {
     if (!canManage) return;
     if (!window.confirm(t("services.deleteConfirm", { name: s.name_et }))) return;
     const { count, error: cErr } = await supabase
-      .from("bookings")
+      .from("appointments")
       .select("id", { count: "exact", head: true })
       .eq("service_id", s.id);
     if (cErr) return;
@@ -65,7 +70,7 @@ export function ServicesPage() {
       window.alert(t("services.deleteBlockedBookings"));
       return;
     }
-    await supabase.from("employee_services").delete().eq("service_id", s.id);
+    await supabase.from("staff_services").delete().eq("service_id", s.id);
     const { error } = await supabase.from("services").delete().eq("id", s.id);
     if (error) {
       window.alert(t("services.deleteFailed"));
@@ -151,7 +156,7 @@ export function ServicesPage() {
                   setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name_et: v } : x)));
                 }}
                 onBlur={() => void saveService(s)}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white disabled:opacity-60"
+                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               />
             </label>
             <label className="block text-xs text-zinc-500">
@@ -165,7 +170,7 @@ export function ServicesPage() {
                   setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
                 }}
                 onBlur={() => void saveService(s)}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white disabled:opacity-60"
+                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               />
               <span className="mt-1 block text-zinc-600">{eurFromCents(s.price_cents)}</span>
             </label>
@@ -180,7 +185,7 @@ export function ServicesPage() {
                   setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
                 }}
                 onBlur={() => void saveService(s)}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white disabled:opacity-60"
+                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               />
             </label>
             <label className="block text-xs text-zinc-500">
@@ -194,7 +199,7 @@ export function ServicesPage() {
                   setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
                   void saveService(next);
                 }}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white disabled:opacity-60"
+                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               >
                 <option value="">{t("common.dash")}</option>
                 {categories.map((c) => (

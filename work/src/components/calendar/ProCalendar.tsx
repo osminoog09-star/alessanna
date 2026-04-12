@@ -21,50 +21,78 @@ import {
 import { addMinutes, isSameDay, parseISO, setHours, setMinutes, startOfDay } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
-import type { BookingRow, EmployeeRow, EmployeeServiceRow, ServiceRow } from "../../types/database";
-import { employeeCanPerformService } from "../../lib/roles";
-import { bookingInterval, intervalsOverlap } from "../../lib/slots";
+import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow, ServiceRow } from "../../types/database";
+import { staffCanPerformService } from "../../lib/roles";
+import { appointmentInterval, intervalsOverlap, workingWindowsForWeekday } from "../../lib/slots";
+import type { StaffTimeOffRow } from "../../types/database";
 import { useIsMobile } from "../../hooks/useIsMobile";
 
 const SLOT_PREFIX = "slot-";
 const BOOKING_PREFIX = "booking-";
 
-function slotId(employeeId: number, hour: number) {
-  return `${SLOT_PREFIX}${employeeId}-${hour}`;
+function slotId(employeeId: string, hour: number) {
+  return `${SLOT_PREFIX}${employeeId}|${hour}`;
 }
 
-function parseSlotId(id: string): { employeeId: number; hour: number } | null {
+function parseSlotId(id: string): { employeeId: string; hour: number } | null {
   if (!id.startsWith(SLOT_PREFIX)) return null;
   const rest = id.slice(SLOT_PREFIX.length);
-  const dash = rest.lastIndexOf("-");
-  if (dash <= 0) return null;
-  const emp = Number(rest.slice(0, dash));
-  const hour = Number(rest.slice(dash + 1));
-  if (!Number.isFinite(emp) || !Number.isFinite(hour)) return null;
+  const pipe = rest.lastIndexOf("|");
+  if (pipe <= 0) return null;
+  const emp = rest.slice(0, pipe);
+  const hour = Number(rest.slice(pipe + 1));
+  if (!Number.isFinite(hour)) return null;
   return { employeeId: emp, hour };
 }
 
-type ColumnEmp = Pick<EmployeeRow, "id" | "name">;
+type ColumnEmp = Pick<StaffMember, "id" | "name">;
+
+function hourInWorkingWindow(weekday: number, hour: number, schedules: StaffScheduleRow[], staffId: string): boolean {
+  const mine = schedules.filter((s) => s.staff_id === staffId);
+  const windows = workingWindowsForWeekday(
+    mine.map((s) => ({ day_of_week: s.day_of_week, start_time: s.start_time, end_time: s.end_time })),
+    weekday
+  );
+  const hStart = hour * 60;
+  const hEnd = (hour + 1) * 60;
+  return windows.some((w) => hStart < w.end && hEnd > w.start);
+}
+
+function hourInTimeOff(day: Date, hour: number, staffId: string, timeOff: StaffTimeOffRow[]): boolean {
+  const slotStart = setMinutes(setHours(startOfDay(day), hour), 0);
+  const slotEnd = addMinutes(slotStart, 60);
+  for (const t of timeOff) {
+    if (t.staff_id !== staffId) continue;
+    try {
+      const a = parseISO(t.start_time);
+      const b = parseISO(t.end_time);
+      if (intervalsOverlap(slotStart, slotEnd, a, b)) return true;
+    } catch {
+      /* skip */
+    }
+  }
+  return false;
+}
 
 type ProCalendarProps = {
   day: Date;
-  bookings: BookingRow[];
-  employees: EmployeeRow[];
+  appointments: AppointmentRow[];
+  staff: StaffMember[];
   services: ServiceRow[];
-  /** For drag-and-drop: target employee must be skilled for the booking's service */
-  employeeServiceLinks?: EmployeeServiceRow[];
+  staffServiceLinks?: StaffServiceRow[];
+  schedules: StaffScheduleRow[];
+  timeOff: StaffTimeOffRow[];
   startHour?: number;
   endHour?: number;
   onRefresh: () => void;
-  onEmptyClick: (start: Date, employeeId: number) => void;
+  onEmptyClick: (start: Date, staffId: string) => void;
   canCreate: boolean;
   canDrag: boolean;
-  /** If set, only this employee column (staff login) */
-  lockToEmployeeId?: number | null;
+  lockToStaffId?: string | null;
 };
 
 const DroppableHourCell = memo(function DroppableHourCell({
-  employeeId,
+  staffId,
   hour,
   day,
   hasBooking,
@@ -73,8 +101,10 @@ const DroppableHourCell = memo(function DroppableHourCell({
   onEmptyClick,
   canCreate,
   emptySlotAriaLabel,
+  workingBg,
+  timeOffBg,
 }: {
-  employeeId: number;
+  staffId: string;
   hour: number;
   day: Date;
   hasBooking: boolean;
@@ -83,31 +113,39 @@ const DroppableHourCell = memo(function DroppableHourCell({
   onEmptyClick?: () => void;
   canCreate: boolean;
   emptySlotAriaLabel: string;
+  workingBg: boolean;
+  timeOffBg: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: slotId(employeeId, hour),
-    data: { employeeId, hour },
+    id: slotId(staffId, hour),
+    data: { staffId, hour },
   });
 
   const hCell = isMobile ? "min-h-[5.5rem]" : "h-20";
+  const bg =
+    timeOffBg && !hasBooking
+      ? "bg-red-950/35"
+      : workingBg && !hasBooking
+        ? "bg-sky-950/20"
+        : "";
 
   return (
     <div
       ref={setNodeRef}
-      className={`relative border-b border-white/[0.06] ${hCell} ${
-        isOver ? "bg-amber-500/10 shadow-[inset_0_0_20px_rgba(245,158,11,0.12)]" : ""
+      className={`relative border-b border-white/[0.06] ${hCell} ${bg} ${
+        isOver ? "bg-sky-500/10 shadow-[inset_0_0_20px_rgba(56,189,248,0.12)]" : ""
       }`}
     >
       {!hasBooking && canCreate && onEmptyClick && (
         <button
           type="button"
           aria-label={emptySlotAriaLabel}
-          className={`group absolute inset-0 z-0 flex cursor-pointer touch-manipulation items-center justify-center rounded-lg border border-transparent transition-all active:bg-amber-500/15 ${
+          className={`group absolute inset-0 z-0 flex cursor-pointer touch-manipulation items-center justify-center rounded-lg border border-transparent transition active:bg-sky-500/15 ${
             isMobile ? "min-h-[5.25rem]" : ""
-          } hover:border-amber-500/25 hover:bg-amber-500/[0.07] hover:shadow-[0_0_24px_rgba(245,158,11,0.08)]`}
+          } hover:border-sky-500/25 hover:bg-sky-500/[0.07]`}
           onClick={onEmptyClick}
         >
-          <span className="pointer-events-none text-xs font-medium text-zinc-600 opacity-70 group-hover:text-amber-200/80 group-hover:opacity-100 md:text-[10px]">
+          <span className="pointer-events-none text-xs font-medium text-zinc-600 opacity-70 group-hover:text-sky-200/80 group-hover:opacity-100 md:text-[10px]">
             +
           </span>
         </button>
@@ -123,7 +161,7 @@ const DraggableBooking = memo(function DraggableBooking({
   disabled,
   isMobile,
 }: {
-  booking: BookingRow;
+  booking: AppointmentRow;
   serviceName: string;
   disabled: boolean;
   isMobile: boolean;
@@ -146,13 +184,11 @@ const DraggableBooking = memo(function DraggableBooking({
       style={style}
       {...listeners}
       {...attributes}
-      className={`z-[2] w-full rounded-xl border border-amber-400/35 bg-gradient-to-br from-amber-500/25 via-amber-400/10 to-transparent p-2 shadow-[0_4px_24px_rgba(0,0,0,0.45),0_0_20px_rgba(245,158,11,0.12)] backdrop-blur-md transition hover:scale-[1.02] hover:border-amber-300/50 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_28px_rgba(245,158,11,0.18)] active:cursor-grabbing md:touch-none ${
+      className={`z-[2] w-full rounded-xl border border-sky-400/40 bg-gradient-to-br from-sky-600/30 via-sky-500/15 to-transparent p-2 shadow-[0_4px_24px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:scale-[1.02] md:touch-none ${
         isMobile ? "min-h-[4.5rem] touch-manipulation p-3 text-base" : "touch-manipulation text-xs"
-      } ${isDragging ? "cursor-grabbing opacity-60 ring-2 ring-amber-400/50" : "cursor-grab"}`}
+      } ${isDragging ? "cursor-grabbing opacity-60 ring-2 ring-sky-400/50" : "cursor-grab"}`}
     >
-      <div className={`font-semibold text-amber-50 ${isMobile ? "text-sm" : ""}`}>
-        {booking.client_name}
-      </div>
+      <div className={`font-semibold text-sky-50 ${isMobile ? "text-sm" : ""}`}>{booking.client_name}</div>
       <div className={`text-zinc-400 ${isMobile ? "text-sm" : "text-[11px]"}`}>{serviceName}</div>
     </div>
   );
@@ -160,24 +196,28 @@ const DraggableBooking = memo(function DraggableBooking({
 
 export function ProCalendar({
   day,
-  bookings,
-  employees,
+  appointments,
+  staff,
   services,
-  employeeServiceLinks = [],
+  staffServiceLinks = [],
+  schedules,
+  timeOff,
   startHour = 9,
   endHour = 18,
   onRefresh,
   onEmptyClick,
   canCreate,
   canDrag,
-  lockToEmployeeId,
+  lockToStaffId,
 }: ProCalendarProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile(768);
-  const [employeeFilter, setEmployeeFilter] = useState<number | "all">("all");
+  const [staffFilter, setStaffFilter] = useState<string | "all">("all");
   const [mobileTab, setMobileTab] = useState<"day" | "team">("day");
-  const [mobileFocusId, setMobileFocusId] = useState<number | null>(null);
-  const [activeDrag, setActiveDrag] = useState<BookingRow | null>(null);
+  const [mobileFocusId, setMobileFocusId] = useState<string | null>(null);
+  const [activeDrag, setActiveDrag] = useState<AppointmentRow | null>(null);
+
+  const weekday = day.getDay();
 
   const hours = useMemo(
     () => Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i),
@@ -185,69 +225,62 @@ export function ProCalendar({
   );
 
   const activeList = useMemo(
-    () => employees.filter((e) => e.active).sort((a, b) => a.name.localeCompare(b.name)),
-    [employees]
+    () => staff.filter((e) => e.active).sort((a, b) => a.name.localeCompare(b.name)),
+    [staff]
   );
 
   useEffect(() => {
-    if (lockToEmployeeId != null) {
-      setEmployeeFilter(lockToEmployeeId);
-      setMobileFocusId(lockToEmployeeId);
+    if (lockToStaffId != null) {
+      setStaffFilter(lockToStaffId);
+      setMobileFocusId(lockToStaffId);
       return;
     }
     if (mobileFocusId == null && activeList[0]) {
       setMobileFocusId(activeList[0].id);
     }
-  }, [lockToEmployeeId, activeList, mobileFocusId]);
+  }, [lockToStaffId, activeList, mobileFocusId]);
 
   const filteredColumns: ColumnEmp[] = useMemo(() => {
-    if (lockToEmployeeId != null) {
-      const one = activeList.find((e) => e.id === lockToEmployeeId);
+    if (lockToStaffId != null) {
+      const one = activeList.find((e) => e.id === lockToStaffId);
       return one ? [{ id: one.id, name: one.name }] : [];
     }
     if (isMobile) {
-      if (employeeFilter === "all") {
+      if (staffFilter === "all") {
         const fid = mobileFocusId ?? activeList[0]?.id;
         const em = activeList.find((e) => e.id === fid);
         return em ? [{ id: em.id, name: em.name }] : [];
       }
-      const em = activeList.find((e) => e.id === employeeFilter);
+      const em = activeList.find((e) => e.id === staffFilter);
       return em ? [{ id: em.id, name: em.name }] : [];
     }
-    if (employeeFilter === "all") {
+    if (staffFilter === "all") {
       return activeList.map((e) => ({ id: e.id, name: e.name }));
     }
-    const em = activeList.find((e) => e.id === employeeFilter);
+    const em = activeList.find((e) => e.id === staffFilter);
     return em ? [{ id: em.id, name: em.name }] : [];
-  }, [activeList, employeeFilter, isMobile, mobileFocusId, lockToEmployeeId]);
+  }, [activeList, staffFilter, isMobile, mobileFocusId, lockToStaffId]);
 
-  const dayBookings = useMemo(() => {
-    return bookings.filter((b) => {
+  const dayAppointments = useMemo(() => {
+    return appointments.filter((b) => {
       try {
-        const iso = b.appointment_at || b.start_at;
-        if (!iso) return false;
-        return isSameDay(parseISO(iso), day);
+        return isSameDay(parseISO(b.start_time), day);
       } catch {
         return false;
       }
     });
-  }, [bookings, day]);
+  }, [appointments, day]);
 
   const bookingAt = useCallback(
-    (employeeId: number, hour: number): BookingRow | undefined => {
-      return dayBookings.find((b) => {
-        if (b.employee_id !== employeeId) return false;
-        try {
-          const iso = b.appointment_at || b.start_at;
-          if (!iso) return false;
-          const d = parseISO(iso);
-          return d.getHours() === hour;
-        } catch {
-          return false;
-        }
+    (sid: string, hour: number): AppointmentRow | undefined => {
+      return dayAppointments.find((b) => {
+        if (b.staff_id !== sid) return false;
+        const iv = appointmentInterval(b);
+        if (!iv) return false;
+        return iv.start.getHours() === hour;
       });
     },
-    [dayBookings]
+    [dayAppointments]
   );
 
   const serviceName = useCallback(
@@ -265,11 +298,11 @@ export function ProCalendar({
     (e: DragStartEvent) => {
       const id = String(e.active.id);
       if (!id.startsWith(BOOKING_PREFIX)) return;
-      const bid = Number(id.slice(BOOKING_PREFIX.length));
-      const b = dayBookings.find((x) => x.id === bid);
+      const bid = id.slice(BOOKING_PREFIX.length);
+      const b = dayAppointments.find((x) => String(x.id) === bid);
       setActiveDrag(b ?? null);
     },
-    [dayBookings]
+    [dayAppointments]
   );
 
   const onDragEnd = useCallback(
@@ -280,17 +313,17 @@ export function ProCalendar({
 
       const activeId = String(active.id);
       if (!activeId.startsWith(BOOKING_PREFIX)) return;
-      const bookingId = Number(activeId.slice(BOOKING_PREFIX.length));
+      const bookingId = activeId.slice(BOOKING_PREFIX.length);
 
       const parsed = parseSlotId(String(over.id));
       if (!parsed) return;
 
-      const booking = bookings.find((b) => b.id === bookingId);
+      const booking = appointments.find((b) => String(b.id) === bookingId);
       if (!booking) return;
 
-      if (lockToEmployeeId != null && parsed.employeeId !== lockToEmployeeId) return;
+      if (lockToStaffId != null && parsed.employeeId !== lockToStaffId) return;
 
-      if (!employeeCanPerformService(employeeServiceLinks, parsed.employeeId, booking.service_id)) {
+      if (!staffCanPerformService(staffServiceLinks, parsed.employeeId, booking.service_id, staff)) {
         return;
       }
 
@@ -299,42 +332,40 @@ export function ProCalendar({
       const slotStart = setMinutes(setHours(startOfDay(day), parsed.hour), 0);
       const slotEnd = addMinutes(slotStart, duration);
 
-      const clash = dayBookings.some((b) => {
-        if (b.id === bookingId || b.employee_id !== parsed.employeeId) return false;
-        const iv = bookingInterval(b);
+      const clash = dayAppointments.some((b) => {
+        if (String(b.id) === bookingId || b.staff_id !== parsed.employeeId) return false;
+        const iv = appointmentInterval(b);
         if (!iv) return false;
         return intervalsOverlap(slotStart, slotEnd, iv.start, iv.end);
       });
       if (clash) return;
 
       const { error } = await supabase
-        .from("bookings")
+        .from("appointments")
         .update({
-          employee_id: parsed.employeeId,
-          appointment_at: slotStart.toISOString(),
-          start_at: slotStart.toISOString(),
-          end_at: slotEnd.toISOString(),
+          staff_id: parsed.employeeId,
+          start_time: slotStart.toISOString(),
+          end_time: slotEnd.toISOString(),
         })
         .eq("id", bookingId);
 
       if (!error) onRefresh();
     },
-    [bookings, day, dayBookings, employeeServiceLinks, lockToEmployeeId, onRefresh, services]
+    [appointments, day, dayAppointments, staffServiceLinks, staff, lockToStaffId, onRefresh, services]
   );
 
   const openCreate = useCallback(
-    (hour: number, employeeId: number) => {
+    (hour: number, sid: string) => {
       const start = setMinutes(setHours(startOfDay(day), hour), 0);
-      onEmptyClick(start, employeeId);
+      onEmptyClick(start, sid);
     },
     [day, onEmptyClick]
   );
 
-  const showFilter = lockToEmployeeId == null;
+  const showFilter = lockToStaffId == null;
 
   return (
     <div className="space-y-4">
-      {/* Mobile tabs */}
       {isMobile && showFilter && (
         <div className="flex gap-2 rounded-xl border border-white/[0.08] bg-black/40 p-1 backdrop-blur-sm md:hidden">
           <button
@@ -342,7 +373,7 @@ export function ProCalendar({
             onClick={() => setMobileTab("day")}
             className={`flex-1 rounded-lg py-3 text-sm font-semibold touch-manipulation transition ${
               mobileTab === "day"
-                ? "bg-amber-500/20 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                ? "bg-sky-500/20 text-sky-100 shadow-[0_0_20px_rgba(56,189,248,0.15)]"
                 : "text-zinc-500"
             }`}
           >
@@ -353,7 +384,7 @@ export function ProCalendar({
             onClick={() => setMobileTab("team")}
             className={`flex-1 rounded-lg py-3 text-sm font-semibold touch-manipulation transition ${
               mobileTab === "team"
-                ? "bg-amber-500/20 text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
+                ? "bg-sky-500/20 text-sky-100 shadow-[0_0_20px_rgba(56,189,248,0.15)]"
                 : "text-zinc-500"
             }`}
           >
@@ -362,18 +393,17 @@ export function ProCalendar({
         </div>
       )}
 
-      {/* Team picker (mobile) */}
       {isMobile && showFilter && mobileTab === "team" && (
         <div className="flex gap-2 overflow-x-auto pb-2 md:hidden [-webkit-overflow-scrolling:touch]">
           <button
             type="button"
             onClick={() => {
-              setEmployeeFilter("all");
+              setStaffFilter("all");
               setMobileTab("day");
             }}
             className={`shrink-0 rounded-full border px-5 py-3 text-sm font-medium touch-manipulation ${
-              employeeFilter === "all"
-                ? "border-amber-400/50 bg-amber-500/15 text-amber-100"
+              staffFilter === "all"
+                ? "border-sky-400/50 bg-sky-500/15 text-sky-100"
                 : "border-white/10 bg-white/[0.04] text-zinc-300"
             }`}
           >
@@ -384,13 +414,13 @@ export function ProCalendar({
               key={e.id}
               type="button"
               onClick={() => {
-                setEmployeeFilter("all");
+                setStaffFilter("all");
                 setMobileFocusId(e.id);
                 setMobileTab("day");
               }}
               className={`shrink-0 rounded-full border px-5 py-3 text-sm font-medium touch-manipulation ${
-                mobileFocusId === e.id && employeeFilter === "all"
-                  ? "border-amber-400/50 bg-amber-500/15 text-amber-100"
+                mobileFocusId === e.id && staffFilter === "all"
+                  ? "border-sky-400/50 bg-sky-500/15 text-sky-100"
                   : "border-white/10 bg-white/[0.04] text-zinc-300"
               }`}
             >
@@ -400,7 +430,6 @@ export function ProCalendar({
         </div>
       )}
 
-      {/* Desktop / filter bar */}
       {showFilter && (!isMobile || mobileTab === "day") && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="hidden items-center gap-2 md:flex">
@@ -408,12 +437,12 @@ export function ProCalendar({
               {t("proCalendar.staffFilter")}
             </span>
             <select
-              value={employeeFilter === "all" ? "all" : String(employeeFilter)}
+              value={staffFilter === "all" ? "all" : staffFilter}
               onChange={(e) => {
                 const v = e.target.value;
-                setEmployeeFilter(v === "all" ? "all" : Number(v));
+                setStaffFilter(v === "all" ? "all" : v);
               }}
-              className="min-w-[12rem] rounded-xl border border-white/10 bg-zinc-950/80 px-4 py-2.5 text-sm text-white shadow-inner backdrop-blur-md focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+              className="min-w-[12rem] rounded-xl border border-white/10 bg-zinc-950/80 px-4 py-2.5 text-sm text-white shadow-inner backdrop-blur-md focus:border-sky-500/40 focus:outline-none focus:ring-1 focus:ring-sky-500/30"
             >
               <option value="all">{t("proCalendar.allEmployees")}</option>
               {activeList.map((e) => (
@@ -438,9 +467,8 @@ export function ProCalendar({
           onDragStart={onDragStart}
           onDragEnd={(e) => void onDragEnd(e)}
         >
-          <div className="overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#050506] shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_24px_80px_rgba(0,0,0,0.65)] [-webkit-overflow-scrolling:touch]">
+          <div className="overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#050506] shadow-[0_24px_80px_rgba(0,0,0,0.65)] [-webkit-overflow-scrolling:touch]">
             <div className="flex min-w-max">
-              {/* time labels */}
               <div
                 className={`sticky left-0 z-10 w-14 shrink-0 border-r border-white/[0.08] bg-[#050506]/95 backdrop-blur-md sm:w-20 ${
                   isMobile ? "pt-[4.25rem]" : "pt-16"
@@ -474,18 +502,20 @@ export function ProCalendar({
                   </div>
                   {hours.map((h) => {
                     const b = bookingAt(emp.id, h);
+                    const workingBg = hourInWorkingWindow(weekday, h, schedules, emp.id);
+                    const timeOffBg = hourInTimeOff(day, h, emp.id, timeOff);
                     return (
                       <DroppableHourCell
                         key={h}
-                        employeeId={emp.id}
+                        staffId={emp.id}
                         hour={h}
                         day={day}
                         hasBooking={!!b}
                         isMobile={isMobile}
                         canCreate={canCreate}
-                        onEmptyClick={
-                          !b && canCreate ? () => openCreate(h, emp.id) : undefined
-                        }
+                        workingBg={workingBg}
+                        timeOffBg={timeOffBg}
+                        onEmptyClick={!b && canCreate ? () => openCreate(h, emp.id) : undefined}
                         emptySlotAriaLabel={t("proCalendar.createBookingAria", { hour: h })}
                       >
                         {b && (
@@ -507,11 +537,11 @@ export function ProCalendar({
           <DragOverlay dropAnimation={null}>
             {activeDrag ? (
               <div
-                className={`pointer-events-none rounded-xl border border-amber-400/40 bg-gradient-to-br from-amber-500/30 to-amber-900/20 p-3 shadow-2xl backdrop-blur-md ${
+                className={`pointer-events-none rounded-xl border border-sky-400/40 bg-gradient-to-br from-sky-600/35 to-sky-900/20 p-3 shadow-2xl backdrop-blur-md ${
                   isMobile ? "min-w-[240px] text-base" : "w-36 text-xs"
                 }`}
               >
-                <div className="font-semibold text-amber-50">{activeDrag.client_name}</div>
+                <div className="font-semibold text-sky-50">{activeDrag.client_name}</div>
                 <div className="text-zinc-400">{serviceName(activeDrag.service_id)}</div>
               </div>
             ) : null}

@@ -1,18 +1,10 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import type { ServiceRow, StaffServiceRow, StaffTableRow } from "../types/database";
+import type { Role } from "../types/database";
 
-/** Row shape for Supabase `public.staff`. */
-export type StaffRow = {
-  id: number;
-  phone: string | null;
-  name: string;
-  role: string;
-  is_active: boolean;
-  created_at?: string;
-};
-
-type UiRole = "admin" | "manager" | "staff";
+type UiRole = Role;
 
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -20,32 +12,68 @@ function digitsOnly(phone: string): string {
 
 export function AdminStaffPage() {
   const { t } = useTranslation();
-  const [rows, setRows] = useState<StaffRow[]>([]);
+  const [rows, setRows] = useState<StaffTableRow[]>([]);
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [links, setLinks] = useState<StaffServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<UiRole>("staff");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState<UiRole>("staff");
 
   const load = useCallback(async () => {
     setErr(null);
-    const { data, error } = await supabase
-      .from("staff")
-      .select("*")
-      .order("created_at", { ascending: false });
-    console.log("STAFF LIST:", data);
-    if (error) {
-      setErr(error.message);
+    const [st, sv, lk] = await Promise.all([
+      supabase.from("staff").select("*").order("created_at", { ascending: false }),
+      supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true }),
+      supabase.from("staff_services").select("*"),
+    ]);
+    if (st.error) {
+      setErr(st.error.message);
       setLoading(false);
       return;
     }
-    setRows((data ?? []) as StaffRow[]);
+    setRows((st.data ?? []) as StaffTableRow[]);
+    if (sv.data) setServices(sv.data as ServiceRow[]);
+    if (lk.data) setLinks(lk.data as StaffServiceRow[]);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const activeServices = useMemo(() => services.filter((s) => s.active), [services]);
+
+  function startEdit(r: StaffTableRow) {
+    setEditingId(r.id);
+    setEditName(r.name);
+    setEditPhone(r.phone ?? "");
+    setEditRole((r.role as UiRole) ?? "staff");
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    setErr(null);
+    const { error } = await supabase
+      .from("staff")
+      .update({
+        name: editName.trim(),
+        phone: digitsOnly(editPhone) || null,
+        role: editRole,
+      })
+      .eq("id", editingId);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setEditingId(null);
+    void load();
+  }
 
   async function onAdd(e: FormEvent) {
     e.preventDefault();
@@ -72,7 +100,7 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function toggleActive(row: StaffRow) {
+  async function toggleActive(row: StaffTableRow) {
     setErr(null);
     const { error } = await supabase.from("staff").update({ is_active: !row.is_active }).eq("id", row.id);
     if (error) {
@@ -82,7 +110,7 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function remove(row: StaffRow) {
+  async function remove(row: StaffTableRow) {
     setErr(null);
     if (!window.confirm(`Delete ${row.name} permanently?`)) return;
     const { error } = await supabase.from("staff").delete().eq("id", row.id);
@@ -93,22 +121,42 @@ export function AdminStaffPage() {
     void load();
   }
 
-  if (loading) return <p className="text-zinc-500">Loading…</p>;
+  async function toggleService(staffId: string, serviceId: number, on: boolean) {
+    setErr(null);
+    if (on) {
+      const { error } = await supabase.from("staff_services").insert({ staff_id: staffId, service_id: serviceId });
+      if (error) setErr(error.message);
+    } else {
+      const { error } = await supabase
+        .from("staff_services")
+        .delete()
+        .eq("staff_id", staffId)
+        .eq("service_id", serviceId);
+      if (error) setErr(error.message);
+    }
+    void load();
+  }
+
+  function hasLink(staffId: string, serviceId: number) {
+    return links.some((l) => l.staff_id === staffId && l.service_id === serviceId);
+  }
+
+  if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
   return (
-    <div className="max-w-4xl space-y-6 text-zinc-200">
+    <div className="max-w-5xl space-y-6 text-zinc-200">
       <header>
-        <h1 className="text-xl font-semibold text-white">Admin · Staff</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Manage people in the <code className="text-zinc-400">staff</code> table.
-        </p>
+        <h1 className="text-xl font-semibold text-white">{t("nav.adminStaff")}</h1>
+        <p className="mt-1 text-sm text-zinc-500">{t("adminStaff.subtitle")}</p>
       </header>
 
-      {err && <p className="rounded border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">{err}</p>}
+      {err && (
+        <p className="rounded border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">{err}</p>
+      )}
 
       <form onSubmit={onAdd} className="flex flex-wrap items-end gap-3 border border-zinc-800 bg-zinc-950 p-4">
         <div>
-          <label className="block text-xs text-zinc-500">Phone (digits)</label>
+          <label className="block text-xs text-zinc-500">{t("login.phone")}</label>
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -117,16 +165,15 @@ export function AdminStaffPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-zinc-500">Name</label>
+          <label className="block text-xs text-zinc-500">{t("adminStaff.name")}</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
-            placeholder="Full name"
           />
         </div>
         <div>
-          <label className="block text-xs text-zinc-500">Role</label>
+          <label className="block text-xs text-zinc-500">{t("role.staff")}</label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as UiRole)}
@@ -138,7 +185,7 @@ export function AdminStaffPage() {
           </select>
         </div>
         <button type="submit" className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">
-          Add
+          {t("common.add")}
         </button>
       </form>
 
@@ -146,31 +193,92 @@ export function AdminStaffPage() {
         <table className="w-full border-collapse text-left text-sm">
           <thead className="bg-zinc-900 text-zinc-400">
             <tr>
-              <th className="border-b border-zinc-800 px-3 py-2">phone</th>
-              <th className="border-b border-zinc-800 px-3 py-2">name</th>
+              <th className="border-b border-zinc-800 px-3 py-2">{t("login.phone")}</th>
+              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.name")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">role</th>
-              <th className="border-b border-zinc-800 px-3 py-2">is_active</th>
+              <th className="border-b border-zinc-800 px-3 py-2">active</th>
+              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.services")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-zinc-800/80">
-                <td className="px-3 py-2 font-mono text-zinc-300">{r.phone ?? "—"}</td>
-                <td className="px-3 py-2">{r.name}</td>
-                <td className="px-3 py-2">{r.role ?? "—"}</td>
-                <td className="px-3 py-2">{r.is_active ? "true" : "false"}</td>
-                <td className="space-x-2 px-3 py-2">
-                  <button
-                    type="button"
-                    className="text-sky-400 underline"
-                    onClick={() => void toggleActive(r)}
-                  >
-                    {r.is_active ? "deactivate" : "activate"}
-                  </button>
-                  <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
-                    delete
-                  </button>
+              <tr key={r.id} className="border-b border-zinc-800/80 align-top">
+                <td className="px-3 py-2 font-mono text-zinc-300">
+                  {editingId === r.id ? (
+                    <input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
+                    />
+                  ) : (
+                    r.phone ?? "—"
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  {editingId === r.id ? (
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
+                    />
+                  ) : (
+                    r.name
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  {editingId === r.id ? (
+                    <select
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value as UiRole)}
+                      className="rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
+                    >
+                      <option value="admin">{t("role.admin")}</option>
+                      <option value="manager">{t("role.manager")}</option>
+                      <option value="staff">{t("role.staff")}</option>
+                    </select>
+                  ) : (
+                    r.role
+                  )}
+                </td>
+                <td className="px-3 py-2">{r.is_active ? "yes" : "no"}</td>
+                <td className="max-w-xs px-3 py-2">
+                  <div className="flex flex-wrap gap-2">
+                    {activeServices.map((s) => (
+                      <label key={s.id} className="flex items-center gap-1 text-xs text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={hasLink(r.id, s.id)}
+                          onChange={(e) => void toggleService(r.id, s.id, e.target.checked)}
+                        />
+                        {s.name_et}
+                      </label>
+                    ))}
+                  </div>
+                </td>
+                <td className="space-x-2 px-3 py-2 whitespace-nowrap">
+                  {editingId === r.id ? (
+                    <>
+                      <button type="button" className="text-sky-400 underline" onClick={() => void saveEdit()}>
+                        {t("common.save")}
+                      </button>
+                      <button type="button" className="text-zinc-500 underline" onClick={() => setEditingId(null)}>
+                        {t("common.cancel")}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="text-sky-400 underline" onClick={() => startEdit(r)}>
+                        {t("adminStaff.edit")}
+                      </button>
+                      <button type="button" className="text-zinc-400 underline" onClick={() => void toggleActive(r)}>
+                        {r.is_active ? "deactivate" : "activate"}
+                      </button>
+                      <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
+                        delete
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

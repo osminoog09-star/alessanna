@@ -1,10 +1,9 @@
-import type { EmployeeRow, EmployeeServiceRow, Role, ServiceRow, StaffRole } from "../types/database";
+import type { Role, ServiceRow, StaffMember, StaffRole, StaffServiceRow } from "../types/database";
 
 export type { Role, StaffRole };
 
 const ALLOWED: readonly StaffRole[] = ["admin", "manager", "staff"];
 
-/** Map legacy DB tokens to canonical roles (`viewer` / `employee` → `staff`). Not a real `viewer` role in the app. */
 function mapRoleToken(x: unknown): StaffRole | null {
   if (typeof x !== "string") return null;
   const l = x.toLowerCase().trim();
@@ -13,39 +12,52 @@ function mapRoleToken(x: unknown): StaffRole | null {
   return null;
 }
 
+function attachStaffForManagers(roles: StaffRole[]): StaffRole[] {
+  if (roles.includes("manager") && !roles.includes("staff")) {
+    return [...roles, "staff"];
+  }
+  return roles;
+}
+
 export function normalizeRoles(raw: unknown): StaffRole[] {
   if (Array.isArray(raw)) {
     const out = raw.map(mapRoleToken).filter((x): x is StaffRole => x != null);
     const uniq = [...new Set(out)];
-    return uniq.length ? uniq : ["staff"];
+    return attachStaffForManagers(uniq.length ? uniq : ["staff"]);
   }
   const single = mapRoleToken(raw);
-  if (single) return [single];
+  if (single) return attachStaffForManagers([single]);
   return ["staff"];
 }
 
-/** Merge stored CRM row (legacy single `role` or Postgres/JSON shapes). */
-export function normalizeEmployeeRow(row: EmployeeRow | (Record<string, unknown> & { id?: number })): EmployeeRow {
-  const r = row as Record<string, unknown> & { id: number };
+export function normalizeStaffMember(row: StaffMember | (Record<string, unknown> & { id?: string })): StaffMember {
+  const r = row as Record<string, unknown> & { id: string };
   const roles = normalizeRoles(r.roles ?? r.role);
   const rest = { ...r } as Record<string, unknown>;
   delete rest.role;
   delete rest.roles;
-  return { ...(rest as Omit<EmployeeRow, "roles">), roles };
+  const active = Boolean(r.active ?? r.is_active ?? true);
+  return {
+    ...(rest as Omit<StaffMember, "roles" | "active">),
+    id: String(r.id),
+    active,
+    roles,
+  };
 }
 
-export function hasStaffRole(employee: Pick<EmployeeRow, "roles"> | null | undefined, role: StaffRole): boolean {
-  if (!employee?.roles?.length) return false;
-  return normalizeRoles(employee.roles).includes(role);
+export function hasStaffRole(
+  member: Pick<StaffMember, "roles"> | null | undefined,
+  role: StaffRole
+): boolean {
+  if (!member?.roles?.length) return false;
+  return normalizeRoles(member.roles).includes(role);
 }
 
-/** Logged-in user has only `staff` (no manager/admin caps). */
 export function isStaffOnlyView(roles: StaffRole[] | undefined): boolean {
   const r = normalizeRoles(roles);
   return r.includes("staff") && !r.includes("manager") && !r.includes("admin");
 }
 
-/** Managers cannot add/remove admin; admins can set any combination. */
 export function sanitizeRolesForSave(
   edited: StaffRole[],
   editorIsAdmin: boolean,
@@ -53,45 +65,63 @@ export function sanitizeRolesForSave(
 ): StaffRole[] {
   const norm = normalizeRoles(edited);
   const storedNorm = normalizeRoles(storedRoles);
-  if (editorIsAdmin) return norm.length ? norm : ["staff"];
+  if (editorIsAdmin) return attachStaffForManagers(norm.length ? norm : ["staff"]);
   let out = norm.filter((r) => r !== "admin");
   if (storedNorm.includes("admin")) out = [...new Set([...out, "admin"])];
-  return out.length ? out : ["staff"];
+  return attachStaffForManagers(out.length ? out : ["staff"]);
 }
 
-/** Staff who may perform `serviceId` for booking/calendar. */
-export function employeesEligibleForService(
-  employees: EmployeeRow[],
-  links: EmployeeServiceRow[],
+/**
+ * Active staff for a service: linked in `staff_services`, or no links for that service (all active),
+ * or active manager/admin without a link.
+ */
+export function staffEligibleForService(
+  staffList: StaffMember[],
+  links: StaffServiceRow[],
   serviceId: number | null
-): EmployeeRow[] {
-  const active = employees.filter((e) => e.active);
+): StaffMember[] {
+  const active = staffList.filter((s) => s.active);
   if (serviceId == null) return active;
   const forSvc = links.filter((l) => l.service_id === serviceId);
   if (forSvc.length === 0) return active;
-  const ids = new Set(forSvc.map((l) => l.employee_id));
-  return active.filter((e) => ids.has(e.id));
+  const ids = new Set(forSvc.map((l) => l.staff_id));
+  return active.filter((e) => {
+    if (ids.has(e.id)) return true;
+    const r = normalizeRoles(e.roles);
+    return r.includes("manager") || r.includes("admin");
+  });
 }
 
-/** One employee vs service (same rules as list filtering). */
-export function employeeCanPerformService(
-  links: EmployeeServiceRow[],
-  employeeId: number,
-  serviceId: number
+export function staffCanPerformService(
+  links: StaffServiceRow[],
+  staffId: string,
+  serviceId: number,
+  staffList?: StaffMember[]
 ): boolean {
   const forSvc = links.filter((l) => l.service_id === serviceId);
   if (forSvc.length === 0) return true;
-  return forSvc.some((l) => l.employee_id === employeeId);
+  if (forSvc.some((l) => l.staff_id === staffId)) return true;
+  const st = staffList?.find((e) => e.id === staffId);
+  if (!st?.active) return false;
+  const r = normalizeRoles(st.roles);
+  return r.includes("manager") || r.includes("admin");
 }
 
-export function servicesEligibleForEmployee(
+export function servicesEligibleForStaff(
   services: ServiceRow[],
-  links: EmployeeServiceRow[],
-  employeeId: number
+  links: StaffServiceRow[],
+  staffId: string,
+  staffRow?: Pick<StaffMember, "roles" | "active"> | null
 ): ServiceRow[] {
   const active = services.filter((s) => s.active);
-  const forEmp = links.filter((l) => l.employee_id === employeeId);
-  if (forEmp.length === 0) return active;
-  const ids = new Set(forEmp.map((l) => l.service_id));
+  const forSt = links.filter((l) => l.staff_id === staffId);
+  if (forSt.length === 0) return active;
+  if (
+    staffRow?.active &&
+    (hasStaffRole(staffRow, "manager") || hasStaffRole(staffRow, "admin"))
+  ) {
+    return active;
+  }
+  const ids = new Set(forSt.map((l) => l.service_id));
   return active.filter((s) => ids.has(s.id));
 }

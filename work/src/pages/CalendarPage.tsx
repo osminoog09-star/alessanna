@@ -1,17 +1,26 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, startOfDay, startOfWeek, endOfWeek, isSameDay, parseISO } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { useAuth } from "../context/AuthContext";
+import { useEffectiveRole } from "../context/EffectiveRoleContext";
 import {
   buildSlotsForDay,
-  bookingsForEmployeeOnDay,
+  appointmentsForStaffOnDay,
   formatSlotRange,
   type Slot,
 } from "../lib/slots";
-import type { BookingRow, EmployeeRow, EmployeeServiceRow, ScheduleRow, ServiceRow } from "../types/database";
-import { employeesEligibleForService, hasStaffRole, normalizeEmployeeRow } from "../lib/roles";
+import type {
+  AppointmentRow,
+  ServiceRow,
+  StaffMember,
+  StaffScheduleRow,
+  StaffServiceRow,
+  StaffTimeOffRow,
+} from "../types/database";
+import { staffEligibleForService, hasStaffRole, normalizeStaffMember } from "../lib/roles";
+import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
 import { BookingModal } from "../components/BookingModal";
 import { ProCalendar } from "../components/calendar/ProCalendar";
 
@@ -19,35 +28,45 @@ type View = "day" | "week";
 
 export function CalendarPage() {
   const { t } = useTranslation();
-  const { employee, canManage, isStaffOnly } = useAuth();
+  const { staffMember } = useAuth();
+  const { canManage, isStaffOnlyEffective } = useEffectiveRole();
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
-  const [employeeId, setEmployeeId] = useState<number | null>(null);
-  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
-  const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
-  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [staffId, setStaffId] = useState<string | null>(null);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
+  const [timeOff, setTimeOff] = useState<StaffTimeOffRow[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
-  const [employeeServiceLinks, setEmployeeServiceLinks] = useState<EmployeeServiceRow[]>([]);
+  const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
   const [calendarServiceId, setCalendarServiceId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<{ start: Date; empId: number } | null>(null);
+  const [modal, setModal] = useState<{ start: Date; staffId: string } | null>(null);
   const [durationMin, setDurationMin] = useState(60);
 
   const load = useCallback(async () => {
-    const [em, sch, bk, sv, es] = await Promise.all([
-      supabase.from("employees").select("*").order("name"),
-      supabase.from("schedules").select("*"),
-      supabase.from("bookings").select("*").neq("status", "cancelled"),
+    let apQuery = supabase.from("appointments").select("*").neq("status", "cancelled");
+    if (isStaffOnlyEffective && staffMember) {
+      apQuery = apQuery.eq("staff_id", staffMember.id);
+    }
+    const [st, sch, to, ap, sv, ss] = await Promise.all([
+      supabase.from("staff").select("*").order("name"),
+      supabase.from("staff_schedule").select("*"),
+      supabase.from("staff_time_off").select("*"),
+      apQuery,
       supabase.from("services").select("*").eq("active", true),
-      supabase.from("employee_services").select("*"),
+      supabase.from("staff_services").select("*"),
     ]);
-    if (em.data) setEmployees((em.data as EmployeeRow[]).map(normalizeEmployeeRow));
-    if (sch.data) setSchedules(sch.data as ScheduleRow[]);
-    if (bk.data) setBookings(bk.data as BookingRow[]);
-    if (es.data) setEmployeeServiceLinks(es.data as EmployeeServiceRow[]);
+    if (st.data) {
+      setStaff((st.data as Record<string, unknown>[]).map((r) => normalizeStaffMember(r as StaffMember)));
+    }
+    if (sch.data) setSchedules(sch.data as StaffScheduleRow[]);
+    if (to.data) setTimeOff(to.data as StaffTimeOffRow[]);
+    if (ap.data) setAppointments(ap.data as AppointmentRow[]);
+    if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
     if (sv.data) setServices(sv.data as ServiceRow[]);
     setLoading(false);
-  }, []);
+  }, [isStaffOnlyEffective, staffMember]);
 
   useEffect(() => {
     void load();
@@ -67,8 +86,8 @@ export function CalendarPage() {
   }, [calendarServiceId, services]);
 
   const staffForCalendar = useMemo(
-    () => employeesEligibleForService(employees, employeeServiceLinks, calendarServiceId),
-    [employees, employeeServiceLinks, calendarServiceId]
+    () => staffEligibleForService(staff, staffServiceLinks, calendarServiceId),
+    [staff, staffServiceLinks, calendarServiceId]
   );
 
   const activeStaffForCalendar = useMemo(
@@ -76,38 +95,41 @@ export function CalendarPage() {
     [staffForCalendar]
   );
 
-  const dayViewEmployees = useMemo(() => {
-    if (isStaffOnly && employee) {
-      const self = employees.filter((e) => e.id === employee.id && e.active);
-      return self.length ? self : employees.filter((e) => e.id === employee.id);
+  const dayViewStaff = useMemo(() => {
+    if (isStaffOnlyEffective && staffMember) {
+      const self = staff.filter((e) => e.id === staffMember.id && e.active);
+      return self.length ? self : staff.filter((e) => e.id === staffMember.id);
     }
     return staffForCalendar;
-  }, [isStaffOnly, employee, employees, staffForCalendar]);
+  }, [isStaffOnlyEffective, staffMember, staff, staffForCalendar]);
 
   useEffect(() => {
-    if (isStaffOnly && employee) {
-      setEmployeeId(employee.id);
+    if (isStaffOnlyEffective && staffMember) {
+      setStaffId(staffMember.id);
       return;
     }
     if (!activeStaffForCalendar.length) return;
-    if (employeeId == null || !activeStaffForCalendar.some((e) => e.id === employeeId)) {
-      setEmployeeId(activeStaffForCalendar[0].id);
+    const selfInRoster =
+      staffMember &&
+      (hasStaffRole(staffMember, "manager") || hasStaffRole(staffMember, "admin")) &&
+      activeStaffForCalendar.some((e) => e.id === staffMember.id);
+    if (selfInRoster && (staffId == null || !activeStaffForCalendar.some((e) => e.id === staffId))) {
+      setStaffId(staffMember!.id);
+      return;
     }
-  }, [activeStaffForCalendar, employee, employeeId, isStaffOnly]);
-
-  const canUseCalendar = canManage || hasStaffRole(employee, "staff");
-
-  const filteredBookings = useMemo(() => {
-    if (isStaffOnly && employee) {
-      return bookings.filter((b) => b.employee_id === employee.id);
+    if (staffId == null || !activeStaffForCalendar.some((e) => e.id === staffId)) {
+      setStaffId(activeStaffForCalendar[0].id);
     }
-    return bookings;
-  }, [bookings, employee, isStaffOnly]);
+  }, [activeStaffForCalendar, staffMember, staffId, isStaffOnlyEffective]);
 
-  const empSchedules = useMemo(() => {
-    if (employeeId == null) return [];
-    return schedules.filter((s) => s.employee_id === employeeId);
-  }, [schedules, employeeId]);
+  const canUseCalendar = staffMember ? effectiveCanWorkCalendar(staffMember.roles) : false;
+
+  const filteredAppointments = useMemo(() => {
+    if (isStaffOnlyEffective && staffMember) {
+      return appointments.filter((b) => b.staff_id === staffMember.id);
+    }
+    return appointments;
+  }, [appointments, staffMember, isStaffOnlyEffective]);
 
   const weekStart = startOfWeek(cursor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(cursor, { weekStartsOn: 1 });
@@ -117,23 +139,44 @@ export function CalendarPage() {
       : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   function slotsForDay(day: Date): Slot[] {
-    if (employeeId == null) return [];
+    if (staffId == null) return [];
     const wd = day.getDay();
-    const existing = bookingsForEmployeeOnDay(filteredBookings, employeeId, day);
-    return buildSlotsForDay(day, wd, empSchedules, existing, durationMin, 30);
+    const existing = appointmentsForStaffOnDay(filteredAppointments, staffId, day);
+    const sched = schedules
+      .filter((s) => s.staff_id === staffId)
+      .map((s) => ({
+        day_of_week: s.day_of_week,
+        start_time: s.start_time,
+        end_time: s.end_time,
+      }));
+    return buildSlotsForDay(day, wd, sched, existing, durationMin, 30);
   }
 
-  function bookingsBlocks(day: Date) {
-    if (employeeId == null) return [];
-    return filteredBookings.filter((b) => {
-      if (b.employee_id !== employeeId) return false;
+  function appointmentBlocks(day: Date) {
+    if (staffId == null) return [];
+    return filteredAppointments.filter((b) => {
+      if (b.staff_id !== staffId) return false;
       try {
-        return isSameDay(parseISO(b.appointment_at || b.start_at), day);
+        return isSameDay(parseISO(b.start_time), day);
       } catch {
         return false;
       }
     });
   }
+
+  const timeOffForDayView = useMemo(() => {
+    if (view !== "day") return timeOff;
+    const d0 = startOfDay(cursor);
+    return timeOff.filter((t) => {
+      try {
+        const a = parseISO(t.start_time);
+        const b = parseISO(t.end_time);
+        return isSameDay(a, d0) || isSameDay(b, d0) || (a <= d0 && b >= d0);
+      } catch {
+        return false;
+      }
+    });
+  }, [timeOff, view, cursor]);
 
   return (
     <div className="space-y-6">
@@ -188,7 +231,7 @@ export function CalendarPage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
-        {employee && !isStaffOnly && services.length > 0 && (
+        {staffMember && !isStaffOnlyEffective && services.length > 0 && (
           <label className="flex items-center gap-2 text-sm text-zinc-400">
             {t("calendar.bookingService")}
             <select
@@ -204,12 +247,12 @@ export function CalendarPage() {
             </select>
           </label>
         )}
-        {employee && !isStaffOnly && view === "week" && (
+        {staffMember && !isStaffOnlyEffective && view === "week" && (
           <label className="flex items-center gap-2 text-sm text-zinc-400">
             {t("calendar.staff")}
             <select
-              value={employeeId ?? ""}
-              onChange={(e) => setEmployeeId(Number(e.target.value))}
+              value={staffId ?? ""}
+              onChange={(e) => setStaffId(e.target.value)}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
             >
               {activeStaffForCalendar.map((e) => (
@@ -246,19 +289,21 @@ export function CalendarPage() {
       ) : view === "day" ? (
         <ProCalendar
           day={startOfDay(cursor)}
-          bookings={filteredBookings}
-          employees={dayViewEmployees}
+          appointments={filteredAppointments}
+          staff={dayViewStaff}
           services={services}
-          employeeServiceLinks={employeeServiceLinks}
+          staffServiceLinks={staffServiceLinks}
+          schedules={schedules}
+          timeOff={timeOffForDayView}
           startHour={9}
           endHour={18}
           onRefresh={load}
-          onEmptyClick={(start, empId) => setModal({ start, empId })}
+          onEmptyClick={(start, sid) => setModal({ start, staffId: sid })}
           canCreate={canUseCalendar}
           canDrag={canUseCalendar}
-          lockToEmployeeId={isStaffOnly && employee ? employee.id : null}
+          lockToStaffId={isStaffOnlyEffective && staffMember ? staffMember.id : null}
         />
-      ) : employeeId == null ? (
+      ) : staffId == null ? (
         <p className="text-zinc-500">{t("common.loading")}</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-7">
@@ -267,29 +312,13 @@ export function CalendarPage() {
               key={day.toISOString()}
               day={day}
               slots={slotsForDay(day)}
-              blocks={bookingsBlocks(day)}
+              blocks={appointmentBlocks(day)}
               services={services}
-              onBookSlot={(start) => setModal({ start, empId: employeeId })}
+              onBookSlot={(start) => setModal({ start, staffId })}
               canClick={canUseCalendar}
             />
           ))}
         </div>
-      )}
-
-      {canManage && (
-        <ScheduleApprovals
-          schedules={schedules}
-          employees={employees}
-          onChanged={load}
-        />
-      )}
-
-      {isStaffOnly && employee && (
-        <EmployeeScheduleProposal
-          employeeId={employee.id}
-          schedules={schedules}
-          onChanged={load}
-        />
       )}
 
       {modal && (
@@ -299,11 +328,11 @@ export function CalendarPage() {
           onClose={() => setModal(null)}
           onSaved={load}
           initialStart={modal.start}
-          initialEmployeeId={modal.empId}
-          employees={employees}
+          initialStaffId={modal.staffId}
+          staffList={staff}
           services={services}
-          links={employeeServiceLinks}
-          lockEmployee={!canManage}
+          links={staffServiceLinks}
+          lockStaff={!canManage}
         />
       )}
     </div>
@@ -320,7 +349,7 @@ function DayColumn({
 }: {
   day: Date;
   slots: Slot[];
-  blocks: BookingRow[];
+  blocks: AppointmentRow[];
   services: ServiceRow[];
   onBookSlot: (d: Date) => void;
   canClick: boolean;
@@ -330,9 +359,7 @@ function DayColumn({
   return (
     <div className="flex min-h-[320px] flex-col rounded-xl border border-zinc-800 bg-zinc-950">
       <div className="border-b border-zinc-800 px-3 py-2 text-center">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          {t(`weekday.${wd}`)}
-        </p>
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{t(`weekday.${wd}`)}</p>
         <p className="text-lg font-semibold text-white">{format(day, "d")}</p>
       </div>
       <div className="max-h-[480px] flex-1 overflow-y-auto p-2">
@@ -345,8 +372,7 @@ function DayColumn({
             >
               <p className="font-medium">{b.client_name}</p>
               <p className="text-sky-200/80">
-                {format(parseISO(b.appointment_at || b.start_at), "HH:mm")} ·{" "}
-                {svc?.name_et ?? t("common.service")}
+                {format(parseISO(b.start_time), "HH:mm")} · {svc?.name_et ?? t("common.service")}
               </p>
             </div>
           );
@@ -354,9 +380,7 @@ function DayColumn({
         <p className="mb-2 mt-3 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
           {t("calendar.freeSlots")}
         </p>
-        {slots.length === 0 && (
-          <p className="text-xs text-zinc-600">{t("calendar.noWorkingHours")}</p>
-        )}
+        {slots.length === 0 && <p className="text-xs text-zinc-600">{t("calendar.noWorkingHours")}</p>}
         <div className="flex flex-col gap-1">
           {slots.map((s) => (
             <button
@@ -376,166 +400,5 @@ function DayColumn({
         </div>
       </div>
     </div>
-  );
-}
-
-function ScheduleApprovals({
-  schedules,
-  employees,
-  onChanged,
-}: {
-  schedules: ScheduleRow[];
-  employees: EmployeeRow[];
-  onChanged: () => void;
-}) {
-  const { t } = useTranslation();
-  const pending = schedules.filter((s) => s.status === "pending");
-
-  async function approve(id: number) {
-    await supabase.from("schedules").update({ status: "approved" }).eq("id", id);
-    onChanged();
-  }
-
-  async function reject(id: number) {
-    await supabase.from("schedules").delete().eq("id", id);
-    onChanged();
-  }
-
-  if (!pending.length) return null;
-
-  return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-      <h2 className="text-sm font-semibold text-white">{t("calendar.scheduleApprovals")}</h2>
-      <ul className="mt-3 space-y-2">
-        {pending.map((s) => {
-          const em = employees.find((e) => e.id === s.employee_id);
-          const dKey = String(s.day) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
-          return (
-            <li
-              key={s.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800 px-3 py-2 text-sm"
-            >
-              <span className="text-zinc-300">
-                {em?.name ?? t("common.staff")} · {t(`weekday.${dKey}`)} {s.start_time.slice(0, 5)}–
-                {s.end_time.slice(0, 5)}
-              </span>
-              <span className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void approve(s.id)}
-                  className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
-                >
-                  {t("calendar.approve")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void reject(s.id)}
-                  className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
-                >
-                  {t("calendar.reject")}
-                </button>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-function EmployeeScheduleProposal({
-  employeeId,
-  schedules,
-  onChanged,
-}: {
-  employeeId: number;
-  schedules: ScheduleRow[];
-  onChanged: () => void;
-}) {
-  const { t } = useTranslation();
-  const [day, setDay] = useState(1);
-  const [start, setStart] = useState("09:00");
-  const [end, setEnd] = useState("17:00");
-
-  const dayOptions = [1, 2, 3, 4, 5, 6, 0] as const;
-
-  async function propose(e: FormEvent) {
-    e.preventDefault();
-    await supabase.from("schedules").insert({
-      employee_id: employeeId,
-      day,
-      start_time: start.length === 5 ? start + ":00" : start,
-      end_time: end.length === 5 ? end + ":00" : end,
-      status: "pending",
-    });
-    onChanged();
-  }
-
-  const mine = schedules.filter((s) => s.employee_id === employeeId);
-
-  function statusLabel(status: string) {
-    if (status === "approved") return t("calendar.statusApproved");
-    if (status === "pending") return t("calendar.statusPending");
-    return status;
-  }
-
-  return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-      <h2 className="text-sm font-semibold text-white">{t("calendar.myScheduleRequests")}</h2>
-      <form onSubmit={propose} className="mt-3 flex flex-wrap items-end gap-2">
-        <label className="text-xs text-zinc-500">
-          {t("calendar.dayLabel")}
-          <select
-            value={day}
-            onChange={(e) => setDay(Number(e.target.value))}
-            className="mt-1 block rounded border border-zinc-700 bg-black px-2 py-1 text-sm text-white"
-          >
-            {dayOptions.map((v) => {
-              const k = String(v) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
-              return (
-                <option key={v} value={v}>
-                  {t(`weekday.${k}`)}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-        <label className="text-xs text-zinc-500">
-          {t("calendar.from")}
-          <input
-            type="time"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-            className="mt-1 block rounded border border-zinc-700 bg-black px-2 py-1 text-sm text-white"
-          />
-        </label>
-        <label className="text-xs text-zinc-500">
-          {t("calendar.to")}
-          <input
-            type="time"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            className="mt-1 block rounded border border-zinc-700 bg-black px-2 py-1 text-sm text-white"
-          />
-        </label>
-        <button
-          type="submit"
-          className="rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white hover:bg-zinc-700"
-        >
-          {t("calendar.submitRequest")}
-        </button>
-      </form>
-      <ul className="mt-3 text-xs text-zinc-500">
-        {mine.map((s) => {
-          const dk = String(s.day) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
-          return (
-            <li key={s.id}>
-              {t(`weekday.${dk}`)} {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)} ·{" "}
-              {statusLabel(s.status)}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }

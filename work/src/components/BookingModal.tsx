@@ -2,24 +2,21 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { addMinutes } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import type { EmployeeRow, EmployeeServiceRow, ServiceRow } from "../types/database";
-import { employeesEligibleForService, servicesEligibleForEmployee } from "../lib/roles";
+import type { StaffMember, StaffServiceRow, ServiceRow } from "../types/database";
+import { staffEligibleForService, servicesEligibleForStaff } from "../lib/roles";
 import { eurFromCents } from "../lib/format";
-import { overlapsExistingBookings } from "../lib/slots";
+import { overlapsExistingAppointments } from "../lib/slots";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
   initialStart: Date;
-  initialEmployeeId: number;
-  employees: EmployeeRow[];
+  initialStaffId: string;
+  staffList: StaffMember[];
   services: ServiceRow[];
-  /** employee_services rows; empty = all staff eligible for every service */
-  links?: EmployeeServiceRow[];
-  /** Staff cannot change assigned employee */
-  lockEmployee?: boolean;
-  /** Glass + gold (Pro calendar) */
+  links?: StaffServiceRow[];
+  lockStaff?: boolean;
   variant?: "default" | "pro";
 };
 
@@ -28,49 +25,55 @@ export function BookingModal({
   onClose,
   onSaved,
   initialStart,
-  initialEmployeeId,
-  employees,
+  initialStaffId,
+  staffList,
   services,
   links = [],
-  lockEmployee = false,
+  lockStaff = false,
   variant = "default",
 }: Props) {
   const { t, i18n } = useTranslation();
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
-  const [employeeId, setEmployeeId] = useState(initialEmployeeId);
+  const [staffId, setStaffId] = useState(initialStaffId);
   const [serviceId, setServiceId] = useState(0);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const initialStaffRow = useMemo(
+    () => staffList.find((e) => e.id === initialStaffId) ?? null,
+    [staffList, initialStaffId]
+  );
+
   const eligibleServices = useMemo(() => {
-    if (lockEmployee) return servicesEligibleForEmployee(services, links, initialEmployeeId);
+    if (lockStaff)
+      return servicesEligibleForStaff(services, links, initialStaffId, initialStaffRow);
     return services.filter((s) => s.active);
-  }, [services, links, lockEmployee, initialEmployeeId]);
+  }, [services, links, lockStaff, initialStaffId, initialStaffRow]);
 
   const eligibleStaff = useMemo(
-    () => employeesEligibleForService(employees, links, serviceId || null),
-    [employees, links, serviceId]
+    () => staffEligibleForService(staffList, links, serviceId || null),
+    [staffList, links, serviceId]
   );
 
   useEffect(() => {
     if (!open) return;
-    setEmployeeId(initialEmployeeId);
+    setStaffId(initialStaffId);
     setClientName("");
     setClientPhone("");
     setError("");
     const firstSvc = eligibleServices[0]?.id ?? services.find((s) => s.active)?.id ?? 0;
     setServiceId(firstSvc);
-  }, [open, initialEmployeeId, eligibleServices, services]);
+  }, [open, initialStaffId, eligibleServices, services]);
 
   useEffect(() => {
     if (!open) return;
-    if (lockEmployee) return;
+    if (lockStaff) return;
     if (!eligibleStaff.length) return;
-    if (!eligibleStaff.some((e) => e.id === employeeId)) {
-      setEmployeeId(eligibleStaff[0].id);
+    if (!eligibleStaff.some((e) => e.id === staffId)) {
+      setStaffId(eligibleStaff[0].id);
     }
-  }, [open, lockEmployee, eligibleStaff, employeeId]);
+  }, [open, lockStaff, eligibleStaff, staffId]);
 
   if (!open) return null;
 
@@ -87,16 +90,14 @@ export function BookingModal({
       setError(t("modal.fillAll"));
       return;
     }
-    if (lockEmployee) {
-      const allowed = servicesEligibleForEmployee(services, links, initialEmployeeId);
+    if (lockStaff) {
+      const allowed = servicesEligibleForStaff(services, links, initialStaffId, initialStaffRow);
       if (!allowed.some((s) => s.id === serviceId)) {
         setError(t("modal.pickService"));
         return;
       }
     }
-    const staffOk =
-      lockEmployee ||
-      eligibleStaff.some((e) => e.id === employeeId && e.active);
+    const staffOk = lockStaff || eligibleStaff.some((e) => e.id === staffId && e.active);
     if (!staffOk) {
       setError(t("modal.pickStaff"));
       return;
@@ -106,9 +107,9 @@ export function BookingModal({
     const end = addMinutes(start, svc.duration_min + svc.buffer_after_min);
 
     const { data: existingRows, error: loadErr } = await supabase
-      .from("bookings")
-      .select("start_at, end_at, appointment_at")
-      .eq("employee_id", employeeId)
+      .from("appointments")
+      .select("start_time, end_time")
+      .eq("staff_id", staffId)
       .neq("status", "cancelled")
       .limit(500);
     if (loadErr) {
@@ -116,20 +117,19 @@ export function BookingModal({
       setError(t("auth.error.rpcFailed", { message: loadErr.message }));
       return;
     }
-    if (overlapsExistingBookings(start, end, existingRows ?? [])) {
+    if (overlapsExistingAppointments(start, end, (existingRows ?? []) as { start_time: string; end_time: string }[])) {
       setSaving(false);
       setError(t("modal.overlap"));
       return;
     }
 
-    const { error: insErr } = await supabase.from("bookings").insert({
+    const { error: insErr } = await supabase.from("appointments").insert({
       client_name: clientName.trim(),
       client_phone: clientPhone.trim() || null,
-      employee_id: employeeId,
+      staff_id: staffId,
       service_id: serviceId,
-      appointment_at: start.toISOString(),
-      start_at: start.toISOString(),
-      end_at: end.toISOString(),
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
       status: "confirmed",
       source: "manual",
     });
@@ -177,12 +177,12 @@ export function BookingModal({
               ))}
             </select>
           </div>
-          {!lockEmployee && (
+          {!lockStaff && (
             <div>
               <label className="text-xs text-zinc-500">{t("modal.staff")}</label>
               <select
-                value={employeeId}
-                onChange={(e) => setEmployeeId(Number(e.target.value))}
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
               >
                 {eligibleStaff

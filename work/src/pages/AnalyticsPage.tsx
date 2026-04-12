@@ -3,29 +3,27 @@ import { useTranslation } from "react-i18next";
 import { isBefore, parseISO, startOfDay, subDays } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useAnalyticsRealtime } from "../hooks/useSalonRealtime";
-import { eurFromCents, eurFromEuroAmount } from "../lib/format";
-import { normalizeEmployeeRow } from "../lib/roles";
-import type { BookingRow, EmployeeRow, ServiceRow, EarningRow } from "../types/database";
+import { eurFromCents } from "../lib/format";
+import type { AppointmentRow, ServiceRow } from "../types/database";
+
+type StaffRow = { id: string; name: string };
 
 export function AnalyticsPage() {
   const { t } = useTranslation();
-  const [bookings, setBookings] = useState<BookingRow[]>([]);
-  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [staffList, setStaffList] = useState<StaffRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
-  const [earnings, setEarnings] = useState<EarningRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [b, e, s, er] = await Promise.all([
-      supabase.from("bookings").select("*").neq("status", "cancelled"),
-      supabase.from("employees").select("*"),
+    const [b, e, s] = await Promise.all([
+      supabase.from("appointments").select("*").neq("status", "cancelled"),
+      supabase.from("staff").select("id,name").order("name"),
       supabase.from("services").select("*"),
-      supabase.from("earnings").select("*").order("date", { ascending: false }),
     ]);
-    if (b.data) setBookings(b.data as BookingRow[]);
-    if (e.data) setEmployees((e.data as EmployeeRow[]).map(normalizeEmployeeRow));
+    if (b.data) setAppointments(b.data as AppointmentRow[]);
+    if (e.data) setStaffList(e.data as StaffRow[]);
     if (s.data) setServices(s.data as ServiceRow[]);
-    if (er.data) setEarnings(er.data as EarningRow[]);
     setLoading(false);
   }, []);
 
@@ -35,60 +33,50 @@ export function AnalyticsPage() {
 
   useAnalyticsRealtime(load);
 
-  const byEmployee = useMemo(() => {
-    const map = new Map<number, { count: number; revenueCents: number }>();
-    for (const b of bookings) {
+  const byStaff = useMemo(() => {
+    const map = new Map<string, { count: number; revenueCents: number }>();
+    for (const b of appointments) {
       if (b.status === "cancelled") continue;
       const svc = services.find((x) => x.id === b.service_id);
       const cents = svc?.price_cents ?? 0;
-      const cur = map.get(b.employee_id) ?? { count: 0, revenueCents: 0 };
+      const cur = map.get(b.staff_id) ?? { count: 0, revenueCents: 0 };
       cur.count += 1;
       if (b.status === "confirmed") {
         cur.revenueCents += cents;
       }
-      map.set(b.employee_id, cur);
+      map.set(b.staff_id, cur);
     }
     return map;
-  }, [bookings, services]);
+  }, [appointments, services]);
 
   const popularServices = useMemo(() => {
     const map = new Map<number, number>();
-    for (const b of bookings) {
+    for (const b of appointments) {
       if (b.status === "cancelled") continue;
       map.set(b.service_id, (map.get(b.service_id) ?? 0) + 1);
     }
     return [...map.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
-  }, [bookings]);
-
-  const earningsByEmployee = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const r of earnings) {
-      map.set(r.employee_id, (map.get(r.employee_id) ?? 0) + Number(r.amount));
-    }
-    return map;
-  }, [earnings]);
+  }, [appointments]);
 
   const utilization30d = useMemo(() => {
     const since = startOfDay(subDays(new Date(), 30));
-    const map = new Map<number, number>();
-    for (const b of bookings) {
+    const map = new Map<string, number>();
+    for (const b of appointments) {
       if (b.status === "cancelled") continue;
       try {
-        const iso = b.appointment_at || b.start_at;
-        if (!iso) continue;
-        const at = parseISO(iso);
+        const at = parseISO(b.start_time);
         if (isBefore(at, since)) continue;
       } catch {
         continue;
       }
       const svc = services.find((x) => x.id === b.service_id);
       const mins = (svc?.duration_min ?? 0) + (svc?.buffer_after_min ?? 0);
-      map.set(b.employee_id, (map.get(b.employee_id) ?? 0) + mins);
+      map.set(b.staff_id, (map.get(b.staff_id) ?? 0) + mins);
     }
     return map;
-  }, [bookings, services]);
+  }, [appointments, services]);
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
@@ -109,19 +97,16 @@ export function AnalyticsPage() {
                 <th className="px-4 py-3">{t("analytics.colEmployee")}</th>
                 <th className="px-4 py-3">{t("analytics.colBookings")}</th>
                 <th className="px-4 py-3">{t("analytics.colRevenue")}</th>
-                <th className="px-4 py-3">{t("analytics.colEarnings")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {employees.map((em) => {
-                const st = byEmployee.get(em.id) ?? { count: 0, revenueCents: 0 };
-                const ear = earningsByEmployee.get(em.id) ?? 0;
+              {staffList.map((em) => {
+                const st = byStaff.get(em.id) ?? { count: 0, revenueCents: 0 };
                 return (
                   <tr key={em.id} className="bg-zinc-950/80">
                     <td className="px-4 py-3 text-white">{em.name}</td>
                     <td className="px-4 py-3 text-zinc-400">{st.count}</td>
                     <td className="px-4 py-3 text-zinc-400">{eurFromCents(st.revenueCents)}</td>
-                    <td className="px-4 py-3 text-zinc-400">{eurFromEuroAmount(ear)}</td>
                   </tr>
                 );
               })}
@@ -142,7 +127,7 @@ export function AnalyticsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {employees.map((em) => {
+              {staffList.map((em) => {
                 const mins = utilization30d.get(em.id) ?? 0;
                 return (
                   <tr key={em.id} className="bg-zinc-950/80">

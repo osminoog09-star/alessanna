@@ -1,23 +1,25 @@
-/** Manual types aligned with supabase/migrations (001 + 002 + 004 roles array). */
+/** Types aligned with supabase/migrations (staff, appointments, staff_services, …). */
 
-/** CRM access roles (stored in DB, e.g. `employees.roles` text[]). */
-export type StaffRole = "admin" | "manager" | "staff";
+export type Role = "admin" | "manager" | "staff";
+export type StaffRole = Role;
 
-/** Alias for clarity in UI / guards (no `viewer` — legacy tokens map to `staff` in `normalizeRoles`). */
-export type Role = StaffRole;
-
-export type EmployeeRow = {
-  id: number;
+/** Logged-in / roster person (from `staff` + normalized roles). */
+export type StaffMember = {
+  id: string;
   name: string;
   phone: string | null;
-  email: string | null;
+  /** Mirrors `staff.is_active` — bookable when true regardless of role. */
   active: boolean;
-  slug: string | null;
-  /** Multi-role access; use `lib/roles` helpers. */
   roles: StaffRole[];
-  payroll_type: "percent" | "fixed";
-  commission: number;
-  fixed_salary: number;
+};
+
+/** Raw `staff` row (Supabase). */
+export type StaffTableRow = {
+  id: string;
+  phone: string | null;
+  name: string;
+  role: Role;
+  is_active: boolean;
   created_at?: string;
 };
 
@@ -42,59 +44,51 @@ export type ServiceRow = {
   created_at?: string;
 };
 
-export type BookingRow = {
-  id: number;
+export type AppointmentRow = {
+  id: string;
+  staff_id: string;
   service_id: number;
-  employee_id: number;
   client_name: string;
   client_phone: string | null;
-  client_email: string | null;
-  start_at: string;
-  end_at: string;
-  appointment_at: string | null;
+  start_time: string;
+  end_time: string;
   status: "pending" | "confirmed" | "cancelled";
   source: string;
   notes: string | null;
   created_at?: string;
 };
 
-export type ScheduleRow = {
-  id: number;
-  employee_id: number;
-  day: number;
+export type StaffScheduleRow = {
+  id: string;
+  staff_id: string;
+  day_of_week: number;
   start_time: string;
   end_time: string;
-  status: "pending" | "approved";
-  created_at?: string;
 };
 
-export type EarningRow = {
-  id: number;
-  employee_id: number;
-  amount: number;
-  date: string;
-  created_at?: string;
+export type StaffTimeOffRow = {
+  id: string;
+  staff_id: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
 };
 
-export type EmployeeServiceRow = {
-  employee_id: number;
+export type StaffServiceRow = {
+  staff_id: string;
   service_id: number;
 };
 
 export type Database = {
   public: {
     Tables: {
-      employees: { Row: EmployeeRow; Insert: Partial<EmployeeRow>; Update: Partial<EmployeeRow> };
-      categories: { Row: CategoryRow; Insert: Partial<CategoryRow>; Update: Partial<CategoryRow> };
+      staff: { Row: StaffTableRow; Insert: Partial<StaffTableRow>; Update: Partial<StaffTableRow> };
       services: { Row: ServiceRow; Insert: Partial<ServiceRow>; Update: Partial<ServiceRow> };
-      bookings: { Row: BookingRow; Insert: Partial<BookingRow>; Update: Partial<BookingRow> };
-      schedules: { Row: ScheduleRow; Insert: Partial<ScheduleRow>; Update: Partial<ScheduleRow> };
-      earnings: { Row: EarningRow; Insert: Partial<EarningRow>; Update: Partial<EarningRow> };
-      employee_services: {
-        Row: EmployeeServiceRow;
-        Insert: EmployeeServiceRow;
-        Update: Partial<EmployeeServiceRow>;
-      };
+      staff_services: { Row: StaffServiceRow; Insert: StaffServiceRow; Update: Partial<StaffServiceRow> };
+      staff_schedule: { Row: StaffScheduleRow; Insert: Partial<StaffScheduleRow>; Update: Partial<StaffScheduleRow> };
+      staff_time_off: { Row: StaffTimeOffRow; Insert: Partial<StaffTimeOffRow>; Update: Partial<StaffTimeOffRow> };
+      appointments: { Row: AppointmentRow; Insert: Partial<AppointmentRow>; Update: Partial<AppointmentRow> };
+      categories: { Row: CategoryRow; Insert: Partial<CategoryRow>; Update: Partial<CategoryRow> };
     };
     Functions: {
       verify_staff_phone: { Args: { phone_input: string }; Returns: string | null };

@@ -1,16 +1,14 @@
 import { addMinutes, format, parseISO, startOfDay, isWithinInterval } from "date-fns";
 
-export type ScheduleLike = {
-  day: number;
+export type WeeklyScheduleLike = {
+  day_of_week: number;
   start_time: string;
   end_time: string;
-  status: string;
 };
 
-export type BookingLike = {
-  appointment_at: string | null;
-  start_at: string;
-  end_at: string;
+export type AppointmentLike = {
+  start_time: string;
+  end_time: string;
 };
 
 function minutesFromTime(t: string): number {
@@ -36,9 +34,10 @@ function mergeWindows(windows: { start: number; end: number }[]): { start: numbe
   return out;
 }
 
-export function approvedWindowsForWeekday(schedules: ScheduleLike[], weekday: number) {
-  const raw = schedules
-    .filter((s) => s.day === weekday && s.status === "approved")
+/** Working windows for a weekday (0–6, JS Sunday=0) from weekly schedule rows. */
+export function workingWindowsForWeekday(schedule: WeeklyScheduleLike[], weekday: number) {
+  const raw = schedule
+    .filter((s) => s.day_of_week === weekday)
     .map((s) => ({
       start: minutesFromTime(s.start_time),
       end: minutesFromTime(s.end_time),
@@ -46,12 +45,10 @@ export function approvedWindowsForWeekday(schedules: ScheduleLike[], weekday: nu
   return mergeWindows(raw);
 }
 
-export function bookingInterval(b: BookingLike): { start: Date; end: Date } | null {
-  const iso = b.appointment_at || b.start_at;
-  if (!iso) return null;
+export function appointmentInterval(a: AppointmentLike): { start: Date; end: Date } | null {
   try {
-    const start = parseISO(iso);
-    const end = parseISO(b.end_at);
+    const start = parseISO(a.start_time);
+    const end = parseISO(a.end_time);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
     return { start, end };
   } catch {
@@ -59,35 +56,47 @@ export function bookingInterval(b: BookingLike): { start: Date; end: Date } | nu
   }
 }
 
-/** True if [aStart,aEnd) overlaps [bStart,bEnd) (half-open compatible with touching = no overlap at exact boundary). */
+/** Legacy alias for booking-shaped rows */
+export function bookingInterval(b: {
+  appointment_at?: string | null;
+  start_at?: string;
+  end_at?: string;
+  start_time?: string;
+  end_time?: string;
+}): { start: Date; end: Date } | null {
+  const startIso = b.start_time ?? b.appointment_at ?? b.start_at;
+  const endIso = b.end_time ?? b.end_at;
+  if (!startIso || !endIso) return null;
+  return appointmentInterval({ start_time: startIso, end_time: endIso });
+}
+
 export function intervalsOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart < bEnd && aEnd > bStart;
 }
 
-/** Whether a candidate interval clashes with any existing booking row. */
-export function overlapsExistingBookings(
+export function overlapsExistingAppointments(
   candStart: Date,
   candEnd: Date,
-  rows: BookingLike[]
+  rows: AppointmentLike[]
 ): boolean {
   for (const b of rows) {
-    const iv = bookingInterval(b);
+    const iv = appointmentInterval(b);
     if (!iv) continue;
     if (intervalsOverlap(candStart, candEnd, iv.start, iv.end)) return true;
   }
   return false;
 }
 
-export function bookingsForEmployeeOnDay(
-  bookings: Array<BookingLike & { employee_id: number }>,
-  employeeId: number,
+export function appointmentsForStaffOnDay(
+  appointments: Array<AppointmentLike & { staff_id: string }>,
+  staffId: string,
   day: Date
 ): { start: Date; end: Date }[] {
   const d0 = startOfDay(day);
   const d1 = addMinutes(d0, 24 * 60 - 1);
-  return bookings
-    .filter((b) => b.employee_id === employeeId)
-    .map((b) => bookingInterval(b))
+  return appointments
+    .filter((b) => b.staff_id === staffId)
+    .map((b) => appointmentInterval(b))
     .filter((x): x is { start: Date; end: Date } => x !== null)
     .filter(({ start }) => isWithinInterval(start, { start: d0, end: d1 }));
 }
@@ -101,12 +110,12 @@ export type Slot = {
 export function buildSlotsForDay(
   day: Date,
   weekday: number,
-  schedules: ScheduleLike[],
+  schedule: WeeklyScheduleLike[],
   existing: { start: Date; end: Date }[],
   durationMin: number,
   stepMin: number
 ): Slot[] {
-  const windows = approvedWindowsForWeekday(schedules, weekday);
+  const windows = workingWindowsForWeekday(schedule, weekday);
   const slots: Slot[] = [];
   const base = startOfDay(day);
 
@@ -123,4 +132,37 @@ export function buildSlotsForDay(
 
 export function formatSlotRange(s: Slot): string {
   return `${format(s.start, "HH:mm")}–${format(s.end, "HH:mm")}`;
+}
+
+export type GenerateSlotsParams = {
+  schedule: WeeklyScheduleLike[];
+  appointments: Array<AppointmentLike & { staff_id: string }>;
+  timeOff: Array<AppointmentLike & { staff_id: string }>;
+  duration: number;
+  /** Calendar day to generate for */
+  day: Date;
+  /** Slot step (minutes). Default 15. */
+  stepMinutes?: number;
+  staffId: string;
+};
+
+/**
+ * Build available slots from weekly schedule, excluding overlaps with appointments and time off.
+ */
+export function generateAvailableSlots(params: GenerateSlotsParams): Slot[] {
+  const {
+    schedule,
+    appointments,
+    timeOff,
+    duration,
+    day,
+    stepMinutes = 15,
+    staffId,
+  } = params;
+  const weekday = day.getDay();
+  const busy: { start: Date; end: Date }[] = [
+    ...appointmentsForStaffOnDay(appointments, staffId, day),
+    ...appointmentsForStaffOnDay(timeOff as Array<AppointmentLike & { staff_id: string }>, staffId, day),
+  ];
+  return buildSlotsForDay(day, weekday, schedule, busy, duration, stepMinutes).filter((s) => s.available);
 }
