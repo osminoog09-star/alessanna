@@ -39,6 +39,62 @@ function parseStored(): EmployeeRow | null {
   }
 }
 
+function rpcBooleanSuccess(data: unknown): boolean {
+  return (
+    data === true ||
+    data === "true" ||
+    (Array.isArray(data) && data[0] === true)
+  );
+}
+
+/** Same phone match as verify_staff_phone (digits only). */
+async function fetchEmployeeByCleanPhone(cleanPhone: string): Promise<EmployeeRow | null> {
+  if (!cleanPhone) return null;
+  const { data: employees, error } = await supabase.from("employees").select("*").eq("active", true);
+  if (error || !employees?.length) return null;
+  for (const raw of employees) {
+    const e = normalizeEmployeeRow(raw as EmployeeRow);
+    const p = (e.phone ?? "").replace(/\D/g, "");
+    if (p === cleanPhone) return e;
+  }
+  return null;
+}
+
+/** Parse employee row from various RPC / PostgREST shapes. */
+function parseEmployeeFromRpcData(data: unknown): EmployeeRow | null {
+  if (data == null || data === false || data === "false") return null;
+
+  if (typeof data === "string") {
+    if (data === "true" || data.length === 0) return null;
+    try {
+      const parsed = JSON.parse(data) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "id" in parsed) {
+        return normalizeEmployeeRow(parsed as EmployeeRow);
+      }
+      if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object" && "id" in parsed[0]) {
+        return normalizeEmployeeRow(parsed[0] as EmployeeRow);
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  if (Array.isArray(data)) {
+    const first = data[0];
+    if (first && typeof first === "object" && !Array.isArray(first) && "id" in first) {
+      return normalizeEmployeeRow(first as EmployeeRow);
+    }
+    return null;
+  }
+
+  if (typeof data === "object" && "id" in data) {
+    return normalizeEmployeeRow(data as EmployeeRow);
+  }
+
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [employee, setEmployee] = useState<EmployeeRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,30 +115,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone_input: cleanPhone,
     });
 
-    console.log("RPC result:", data);
-    console.log("RPC error:", error);
+    console.log("RPC raw result:", data);
 
     if (error) {
       console.error(error);
       return { ok: false, displayError: "Ошибка сервера" };
     }
 
-    // DB function returns a JSON employee row or null — not boolean `true`.
-    // If your RPC ever returns only `true`, you must also return the row payload for the session.
-    if (data === true) {
-      console.warn("verify_staff_phone returned boolean true; expected employee JSON. Treating as failure.");
-      return { ok: false, displayError: "Доступ запрещён" };
-    }
+    let row = parseEmployeeFromRpcData(data);
 
-    let row: EmployeeRow | null = null;
-    if (typeof data === "string" && data.length > 0) {
-      try {
-        row = normalizeEmployeeRow(JSON.parse(data) as EmployeeRow);
-      } catch {
-        row = null;
-      }
-    } else if (data != null && typeof data === "object" && !Array.isArray(data) && "id" in data) {
-      row = normalizeEmployeeRow(data as unknown as EmployeeRow);
+    const isValid =
+      rpcBooleanSuccess(data) ||
+      row != null ||
+      (Array.isArray(data) && data.length > 0 && typeof data[0] === "object" && data[0] !== null && "id" in data[0]);
+
+    console.log("RPC isValid (expanded):", isValid);
+
+    // If RPC didn’t yield a row (boolean success, null, or odd JSON), resolve same way as SQL: active + phone digits.
+    if (!row && cleanPhone.length > 0) {
+      row = await fetchEmployeeByCleanPhone(cleanPhone);
     }
 
     if (row) {
