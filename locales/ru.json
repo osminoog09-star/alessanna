@@ -222,7 +222,9 @@
     "closeDay": "Закрыть день",
     "sickLeave": "На больничный",
     "sickLeaveConfirm": "Заблокировать сегодняшний день как больничный?",
-    "sickLeaveReason": "Больничный"
+    "sickLeaveReason": "Больничный",
+    "receptionQuickBook": "Новая запись",
+    "receptionQuickBookHint": "Быстрая запись по кнопке выше — как на сайте: услуги, мастер, время и клиент."
   },
   "weekday": {
     "0": "Вс",

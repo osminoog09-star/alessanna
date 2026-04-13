@@ -116,17 +116,23 @@ export type SitePageRow = {
   id: string;
   name: string;
   slug: string;
+  status?: "draft" | "published";
+  styles?: Record<string, unknown>;
+  updated_at?: string;
+  published_at?: string | null;
   created_at?: string;
 };
 
-export type SiteBlockType = "button" | "text" | "section";
+export type SiteBlockType = "button" | "text" | "section" | "image" | "spacer";
 
 export type SiteBlockRow = {
   id: string;
   page_id: string;
   type: SiteBlockType;
   content: Record<string, unknown>;
+  styles?: Record<string, unknown>;
   position: number;
+  updated_at?: string;
   created_at?: string;
 };
 

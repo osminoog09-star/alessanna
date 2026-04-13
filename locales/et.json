@@ -222,7 +222,9 @@
     "closeDay": "Sulge päev",
     "sickLeave": "Haigusleht",
     "sickLeaveConfirm": "Blokeeri tänane päev haigusena?",
-    "sickLeaveReason": "Haigusleht"
+    "sickLeaveReason": "Haigusleht",
+    "receptionQuickBook": "Uus broneering",
+    "receptionQuickBookHint": "Kiire broneering ülal oleva nupuga — nagu veebis: teenused, meister, aeg ja klient."
   },
   "weekday": {
     "0": "P", "1": "E", "2": "T", "3": "K", "4": "N", "5": "R", "6": "L"

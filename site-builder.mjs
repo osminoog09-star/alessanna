@@ -18,14 +18,6 @@ function cfg() {
   return { url: url.replace(/\/+$/, ""), key };
 }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 function pageSlug() {
   const q = new URLSearchParams(window.location.search).get("page");
   if (q && q.trim()) return q.trim();
@@ -34,12 +26,43 @@ function pageSlug() {
   return "home";
 }
 
-function renderButton(content) {
+function toNum(v, fallback) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function safeImgSrc(src) {
+  const s = String(src || "").trim();
+  if (!s) return "";
+  try {
+    const u = new URL(s, window.location.origin);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "";
+    return u.href;
+  } catch {
+    return "";
+  }
+}
+
+function applyPageStyles(mount, pageRow) {
+  const st = pageRow?.styles && typeof pageRow.styles === "object" ? pageRow.styles : {};
+  const bodyFont = String(st.bodyFont ?? "Inter");
+  const maxW = toNum(st.maxWidth, 960);
+  mount.style.maxWidth = `${maxW}px`;
+  mount.style.marginLeft = "auto";
+  mount.style.marginRight = "auto";
+  mount.style.fontFamily = bodyFont;
+}
+
+function renderButton(content, blockStyles) {
   const label = String(content?.label ?? "Button");
   const action = String(content?.action ?? "scroll");
   const target = String(content?.target ?? "");
   const wrap = document.createElement("div");
   wrap.className = "site-builder-item";
+  const bs = blockStyles && typeof blockStyles === "object" ? blockStyles : {};
+  wrap.style.padding = `${toNum(bs.padding, 0)}px`;
+  wrap.style.textAlign = String(bs.align ?? "left");
+
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "btn btn-outline";
@@ -54,35 +77,77 @@ function renderButton(content) {
   return wrap;
 }
 
-function renderText(content) {
+function renderText(content, blockStyles, pageStyles) {
   const txt = String(content?.text ?? "");
   const p = document.createElement("p");
   p.className = "section-lead";
   p.textContent = txt;
+  const bs = blockStyles && typeof blockStyles === "object" ? blockStyles : {};
+  const ps = pageStyles && typeof pageStyles === "object" ? pageStyles : {};
+  p.style.fontFamily = String(ps.bodyFont ?? "Inter");
+  p.style.fontSize = `${toNum(bs.fontSize, 18)}px`;
+  p.style.fontWeight = String(toNum(bs.fontWeight, 400));
+  p.style.color = String(bs.color ?? "");
+  p.style.textAlign = String(bs.align ?? "left");
+  p.style.padding = `${toNum(bs.padding, 0)}px`;
+  p.style.margin = "0";
   return p;
 }
 
-function renderSection(content) {
+function renderSection(content, blockStyles, pageStyles) {
   const title = String(content?.title ?? "");
   const text = String(content?.text ?? "");
   const box = document.createElement("div");
   box.className = "gift-card";
+  const bs = blockStyles && typeof blockStyles === "object" ? blockStyles : {};
+  const ps = pageStyles && typeof pageStyles === "object" ? pageStyles : {};
+  const headingFont = String(ps.headingFont ?? "Playfair Display");
+  const bodyFont = String(ps.bodyFont ?? "Inter");
+  box.style.background = String(bs.background ?? "");
+  box.style.borderRadius = `${toNum(bs.borderRadius, 12)}px`;
+  box.style.padding = `${toNum(bs.padding, 16)}px`;
   if (title) {
     const h = document.createElement("h3");
     h.className = "section-title";
     h.style.fontSize = "1.2rem";
+    h.style.fontFamily = headingFont;
     h.textContent = title;
     box.appendChild(h);
   }
   if (text) {
     const p = document.createElement("p");
+    p.style.fontFamily = bodyFont;
     p.textContent = text;
     box.appendChild(p);
   }
   return box;
 }
 
-function renderBlocks(rows) {
+function renderImage(content, blockStyles) {
+  const wrap = document.createElement("div");
+  const bs = blockStyles && typeof blockStyles === "object" ? blockStyles : {};
+  wrap.style.padding = `${toNum(bs.padding, 0)}px`;
+  wrap.style.textAlign = String(bs.align ?? "left");
+  const src = safeImgSrc(content?.src);
+  if (!src) return wrap;
+  const img = document.createElement("img");
+  img.src = src;
+  img.alt = String(content?.alt ?? "");
+  img.style.width = String(content?.width ?? "100%");
+  img.style.maxWidth = "100%";
+  img.style.borderRadius = `${toNum(bs.borderRadius, 10)}px`;
+  wrap.appendChild(img);
+  return wrap;
+}
+
+function renderSpacer(content) {
+  const el = document.createElement("div");
+  el.setAttribute("aria-hidden", "true");
+  el.style.height = `${toNum(content?.height, 32)}px`;
+  return el;
+}
+
+function renderBlocks(rows, pageStyles) {
   const mount = document.getElementById("site-builder-mount");
   if (!mount) return;
   mount.innerHTML = "";
@@ -90,9 +155,12 @@ function renderBlocks(rows) {
   const frag = document.createDocumentFragment();
   for (const row of rows) {
     const content = row.content && typeof row.content === "object" ? row.content : {};
-    if (row.type === "button") frag.appendChild(renderButton(content));
-    else if (row.type === "text") frag.appendChild(renderText(content));
-    else if (row.type === "section") frag.appendChild(renderSection(content));
+    const styles = row.styles && typeof row.styles === "object" ? row.styles : {};
+    if (row.type === "button") frag.appendChild(renderButton(content, styles));
+    else if (row.type === "text") frag.appendChild(renderText(content, styles, pageStyles));
+    else if (row.type === "section") frag.appendChild(renderSection(content, styles, pageStyles));
+    else if (row.type === "image") frag.appendChild(renderImage(content, styles));
+    else if (row.type === "spacer") frag.appendChild(renderSpacer(content));
   }
   mount.appendChild(frag);
 }
@@ -105,17 +173,34 @@ async function main() {
   const supabase = createClient(c.url, c.key);
   const slug = pageSlug();
 
-  const { data: page } = await supabase.from("site_pages").select("id").eq("slug", slug).maybeSingle();
+  const pub = await supabase
+    .from("site_pages")
+    .select("id,styles,status")
+    .eq("slug", slug)
+    .eq("status", "published")
+    .maybeSingle();
+
+  let page = pub.data;
+  if (!page?.id) {
+    const leg = await supabase
+      .from("site_pages")
+      .select("id,styles")
+      .eq("slug", slug)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    page = leg.data;
+  }
   if (!page?.id) return;
 
+  applyPageStyles(mount, page);
   const { data: blocks } = await supabase
     .from("site_blocks")
-    .select("id,type,content,position")
+    .select("id,type,content,styles,position")
     .eq("page_id", page.id)
     .order("position", { ascending: true })
     .order("created_at", { ascending: true });
-  renderBlocks(blocks || []);
+  renderBlocks(blocks || [], page.styles);
 }
 
 void main();
-

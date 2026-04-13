@@ -51,6 +51,7 @@ export function CalendarPage() {
   const [bookingModal, setBookingModal] = useState<{ start: Date; staffId: string } | null>(null);
   const [blockModal, setBlockModal] = useState<{ start: Date; staffId: string } | null>(null);
   const [closeDayOpen, setCloseDayOpen] = useState(false);
+  const [quickBookOpen, setQuickBookOpen] = useState(false);
 
   const load = useCallback(async () => {
     let lineQuery = supabase.from("appointment_services").select(APPOINTMENT_LINES_SELECT);
@@ -166,6 +167,16 @@ export function CalendarPage() {
   }, [staffMember, load, t]);
 
   const showMultiStaffDay = view === "day" && !isWorkerOnlyEffective && rosterStaff.length > 0;
+  const quickBookStaffId = staffId ?? rosterStaff[0]?.id ?? "";
+
+  function defaultQuickStart(): Date {
+    const d = new Date();
+    const m = d.getMinutes();
+    const step = 15;
+    const rounded = Math.ceil(m / step) * step;
+    d.setMinutes(rounded, 0, 0);
+    return d;
+  }
 
   return (
     <div className="space-y-6">
@@ -216,6 +227,15 @@ export function CalendarPage() {
           >
             →
           </button>
+          {isReceptionMode && (
+            <button
+              type="button"
+              onClick={() => setQuickBookOpen(true)}
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500"
+            >
+              {t("calendar.receptionQuickBook")}
+            </button>
+          )}
           {canManage && !isWorkerOnlyEffective && (
             <button
               type="button"
@@ -236,6 +256,13 @@ export function CalendarPage() {
           )}
         </div>
       </header>
+
+      {isReceptionMode && (
+        <div className="rounded-xl border border-sky-800/40 bg-sky-950/20 p-3 text-sm text-sky-100">
+          <p className="font-medium">{t("calendar.receptionQuickBook")}</p>
+          <p className="mt-1 text-xs text-sky-200/80">{t("calendar.receptionQuickBookHint")}</p>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         {rosterStaff.length > 1 && (
@@ -358,6 +385,23 @@ export function CalendarPage() {
           services={services}
           links={staffServiceLinks}
           lockStaff={isWorkerOnlyEffective}
+          schedules={schedules}
+          timeOffRows={timeOff}
+        />
+      )}
+
+      {quickBookOpen && quickBookStaffId && (
+        <BookingModal
+          open
+          variant="pro"
+          onClose={() => setQuickBookOpen(false)}
+          onSaved={load}
+          initialStart={defaultQuickStart()}
+          initialStaffId={quickBookStaffId}
+          staffList={staff}
+          services={services}
+          links={staffServiceLinks}
+          lockStaff={false}
           schedules={schedules}
           timeOffRows={timeOff}
         />
