@@ -16,6 +16,7 @@ type NavKey =
   | "adminServices"
   | "adminSchedule"
   | "adminTimeOff"
+  | "adminSiteBuilder"
   | "analytics"
   | "finance"
   | "clients";
@@ -25,6 +26,7 @@ type NavItem = {
   key: NavKey;
   end?: boolean;
   manageOnly?: boolean;
+  privilegedOnly?: boolean;
 };
 
 const navAll: NavItem[] = [
@@ -35,6 +37,7 @@ const navAll: NavItem[] = [
   { to: "/admin/services", key: "adminServices", manageOnly: true },
   { to: "/admin/schedule", key: "adminSchedule", manageOnly: true },
   { to: "/admin/time-off", key: "adminTimeOff", manageOnly: true },
+  { to: "/admin/site-builder", key: "adminSiteBuilder", privilegedOnly: true },
   { to: "/analytics", key: "analytics", manageOnly: true },
   { to: "/finance", key: "finance", manageOnly: true },
   { to: "/clients", key: "clients", manageOnly: true },
@@ -79,13 +82,14 @@ export function Layout() {
   const nav = useMemo(() => {
     let n = navAll.filter((item) => {
       if (item.manageOnly && !canManage) return false;
+      if (item.privilegedOnly && !isPrivilegedAdmin) return false;
       return true;
     });
     if (staffMember && canManage && receptionNavCompact) {
       n = n.filter((item) => RECEPTION_NAV_KEYS.has(item.key));
     }
     return n;
-  }, [canManage, staffMember, receptionNavCompact]);
+  }, [canManage, isPrivilegedAdmin, staffMember, receptionNavCompact]);
 
   useEffect(() => {
     const base = (i18n.language || "ru").split("-")[0];

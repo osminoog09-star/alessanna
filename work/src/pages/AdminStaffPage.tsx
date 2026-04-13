@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useServicesCatalogRealtime, useStaffDirectoryRealtime } from "../hooks/useSalonRealtime";
 import { useAuth } from "../context/AuthContext";
+import { normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
 import type { ServiceListingRow, StaffServiceRow, StaffTableRow, StaffWorkType } from "../types/database";
 import type { Role } from "../types/database";
 
@@ -11,9 +12,16 @@ type UiRole = Role;
 const ALL_ROLES: Role[] = ["owner", "admin", "manager", "worker"];
 const MANAGER_ASSIGABLE_ROLES: Role[] = ["manager", "worker"];
 
-function isProtectedAccountRole(role: string): boolean {
-  const x = role === "staff" ? "worker" : role;
-  return x === "admin" || x === "owner";
+function primaryRoleFromRoles(roles: Role[]): Role {
+  if (roles.includes("owner")) return "owner";
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("manager")) return "manager";
+  return "worker";
+}
+
+function isProtectedAccountRole(raw: unknown): boolean {
+  const roles = normalizeRoles(raw);
+  return roles.includes("admin") || roles.includes("owner");
 }
 
 function digitsOnly(phone: string): string {
@@ -30,7 +38,7 @@ export function AdminStaffPage() {
   const [err, setErr] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<UiRole>("worker");
+  const [newRoles, setNewRoles] = useState<Role[]>(["worker"]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -64,10 +72,14 @@ export function AdminStaffPage() {
 
   const assignableRoles = isPrivilegedAdmin ? ALL_ROLES : MANAGER_ASSIGABLE_ROLES;
 
-  function normalizeDbRole(r: string): UiRole {
-    if (r === "staff") return "worker";
-    if (r === "owner" || r === "admin" || r === "manager" || r === "worker") return r;
-    return "worker";
+  function rowRoles(r: StaffTableRow): Role[] {
+    return normalizeRoles((r as { roles?: unknown }).roles ?? r.role);
+  }
+
+  function toggleRoleValue(roles: Role[], role: Role, checked: boolean): Role[] {
+    if (checked) return [...new Set([...roles, role])];
+    const next = roles.filter((x) => x !== role);
+    return next.length ? next : ["worker"];
   }
 
   function startEdit(r: StaffTableRow) {
@@ -94,14 +106,19 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function updateStaffRole(id: string, newRole: UiRole) {
+  async function updateStaffRoles(id: string, edited: Role[]) {
     setErr(null);
     const target = rows.find((x) => x.id === id);
+    if (!target) return;
+    const existing = rowRoles(target);
+    const nextRoles = sanitizeRolesForSave(edited, isPrivilegedAdmin, existing);
     if (!isPrivilegedAdmin) {
-      if (target && isProtectedAccountRole(target.role)) return;
-      if (newRole === "admin" || newRole === "owner") return;
+      if (isProtectedAccountRole(existing)) return;
     }
-    const { error } = await supabase.from("staff").update({ role: newRole }).eq("id", id);
+    const { error } = await supabase
+      .from("staff")
+      .update({ roles: nextRoles, role: primaryRoleFromRoles(nextRoles) })
+      .eq("id", id);
     if (error) {
       setErr(error.message);
       return;
@@ -141,7 +158,8 @@ export function AdminStaffPage() {
     const { error } = await supabase.from("staff").insert({
       phone: cleanPhone,
       name: n,
-      role,
+      role: primaryRoleFromRoles(newRoles),
+      roles: newRoles,
       is_active: true,
       work_type: "percentage",
       percent_rate: 0,
@@ -153,13 +171,13 @@ export function AdminStaffPage() {
     }
     setPhone("");
     setName("");
-    setRole("worker");
+    setNewRoles(["worker"]);
     void load();
   }
 
   async function remove(row: StaffTableRow) {
     setErr(null);
-    if (!isPrivilegedAdmin && isProtectedAccountRole(row.role)) return;
+    if (!isPrivilegedAdmin && isProtectedAccountRole((row as { roles?: unknown }).roles ?? row.role)) return;
     if (!window.confirm(t("adminStaff.deleteStaffConfirm", { name: row.name }))) return;
     const { error } = await supabase.from("staff").delete().eq("id", row.id);
     if (error) {
@@ -222,17 +240,18 @@ export function AdminStaffPage() {
         </div>
         <div>
           <label className="block text-xs text-zinc-500">{t("role.label")}</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as UiRole)}
-            className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
-          >
+          <div className="mt-1 flex flex-wrap gap-2 rounded border border-zinc-700 bg-black p-2 text-xs">
             {assignableRoles.map((opt) => (
-              <option key={opt} value={opt}>
+              <label key={opt} className="inline-flex items-center gap-1 text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={newRoles.includes(opt)}
+                  onChange={(e) => setNewRoles((prev) => toggleRoleValue(prev, opt, e.target.checked))}
+                />
                 {t(`role.${opt}`)}
-              </option>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
         <button type="submit" className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">
           {t("common.add")}
@@ -280,20 +299,24 @@ export function AdminStaffPage() {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  {!isPrivilegedAdmin && isProtectedAccountRole(r.role) ? (
-                    <span className="text-zinc-300">{t(`role.${normalizeDbRole(r.role)}`)}</span>
+                  {!isPrivilegedAdmin && isProtectedAccountRole((r as { roles?: unknown }).roles ?? r.role) ? (
+                    <span className="text-zinc-300">{rowRoles(r).map((x) => t(`role.${x}`)).join(" · ")}</span>
                   ) : (
-                    <select
-                      value={normalizeDbRole(r.role)}
-                      onChange={(e) => void updateStaffRole(r.id, e.target.value as UiRole)}
-                      className="max-w-[10rem] rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-white"
-                    >
+                    <div className="flex max-w-[16rem] flex-wrap gap-2 rounded border border-zinc-700 bg-black p-1.5 text-xs">
                       {assignableRoles.map((opt) => (
-                        <option key={opt} value={opt}>
+                        <label key={opt} className="inline-flex items-center gap-1 text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={rowRoles(r).includes(opt)}
+                            onChange={(e) => {
+                              const next = toggleRoleValue(rowRoles(r), opt, e.target.checked);
+                              void updateStaffRoles(r.id, next);
+                            }}
+                          />
                           {t(`role.${opt}`)}
-                        </option>
+                        </label>
                       ))}
-                    </select>
+                    </div>
                   )}
                 </td>
                 <td className="px-3 py-2">
@@ -377,7 +400,7 @@ export function AdminStaffPage() {
                       <button type="button" className="text-sky-400 underline" onClick={() => startEdit(r)}>
                         {t("adminStaff.edit")}
                       </button>
-                      {(!isProtectedAccountRole(r.role) || isPrivilegedAdmin) && (
+                      {(!isProtectedAccountRole((r as { roles?: unknown }).roles ?? r.role) || isPrivilegedAdmin) && (
                         <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
                           {t("adminStaff.deleteShort")}
                         </button>
