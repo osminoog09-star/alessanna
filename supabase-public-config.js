@@ -7,12 +7,13 @@
  */
 (function () {
   var preset = window.SUPABASE_CONFIG || {};
+  var inheritedAnon = window.SALON_SUPABASE_ANON_KEY || "";
   window.SUPABASE_CONFIG = {
     url: String(preset.url || "https://eclrkusmwcrtnxqhzpky.supabase.co").replace(/\/+$/, ""),
     anonKey:
       preset.anonKey != null
         ? String(preset.anonKey)
-        : "sb_publishable_tA3Pcv44d9PutcYqP_dYCQ_SEhjXr4D",
+        : String(inheritedAnon),
   };
   window.SALON_SUPABASE_URL = window.SALON_SUPABASE_URL || window.SUPABASE_CONFIG.url;
   window.SALON_SUPABASE_ANON_KEY = window.SALON_SUPABASE_ANON_KEY || window.SUPABASE_CONFIG.anonKey;

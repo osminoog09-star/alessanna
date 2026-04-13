@@ -1,10 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+const READY_EVENT = "site-team-ready";
 
 function cfg() {
   const sc = globalThis.SUPABASE_CONFIG;
   const url = String(sc?.url || globalThis.SALON_SUPABASE_URL || "").trim().replace(/\/+$/, "");
   const key = String(sc?.anonKey || globalThis.SALON_SUPABASE_ANON_KEY || "").trim();
   return { url, key };
+}
+
+function notifyReady() {
+  globalThis.__SITE_TEAM_READY__ = true;
+  window.dispatchEvent(new CustomEvent(READY_EVENT));
 }
 
 function esc(s) {
@@ -68,29 +74,31 @@ function renderTeam(groups, allNames) {
       );
     })
     .join("");
-  window.dispatchEvent(new CustomEvent("site-team-ready"));
 }
 
 async function main() {
-  const c = cfg();
-  if (!c.url || !c.key) return;
-  const supabase = createClient(c.url, c.key);
+  try {
+    const c = cfg();
+    if (!c.url || !c.key) return;
+    const supabase = createClient(c.url, c.key);
 
-  const { data: staffRows } = await supabase.from("staff").select("id,name,is_active").eq("is_active", true).order("name");
-  const staff = (staffRows || []).map((r) => ({ id: r.id, name: String(r.name || "").trim() })).filter((r) => r.name);
-  if (!staff.length) return;
+    const { data: staffRows } = await supabase.from("staff").select("id,name,is_active").eq("is_active", true).order("name");
+    const staff = (staffRows || []).map((r) => ({ id: r.id, name: String(r.name || "").trim() })).filter((r) => r.name);
+    if (!staff.length) return;
 
-  const staffMap = new Map(staff.map((s) => [s.id, s]));
-  const staffIds = staff.map((s) => s.id);
+    const staffMap = new Map(staff.map((s) => [s.id, s]));
+    const staffIds = staff.map((s) => s.id);
 
-  const { data: linksRows } = await supabase
-    .from("staff_services")
-    .select("staff_id, service_listings!inner(id, service_categories(name))")
-    .in("staff_id", staffIds);
+    const { data: linksRows } = await supabase
+      .from("staff_services")
+      .select("staff_id, service_listings!inner(id, service_categories(name))")
+      .in("staff_id", staffIds);
 
-  const groups = buildGroups(linksRows || [], staffMap);
-  renderTeam(groups, staff.map((s) => s.name));
-  if (!groups.length) window.dispatchEvent(new CustomEvent("site-team-ready"));
+    const groups = buildGroups(linksRows || [], staffMap);
+    renderTeam(groups, staff.map((s) => s.name));
+  } finally {
+    notifyReady();
+  }
 }
 
 void main();

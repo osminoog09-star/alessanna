@@ -564,13 +564,16 @@
       masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    rebuildMastersMapFromSelect();
-    bindTeamListHandlers();
-    window.addEventListener("site-team-ready", function () {
+    function onSiteTeamReady() {
       rebuildMastersMapFromSelect();
       bindTeamListHandlers();
       if (masterSelect) highlightTeam(masterSelect.value);
-    });
+    }
+
+    rebuildMastersMapFromSelect();
+    bindTeamListHandlers();
+    window.addEventListener("site-team-ready", onSiteTeamReady);
+    if (window.__SITE_TEAM_READY__) onSiteTeamReady();
 
     if (masterSelect) {
       masterSelect.addEventListener("change", function () {
@@ -1110,14 +1113,17 @@
 
     startBookingWidget();
 
-    window.addEventListener("site-team-ready", function () {
+    function onSiteTeamReadyCalendar() {
       if (!apiBooking) {
         setupDemoMasters();
         invalidateMonthCache();
         clearSelection();
         renderCalendar();
       }
-    });
+    }
+
+    window.addEventListener("site-team-ready", onSiteTeamReadyCalendar);
+    if (window.__SITE_TEAM_READY__) onSiteTeamReadyCalendar();
 
     prevBtn.addEventListener("click", function () {
       if (prevBtn.disabled) return;
