@@ -200,16 +200,7 @@
 
     var MASTERS_PICK = [];
 
-    /** Meistrid teenusekategooriate järgi (sama loogika mis #meistrid plokis) */
-    var CATEGORY_TO_MASTER_IDS = {
-      "hair-cut": ["galina", "irina", "viktoria", "anne"],
-      "hair-color": ["galina", "irina", "viktoria", "anne"],
-      perm: ["galina", "irina", "viktoria", "anne"],
-      styling: ["galina", "irina", "viktoria", "anne"],
-      manicure: ["alesja", "aljona", "viktoria"],
-      pedicure: ["alesja", "aljona", "viktoria"],
-      "brows-lashes": ["irina", "anne", "alesja"],
-    };
+    var CATEGORY_TO_MASTER_IDS = {};
 
     var mastersWrap = summary.querySelector("[data-summary-masters-wrap]");
     var chipsEl = summary.querySelector("[data-summary-master-chips]");
@@ -281,6 +272,39 @@
       return "";
     }
 
+    function normalizeKey(x) {
+      return String(x || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "")
+        .replace(/-+/g, "-");
+    }
+
+    function rebuildCategoryToMasterMap() {
+      CATEGORY_TO_MASTER_IDS = {};
+      var groups = document.querySelectorAll("#meistrid .team-group");
+      for (var gi = 0; gi < groups.length; gi++) {
+        var g = groups[gi];
+        var key = normalizeKey(g.getAttribute("data-category-key") || "");
+        if (!key) {
+          var titleEl = g.querySelector(".team-group-title");
+          key = normalizeKey(titleEl ? titleEl.textContent : "");
+        }
+        if (!key) continue;
+        var ids = [];
+        var lis = g.querySelectorAll(".team-names li");
+        for (var lii = 0; lii < lis.length; lii++) {
+          var li = lis[lii];
+          var id = String(li.getAttribute("data-master-id") || "").trim();
+          if (!id) id = masterIdByName(li.textContent || "");
+          if (!id) continue;
+          if (ids.indexOf(id) < 0) ids.push(id);
+        }
+        CATEGORY_TO_MASTER_IDS[key] = ids;
+      }
+    }
+
     var picked = [];
 
     function pickKey(panelId, label) {
@@ -301,7 +325,7 @@
     function mastersForPickedCategories() {
       var set = {};
       for (var i = 0; i < picked.length; i++) {
-        var ids = CATEGORY_TO_MASTER_IDS[picked[i].category];
+        var ids = CATEGORY_TO_MASTER_IDS[normalizeKey(picked[i].category)];
         if (ids && ids.length) {
           for (var j = 0; j < ids.length; j++) set[ids[j]] = true;
         } else {
@@ -566,11 +590,13 @@
 
     function onSiteTeamReady() {
       rebuildMastersMapFromSelect();
+      rebuildCategoryToMasterMap();
       bindTeamListHandlers();
       if (masterSelect) highlightTeam(masterSelect.value);
     }
 
     rebuildMastersMapFromSelect();
+    rebuildCategoryToMasterMap();
     bindTeamListHandlers();
     window.addEventListener("site-team-ready", onSiteTeamReady);
     if (window.__SITE_TEAM_READY__) onSiteTeamReady();
@@ -1038,14 +1064,6 @@
         optDb.value = id;
         optDb.textContent = name;
         masterSelect.appendChild(optDb);
-      }
-      if (masterSelect.children.length === 1) {
-        MASTERS.forEach(function (m) {
-          var opt = document.createElement("option");
-          opt.value = m.id;
-          opt.textContent = m.name;
-          masterSelect.appendChild(opt);
-        });
       }
     }
 

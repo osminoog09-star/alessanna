@@ -4,7 +4,14 @@ import { supabase } from "../lib/supabase";
 import { useServicesCatalogRealtime, useStaffDirectoryRealtime } from "../hooks/useSalonRealtime";
 import { useAuth } from "../context/AuthContext";
 import { normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
-import type { ServiceListingRow, StaffServiceRow, StaffTableRow, StaffWorkType } from "../types/database";
+import { serviceListingIsActive } from "../lib/serviceListing";
+import type {
+  ServiceCategoryRow,
+  ServiceListingRow,
+  StaffServiceRow,
+  StaffTableRow,
+  StaffWorkType,
+} from "../types/database";
 import type { Role } from "../types/database";
 
 type UiRole = Role;
@@ -33,6 +40,7 @@ export function AdminStaffPage() {
   const { isPrivilegedAdmin } = useAuth();
   const [rows, setRows] = useState<StaffTableRow[]>([]);
   const [services, setServices] = useState<ServiceListingRow[]>([]);
+  const [categories, setCategories] = useState<ServiceCategoryRow[]>([]);
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -45,10 +53,11 @@ export function AdminStaffPage() {
 
   const load = useCallback(async () => {
     setErr(null);
-    const [st, sv, lk] = await Promise.all([
+    const [st, sv, lk, cat] = await Promise.all([
       supabase.from("staff").select("*").order("created_at", { ascending: false }),
-      supabase.from("service_listings").select("id,name,is_active").order("sort_order", { ascending: true }),
+      supabase.from("service_listings").select("id,name,is_active,category_id").order("sort_order", { ascending: true }),
       supabase.from("staff_services").select("*"),
+      supabase.from("service_categories").select("id,name,sort_order").order("sort_order", { ascending: true }),
     ]);
     if (st.error) {
       setErr(st.error.message);
@@ -58,6 +67,7 @@ export function AdminStaffPage() {
     setRows((st.data ?? []) as StaffTableRow[]);
     if (sv.data) setServices(sv.data as ServiceListingRow[]);
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
+    if (cat.data) setCategories(cat.data as ServiceCategoryRow[]);
     setLoading(false);
   }, []);
 
@@ -68,7 +78,18 @@ export function AdminStaffPage() {
   useStaffDirectoryRealtime(load);
   useServicesCatalogRealtime(load);
 
-  const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
+  const activeServices = useMemo(() => services.filter((s) => serviceListingIsActive(s)), [services]);
+  const servicesByCategory = useMemo(() => {
+    const catNameById = new Map(categories.map((c) => [c.id, c.name]));
+    const groups = new Map<string, { key: string; name: string; items: ServiceListingRow[] }>();
+    for (const s of activeServices) {
+      const key = s.category_id ?? "__none__";
+      const name = s.category_id ? catNameById.get(s.category_id) ?? "Other" : "Other";
+      if (!groups.has(key)) groups.set(key, { key, name, items: [] });
+      groups.get(key)!.items.push(s);
+    }
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [activeServices, categories]);
 
   const assignableRoles = isPrivilegedAdmin ? ALL_ROLES : MANAGER_ASSIGABLE_ROLES;
 
@@ -205,6 +226,24 @@ export function AdminStaffPage() {
 
   function hasLink(staffId: string, serviceId: string) {
     return links.some((l) => l.staff_id === staffId && l.service_id === serviceId);
+  }
+
+  async function toggleCategoryTag(staffId: string, categoryServiceIds: string[], on: boolean) {
+    setErr(null);
+    if (categoryServiceIds.length === 0) return;
+    if (on) {
+      const payload = categoryServiceIds.map((service_id) => ({ staff_id: staffId, service_id }));
+      const { error } = await supabase.from("staff_services").upsert(payload, { onConflict: "staff_id,service_id" });
+      if (error) setErr(error.message);
+    } else {
+      const { error } = await supabase
+        .from("staff_services")
+        .delete()
+        .eq("staff_id", staffId)
+        .in("service_id", categoryServiceIds);
+      if (error) setErr(error.message);
+    }
+    void load();
   }
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
@@ -372,17 +411,35 @@ export function AdminStaffPage() {
                   />
                 </td>
                 <td className="max-w-xs px-3 py-2">
-                  <div className="flex flex-wrap gap-2">
-                    {activeServices.map((s) => (
-                      <label key={s.id} className="flex items-center gap-1 text-xs text-zinc-400">
-                        <input
-                          type="checkbox"
-                          checked={hasLink(r.id, s.id)}
-                          onChange={(e) => void toggleService(r.id, s.id, e.target.checked)}
-                        />
-                        {s.name}
-                      </label>
-                    ))}
+                  <div className="space-y-2">
+                    {servicesByCategory.map((g) => {
+                      const ids = g.items.map((x) => x.id);
+                      const hasAny = ids.some((id) => hasLink(r.id, id));
+                      return (
+                        <div key={g.key} className="rounded border border-zinc-800/80 p-1.5">
+                          <label className="mb-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-300">
+                            <input
+                              type="checkbox"
+                              checked={hasAny}
+                              onChange={(e) => void toggleCategoryTag(r.id, ids, e.target.checked)}
+                            />
+                            {g.name}
+                          </label>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {g.items.map((s) => (
+                              <label key={s.id} className="flex items-center gap-1 text-xs text-zinc-400">
+                                <input
+                                  type="checkbox"
+                                  checked={hasLink(r.id, s.id)}
+                                  onChange={(e) => void toggleService(r.id, s.id, e.target.checked)}
+                                />
+                                {s.name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </td>
                 <td className="space-x-2 px-3 py-2 whitespace-nowrap">

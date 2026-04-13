@@ -27,6 +27,15 @@ function categoryNameRaw(r) {
   return "";
 }
 
+function slugKey(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-");
+}
+
 function buildGroups(links, staffMap) {
   const groups = new Map();
   for (const row of links) {
@@ -35,13 +44,14 @@ function buildGroups(links, staffMap) {
     if (!st) continue;
     const cat = categoryNameRaw(row).trim() || "Muu";
     if (!groups.has(cat)) groups.set(cat, new Map());
-    groups.get(cat).set(st.id, st.name);
+    groups.get(cat).set(st.id, { id: st.id, name: st.name });
   }
   const out = [];
   for (const [cat, namesMap] of groups.entries()) {
     out.push({
+      key: slugKey(cat),
       title: cat,
-      names: Array.from(namesMap.values()).sort((a, b) => a.localeCompare(b)),
+      names: Array.from(namesMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
     });
   }
   out.sort((a, b) => a.title.localeCompare(b.title));
@@ -51,6 +61,14 @@ function buildGroups(links, staffMap) {
 function renderTeam(groups, allNames) {
   const root = document.querySelector("#meistrid .team-groups");
   if (!root) return;
+
+  if (!allNames.length) {
+    root.innerHTML =
+      '<div class="team-group"><h3 class="team-group-title">Meistrid</h3><ul class="team-names">' +
+      "<li>—</li>" +
+      "</ul></div>";
+    return;
+  }
 
   if (!groups.length) {
     root.innerHTML =
@@ -63,12 +81,14 @@ function renderTeam(groups, allNames) {
   root.innerHTML = groups
     .map((g) => {
       return (
-        '<div class="team-group">' +
+        '<div class="team-group" data-category-key="' +
+        esc(g.key || "") +
+        '">' +
         '<h3 class="team-group-title">' +
         esc(g.title) +
         "</h3>" +
         '<ul class="team-names">' +
-        g.names.map((n) => "<li>" + esc(n) + "</li>").join("") +
+        g.names.map((n) => '<li data-master-id="' + esc(n.id) + '">' + esc(n.name) + "</li>").join("") +
         "</ul>" +
         "</div>"
       );
@@ -79,12 +99,18 @@ function renderTeam(groups, allNames) {
 async function main() {
   try {
     const c = cfg();
-    if (!c.url || !c.key) return;
+    if (!c.url || !c.key) {
+      renderTeam([], []);
+      return;
+    }
     const supabase = createClient(c.url, c.key);
 
     const { data: staffRows } = await supabase.from("staff").select("id,name,is_active").eq("is_active", true).order("name");
     const staff = (staffRows || []).map((r) => ({ id: r.id, name: String(r.name || "").trim() })).filter((r) => r.name);
-    if (!staff.length) return;
+    if (!staff.length) {
+      renderTeam([], []);
+      return;
+    }
 
     const staffMap = new Map(staff.map((s) => [s.id, s]));
     const staffIds = staff.map((s) => s.id);
