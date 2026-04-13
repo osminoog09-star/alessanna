@@ -15,10 +15,17 @@ import { AdminTimeOffPage } from "./pages/AdminTimeOffPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { FinancePage } from "./pages/FinancePage";
 import { ClientsPage } from "./pages/ClientsPage";
+import { SiteBuilderPage } from "./pages/SiteBuilderPage";
 
 function RequireManage({ children }: { children: React.ReactNode }) {
   const { canManage } = useEffectiveRole();
   if (!canManage) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function RequirePrivileged({ children }: { children: React.ReactNode }) {
+  const { isPrivilegedAdmin } = useAuth();
+  if (!isPrivilegedAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -102,6 +109,14 @@ export default function App() {
             <RequireManage>
               <ClientsPage />
             </RequireManage>
+          }
+        />
+        <Route
+          path="admin/site-builder"
+          element={
+            <RequirePrivileged>
+              <SiteBuilderPage />
+            </RequirePrivileged>
           }
         />
         <Route path="services" element={<Navigate to="/admin/services" replace />} />

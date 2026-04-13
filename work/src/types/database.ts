@@ -111,6 +111,24 @@ export type StaffServiceRow = {
   service_id: string;
 };
 
+export type SitePageRow = {
+  id: string;
+  name: string;
+  slug: string;
+  created_at?: string;
+};
+
+export type SiteBlockType = "button" | "text" | "section";
+
+export type SiteBlockRow = {
+  id: string;
+  page_id: string;
+  type: SiteBlockType;
+  content: Record<string, unknown>;
+  position: number;
+  created_at?: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -140,6 +158,8 @@ export type Database = {
         Insert: Partial<StaffWorkDayRow>;
         Update: Partial<StaffWorkDayRow>;
       };
+      site_pages: { Row: SitePageRow; Insert: Partial<SitePageRow>; Update: Partial<SitePageRow> };
+      site_blocks: { Row: SiteBlockRow; Insert: Partial<SiteBlockRow>; Update: Partial<SiteBlockRow> };
     };
     Functions: {
       verify_staff_phone: {
