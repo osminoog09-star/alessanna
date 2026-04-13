@@ -58,7 +58,7 @@ function renderText(content) {
   const txt = String(content?.text ?? "");
   const p = document.createElement("p");
   p.className = "section-lead";
-  p.innerHTML = escapeHtml(txt);
+  p.textContent = txt;
   return p;
 }
 

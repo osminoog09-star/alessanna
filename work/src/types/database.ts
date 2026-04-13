@@ -22,6 +22,7 @@ export type StaffTableRow = {
   phone: string | null;
   name: string;
   role: Role;
+  roles?: Role[] | null;
   is_active: boolean;
   work_type?: StaffWorkType | null;
   percent_rate?: number | null;

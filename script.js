@@ -198,14 +198,7 @@
       "panel-pedicure": "pedicure",
     };
 
-    var MASTERS_PICK = [
-      { id: "galina", name: "Galina" },
-      { id: "irina", name: "Irina" },
-      { id: "viktoria", name: "Viktoria" },
-      { id: "anne", name: "Anne" },
-      { id: "alesja", name: "Alesja" },
-      { id: "aljona", name: "Aljona" },
-    ];
+    var MASTERS_PICK = [];
 
     /** Meistrid teenusekategooriate järgi (sama loogika mis #meistrid plokis) */
     var CATEGORY_TO_MASTER_IDS = {
@@ -260,8 +253,32 @@
     }
 
     var nameToId = {};
-    for (var mi = 0; mi < MASTERS_PICK.length; mi++) {
-      nameToId[MASTERS_PICK[mi].name.toLowerCase()] = MASTERS_PICK[mi].id;
+    function rebuildMastersMapFromSelect() {
+      MASTERS_PICK = [];
+      nameToId = {};
+      if (!masterSelect) return;
+      for (var oi = 0; oi < masterSelect.options.length; oi++) {
+        var opt = masterSelect.options[oi];
+        var id = String(opt.value || "").trim();
+        var name = String(opt.textContent || "").trim();
+        if (!id || !name) continue;
+        if (id === "") continue;
+        MASTERS_PICK.push({ id: id, name: name });
+        nameToId[name.toLowerCase()] = id;
+      }
+    }
+
+    function masterIdByName(name) {
+      var key = String(name || "").trim().toLowerCase();
+      if (!key) return "";
+      if (nameToId[key]) return nameToId[key];
+      if (!masterSelect) return "";
+      for (var i = 0; i < masterSelect.options.length; i++) {
+        var opt = masterSelect.options[i];
+        var txt = String(opt.textContent || "").trim().toLowerCase();
+        if (txt === key) return String(opt.value || "");
+      }
+      return "";
     }
 
     var picked = [];
@@ -288,6 +305,7 @@
         if (ids && ids.length) {
           for (var j = 0; j < ids.length; j++) set[ids[j]] = true;
         } else {
+          rebuildMastersMapFromSelect();
           for (var k = 0; k < MASTERS_PICK.length; k++) set[MASTERS_PICK[k].id] = true;
         }
       }
@@ -502,35 +520,20 @@
       decoratePickRows();
     });
 
-    function highlightTeam(masterId) {
-      var lis = document.querySelectorAll("#meistrid .team-names li");
-      for (var t = 0; t < lis.length; t++) {
-        var li = lis[t];
-        var txt = li.textContent.trim().toLowerCase();
-        var id = nameToId[txt];
-        li.classList.toggle("is-master-picked", !!(masterId && id === masterId));
-      }
-    }
-
-    function applyMaster(id) {
-      if (!masterSelect) return;
-      masterSelect.value = id || "";
-      setMasterDisplayText(id ? masterNameById(id) : UI.masterNone);
-      highlightTeam(id || "");
-      masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-
-    var teamRoot = document.getElementById("meistrid");
-    if (teamRoot) {
+    function bindTeamListHandlers() {
+      var teamRoot = document.getElementById("meistrid");
+      if (!teamRoot) return;
       var teamLis = teamRoot.querySelectorAll(".team-names li");
       for (var tl = 0; tl < teamLis.length; tl++) {
         (function (li) {
-          var id = nameToId[li.textContent.trim().toLowerCase()];
-          if (!id) return;
+          if (li.getAttribute("data-master-bound") === "1") return;
+          li.setAttribute("data-master-bound", "1");
           li.setAttribute("role", "button");
           li.tabIndex = 0;
           li.setAttribute("aria-pressed", "false");
           li.addEventListener("click", function () {
+            var id = masterIdByName(li.textContent || "");
+            if (!id) return;
             if (masterSelect && masterSelect.value === id) applyMaster("");
             else applyMaster(id);
           });
@@ -544,8 +547,34 @@
       }
     }
 
+    function highlightTeam(masterId) {
+      var lis = document.querySelectorAll("#meistrid .team-names li");
+      for (var t = 0; t < lis.length; t++) {
+        var li = lis[t];
+        var id = masterIdByName(li.textContent || "");
+        li.classList.toggle("is-master-picked", !!(masterId && id === masterId));
+      }
+    }
+
+    function applyMaster(id) {
+      if (!masterSelect) return;
+      masterSelect.value = id || "";
+      setMasterDisplayText(id ? masterNameById(id) : UI.masterNone);
+      highlightTeam(id || "");
+      masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    rebuildMastersMapFromSelect();
+    bindTeamListHandlers();
+    window.addEventListener("site-team-ready", function () {
+      rebuildMastersMapFromSelect();
+      bindTeamListHandlers();
+      if (masterSelect) highlightTeam(masterSelect.value);
+    });
+
     if (masterSelect) {
       masterSelect.addEventListener("change", function () {
+        rebuildMastersMapFromSelect();
         var v = masterSelect.value;
         highlightTeam(v);
         setMasterDisplayText(v ? masterNameById(v) : UI.masterNone);
@@ -553,7 +582,7 @@
         var lis2 = document.querySelectorAll("#meistrid .team-names li");
         for (var u = 0; u < lis2.length; u++) {
           var li2 = lis2[u];
-          var tid = nameToId[li2.textContent.trim().toLowerCase()];
+          var tid = masterIdByName(li2.textContent || "");
           li2.setAttribute("aria-pressed", v && tid === v ? "true" : "false");
         }
       });
@@ -986,12 +1015,35 @@
     }
 
     function setupDemoMasters() {
-      MASTERS.forEach(function (m) {
-        var opt = document.createElement("option");
-        opt.value = m.id;
-        opt.textContent = m.name;
-        masterSelect.appendChild(opt);
-      });
+      while (masterSelect.children.length > 1) {
+        masterSelect.removeChild(masterSelect.lastChild);
+      }
+      var seen = {};
+      var lis = document.querySelectorAll("#meistrid .team-names li");
+      for (var i = 0; i < lis.length; i++) {
+        var name = String(lis[i].textContent || "").trim();
+        if (!name) continue;
+        var key = name.toLowerCase();
+        if (seen[key]) continue;
+        seen[key] = true;
+        var id = key
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, "")
+          .replace(/-+/g, "-");
+        if (!id) id = "master-" + (i + 1);
+        var optDb = document.createElement("option");
+        optDb.value = id;
+        optDb.textContent = name;
+        masterSelect.appendChild(optDb);
+      }
+      if (masterSelect.children.length === 1) {
+        MASTERS.forEach(function (m) {
+          var opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = m.name;
+          masterSelect.appendChild(opt);
+        });
+      }
     }
 
     /** Rebuild master dropdown from API for the selected service (employee_services filter). */
@@ -1057,6 +1109,15 @@
     }
 
     startBookingWidget();
+
+    window.addEventListener("site-team-ready", function () {
+      if (!apiBooking) {
+        setupDemoMasters();
+        invalidateMonthCache();
+        clearSelection();
+        renderCalendar();
+      }
+    });
 
     prevBtn.addEventListener("click", function () {
       if (prevBtn.disabled) return;
