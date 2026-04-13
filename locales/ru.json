@@ -45,7 +45,8 @@
     "back": "Назад",
     "selectedServices": "Выбрано",
     "timeChain": "Ваш визит (последовательно)",
-    "pickAtLeastOneService": "Выберите хотя бы одну услугу."
+    "pickAtLeastOneService": "Выберите хотя бы одну услугу.",
+    "noServicesInCatalog": "В каталоге нет активных услуг или не удалось загрузить список. Добавьте услуги в разделе «Услуги» в CRM и проверьте права доступа к таблице service_listings."
   },
   "nav": {
     "dashboard": "Обзор",

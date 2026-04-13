@@ -8,7 +8,7 @@ import { normalizeStaffMember, staffEligibleForService } from "../lib/roles";
 import { computeSequentialSegments } from "../lib/appointmentChain";
 import { isIntervalInsideWorkingWindows, overlapsTimeOff, workingMinuteWindowsForDay } from "../lib/salonCalendar";
 import { eurFromEuroAmount } from "../lib/format";
-import { listingSlotMinutes } from "../lib/serviceListing";
+import { listingSlotMinutes, serviceListingIsActive } from "../lib/serviceListing";
 import { resolveClientIdForVisit } from "../lib/clientLink";
 import type {
   ServiceListingRow,
@@ -50,13 +50,15 @@ export function PublicBookingPage() {
       return;
     }
     const [sv, st, lk, sc, to] = await Promise.all([
-      supabase.from("service_listings").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("service_listings").select("*").order("name", { ascending: true }),
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
     ]);
-    if (sv.data) setServices(sv.data as ServiceListingRow[]);
+    if (sv.data) {
+      setServices((sv.data as ServiceListingRow[]).filter((s) => serviceListingIsActive(s)));
+    }
     if (st.data) {
       setStaff((st.data as Record<string, unknown>[]).map((r) => normalizeStaffMember(r as StaffMember)));
     }

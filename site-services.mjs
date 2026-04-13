@@ -176,15 +176,34 @@ async function fetchPriceList(client) {
       name,
       price,
       duration,
+      is_active,
       category:service_categories(name)
     `
     )
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
   if (!listings.error) {
-    return { data: listings.data || [], error: null };
+    const rows = (listings.data || []).filter(function (r) {
+      return r.is_active !== false;
+    });
+    return { data: rows, error: null };
+  }
+
+  const listingsMinimal = await client
+    .from("service_listings")
+    .select(
+      `
+      id,
+      name,
+      price,
+      duration,
+      category:service_categories(name)
+    `
+    )
+    .order("name", { ascending: true });
+
+  if (!listingsMinimal.error) {
+    return { data: listingsMinimal.data || [], error: null };
   }
 
   const legacy = await client
@@ -207,7 +226,7 @@ async function fetchPriceList(client) {
     return { data: mapLegacyServiceRows(legacyNoJoin.data), error: null };
   }
 
-  return { data: null, error: listings.error };
+  return { data: null, error: listingsMinimal.error || listings.error };
 }
 
 async function run(client) {

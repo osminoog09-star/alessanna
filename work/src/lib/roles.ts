@@ -1,4 +1,5 @@
 import type { Role, ServiceListingRow, StaffMember, StaffRole, StaffServiceRow } from "../types/database";
+import { serviceListingIsActive } from "./serviceListing";
 
 export type { Role, StaffRole };
 
@@ -122,7 +123,7 @@ export function servicesEligibleForStaff(
   staffId: string,
   staffRow?: Pick<StaffMember, "roles" | "active"> | null
 ): ServiceListingRow[] {
-  const active = services.filter((s) => s.is_active);
+  const active = services.filter((s) => serviceListingIsActive(s));
   const forSt = links.filter((l) => l.staff_id === staffId);
   if (forSt.length === 0) return active;
   if (

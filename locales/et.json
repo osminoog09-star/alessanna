@@ -45,7 +45,8 @@
     "back": "Tagasi",
     "selectedServices": "Valitud",
     "timeChain": "Sinu visiit (järjestikku)",
-    "pickAtLeastOneService": "Vali vähemalt üks teenus."
+    "pickAtLeastOneService": "Vali vähemalt üks teenus.",
+    "noServicesInCatalog": "Aktiivseid teenuseid pole või nimekirja ei õnnestunud laadida. Lisa teenused CRM-is jaotises «Teenused» ning kontrolli service_listings õigusi."
   },
   "nav": {
     "dashboard": "Töölaud",

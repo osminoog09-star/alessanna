@@ -1,5 +1,10 @@
 import type { ServiceListingRow } from "../types/database";
 
+/** Bookable / visible in UI when not explicitly disabled (legacy rows without `is_active` count as active). */
+export function serviceListingIsActive(s: Pick<ServiceListingRow, "is_active"> | { is_active?: boolean | null }): boolean {
+  return (s as { is_active?: boolean | null }).is_active !== false;
+}
+
 export function listingDurationMinutes(s: Pick<ServiceListingRow, "duration">): number {
   return Math.max(1, s.duration ?? 60);
 }

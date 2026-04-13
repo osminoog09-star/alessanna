@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import type { StaffMember, StaffServiceRow, ServiceListingRow, StaffScheduleRow, StaffTimeOffRow } from "../types/database";
 import { staffEligibleForService, servicesEligibleForStaff } from "../lib/roles";
 import { eurFromEuroAmount } from "../lib/format";
-import { listingSlotMinutes } from "../lib/serviceListing";
+import { listingSlotMinutes, serviceListingIsActive } from "../lib/serviceListing";
 import { overlapsExistingAppointments } from "../lib/slots";
 import { isIntervalInsideWorkingWindows, overlapsTimeOff, workingMinuteWindowsForDay } from "../lib/salonCalendar";
 import { computeSequentialSegments, type ServiceStaffPick } from "../lib/appointmentChain";
@@ -70,9 +70,9 @@ export function BookingModal({
   );
 
   const eligibleServices = useMemo(() => {
-    if (lockStaff)
-      return servicesEligibleForStaff(services, links, initialStaffId, initialStaffRow);
-    return services.filter((s) => s.is_active);
+    const bookable = services.filter((s) => serviceListingIsActive(s));
+    if (lockStaff) return servicesEligibleForStaff(bookable, links, initialStaffId, initialStaffRow);
+    return bookable;
   }, [services, links, lockStaff, initialStaffId, initialStaffRow]);
 
   useEffect(() => {
@@ -272,6 +272,9 @@ export function BookingModal({
           <div className="mt-4 space-y-3">
             <p className="text-sm text-zinc-400">{t("booking.step1Title")}</p>
             <div className="max-h-52 space-y-2 overflow-y-auto rounded-lg border border-zinc-800 p-2">
+              {eligibleServices.length === 0 && (
+                <p className="px-2 py-3 text-sm text-amber-400">{t("booking.noServicesInCatalog")}</p>
+              )}
               {eligibleServices.map((s) => (
                 <label
                   key={s.id}

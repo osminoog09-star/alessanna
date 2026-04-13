@@ -19,6 +19,7 @@ import { BlockTimeModal } from "../components/BlockTimeModal";
 import { CloseDayModal } from "../components/CloseDayModal";
 import { SalonTimelineGrid } from "../components/calendar/SalonTimelineGrid";
 import { staffHueFromId } from "../lib/staffHue";
+import { serviceListingIsActive } from "../lib/serviceListing";
 import type { AppOutletContext } from "../types/appOutlet";
 
 type View = "day" | "week";
@@ -63,7 +64,7 @@ export function CalendarPage() {
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
       lineQuery,
-      supabase.from("service_listings").select("*").eq("is_active", true),
+      supabase.from("service_listings").select("*").order("name", { ascending: true }),
       supabase.from("staff_services").select("*"),
     ]);
     if (st.data) {
@@ -75,7 +76,9 @@ export function CalendarPage() {
       setCalendarBlocks(mapAppointmentServiceRowsToBlocks(lines.data as SupabaseAppointmentServiceJoinRow[]));
     }
     if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
-    if (sv.data) setServices(sv.data as ServiceListingRow[]);
+    if (sv.data) {
+      setServices((sv.data as ServiceListingRow[]).filter((s) => serviceListingIsActive(s)));
+    }
     setLoading(false);
   }, [isWorkerOnlyEffective, staffMember]);
 
