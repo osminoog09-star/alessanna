@@ -539,6 +539,12 @@ a:hover {
   padding: calc(var(--header-h) + 3rem) 0 clamp(4rem, 10vw, 5.5rem);
   overflow: hidden;
   isolation: isolate;
+  background: #030303;
+}
+
+/* Мрамор + золотая ветка на PNG: явно для салона (ET/RU) и MAVE — одинаковый фон */
+body.site-ilusalong #hero.hero,
+body.page-mave #hero.hero {
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.38) 0%, rgba(0, 0, 0, 0.58) 48%, rgba(0, 0, 0, 0.86) 100%),
     url("assets/salon-bg.png") center top / cover no-repeat,
