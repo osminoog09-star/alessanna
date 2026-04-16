@@ -680,17 +680,210 @@ a:hover {
   width: 100%;
 }
 
-.hero-flourish {
+.hero-flourish-wrap {
   position: absolute;
   right: calc(50% + min(16rem, 28vw));
   bottom: 0.15rem;
-  color: rgba(196, 165, 116, 0.28);
+  width: 48px;
+  height: 112px;
   pointer-events: none;
   user-select: none;
+  overflow: visible;
+  /* Частицы с mix-blend-mode не должны «подкрашивать» весь hero-фон */
+  isolation: isolate;
+}
+
+.hero-flourish {
+  display: block;
+  width: 48px;
+  height: 112px;
+  color: rgba(196, 165, 116, 0.28);
+  overflow: visible;
+}
+
+/* Светящаяся точка + «хвост» вдоль тех же кривых (CSS offset-path) */
+.hero-flourish-particles {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero-flourish-mote {
+  position: absolute;
+  left: 0;
+  top: 0;
+  offset-anchor: center center;
+  offset-rotate: auto;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: offset-distance, opacity;
+  animation: heroFlourishParticle 6.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.hero-flourish-mote--lead {
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle at 35% 35%, #fffef8 0%, #f5ecd8 38%, #d4af37 88%, #b8922e 100%);
+  box-shadow:
+    0 0 4px 1px rgba(255, 254, 248, 0.95),
+    0 0 12px 3px rgba(212, 175, 55, 0.55),
+    0 0 22px 6px rgba(212, 175, 55, 0.22);
+}
+
+.hero-flourish-mote--trail {
+  width: 11px;
+  height: 11px;
+  margin-left: -4px;
+  margin-top: -4px;
+  background: radial-gradient(circle, rgba(255, 254, 248, 0.55) 0%, rgba(212, 175, 55, 0.28) 42%, rgba(212, 175, 55, 0.08) 62%, transparent 72%);
+  filter: blur(2.5px);
+  opacity: 0.72;
+  mix-blend-mode: screen;
+  animation-name: heroFlourishParticleTrail;
+}
+
+.hero-flourish-mote[data-seg="1"] {
+  offset-path: path("M24 108V18");
+  --seg-stagger: 0s;
+}
+
+.hero-flourish-mote[data-seg="2"] {
+  offset-path: path("M24 52c-8-14-18-18-18-28s6-14 14-10c6 3 8 12 4 22");
+  --seg-stagger: 0.55s;
+}
+
+.hero-flourish-mote[data-seg="3"] {
+  offset-path: path("M24 48c10-12 16-10 18-20s-4-16-12-12c-5 3-8 14-6 24");
+  --seg-stagger: 1.1s;
+}
+
+.hero-flourish-mote[data-seg="4"] {
+  offset-path: path("M24 72c-6 10-4 20 2 24");
+  --seg-stagger: 1.65s;
+}
+
+.hero-flourish-mote--lead {
+  animation-delay: var(--seg-stagger);
+}
+
+.hero-flourish-mote--trail {
+  animation-delay: calc(var(--seg-stagger) + 0.38s);
+}
+
+
+@keyframes heroFlourishParticle {
+  0% {
+    offset-distance: 0%;
+    opacity: 0.25;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  88% {
+    opacity: 1;
+  }
+
+  100% {
+    offset-distance: 100%;
+    opacity: 0.22;
+  }
+}
+
+@keyframes heroFlourishParticleTrail {
+  0% {
+    offset-distance: 0%;
+    opacity: 0.12;
+  }
+
+  18% {
+    opacity: 0.72;
+  }
+
+  82% {
+    opacity: 0.68;
+  }
+
+  100% {
+    offset-distance: 100%;
+    opacity: 0.1;
+  }
+}
+
+@supports not (offset-path: path("M0 0")) {
+  .hero-flourish-particles {
+    display: none;
+  }
+}
+
+/* Мягкий «бегущий» блик по декоративным линиям hero (stroke-dash + свечение) */
+.hero-flourish-shimmer path {
+  fill: none;
+  filter: url(#hero-flourish-glow);
+  stroke-dasharray: 7 93;
+  stroke-dashoffset: 0;
+  opacity: 0.88;
+  animation: heroFlourishShimmer 6.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: stroke-dashoffset, opacity;
+}
+
+.hero-flourish-shimmer path:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.hero-flourish-shimmer path:nth-child(2) {
+  animation-delay: 0.55s;
+}
+
+.hero-flourish-shimmer path:nth-child(3) {
+  animation-delay: 1.1s;
+}
+
+.hero-flourish-shimmer path:nth-child(4) {
+  animation-delay: 1.65s;
+}
+
+@keyframes heroFlourishShimmer {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.3;
+  }
+
+  18% {
+    opacity: 0.92;
+  }
+
+  50% {
+    stroke-dashoffset: -50;
+    opacity: 1;
+  }
+
+  82% {
+    opacity: 0.9;
+  }
+
+  100% {
+    stroke-dashoffset: -100;
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-flourish-shimmer path {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  .hero-flourish-particles {
+    display: none !important;
+  }
 }
 
 @media (max-width: 540px) {
-  .hero-flourish {
+  .hero-flourish-wrap {
     display: none;
   }
 }
