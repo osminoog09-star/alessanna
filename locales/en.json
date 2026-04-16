@@ -23,9 +23,7 @@
     "title": "Staff sign-in",
     "subtitle": "Use your registered staff phone number.",
     "phone": "Phone",
-    "placeholder": "Enter phone number",
-    "digitLengthHint": "Digits only, 8–10 characters",
-    "phoneInvalidLength": "Enter 8–10 digits (without country code).",
+    "placeholder": "e.g. 55686845",
     "hint": "Enter number without country code",
     "button": "Log in",
     "signingIn": "Signing in…",
@@ -39,20 +37,6 @@
       "failed": "Login failed",
       "rpcFailed": "{{message}}"
     }
-  },
-  "reception": {
-    "dashboardSubtitle": "Overview of all visits. Sign in as staff for your personal view."
-  },
-  "booking": {
-    "stepLabel": "Step {{current}} of {{total}}",
-    "step1Title": "Choose one or more services (order is kept).",
-    "step2Title": "Assign staff for each service.",
-    "step3Title": "Start time and client details.",
-    "next": "Next",
-    "back": "Back",
-    "selectedServices": "Selected",
-    "timeChain": "Your visit (sequential)",
-    "pickAtLeastOneService": "Select at least one service."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -132,8 +116,7 @@
     "cancel": "Cancel",
     "statusPending": "pending",
     "statusConfirmed": "confirmed",
-    "statusCancelled": "cancelled",
-    "cancelVisit": "Cancel visit"
+    "statusCancelled": "cancelled"
   },
   "employees": {
     "title": "Employees",
@@ -176,29 +159,10 @@
     "colEarnings": "Recorded earnings",
     "popular": "Popular services",
     "noData": "No data yet.",
-    "bookingsCount": "{{count}} bookings",
-    "unknownService": "Service #{{id}}",
-    "revenueNote": "Revenue column: confirmed visits only. Booking counts include all non-cancelled lines.",
-    "utilizationTitle": "Utilization (last 30 days)",
-    "utilizationHint": "Sum of service durations per line (minutes, including buffer after). Not compared to shift hours automatically.",
-    "colBookedMinutes": "Booked minutes"
-  },
-  "publicBook": {
-    "title": "Book online",
-    "subtitle": "Choose services, staff per service, then pick a time.",
-    "staffLogin": "Staff login",
-    "pickStaff": "Choose staff",
-    "day": "Date",
-    "slots": "Available times",
-    "slotsFirstServiceHint": "Times are based on the first service and its assigned staff; following services run back-to-back.",
-    "noSlots": "No free slots on this day.",
-    "confirm": "Book",
-    "fillAll": "Enter your name and pick a time.",
-    "success": "Booking created."
+    "bookingsCount": "{{count}} bookings"
   },
   "modal": {
     "newBooking": "New booking",
-    "startTime": "Start",
     "client": "Client",
     "phone": "Phone",
     "staff": "Staff",
@@ -206,8 +170,6 @@
     "pickService": "Pick a service.",
     "pickStaff": "No staff for this service. Assign skills on the Employees page.",
     "overlap": "That time slot is no longer free for this staff member. Refresh and pick another time.",
-    "outsideWorkingHours": "This interval falls outside working hours for the schedule.",
-    "timeOffOverlap": "This time overlaps staff unavailability.",
     "fillAll": "Fill all fields."
   },
   "site": {
@@ -232,7 +194,7 @@
     "heroLead": "Slow moments, refined craft, and an atmosphere that puts your wellbeing first. Here we do not rush — we choose materials, listen to your wishes, and keep the calm.",
     "btnBook": "Book a time",
     "btnServices": "Services",
-    "trustAddress": "Tallinna mnt 70 · Pärnu",
+    "trustAddress": "Härma Keskus · Tallinna mnt 70 · Pärnu",
     "trustHours": "Mon–Fri 10–18 · Sat 10–16",
     "trustMave": "AlesSanna & MAVE"
   }

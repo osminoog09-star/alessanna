@@ -12,19 +12,25 @@
 
   /** Default directory — edit here or use admin UI to add users */
   var SEED_USERS = [
-    { name: "Admin", phone: "12345678", role: "admin" },
+    { name: "Admin", phone: "55686845", role: "admin" },
     { name: "Manager", phone: "12345678", role: "manager" },
   ];
 
   var SEED_EMPLOYEES = [
     { name: "Galina", role: "Color specialist" },
     { name: "Irina", role: "Stylist" },
-    { name: "Viktoria", role: "Nail tech" },
+    { name: "Viktoria", role: "Stylist" },
     { name: "Anne", role: "Manager" },
+    { name: "Alesja", role: "Maniküür, pediküür ja ripsmed" },
+    { name: "Aljona", role: "Küüned ja kulmud" },
   ];
 
-  /** No bundled catalog — use CRM (Supabase) or add rows in this demo’s admin UI / localStorage. */
-  var SEED_SERVICES = [];
+  var SEED_SERVICES = [
+    { name: "Lõikus", price: "35 €" },
+    { name: "Värvimine", price: "85 €" },
+    { name: "Maniküür", price: "35 €" },
+    { name: "Pediküür", price: "45 €" },
+  ];
 
   var mock = {
     stats: { bookingsToday: 0, revenueTodayCents: 0, upcoming: 0 },
@@ -37,8 +43,8 @@
   var defaultBookings = [
     { id: 1, client: "Mari T.", service: "Lõikus", dateStr: "2026-04-12", timeStr: "10:00", staff: "Galina" },
     { id: 2, client: "Liis K.", service: "Värvimine", dateStr: "2026-04-12", timeStr: "11:30", staff: "Irina" },
-    { id: 3, client: "Kadri P.", service: "Maniküür", dateStr: "2026-04-12", timeStr: "14:00", staff: "Galina" },
-    { id: 4, client: "Annika S.", service: "Pediküür", dateStr: "2026-04-12", timeStr: "15:30", staff: "Viktoria" },
+    { id: 3, client: "Kadri P.", service: "Maniküür", dateStr: "2026-04-12", timeStr: "14:00", staff: "Alesja" },
+    { id: 4, client: "Annika S.", service: "Pediküür", dateStr: "2026-04-12", timeStr: "15:30", staff: "Alesja" },
   ];
 
   var calendarView = { y: 0, m: 0 };

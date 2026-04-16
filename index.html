@@ -45,7 +45,15 @@
   <!-- Шапка: id="header" нужен script.js для класса .is-scrolled при прокрутке -->
   <header class="site-header" id="header">
     <div class="container header-inner">
-      <a class="logo-link" href="#hero">AlesSanna <small data-i18n="site.brandSmall">ilusalong</small></a>
+      <div class="brand-pair" aria-label="AlesSanna x MAVE">
+        <a class="logo-link" href="#hero" aria-label="AlesSanna Ilusalong">
+          <img class="logo-link__image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
+        </a>
+        <span class="brand-pair__cross" aria-hidden="true">×</span>
+        <a class="mave-logo-link" href="mave.html" aria-label="MAVE pood">
+          <img class="mave-logo-link__image" src="assets/mave-logo.svg" alt="" width="842" height="595" />
+        </a>
+      </div>
       <div class="header-actions">
         <span class="lang-switch" data-i18n-attr="aria-label:common.language">
           <a href="ru.html">RU</a>
@@ -84,7 +92,6 @@
     <section class="hero" id="hero">
       <div class="hero-bg" aria-hidden="true"><div class="hero-bg-motion"></div></div>
       <div class="hero-inner reveal hero-animate">
-        <p class="hero-eyebrow" data-i18n="site.heroEyebrow">Pärnu · Tallinna mnt 70</p>
         <!-- Текстовый hero в стиле бренда: без PNG-полосы услуг (её путают с кликабельным меню) -->
         <div class="hero-brand-wrap">
           <svg class="hero-flourish" width="48" height="112" viewBox="0 0 48 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -94,17 +101,18 @@
             <path d="M24 72c-6 10-4 20 2 24" stroke="currentColor" stroke-width="0.65" fill="none" opacity="0.7" />
           </svg>
           <div class="hero-brand-text">
-            <h1 class="hero-wordmark">AlesSanna</h1>
-            <p class="hero-subbrand" data-i18n="site.heroSubbrand">ILUSALONG</p>
+            <h1 class="visually-hidden">AlesSanna Ilusalong</h1>
+            <img class="hero-wordmark-image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
           </div>
         </div>
         <p class="hero-display" data-i18n="site.heroDisplay">Vaikne ruum, kus ilu saab oma aega</p>
-        <p class="hero-lead" data-i18n="site.heroLead">
-          Aeglane hetk, peen käsitöö ja õhk, mis seab esikohale teie heaolu. Siin ei kiirustata — valitakse materjale, kuulatakse soove ja hoitakse vaikust.
-        </p>
         <div class="hero-actions">
+          <a href="#teenused" class="btn btn-outline" data-services-tabs-toggle data-i18n="site.btnServices">Teenused</a>
+          <a href="#teenused" class="btn btn-outline" data-price-list-toggle>Hinnakiri</a>
           <a href="#broneeri" class="btn btn-primary" data-i18n="site.btnBook">Broneeri aeg</a>
-          <a href="#teenused" class="btn btn-outline" data-i18n="site.btnServices">Teenused</a>
+        </div>
+        <div class="hero-actions hero-actions--secondary">
+          <a href="mave.html" class="btn btn-outline">MAVE pood</a>
         </div>
       </div>
     </section>
@@ -112,10 +120,10 @@
     <!-- Короткая полоса доверия: адрес, часы, телефон (не дублирует навигацию) -->
     <div class="trust-strip">
       <div class="container trust-inner">
-        <span data-i18n="site.trustAddress">Tallinna mnt 70 · Pärnu</span>
+        <span data-i18n="site.trustAddress">Härma Keskus · Tallinna mnt 70 · Pärnu</span>
         <span data-i18n="site.trustHours">E–R 10–18 · L 10–16</span>
         <span><a href="mave.html" data-i18n="site.trustMave">AlesSanna &amp; Mave</a></span>
-        <span><a href="tel:+3725550100">555 0100</a></span>
+        <span><a href="tel:+3724398384">439 8384</a></span>
       </div>
     </div>
 
@@ -125,7 +133,7 @@
       </div>
     </section>
 
-    <!-- Услуги: кнопки .tab-btn с aria-controls="panel-*" переключают .tab-panel (см. script.js) -->
+    <!-- Teenused: Supabase CRM (site-services.mjs) -->
     <section class="section" id="teenused">
       <div class="container">
         <div class="section-head reveal">
@@ -146,7 +154,7 @@
           </button>
           <div class="selection-dock-body" id="selection-dock-panel">
             <p class="selection-summary-kicker">Teie valik</p>
-            <p class="selection-summary-hint">Klõpsake teenusel, et lisada või eemaldada nimekirjast.</p>
+            <p class="selection-summary-hint">Klõpsake teenusel, et lisada või eemaldada nimekirjast. Interaktiivseks broneerimiseks valige teenus ja meister, seejärel liikuge broneeringu juurde.</p>
             <ul class="pick-list" data-selected-services-list hidden></ul>
             <p class="pick-list-empty" data-selected-services-empty>Teenuseid pole veel valitud.</p>
             <div class="selection-masters" data-summary-masters-wrap hidden>
@@ -160,8 +168,8 @@
             <a href="#broneeri" class="btn btn-outline selection-summary-cta">Broneerimise juurde</a>
           </div>
         </div>
-
         <p class="menu-footnote reveal text-zinc-500 text-sm">Hindade muudatused salvestatakse CRM-is ja kajastuvad siin (reaalajas, kui Supabase Realtime on sisse lülitatud).</p>
+
       </div>
     </section>
 
@@ -178,7 +186,7 @@
         </div>
         <div class="team-block reveal">
           <div class="team-groups" aria-label="Meistrid teenuste kaupa">
-            <div class="team-group">
+            <div class="team-group" data-team-group="hair">
               <h3 class="team-group-title">Juuksed</h3>
               <p class="team-group-desc">Lõikus, värvimine, keemiline lokk, soengud</p>
               <ul class="team-names">
@@ -188,30 +196,30 @@
                 <li>Anne</li>
               </ul>
             </div>
-            <div class="team-group">
+            <div class="team-group" data-team-group="nails">
               <h3 class="team-group-title">Küüned</h3>
               <p class="team-group-desc">Maniküür, pediküür, geellakk</p>
               <ul class="team-names">
                 <li>Alesja</li>
                 <li>Aljona</li>
-                <li>Viktoria</li>
               </ul>
             </div>
-            <div class="team-group">
+            <div class="team-group" data-team-group="brows">
               <h3 class="team-group-title">Kulmud ja ripsmed</h3>
-              <p class="team-group-desc">Värvimine, korrigeerimine</p>
+              <p class="team-group-desc">Värvimine, korrigeerimine. Kulmud — Aljona, ripsmed — Alesja.</p>
               <ul class="team-names">
-                <li>Irina</li>
-                <li>Anne</li>
+                <li>Aljona</li>
                 <li>Alesja</li>
               </ul>
             </div>
+          </div>
+          <div class="team-skip-action">
+            <a href="#broneeri" class="btn btn-outline">Ei oska valida</a>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Galerii: illustratiivsed tööd (välislingid, lazy) -->
     <section class="section section--gallery" id="galerii">
       <div class="container">
         <div class="section-head reveal">
@@ -258,7 +266,7 @@
             <p class="about-editorial__lead">AlesSanna on koht, kus aeg aeglustub ja tähelepanu suunatakse ainult teie vastu.</p>
             <div class="about-editorial__divider" aria-hidden="true"></div>
             <p class="about-editorial__body">
-              Asume Pärnu südames — vaikses, mõtlikus ruumis, kus materjalid on valitud vastupidavuse ja esteetika järgi. Me ei täida lihtsalt broneeringuid: loome hetki, kus tunnete end hoituna ja kergendatuna.
+              Asume Härma Keskuses — vaikses, mõtlikus ruumis, kus materjalid on valitud vastupidavuse ja esteetika järgi. Me ei täida lihtsalt broneeringuid: loome hetki, kus tunnete end hoituna ja kergendatuna.
             </p>
             <p class="about-editorial__body">
               Olgu teie soov juuksed, küüned või õrn hooldus — iga kohtumine algab kuulamisega ja lõpeb tulemusega, mis näeb välja loomulik ja kallis.
@@ -283,7 +291,7 @@
             <h2 class="section-title" style="font-size: 1.5rem">Kinkekaardid</h2>
           </div>
           <p>Kinkige aega ja tähelepanu — kinkekaart on kutse peatuda. Suurused ja kehtivus selguvad salongis või telefonitsi.</p>
-          <a href="tel:+3725550100" class="btn btn-outline">Helista ja küsi</a>
+          <a href="tel:+3724398384" class="btn btn-outline">Helista ja küsi</a>
         </div>
       </div>
     </section>
@@ -317,17 +325,6 @@
       </div>
     </section>
 
-    <section class="section section--cta" aria-labelledby="cta-luxury-title">
-      <div class="container">
-        <div class="cta-luxury reveal">
-          <p class="cta-luxury__kicker">Broneering</p>
-          <h2 class="cta-luxury__title" id="cta-luxury-title">Valige aeg, mis sobib teie rütmiga</h2>
-          <p class="cta-luxury__text">Jätke päring — kinnitame detailid helistades või kirjas. Teie vaikus enne kohtumist on meie jaoks sama oluline kui tulemus.</p>
-          <a href="#broneeri" class="btn btn-primary">Broneeri aeg</a>
-        </div>
-      </div>
-    </section>
-
     <!--
       Бронирование: календарь + форма. Обязательные для JS селекторы:
         [data-calendar-grid] — сюда вставляются дни;
@@ -344,7 +341,7 @@
         <div class="section-head reveal">
           <span class="section-kicker">Broneering</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Kalender ja lühike vorm</h2>
+          <h2 class="section-title">Broneering</h2>
         </div>
         <p class="booking-intro reveal">
           Valige päev, mis sobib teie graafikuga. Pärast saadetud päringut võtame ühendust, et kinnitada aeg ja üksikasjad — rahulikult, ilma kiirustamata.
@@ -398,7 +395,7 @@
               </label>
               <label>
                 <span>Telefon</span>
-                <input type="tel" name="phone" autocomplete="tel" placeholder="+372 …" />
+                <input type="tel" name="phone" autocomplete="tel" placeholder="+372 439 8384" />
               </label>
               <label>
                 <span>Teenuse kategooria</span>
@@ -430,15 +427,6 @@
               </label>
               <button class="btn btn-primary booking-submit" type="submit">Saada päring</button>
             </form>
-
-            <p class="booking-fallback">
-              Täielik broneerimine veebis:
-              <a href="https://alessannailu.com/alessanna-et.html#booking" target="_blank" rel="noopener noreferrer">alessannailu.com</a>
-              ·
-              <a href="tel:+3725550100">Helista</a>
-              ·
-              <a href="mailto:alessanna.ilusalong@gmail.com?subject=Broneering">Kirjuta</a>
-            </p>
           </div>
         </div>
       </div>
@@ -456,12 +444,12 @@
           <div class="contact-info">
             <address class="contact-block">
               <span class="contact-label">Aadress</span>
-              <p>Tallinna mnt 70<br />Pärnu, Eesti, 80034</p>
-              <p class="contact-hint">Salong asub Pärnus aadressil Tallinna mnt 70.</p>
+              <p>Härma Keskus<br />Tallinna mnt 70<br />Pärnu, Eesti, 80034</p>
+              <p class="contact-hint">Salong asub Härma Keskuses aadressil Tallinna mnt 70.</p>
             </address>
             <p class="contact-block">
               <span class="contact-label">Telefon</span>
-              <a href="tel:+3725550100">555 0100</a>
+              <a href="tel:+3724398384">439 8384</a>
             </p>
             <p class="contact-block">
               <span class="contact-label">E-post</span>
@@ -503,8 +491,8 @@
         <li><a href="#broneeri">Broneeri</a></li>
         <li><a href="#kontakt">Kontakt</a></li>
       </ul>
-      <p class="footer-logo">AlesSanna</p>
-      <p class="footer-meta">Tallinna mnt 70 · Pärnu</p>
+      <img class="footer-logo" src="assets/alessanna-logo-transparent.png" alt="AlesSanna Ilusalong" width="1200" height="430" />
+      <p class="footer-meta">Härma Keskus · Tallinna mnt 70 · Pärnu</p>
       <p class="footer-copy">© <span id="year"></span> AlesSanna Ilusalong</p>
     </div>
   </footer>
@@ -518,6 +506,7 @@
   <script type="module" src="site-services.mjs"></script>
   <script type="module" src="site-team.mjs"></script>
   <script type="module" src="site-builder.mjs"></script>
+  <!-- defer: скрипт выполнится после разбора HTML; весь код в IIFE внутри script.js -->
   <script src="script.js" defer></script>
 </body>
 </html>

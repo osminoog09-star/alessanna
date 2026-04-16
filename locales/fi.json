@@ -18,10 +18,8 @@
     "title": "Henkilökunnan kirjautuminen",
     "subtitle": "Käytä profiilissa olevaa puhelinnumeroa.",
     "phone": "Puhelin",
-    "placeholder": "Syötä puhelinnumero",
+    "placeholder": "Esim. 55686845",
     "hint": "Syötä numero ilman maakoodia",
-    "digitLengthHint": "Vain numerot, 8–10 merkkiä",
-    "phoneInvalidLength": "Syötä 8–10 numeroa (ilman maakoodia).",
     "button": "Kirjaudu",
     "signingIn": "Kirjaudutaan…",
     "configLine": "Aseta VITE_SUPABASE_URL ja VITE_SUPABASE_ANON_KEY tiedostoon work/.env."
@@ -34,17 +32,6 @@
       "failed": "Kirjautuminen epäonnistui",
       "rpcFailed": "{{message}}"
     }
-  },
-  "booking": {
-    "stepLabel": "Vaihe {{current}} / {{total}}",
-    "step1Title": "Valitse yksi tai useampi palvelu (järjestys säilyy).",
-    "step2Title": "Valitse henkilöstö kullekin palvelulle.",
-    "step3Title": "Alkuaika ja asiakkaan tiedot.",
-    "next": "Seuraava",
-    "back": "Takaisin",
-    "selectedServices": "Valitut",
-    "timeChain": "Käyntisi (peräkkäin)",
-    "pickAtLeastOneService": "Valitse vähintään yksi palvelu."
   },
   "nav": {
     "dashboard": "Etusivu",
@@ -114,8 +101,7 @@
     "cancel": "Peruuta",
     "statusPending": "odottaa",
     "statusConfirmed": "vahvistettu",
-    "statusCancelled": "peruttu",
-    "cancelVisit": "Peruuta koko käynti"
+    "statusCancelled": "peruttu"
   },
   "employees": {
     "title": "Henkilöstö",
@@ -158,29 +144,10 @@
     "colEarnings": "Kirjatut maksut",
     "popular": "Suositut palvelut",
     "noData": "Ei vielä tietoja.",
-    "bookingsCount": "{{count}} varausta",
-    "unknownService": "Palvelu #{{id}}",
-    "revenueNote": "Tuotto: vain vahvistetut varaukset. Varauksia: kaikki peruuttamattomat rivit.",
-    "utilizationTitle": "Kuormitus (viimeiset 30 päivää)",
-    "utilizationHint": "Palveluiden kestojen summa riveittäin (minuutit, mukaan lukien puskuri). Ei vertailla automaattisesti vuoroihin.",
-    "colBookedMinutes": "Varatut minuutit"
-  },
-  "publicBook": {
-    "title": "Varaa verkossa",
-    "subtitle": "Palvelut, henkilöstö kullekin palvelulle, sitten aika.",
-    "staffLogin": "Henkilökunnan kirjautuminen",
-    "pickStaff": "Valitse henkilö",
-    "day": "Päivä",
-    "slots": "Vapaat ajat",
-    "slotsFirstServiceHint": "Ajat perustuvat ensimmäiseen palveluun ja sen henkilöön; seuraavat palvelut peräkkäin.",
-    "noSlots": "Ei vapaita aikoja tänä päivänä.",
-    "confirm": "Varaa",
-    "fillAll": "Anna nimi ja valitse aika.",
-    "success": "Varaus luotu."
+    "bookingsCount": "{{count}} varausta"
   },
   "modal": {
     "newBooking": "Uusi varaus",
-    "startTime": "Alku",
     "client": "Asiakas",
     "phone": "Puhelin",
     "staff": "Henkilö",
@@ -188,8 +155,6 @@
     "pickService": "Valitse palvelu.",
     "pickStaff": "Ei henkilöstöä tälle palvelulle. Lisää taidot Henkilöstö-sivulla.",
     "overlap": "Tämä aika ei ole enää vapaana tälle henkilölle. Päivitä ja valitse toinen aika.",
-    "outsideWorkingHours": "Aikaväli on työajan ulkopuolella.",
-    "timeOffOverlap": "Päällekkäin henkilön poissaoloon.",
     "fillAll": "Täytä kaikki kentät."
   },
   "site": {
@@ -214,7 +179,7 @@
     "heroLead": "Hidas hetki, hieno käsityö ja tunnelma, jossa hyvinvointisi on ensin. Täällä ei kiirehditä — valitaan materiaaleja, kuunnellaan toiveita ja pidetään rauha.",
     "btnBook": "Varaa aika",
     "btnServices": "Palvelut",
-    "trustAddress": "Tallinna mnt 70 · Pärnu",
+    "trustAddress": "Härma Keskus · Tallinna mnt 70 · Pärnu",
     "trustHours": "Ma–Pe 10–18 · La 10–16",
     "trustMave": "AlesSanna & MAVE"
   }

@@ -13,7 +13,8 @@
  *   5) .reveal: IntersectionObserver добавляет .is-visible при появлении в зоне видимости
  *      (у .hero-inner.hero-animate каскад только у дочерних блоков — см. styles.css).
  *   5b) Прайс #teenused: клик по строке добавляет/убирает услугу в [data-selected-services-list],
- *      синхронизирует select[name=service] и скрытое services_detail; #meistrid — выбор мастера.
+ *      синхронизирует select[name=service] и скрытое services_detail; #meistrid — мастера,
+ *      которые закрывают все выбранные категории (пересечение по направлениям).
  *   6) Бронирование: если на странице есть все нужные элементы — календарь, форма, обработчики.
  *
  * Как отключить календарь: удалите секцию #broneeri или уберите data-calendar-grid — скрипт
@@ -109,26 +110,93 @@
     });
   }
 
-  /* Вкладки: переключение только внутри своей <section> (ET + RU + динамический Supabase-mount) */
+  /* Anchor links: land on section titles with a fixed-header offset. */
+  function scrollToSectionTitle(sectionId, hash) {
+    var kicker = document.querySelector("#" + sectionId + " .section-kicker");
+    var title = document.querySelector("#" + sectionId + " .section-title");
+    var target = kicker || title || document.getElementById(sectionId);
+    if (!target) return false;
+    var headerHeight = header ? header.getBoundingClientRect().height : 0;
+    var offset = headerHeight + 40;
+    var top = target.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotionMq.matches ? "auto" : "smooth" });
+    if (hash && window.history && window.history.pushState) {
+      window.history.pushState(null, "", hash);
+    }
+    return true;
+  }
+
+  document.querySelectorAll(
+    'a[href="#broneeri"], a[href="#teenused"], a[href="#meistrid"], a[href="#galerii"], a[href="#meist"], a[href="#kinkekaardid"], a[href="#tagasiside"], a[href="#kontakt"]'
+  ).forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      var hash = link.getAttribute("href");
+      var sectionId = hash ? hash.slice(1) : "";
+      if (!sectionId) return;
+      e.preventDefault();
+      closeNav();
+      scrollToSectionTitle(sectionId, hash);
+    });
+  });
+
+  /* Tabs: delegation so Supabase-injected .tab-btn in #teenused work after load. */
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest(".tab-btn");
-    if (!btn) return;
+    var btn = e.target.closest("#teenused .tab-btn");
+    if (!btn || e.button !== 0) return;
     var targetId = btn.getAttribute("aria-controls");
     if (!targetId) return;
-    var section = btn.closest("section");
-    if (!section) return;
+    var teenused = document.getElementById("teenused");
+    if (teenused) teenused.classList.remove("price-list-open");
 
-    section.querySelectorAll(".tab-btn").forEach(function (b) {
+    var mount = btn.closest("#teenused-supabase-mount");
+    var scope = mount || teenused;
+    if (!scope) return;
+    scope.querySelectorAll(".tab-btn").forEach(function (b) {
       b.classList.remove("is-active");
       b.setAttribute("aria-selected", "false");
     });
     btn.classList.add("is-active");
     btn.setAttribute("aria-selected", "true");
 
-    section.querySelectorAll(".tab-panel").forEach(function (panel) {
+    scope.querySelectorAll(".tab-panel").forEach(function (panel) {
       var show = panel.id === targetId;
       panel.hidden = !show;
       panel.classList.toggle("is-active", show);
+    });
+  });
+
+  document.querySelectorAll("[data-price-list-toggle]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var teenused = document.getElementById("teenused");
+      if (!teenused) return;
+      teenused.classList.add("price-list-open");
+
+      teenused.querySelectorAll(".tab-btn").forEach(function (tab) {
+        tab.classList.remove("is-active");
+        tab.setAttribute("aria-selected", "false");
+      });
+
+      teenused.querySelectorAll(".tab-panel").forEach(function (panel) {
+        panel.hidden = false;
+        panel.classList.add("is-active");
+      });
+
+      var firstPriceBlock = teenused.querySelector(".price-panel-title");
+      if (firstPriceBlock) {
+        requestAnimationFrame(function () {
+          firstPriceBlock.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-services-tabs-toggle]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var teenused = document.getElementById("teenused");
+      if (!teenused) return;
+      var firstTab = teenused.querySelector(".tab-btn");
+      if (firstTab) firstTab.click();
     });
   });
 
@@ -172,6 +240,7 @@
     if (!serviceSelect) return;
 
     var masterSelect = bookingForm.querySelector("[data-master-select]");
+    var teamRoot = document.getElementById("meistrid");
 
     var selLang = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
     var selRu = selLang === "ru";
@@ -198,14 +267,56 @@
       "panel-pedicure": "pedicure",
     };
 
-    var MASTERS_PICK = [];
+    var MASTERS_PICK = [
+      { id: "galina", name: "Galina" },
+      { id: "irina", name: "Irina" },
+      { id: "viktoria", name: "Viktoria" },
+      { id: "anne", name: "Anne" },
+      { id: "alesja", name: "Alesja" },
+      { id: "aljona", name: "Aljona" },
+    ];
 
-    var CATEGORY_TO_MASTER_IDS = {};
+    var ANY_MASTER_ID = "any";
+
+    /** Meistrid teenusekategooriate järgi (sama loogika mis #meistrid plokis) */
+    var CATEGORY_TO_MASTER_IDS = {
+      "hair-cut": ["galina", "irina", "viktoria", "anne"],
+      "hair-color": ["galina", "irina", "viktoria", "anne"],
+      perm: ["galina", "irina", "viktoria", "anne"],
+      styling: ["galina", "irina", "viktoria", "anne"],
+      manicure: ["alesja", "aljona"],
+      pedicure: ["alesja", "aljona"],
+      "brows-lashes": ["aljona", "alesja"],
+      lashes: ["alesja"],
+    };
+
+    function masterFilterForCategoryKey(catKey) {
+      var fixed = String(catKey || "");
+      if (Object.prototype.hasOwnProperty.call(CATEGORY_TO_MASTER_IDS, fixed)) return fixed;
+      var namePart = fixed.indexOf("n:") === 0 ? fixed.slice(2).toLowerCase() : fixed.toLowerCase();
+      if (namePart === "other" || namePart === "__none__") return "hair-cut";
+      if (/pedik|педик|jalg/.test(namePart)) return "pedicure";
+      if (/manik|маник|küün|kyun|nail|nogt|geel/.test(namePart)) return "manicure";
+      if (/kulm|rips|brow|lash|ресниц|бров/.test(namePart)) return "brows-lashes";
+      return "hair-cut";
+    }
+
+    function serviceCategoryFromPanel(panel) {
+      if (!panel) return "";
+      var d = panel.getAttribute("data-pick-category");
+      if (d) return d;
+      return PANEL_TO_SERVICE[panel.id] || "";
+    }
 
     var mastersWrap = summary.querySelector("[data-summary-masters-wrap]");
     var chipsEl = summary.querySelector("[data-summary-master-chips]");
     var dockToggle = summary.querySelector("[data-selection-dock-toggle]");
     var dockCollapseKey = "alessanna-selection-dock-collapsed";
+
+    function isLashesPickLabel(label) {
+      var s = String(label || "").toLowerCase();
+      return s.indexOf("ресниц") !== -1 || s.indexOf("ripsme") !== -1 || s.indexOf("lash") !== -1;
+    }
 
     function readDockCollapsedPref() {
       try {
@@ -244,74 +355,56 @@
     }
 
     var nameToId = {};
-    function rebuildMastersMapFromSelect() {
-      MASTERS_PICK = [];
-      nameToId = {};
-      if (!masterSelect) return;
-      for (var oi = 0; oi < masterSelect.options.length; oi++) {
-        var opt = masterSelect.options[oi];
-        var id = String(opt.value || "").trim();
-        var name = String(opt.textContent || "").trim();
-        if (!id || !name) continue;
-        if (id === "") continue;
-        MASTERS_PICK.push({ id: id, name: name });
-        nameToId[name.toLowerCase()] = id;
-      }
-    }
-
-    function masterIdByName(name) {
-      var key = String(name || "").trim().toLowerCase();
-      if (!key) return "";
-      if (nameToId[key]) return nameToId[key];
-      if (!masterSelect) return "";
-      for (var i = 0; i < masterSelect.options.length; i++) {
-        var opt = masterSelect.options[i];
-        var txt = String(opt.textContent || "").trim().toLowerCase();
-        if (txt === key) return String(opt.value || "");
-      }
-      return "";
-    }
-
-    function normalizeKey(x) {
-      return String(x || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "")
-        .replace(/-+/g, "-");
-    }
-
-    function rebuildCategoryToMasterMap() {
-      CATEGORY_TO_MASTER_IDS = {};
-      var groups = document.querySelectorAll("#meistrid .team-group");
-      for (var gi = 0; gi < groups.length; gi++) {
-        var g = groups[gi];
-        var key = normalizeKey(g.getAttribute("data-category-key") || "");
-        if (!key) {
-          var titleEl = g.querySelector(".team-group-title");
-          key = normalizeKey(titleEl ? titleEl.textContent : "");
-        }
-        if (!key) continue;
-        var ids = [];
-        var lis = g.querySelectorAll(".team-names li");
-        for (var lii = 0; lii < lis.length; lii++) {
-          var li = lis[lii];
-          var id = String(li.getAttribute("data-master-id") || "").trim();
-          if (!id) id = masterIdByName(li.textContent || "");
-          if (!id) continue;
-          if (ids.indexOf(id) < 0) ids.push(id);
-        }
-        CATEGORY_TO_MASTER_IDS[key] = ids;
-      }
+    for (var mi = 0; mi < MASTERS_PICK.length; mi++) {
+      nameToId[MASTERS_PICK[mi].name.toLowerCase()] = MASTERS_PICK[mi].id;
     }
 
     var picked = [];
+
+    function updateTeamSectionVisibility() {
+      if (!teamRoot) return;
+      var hasPickedServices = picked.length > 0;
+      teamRoot.hidden = !hasPickedServices;
+      if (hasPickedServices) {
+        teamRoot.querySelectorAll(".reveal").forEach(function (el) {
+          el.classList.add("is-visible");
+        });
+      } else if (masterSelect && masterSelect.value) {
+        applyMaster("");
+      }
+    }
+
+    function currentTeamGroupKey() {
+      if (!picked.length) return "";
+      var slug = (serviceSelect && serviceSelect.value) || "";
+      if (slug === "manicure" || slug === "pedicure") return "nails";
+      if (slug === "brows-lashes") return "brows";
+      return "hair";
+    }
+
+    function syncTeamGroupsVisibility() {
+      if (!teamRoot) return;
+      var groups = teamRoot.querySelectorAll(".team-group[data-team-group]");
+      if (!groups.length) return;
+      var key = currentTeamGroupKey();
+      for (var i = 0; i < groups.length; i++) {
+        var g = groups[i];
+        var gk = g.getAttribute("data-team-group") || "";
+        g.hidden = !!key && gk !== key;
+      }
+    }
 
     function pickKey(panelId, label) {
       return panelId + "|" + label.trim();
     }
 
     function masterNameById(id) {
+      if (id === "any") {
+        if (selRu) return "Не важно";
+        if (selEn) return "No preference";
+        if (selFi) return "Ei väliä";
+        return "Pole oluline";
+      }
       for (var i = 0; i < MASTERS_PICK.length; i++) {
         if (MASTERS_PICK[i].id === id) return MASTERS_PICK[i].name;
       }
@@ -322,25 +415,88 @@
       if (masterDisplay) masterDisplay.textContent = text || UI.masterNone;
     }
 
+    /** Мастера, которые закрывают все выбранные категории услуг (пересечение, не объединение). */
     function mastersForPickedCategories() {
-      var set = {};
+      if (!picked.length) return [];
+      var categories = [];
+      var seen = {};
       for (var i = 0; i < picked.length; i++) {
-        var ids = CATEGORY_TO_MASTER_IDS[normalizeKey(picked[i].category)];
-        if (ids && ids.length) {
-          for (var j = 0; j < ids.length; j++) set[ids[j]] = true;
-        } else {
-          rebuildMastersMapFromSelect();
-          for (var k = 0; k < MASTERS_PICK.length; k++) set[MASTERS_PICK[k].id] = true;
-        }
+        var cat = picked[i].masterFilter || picked[i].category;
+        if (seen[cat]) continue;
+        seen[cat] = true;
+        categories.push(cat);
       }
-      var out = [];
-      for (var id in set) {
-        if (Object.prototype.hasOwnProperty.call(set, id)) out.push(id);
+      var first = CATEGORY_TO_MASTER_IDS[categories[0]];
+      if (!first || !first.length) return [];
+      var out = first.slice();
+      for (var c = 1; c < categories.length; c++) {
+        var ids = CATEGORY_TO_MASTER_IDS[categories[c]];
+        if (!ids || !ids.length) return [];
+        out = out.filter(function (id) {
+          return ids.indexOf(id) !== -1;
+        });
+        if (!out.length) return [];
       }
       out.sort(function (a, b) {
         return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
       });
       return out;
+    }
+
+    function validateMasterForPicks() {
+      if (!masterSelect || !picked.length) return;
+      var allowed = mastersForPickedCategories();
+      var v = masterSelect.value;
+      if (!v || v === ANY_MASTER_ID) return;
+      if (!allowed.length || allowed.indexOf(v) === -1) applyMaster("");
+    }
+
+    function syncMasterSelectEligibility() {
+      if (!masterSelect) return;
+      if (!picked.length) {
+        for (var i = 0; i < masterSelect.options.length; i++) {
+          masterSelect.options[i].disabled = false;
+        }
+        return;
+      }
+      var allowed = mastersForPickedCategories();
+      for (var k = 0; k < masterSelect.options.length; k++) {
+        var opt = masterSelect.options[k];
+        var val = opt.value;
+        if (!val || val === ANY_MASTER_ID) {
+          opt.disabled = false;
+          continue;
+        }
+        opt.disabled = !allowed.length || allowed.indexOf(val) === -1;
+      }
+    }
+
+    function syncTeamMasterEligibility() {
+      if (!teamRoot) return;
+      var lis = teamRoot.querySelectorAll(".team-names li");
+      if (!lis.length) return;
+      if (!picked.length) {
+        for (var i = 0; i < lis.length; i++) {
+          lis[i].classList.remove("is-master-ineligible");
+          lis[i].removeAttribute("aria-disabled");
+          if (lis[i].getAttribute("role") === "button") lis[i].tabIndex = 0;
+        }
+        return;
+      }
+      var allowed = mastersForPickedCategories();
+      for (var j = 0; j < lis.length; j++) {
+        var li = lis[j];
+        var tid = nameToId[li.textContent.trim().toLowerCase()];
+        var bad = !tid || !allowed.length || allowed.indexOf(tid) === -1;
+        li.classList.toggle("is-master-ineligible", bad);
+        if (bad) {
+          li.setAttribute("aria-disabled", "true");
+          li.tabIndex = -1;
+        } else {
+          li.removeAttribute("aria-disabled");
+          if (li.getAttribute("role") === "button") li.tabIndex = 0;
+        }
+      }
     }
 
     function updateDock() {
@@ -408,7 +564,16 @@
 
     function syncFormCategory() {
       if (!picked.length) return;
-      serviceSelect.value = picked[picked.length - 1].category;
+      var nextCategory = picked[picked.length - 1].category;
+      if (serviceSelect.value === nextCategory) return;
+      serviceSelect.value = nextCategory;
+      serviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    function scrollToMastersBlock() {
+      requestAnimationFrame(function () {
+        scrollToSectionTitle("meistrid");
+      });
     }
 
     function syncHiddenField() {
@@ -466,8 +631,13 @@
       }
       syncHiddenField();
       syncMenuRowsPickedClass();
+      updateTeamSectionVisibility();
       updateDock();
+      syncTeamGroupsVisibility();
+      syncTeamMasterEligibility();
+      syncMasterSelectEligibility();
       renderMasterChips();
+      validateMasterForPicks();
     }
 
     function removeByKey(key) {
@@ -481,7 +651,7 @@
     function togglePick(li) {
       var panel = li.closest(".tab-panel");
       if (!panel || !panel.id) return;
-      var category = panel.getAttribute("data-pick-category") || PANEL_TO_SERVICE[panel.id];
+      var category = serviceCategoryFromPanel(panel);
       if (!category) return;
       var nameSpan = li.querySelector("span:not(.price)");
       var priceEl = li.querySelector(".price");
@@ -499,13 +669,16 @@
       if (idx >= 0) {
         picked.splice(idx, 1);
       } else {
-        picked.push({ key: key, label: label, price: price, category: category });
+        var masterFilter = masterFilterForCategoryKey(category);
+        if (masterFilter === "brows-lashes" && isLashesPickLabel(label)) masterFilter = "lashes";
+        picked.push({ key: key, label: label, price: price, category: category, masterFilter: masterFilter });
       }
       syncFormCategory();
       renderList();
+      if (picked.length) scrollToMastersBlock();
     }
 
-    function decoratePickRows() {
+    function wireMenuPickRows() {
       teenused.querySelectorAll(".menu-list li").forEach(function (li) {
         if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
         var nameSpan = li.querySelector("span:not(.price)");
@@ -513,69 +686,37 @@
         if (!nameSpan || !priceEl) return;
         var panel = li.closest(".tab-panel");
         if (!panel) return;
-        var cat = panel.getAttribute("data-pick-category") || PANEL_TO_SERVICE[panel.id];
-        if (!cat) return;
+        if (!serviceCategoryFromPanel(panel)) return;
+        if (li.getAttribute("data-pick-wired") === "1") return;
         li.classList.add("menu-pick-row");
         li.setAttribute("role", "button");
         li.tabIndex = 0;
         li.setAttribute("data-pick-key", pickKey(panel.id, nameSpan.textContent.trim()));
+        li.setAttribute("data-pick-wired", "1");
+        li.addEventListener("click", function () {
+          togglePick(li);
+        });
+        li.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            togglePick(li);
+          }
+        });
       });
     }
 
-    decoratePickRows();
-
-    if (!teenused._teenusedPickDelegation) {
-      teenused._teenusedPickDelegation = true;
-      teenused.addEventListener("click", function (e) {
-        var li = e.target.closest(".menu-list li.menu-pick-row");
-        if (!li || !teenused.contains(li)) return;
-        togglePick(li);
-      });
-      teenused.addEventListener("keydown", function (e) {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        var li = e.target.closest(".menu-list li.menu-pick-row");
-        if (!li || !teenused.contains(li)) return;
-        e.preventDefault();
-        togglePick(li);
-      });
-    }
-
+    wireMenuPickRows();
     window.addEventListener("teenused-supabase-ready", function () {
-      decoratePickRows();
+      wireMenuPickRows();
+      syncMenuRowsPickedClass();
     });
-
-    function bindTeamListHandlers() {
-      var teamRoot = document.getElementById("meistrid");
-      if (!teamRoot) return;
-      var teamLis = teamRoot.querySelectorAll(".team-names li");
-      for (var tl = 0; tl < teamLis.length; tl++) {
-        (function (li) {
-          if (li.getAttribute("data-master-bound") === "1") return;
-          li.setAttribute("data-master-bound", "1");
-          li.setAttribute("role", "button");
-          li.tabIndex = 0;
-          li.setAttribute("aria-pressed", "false");
-          li.addEventListener("click", function () {
-            var id = masterIdByName(li.textContent || "");
-            if (!id) return;
-            if (masterSelect && masterSelect.value === id) applyMaster("");
-            else applyMaster(id);
-          });
-          li.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              li.click();
-            }
-          });
-        })(teamLis[tl]);
-      }
-    }
 
     function highlightTeam(masterId) {
       var lis = document.querySelectorAll("#meistrid .team-names li");
       for (var t = 0; t < lis.length; t++) {
         var li = lis[t];
-        var id = masterIdByName(li.textContent || "");
+        var txt = li.textContent.trim().toLowerCase();
+        var id = nameToId[txt];
         li.classList.toggle("is-master-picked", !!(masterId && id === masterId));
       }
     }
@@ -588,22 +729,33 @@
       masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    function onSiteTeamReady() {
-      rebuildMastersMapFromSelect();
-      rebuildCategoryToMasterMap();
-      bindTeamListHandlers();
-      if (masterSelect) highlightTeam(masterSelect.value);
+    if (teamRoot) {
+      var teamLis = teamRoot.querySelectorAll(".team-names li");
+      for (var tl = 0; tl < teamLis.length; tl++) {
+        (function (li) {
+          var id = nameToId[li.textContent.trim().toLowerCase()];
+          if (!id) return;
+          li.setAttribute("role", "button");
+          li.tabIndex = 0;
+          li.setAttribute("aria-pressed", "false");
+          li.addEventListener("click", function () {
+            if (li.classList.contains("is-master-ineligible")) return;
+            if (masterSelect && masterSelect.value === id) applyMaster("");
+            else applyMaster(id);
+          });
+          li.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              if (li.classList.contains("is-master-ineligible")) return;
+              li.click();
+            }
+          });
+        })(teamLis[tl]);
+      }
     }
-
-    rebuildMastersMapFromSelect();
-    rebuildCategoryToMasterMap();
-    bindTeamListHandlers();
-    window.addEventListener("site-team-ready", onSiteTeamReady);
-    if (window.__SITE_TEAM_READY__) onSiteTeamReady();
 
     if (masterSelect) {
       masterSelect.addEventListener("change", function () {
-        rebuildMastersMapFromSelect();
         var v = masterSelect.value;
         highlightTeam(v);
         setMasterDisplayText(v ? masterNameById(v) : UI.masterNone);
@@ -611,7 +763,7 @@
         var lis2 = document.querySelectorAll("#meistrid .team-names li");
         for (var u = 0; u < lis2.length; u++) {
           var li2 = lis2[u];
-          var tid = masterIdByName(li2.textContent || "");
+          var tid = nameToId[li2.textContent.trim().toLowerCase()];
           li2.setAttribute("aria-pressed", v && tid === v ? "true" : "false");
         }
       });
@@ -736,12 +888,25 @@
       { id: "aljona", name: "Aljona" },
     ];
 
+    var DEMO_SERVICE_MASTERS = {
+      "hair-cut": ["galina", "irina", "viktoria", "anne"],
+      "hair-color": ["galina", "irina", "viktoria", "anne"],
+      perm: ["galina", "irina", "viktoria", "anne"],
+      styling: ["galina", "irina", "viktoria", "anne"],
+      "brows-lashes": ["aljona", "alesja"],
+      manicure: ["alesja", "aljona"],
+      pedicure: ["alesja", "aljona"],
+    };
+
+    var ANY_MASTER_ID = "any";
+
     var SLOT_POOL = ["10:00", "11:30", "13:00", "14:30", "16:00", "17:30"];
 
     var apiBooking = false;
     var serviceIdBySlug = {};
     var monthDays = null;
     var monthCacheKey = "";
+    var suppressNextMasterScroll = false;
 
     var now = new Date();
     var viewY = now.getFullYear();
@@ -772,14 +937,30 @@
       return Math.abs(h);
     }
 
+    function anyMasterLabel() {
+      if (isRu) return "Не важно";
+      if (isEn) return "No preference";
+      if (isFi) return "Ei väliä";
+      return "Pole oluline";
+    }
+
+    function selectedMasterForAvailability() {
+      return masterSelect.value || ANY_MASTER_ID;
+    }
+
+    function smoothScrollTo(el, block) {
+      if (!el) return;
+      requestAnimationFrame(function () {
+        el.scrollIntoView({ behavior: "smooth", block: block || "start" });
+      });
+    }
+
     /**
      * Возвращает { tier, slots } для ячейки календаря.
      * tier: locked | off | none | soft | busy | featured — соответствует классам .is-* в CSS.
      */
     function dayAvailability(masterId, y, m, d) {
-      if (!masterId) {
-        return { tier: "locked", slots: [] };
-      }
+      if (!masterId) masterId = ANY_MASTER_ID;
       var dt = new Date(y, m, d);
       if (dt.getDay() === 0) {
         return { tier: "off", slots: [] };
@@ -798,7 +979,23 @@
       if (apiBooking) {
         return { tier: "none", slots: [] };
       }
-      var seed = hashSeed(masterId + "|" + dateKey(y, m, d));
+      if (masterId === ANY_MASTER_ID) {
+        var combined = [];
+        var demoMasters = demoMastersForCurrentService();
+        for (var dm = 0; dm < demoMasters.length; dm++) {
+          var demoInfo = dayAvailability(demoMasters[dm].id, y, m, d);
+          combined = combined.concat(demoInfo.slots);
+        }
+        combined.sort();
+        var unique = [];
+        for (var us = 0; us < combined.length; us++) {
+          if (unique.indexOf(combined[us]) === -1) unique.push(combined[us]);
+        }
+        if (!unique.length) return { tier: "none", slots: [] };
+        return { tier: unique.length >= 4 ? "soft" : unique.length >= 2 ? "busy" : "featured", slots: unique };
+      }
+      var serviceSlug = serviceSelectEl.value || "service";
+      var seed = hashSeed(masterId + "|" + serviceSlug + "|" + dateKey(y, m, d));
       var r = seed % 10;
       if (r < 2) {
         return { tier: "none", slots: [] };
@@ -849,12 +1046,6 @@
 
     /** Две строки под календарём: подсказки в зависимости от мастера / даты */
     function setNotes() {
-      var masterVal = masterSelect.value;
-      if (!masterVal) {
-        if (notePrimary) notePrimary.textContent = MSGS.noTime;
-        if (noteSecondary) noteSecondary.textContent = MSGS.pickMaster;
-        return;
-      }
       if (!selectedKey) {
         if (notePrimary) notePrimary.textContent = MSGS.pickDay;
         if (noteSecondary) noteSecondary.textContent = "";
@@ -924,7 +1115,7 @@
     }
 
     function ensureMonthThenRender() {
-      if (!apiBooking || !masterSelect.value || !serviceSelectEl.value) {
+      if (!apiBooking || !serviceSelectEl.value) {
         monthDays = null;
         renderCalendarBody();
         return;
@@ -935,7 +1126,7 @@
         renderCalendarBody();
         return;
       }
-      var mid = masterSelect.value;
+      var mid = selectedMasterForAvailability();
       var cacheK = mid + "|" + sid + "|" + viewY + "|" + viewM;
       if (monthCacheKey === cacheK && monthDays) {
         renderCalendarBody();
@@ -987,7 +1178,7 @@
       /* JS: вс=0; нужен первый столбец = пн → (getDay()+6)%7 */
       var startPad = (first.getDay() + 6) % 7;
       var daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
-      var masterVal = masterSelect.value;
+      var masterVal = selectedMasterForAvailability();
       var i;
       var cell;
 
@@ -1007,7 +1198,7 @@
           cell.className = "calendar-day";
           cell.setAttribute("aria-label", formatLongDate(viewY, viewM, d));
 
-          if (!masterVal || info.tier === "locked") {
+          if (info.tier === "locked") {
             cell.classList.add("is-unavailable");
             cell.disabled = true;
           } else if (info.tier === "off" || info.tier === "none" || !info.slots.length) {
@@ -1043,28 +1234,52 @@
       setNotes();
     }
 
-    function setupDemoMasters() {
+    function setMasterOptions(list) {
+      if (!Array.isArray(list)) list = [];
+      var prev = masterSelect.value;
       while (masterSelect.children.length > 1) {
         masterSelect.removeChild(masterSelect.lastChild);
       }
-      var seen = {};
-      var lis = document.querySelectorAll("#meistrid .team-names li");
-      for (var i = 0; i < lis.length; i++) {
-        var name = String(lis[i].textContent || "").trim();
-        if (!name) continue;
-        var key = name.toLowerCase();
-        if (seen[key]) continue;
-        seen[key] = true;
-        var id = key
-          .replace(/\s+/g, "-")
-          .replace(/[^a-z0-9-]/g, "")
-          .replace(/-+/g, "-");
-        if (!id) id = "master-" + (i + 1);
-        var optDb = document.createElement("option");
-        optDb.value = id;
-        optDb.textContent = name;
-        masterSelect.appendChild(optDb);
+      if (list.length) {
+        var anyOpt = document.createElement("option");
+        anyOpt.value = ANY_MASTER_ID;
+        anyOpt.textContent = anyMasterLabel();
+        masterSelect.appendChild(anyOpt);
       }
+      list.forEach(function (m) {
+        var opt = document.createElement("option");
+        opt.value = String(m.id);
+        opt.textContent = m.name;
+        masterSelect.appendChild(opt);
+      });
+      var stillValid = false;
+      for (var k = 1; k < masterSelect.options.length; k++) {
+        if (masterSelect.options[k].value === prev) {
+          stillValid = true;
+          break;
+        }
+      }
+      masterSelect.value = stillValid ? prev : "";
+      if (masterSelect.value !== prev) {
+        suppressNextMasterScroll = true;
+        masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+
+    function demoMastersForCurrentService() {
+      var ids = DEMO_SERVICE_MASTERS[serviceSelectEl.value];
+      if (!ids || !ids.length) return MASTERS.slice();
+      return MASTERS.filter(function (m) {
+        return ids.indexOf(m.id) !== -1;
+      });
+    }
+
+    function refillDemoMastersForCurrentService() {
+      setMasterOptions(demoMastersForCurrentService());
+    }
+
+    function setupDemoMasters() {
+      refillDemoMastersForCurrentService();
     }
 
     /** Rebuild master dropdown from API for the selected service (employee_services filter). */
@@ -1078,24 +1293,7 @@
           return r.json();
         })
         .then(function (emps) {
-          var prev = masterSelect.value;
-          while (masterSelect.children.length > 1) {
-            masterSelect.removeChild(masterSelect.lastChild);
-          }
-          for (var ej = 0; ej < emps.length; ej++) {
-            var o = document.createElement("option");
-            o.value = String(emps[ej].id);
-            o.textContent = emps[ej].name;
-            masterSelect.appendChild(o);
-          }
-          var stillValid = false;
-          for (var k = 1; k < masterSelect.options.length; k++) {
-            if (masterSelect.options[k].value === prev) {
-              stillValid = true;
-              break;
-            }
-          }
-          masterSelect.value = stillValid ? prev : emps.length ? String(emps[0].id) : "";
+          setMasterOptions(emps);
         });
     }
 
@@ -1131,18 +1329,6 @@
 
     startBookingWidget();
 
-    function onSiteTeamReadyCalendar() {
-      if (!apiBooking) {
-        setupDemoMasters();
-        invalidateMonthCache();
-        clearSelection();
-        renderCalendar();
-      }
-    }
-
-    window.addEventListener("site-team-ready", onSiteTeamReadyCalendar);
-    if (window.__SITE_TEAM_READY__) onSiteTeamReadyCalendar();
-
     prevBtn.addEventListener("click", function () {
       if (prevBtn.disabled) return;
       viewM--;
@@ -1171,29 +1357,37 @@
       invalidateMonthCache();
       clearSelection();
       renderCalendar();
+      if (suppressNextMasterScroll) {
+        suppressNextMasterScroll = false;
+        return;
+      }
+      if (masterSelect.value) {
+        smoothScrollTo(bookingSection.querySelector(".booking-shell") || bookingSection, "start");
+      }
     });
 
-    serviceSelectEl.addEventListener("change", function () {
+    serviceSelectEl.addEventListener("change", function (e) {
+      var masterField = masterSelect.closest("label") || masterSelect;
+      var shouldScrollToMasterField = !!(e && e.isTrusted);
       if (apiBooking) {
         refillMastersForCurrentService().then(function () {
           invalidateMonthCache();
           clearSelection();
           renderCalendar();
+          if (shouldScrollToMasterField) smoothScrollTo(masterField, "center");
         });
       } else {
+        refillDemoMastersForCurrentService();
         invalidateMonthCache();
         clearSelection();
         renderCalendar();
+        if (shouldScrollToMasterField) smoothScrollTo(masterField, "center");
       }
     });
 
     /* Сервер: POST /api/public/bookings; иначе mailto (статический сайт) */
     bookingForm.addEventListener("submit", function (e) {
       e.preventDefault();
-      if (!masterSelect.value) {
-        masterSelect.focus();
-        return;
-      }
       if (!selectedKey) {
         dateInput.focus();
         return;
@@ -1216,7 +1410,8 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            employeeId: Number(masterSelect.value),
+            employeeId:
+              masterSelect.value === ANY_MASTER_ID || !masterSelect.value ? ANY_MASTER_ID : Number(masterSelect.value),
             serviceId: svcId,
             date: selectedKey,
             time: timeSelect.value,
@@ -1273,6 +1468,7 @@
       var fd = new FormData(bookingForm);
       var lines = [];
       fd.forEach(function (val, key) {
+        if (key === "master" && (val === ANY_MASTER_ID || !val)) val = anyMasterLabel();
         lines.push(key + ": " + val);
       });
       var subject = isRu

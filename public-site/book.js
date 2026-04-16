@@ -1,22 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-function salonSupabaseCfg() {
-  const sc = globalThis.SUPABASE_CONFIG;
-  let url = sc && String(sc.url || "").trim() ? String(sc.url).trim() : "";
-  let key = sc && String(sc.anonKey || "").trim() ? String(sc.anonKey).trim() : "";
-  try {
-    const im = typeof import.meta !== "undefined" && import.meta.env;
-    if (im) {
-      if (!url) url = String(im.VITE_SUPABASE_URL || "").trim();
-      if (!key) key = String(im.VITE_SUPABASE_ANON_KEY || "").trim();
-    }
-  } catch (_) {}
-  if (!url) url = String(globalThis.SALON_SUPABASE_URL || globalThis.VITE_SUPABASE_URL || "").trim();
-  if (!key) key = String(globalThis.SALON_SUPABASE_ANON_KEY || globalThis.VITE_SUPABASE_ANON_KEY || "").trim();
-  return { url: url.replace(/\/+$/, ""), key };
-}
-
-const { url, key } = salonSupabaseCfg();
+const url = globalThis.SALON_SUPABASE_URL;
+const key = globalThis.SALON_SUPABASE_ANON_KEY;
 
 const warn = document.getElementById("config-warn");
 const servicesEl = document.getElementById("services-list");
@@ -37,8 +22,7 @@ let state = {
   staff: [],
   links: [],
   schedules: [],
-  /** Busy intervals from `appointment_services` + visit status */
-  busyLines: [],
+  appointments: [],
   serviceId: null,
   staffId: null,
   slotStart: null,
@@ -96,8 +80,8 @@ function addMinutes(d, m) {
 function buildSlots(day, staffId, durationMin) {
   const weekday = day.getDay();
   const windows = approvedWindows(state.schedules, staffId, weekday);
-  const existing = state.busyLines.filter((b) => {
-    if (b.staff_id !== staffId) return false;
+  const existing = state.appointments.filter((b) => {
+    if (b.staff_id !== staffId || b.status === "cancelled") return false;
     const t = new Date(b.start_time);
     return t.toDateString() === day.toDateString();
   });
@@ -119,49 +103,21 @@ function buildSlots(day, staffId, durationMin) {
   return slots;
 }
 
-function serviceDurationMin(svc) {
-  const d = Number(svc?.duration);
-  const buf = Number(svc?.buffer_after_min);
-  return (Number.isFinite(d) ? d : 60) + (Number.isFinite(buf) ? buf : 10);
-}
-
-function formatPriceEur(price) {
-  if (price == null || price === "") return "—";
-  const n = Number(price);
-  if (Number.isNaN(n)) return String(price);
-  return `${n.toFixed(0)} €`;
-}
-
 async function load() {
   if (!supabase) return;
-  const [sv, st, lk, sch, lines] = await Promise.all([
-    supabase
-      .from("service_listings")
-      .select("id,name,price,duration,buffer_after_min,category:service_categories(name)")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true }),
+  const [sv, st, lk, sch, ap] = await Promise.all([
+    supabase.from("services").select("*").eq("active", true).order("sort_order"),
     supabase.from("staff").select("*").eq("is_active", true).order("name"),
     supabase.from("staff_services").select("*"),
     supabase.from("staff_schedule").select("*"),
-    supabase
-      .from("appointment_services")
-      .select("start_time,end_time,staff_id,appointments(status)"),
+    supabase.from("appointments").select("*").in("status", ["pending", "confirmed"]),
   ]);
 
   state.services = sv.data || [];
   state.staff = st.data || [];
   state.links = lk.data || [];
   state.schedules = sch.data || [];
-  const raw = lines.data || [];
-  const st = (row) => row.appointments?.status;
-  state.busyLines = raw
-    .filter((row) => st(row) === "pending" || st(row) === "confirmed")
-    .map((row) => ({
-      staff_id: row.staff_id,
-      start_time: row.start_time,
-      end_time: row.end_time,
-    }));
+  state.appointments = ap.data || [];
 
   renderServices();
 }
@@ -172,7 +128,7 @@ function renderServices() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "card";
-    btn.innerHTML = `<strong>${escapeHtml(s.name)}</strong><br/><span class="muted">${formatPriceEur(s.price)} · ${Number(s.duration) || 60} min</span>`;
+    btn.innerHTML = `<strong>${escapeHtml(s.name_et)}</strong><br/><span class="muted">${(s.price_cents / 100).toFixed(0)} € · ${s.duration_min} min</span>`;
     btn.addEventListener("click", () => {
       state.serviceId = s.id;
       document.querySelectorAll("#services-list .card").forEach((c) => c.classList.remove("is-picked"));
@@ -215,7 +171,7 @@ function renderStaff() {
 
 function renderSlots() {
   const svc = state.services.find((s) => s.id === state.serviceId);
-  const duration = svc ? serviceDurationMin(svc) : 70;
+  const duration = svc ? svc.duration_min + (svc.buffer_after_min || 0) : 60;
   const days = [];
   for (let i = 0; i < 14; i++) {
     const d = new Date();
@@ -268,34 +224,21 @@ form?.addEventListener("submit", async (e) => {
   if (!svc || !state.slotStart) return;
 
   const start = state.slotStart;
-  const end = addMinutes(start, serviceDurationMin(svc));
+  const end = addMinutes(start, svc.duration_min + (svc.buffer_after_min || 0));
 
-  const { data: apRow, error: apErr } = await supabase
-    .from("appointments")
-    .insert({
-      client_name,
-      client_phone: client_phone || null,
-      status: "confirmed",
-      source: "online",
-    })
-    .select("id")
-    .single();
-
-  if (apErr || !apRow?.id) {
-    alert(apErr?.message ?? "insert");
-    return;
-  }
-
-  const { error: lineErr } = await supabase.from("appointment_services").insert({
-    appointment_id: apRow.id,
-    service_id: state.serviceId,
+  const { error } = await supabase.from("appointments").insert({
+    client_name,
+    client_phone,
     staff_id: state.staffId,
+    service_id: state.serviceId,
     start_time: start.toISOString(),
     end_time: end.toISOString(),
+    status: "confirmed",
+    source: "online",
   });
 
-  if (lineErr) {
-    alert(lineErr.message);
+  if (error) {
+    alert(error.message);
     return;
   }
 

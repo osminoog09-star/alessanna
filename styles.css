@@ -73,7 +73,7 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--header-h) + 0.75rem);
+  scroll-padding-top: calc(var(--header-h) + 2.25rem);
   text-rendering: optimizeLegibility;
   background-color: #0a0a0a;
 }
@@ -97,6 +97,10 @@ html {
   .hero-wordmark {
     animation: none !important;
     filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.14)) drop-shadow(0 0 16px rgba(212, 175, 55, 0.07)) !important;
+  }
+
+  .hero-wordmark-image {
+    animation: none !important;
   }
 
   .hero::before,
@@ -242,8 +246,8 @@ a:hover {
   left: 0;
   right: 0;
   z-index: 100;
-  padding: calc(0.85rem + env(safe-area-inset-top, 0px)) 0 0.85rem;
-  background: transparent;
+  padding: calc(0.55rem + env(safe-area-inset-top, 0px)) 0 0.55rem;
+  background: linear-gradient(180deg, rgba(1, 2, 2, 0.94) 0%, rgba(1, 2, 2, 0.62) 72%, rgba(1, 2, 2, 0) 100%);
   transition: background 0.45s var(--ease-out), box-shadow 0.45s, border-color 0.45s;
   border-bottom: 1px solid transparent;
   pointer-events: none;
@@ -277,6 +281,46 @@ a:hover {
   flex-shrink: 0;
 }
 
+.brand-pair {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.45rem, 1.1vw, 0.85rem);
+  flex-shrink: 0;
+}
+
+.brand-pair__cross {
+  color: var(--gold);
+  font-family: var(--font-sans);
+  font-size: clamp(0.78rem, 1.15vw, 1rem);
+  font-weight: 300;
+  line-height: 1;
+  opacity: 0.88;
+}
+
+.mave-logo-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--gold);
+  transition: transform 0.45s var(--ease-silk), filter 0.55s var(--ease-silk);
+}
+
+.mave-logo-link:hover {
+  transform: translate3d(0, -1px, 0);
+}
+
+.mave-logo-link__image {
+  display: block;
+  width: clamp(3.2rem, 4.7vw, 4.6rem);
+  height: auto;
+  transform: scaleX(1.1);
+  transform-origin: center;
+  filter:
+    brightness(0) saturate(100%)
+    invert(69%) sepia(17%) saturate(681%) hue-rotate(359deg) brightness(92%) contrast(89%)
+    drop-shadow(0 0 12px rgba(196, 165, 116, 0.12));
+}
+
 .nav-backdrop {
   position: fixed;
   inset: 0;
@@ -298,21 +342,29 @@ a:hover {
   font-size: 1.65rem;
   color: var(--gold);
   line-height: 1.28;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 0.2rem 0;
   transition:
     color 0.55s var(--ease-silk),
     transform 0.55s var(--ease-silk),
-    text-shadow 0.65s var(--ease-silk);
-  text-shadow: 0 0 0 transparent;
+    filter 0.65s var(--ease-silk);
+  filter: drop-shadow(0 0 0 transparent);
 }
 
 .logo-link:hover {
   color: var(--gold-bright);
   transform: translate3d(0, -1px, 0);
-  text-shadow:
-    0 0 28px rgba(168, 155, 130, 0.14),
-    0 0 52px rgba(120, 110, 95, 0.06);
+  filter:
+    drop-shadow(0 0 18px rgba(168, 155, 130, 0.14))
+    drop-shadow(0 0 36px rgba(120, 110, 95, 0.06));
+}
+
+.logo-link__image {
+  width: clamp(6.75rem, 9vw, 8.75rem);
+  height: auto;
+  aspect-ratio: 1200 / 430;
+  object-fit: contain;
 }
 
 .logo-link small {
@@ -487,7 +539,10 @@ a:hover {
   padding: calc(var(--header-h) + 3rem) 0 clamp(4rem, 10vw, 5.5rem);
   overflow: hidden;
   isolation: isolate;
-  background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 100%);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.38) 0%, rgba(0, 0, 0, 0.58) 48%, rgba(0, 0, 0, 0.86) 100%),
+    url("assets/salon-bg.png") center top / cover no-repeat,
+    #030303;
 }
 
 /* Атмосферный свет: очень мягкие «волны» — только transform, без движения самого градиента (нет полос) */
@@ -500,17 +555,16 @@ a:hover {
 .hero::before {
   content: "";
   position: absolute;
-  top: -20%;
-  left: -30%;
-  width: 160%;
-  height: 160%;
+  top: -18%;
+  left: -22%;
+  width: 150%;
+  height: 150%;
   z-index: 0;
-  background: radial-gradient(
-    circle at 30% 50%,
-    rgba(212, 175, 55, 0.075),
-    transparent 68%
-  );
-  filter: blur(130px);
+  background:
+    radial-gradient(circle at 34% 46%, rgba(212, 175, 55, 0.075), transparent 62%),
+    radial-gradient(circle at 54% 36%, rgba(255, 255, 255, 0.055), transparent 32%);
+  filter: blur(118px);
+  opacity: 0.42;
   will-change: transform;
   animation: waveMove 32s ease-in-out infinite;
 }
@@ -518,17 +572,16 @@ a:hover {
 .hero::after {
   content: "";
   position: absolute;
-  top: -10%;
-  right: -30%;
-  width: 160%;
-  height: 160%;
+  top: -8%;
+  right: -26%;
+  width: 145%;
+  height: 145%;
   z-index: 0;
-  background: radial-gradient(
-    circle at 70% 50%,
-    rgba(255, 215, 120, 0.045),
-    transparent 68%
-  );
-  filter: blur(155px);
+  background:
+    radial-gradient(circle at 72% 48%, rgba(255, 215, 120, 0.045), transparent 66%),
+    radial-gradient(circle at 48% 72%, rgba(255, 255, 255, 0.032), transparent 36%);
+  filter: blur(148px);
+  opacity: 0.32;
   will-change: transform;
   animation: waveMove2 40s ease-in-out infinite;
 }
@@ -555,9 +608,46 @@ a:hover {
   }
 }
 
-/* Старый слой hero-bg не рисуем — свет и глубина задаются .hero */
 .hero-bg {
   display: none;
+}
+
+.hero-bg::before,
+.hero-bg::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.hero-bg::before {
+  top: clamp(4.5rem, 12vw, 8rem);
+  left: clamp(2rem, 8vw, 6rem);
+  width: min(26rem, 62vw);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(196, 165, 116, 0.44), transparent);
+  opacity: 0.62;
+}
+
+.hero-bg::after {
+  top: clamp(5.25rem, 13vw, 8.75rem);
+  left: clamp(4rem, 12vw, 10rem);
+  width: min(18rem, 46vw);
+  height: min(7rem, 18vw);
+  border-top: 1px solid rgba(196, 165, 116, 0.2);
+  border-left: 1px solid rgba(196, 165, 116, 0.14);
+  border-radius: 50% 0 0 0;
+  transform: skewX(-18deg);
+  opacity: 0.42;
+}
+
+.hero-bg-motion {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(115deg, transparent 0 44%, rgba(255, 255, 255, 0.025) 45%, transparent 50%),
+    radial-gradient(ellipse at 48% 18%, rgba(255, 255, 255, 0.035), transparent 38%);
+  opacity: 0.85;
+  mix-blend-mode: screen;
 }
 
 .hero-inner {
@@ -586,10 +676,14 @@ a:hover {
   gap: clamp(1rem, 4vw, 2.25rem);
   margin: 0 auto 1.75rem;
   padding-bottom: 0.15rem;
+  position: relative;
+  width: 100%;
 }
 
 .hero-flourish {
-  flex-shrink: 0;
+  position: absolute;
+  right: calc(50% + min(16rem, 28vw));
+  bottom: 0.15rem;
   color: rgba(196, 165, 116, 0.28);
   pointer-events: none;
   user-select: none;
@@ -603,8 +697,19 @@ a:hover {
 
 .hero-brand-text {
   position: relative;
-  display: inline-block;
+  display: grid;
+  justify-items: center;
   text-align: center;
+  margin-inline: auto;
+}
+
+.hero-wordmark-image {
+  width: clamp(16rem, 40vw, 32rem);
+  height: auto;
+  aspect-ratio: 1200 / 430;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.1)) drop-shadow(0 0 12px rgba(212, 175, 55, 0.05));
+  animation: logoImageGlowPulse 18s ease-in-out infinite;
 }
 
 /* Логотип: полированное золото без оверлеев по тексту — только тихое «дыхание» свечения */
@@ -646,19 +751,31 @@ a:hover {
   }
 }
 
+@keyframes logoImageGlowPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.1)) drop-shadow(0 0 12px rgba(212, 175, 55, 0.05));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 7px rgba(212, 175, 55, 0.16)) drop-shadow(0 0 20px rgba(212, 175, 55, 0.07));
+  }
+}
+
 /* Крупный редакционный подзаголовок */
 .hero-display {
-  margin: 1.5rem auto 0;
-  max-width: 20ch;
+  margin: 1.65rem auto 0;
+  max-width: 21ch;
   font-family: var(--font-display);
-  font-size: clamp(1.85rem, 5.5vw, 2.85rem);
+  font-size: clamp(1rem, 2.55vw, 1.35rem);
   font-weight: 400;
   font-style: normal;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  color: rgba(232, 232, 229, 0.94);
+  letter-spacing: 0.015em;
+  line-height: 1.26;
+  color: rgba(188, 188, 184, 0.82);
   text-wrap: balance;
-  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 4px 22px rgba(0, 0, 0, 0.5);
+  quotes: "“" "”";
 }
 
 @keyframes glowPulseFallback {
@@ -711,6 +828,14 @@ a:hover {
   gap: 1rem;
   justify-content: center;
   margin-top: 2.5rem;
+}
+
+.hero-actions--secondary {
+  margin-top: 1rem;
+}
+
+.hero-actions .btn {
+  width: clamp(9.75rem, 14vw, 11.5rem);
 }
 
 /*
@@ -901,6 +1026,20 @@ a:hover {
 /* ---------- Секции ---------- */
 .section {
   padding: var(--section-space) 0;
+  scroll-margin-top: calc(var(--header-h) + 2.25rem);
+}
+
+.price-panel-title,
+.booking-shell {
+  scroll-margin-top: calc(var(--header-h) + 2.25rem);
+}
+
+.section .section-title {
+  scroll-margin-top: calc(var(--header-h) + 9rem);
+}
+
+.section .section-kicker {
+  scroll-margin-top: calc(var(--header-h) + 4rem);
 }
 
 .section-head {
@@ -969,7 +1108,13 @@ a:hover {
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+}
+
+.price-list-cta {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 1.75rem;
 }
 
 .tab-btn {
@@ -1012,6 +1157,30 @@ a:hover {
 .tab-panel {
   max-width: min(42rem, 100%);
   margin: 0 auto;
+}
+
+.price-list-open .tabs-bar {
+  margin-bottom: 1.35rem;
+}
+
+.price-list-open .tab-panel {
+  margin-bottom: 1.4rem;
+}
+
+.price-list-open .tab-panel:last-of-type {
+  margin-bottom: 0;
+}
+
+.price-panel-title {
+  margin: 0 0 1rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1.5;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--gold-bright);
 }
 
 .menu-list {
@@ -1548,6 +1717,22 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   background: rgba(168, 155, 130, 0.08);
   color: var(--gold-bright);
   transform: translateY(-2px);
+}
+
+.team-names li.is-master-ineligible {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.team-skip-action {
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.team-skip-action .btn {
+  width: clamp(9.75rem, 14vw, 11.5rem);
 }
 
 /* ---------- Подарочные карты / отзывы ---------- */
@@ -2450,12 +2635,10 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
 }
 
 .footer-logo {
-  font-family: var(--font-script);
-  font-size: 1.75rem;
-  color: var(--gold);
-  margin: 0 0 0.35rem;
-  line-height: 1.25;
-  padding: 0.15rem 0;
+  display: block;
+  width: min(9.1rem, 39vw);
+  height: auto;
+  margin: 0.2rem auto 0.7rem;
 }
 
 .footer-meta {

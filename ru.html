@@ -19,6 +19,7 @@
   <meta name="description" content="AlesSanna Ilusalong — премиальный салон в Пярну. Элегантность, красота, забота." />
   <title>AlesSanna Ilusalong | Пярну</title>
   <meta name="theme-color" content="#0a0a0a" />
+  <!-- __SEO_EXTRAS__ -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
@@ -30,7 +31,15 @@
   <!-- Шапка: см. index.html (тот же JS по #header и .nav) -->
   <header class="site-header" id="header">
     <div class="container header-inner">
-      <a class="logo-link" href="#hero">AlesSanna <small>ilusalong</small></a>
+      <div class="brand-pair" aria-label="AlesSanna x MAVE">
+        <a class="logo-link" href="#hero" aria-label="AlesSanna Ilusalong">
+          <img class="logo-link__image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
+        </a>
+        <span class="brand-pair__cross" aria-hidden="true">×</span>
+        <a class="mave-logo-link" href="mave-ru.html" aria-label="Магазин MAVE">
+          <img class="mave-logo-link__image" src="assets/mave-logo.svg" alt="" width="842" height="595" />
+        </a>
+      </div>
       <div class="header-actions">
         <span class="lang-switch" aria-label="Язык">
           <a href="ru.html" class="is-active">RU</a>
@@ -69,7 +78,6 @@
       <div class="hero-bg" aria-hidden="true"><div class="hero-bg-motion"></div></div>
       <!-- Hero: текстовый бренд + SVG-декор; язык интерфейса — русский в .hero-lead и кнопках -->
       <div class="hero-inner reveal hero-animate">
-        <p class="hero-eyebrow">Пярну · Tallinna mnt 70</p>
         <div class="hero-brand-wrap">
           <svg class="hero-flourish" width="48" height="112" viewBox="0 0 48 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
             <path d="M24 108V18" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" />
@@ -78,27 +86,28 @@
             <path d="M24 72c-6 10-4 20 2 24" stroke="currentColor" stroke-width="0.65" fill="none" opacity="0.7" />
           </svg>
           <div class="hero-brand-text">
-            <h1 class="hero-wordmark">AlesSanna</h1>
-            <p class="hero-subbrand">ILUSALONG</p>
+            <h1 class="visually-hidden">AlesSanna Ilusalong</h1>
+            <img class="hero-wordmark-image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
           </div>
         </div>
         <p class="hero-display">Пространство, где красота дышит спокойно</p>
-        <p class="hero-lead">
-          Неторопливый ритм, бережные руки и воздух, в котором на первом месте ваше самочувствие. Здесь не гонятся за минутами — выбирают материалы, слушают пожелания и хранят тишину.
-        </p>
         <div class="hero-actions">
+          <a href="#teenused" class="btn btn-outline" data-services-tabs-toggle>Услуги</a>
+          <a href="#teenused" class="btn btn-outline" data-price-list-toggle>Прайс лист</a>
           <a href="#broneeri" class="btn btn-primary">Записаться</a>
-          <a href="#teenused" class="btn btn-outline">Услуги</a>
+        </div>
+        <div class="hero-actions hero-actions--secondary">
+          <a href="mave-ru.html" class="btn btn-outline">Магазин MAVE</a>
         </div>
       </div>
     </section>
 
     <div class="trust-strip">
       <div class="container trust-inner">
-        <span>Tallinna mnt 70 · Пярну</span>
+        <span>Härma Keskus · Tallinna mnt 70 · Pärnu</span>
         <span>Пн–Пт 10–18 · Сб 10–16</span>
         <span><a href="mave-ru.html">AlesSanna &amp; Mave</a></span>
-        <span><a href="tel:+3725550100">555 0100</a></span>
+        <span><a href="tel:+3724398384">439 8384</a></span>
       </div>
     </div>
 
@@ -128,7 +137,7 @@
           </button>
           <div class="selection-dock-body" id="selection-dock-panel">
             <p class="selection-summary-kicker">Ваш выбор</p>
-            <p class="selection-summary-hint">Нажмите на услугу в прайсе, чтобы добавить или убрать её из списка.</p>
+            <p class="selection-summary-hint">Нажмите на услугу в прайсе, чтобы добавить или убрать её из списка. Для интерактивного бронирования выберите услугу и мастера, затем перейдите к записи.</p>
             <ul class="pick-list" data-selected-services-list hidden></ul>
             <p class="pick-list-empty" data-selected-services-empty>Услуги пока не выбраны.</p>
             <div class="selection-masters" data-summary-masters-wrap hidden>
@@ -142,6 +151,7 @@
             <a href="#broneeri" class="btn btn-outline selection-summary-cta">К записи</a>
           </div>
         </div>
+        <p class="menu-footnote reveal text-zinc-500 text-sm">Изменения цен сохраняются в CRM и отображаются здесь (в реальном времени, если включён Supabase Realtime).</p>
 
       </div>
     </section>
@@ -158,7 +168,7 @@
         </div>
         <div class="team-block reveal">
           <div class="team-groups" aria-label="Мастера по категориям услуг">
-            <div class="team-group">
+            <div class="team-group" data-team-group="hair">
               <h3 class="team-group-title">Волосы</h3>
               <p class="team-group-desc">Стрижка, окрашивание, химическая завивка, укладки</p>
               <ul class="team-names">
@@ -168,24 +178,25 @@
                 <li>Anne</li>
               </ul>
             </div>
-            <div class="team-group">
+            <div class="team-group" data-team-group="nails">
               <h3 class="team-group-title">Ногти</h3>
               <p class="team-group-desc">Маникюр, педикюр, гель-лак</p>
               <ul class="team-names">
                 <li>Alesja</li>
                 <li>Aljona</li>
-                <li>Viktoria</li>
               </ul>
             </div>
-            <div class="team-group">
+            <div class="team-group" data-team-group="brows">
               <h3 class="team-group-title">Брови и ресницы</h3>
-              <p class="team-group-desc">Окрашивание, коррекция</p>
+              <p class="team-group-desc">Окрашивание, коррекция. Брови — Aljona, ресницы — Alesja.</p>
               <ul class="team-names">
-                <li>Irina</li>
-                <li>Anne</li>
+                <li>Aljona</li>
                 <li>Alesja</li>
               </ul>
             </div>
+          </div>
+          <div class="team-skip-action">
+            <a href="#broneeri" class="btn btn-outline">Не могу выбрать</a>
           </div>
         </div>
       </div>
@@ -236,7 +247,7 @@
             <p class="about-editorial__lead">AlesSanna — место, где время замедляется, а внимание обращено только к вам.</p>
             <div class="about-editorial__divider" aria-hidden="true"></div>
             <p class="about-editorial__body">
-              Мы в центре Пярну — в спокойном, собранном пространстве, где материалы выбирают по долговечности и эстетике. Мы не просто закрываем запись: создаём паузы, в которых чувствуешь опору и лёгкость.
+              Мы находимся в Härma Keskus — в спокойном, собранном пространстве, где материалы выбирают по долговечности и эстетике. Мы не просто закрываем запись: создаём паузы, в которых чувствуешь опору и лёгкость.
             </p>
             <p class="about-editorial__body">
               Волосы, ногти или деликатный уход — каждая встреча начинается с внимательного разговора и заканчивается результатом, который выглядит естественно и дорого.
@@ -260,7 +271,7 @@
             <h2 class="section-title" style="font-size: 1.5rem">Подарочные карты</h2>
           </div>
           <p>Подарите время и внимание — карта это приглашение остановиться. Номинал и срок уточняйте в салоне или по телефону.</p>
-          <a href="tel:+3725550100" class="btn btn-outline">Позвонить</a>
+          <a href="tel:+3724398384" class="btn btn-outline">Позвонить</a>
         </div>
       </div>
     </section>
@@ -293,23 +304,12 @@
       </div>
     </section>
 
-    <section class="section section--cta" aria-labelledby="cta-luxury-title">
-      <div class="container">
-        <div class="cta-luxury reveal">
-          <p class="cta-luxury__kicker">Запись</p>
-          <h2 class="cta-luxury__title" id="cta-luxury-title">Выберите время под ваш ритм</h2>
-          <p class="cta-luxury__text">Оставьте заявку — мы подтвердим детали звонком или письмом. Ваша тишина до визита для нас так же важна, как результат.</p>
-          <a href="#broneeri" class="btn btn-primary">Записаться</a>
-        </div>
-      </div>
-    </section>
-
     <section class="section section--booking" id="broneeri">
       <div class="container container--booking">
         <div class="section-head reveal">
           <span class="section-kicker">Запись</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Календарь и короткая форма</h2>
+          <h2 class="section-title">Broneering</h2>
         </div>
         <p class="booking-intro reveal">
           Выберите день, который совпадает с вашим графиком. После заявки мы свяжемся, чтобы спокойно подтвердить время и детали — без суеты.
@@ -363,7 +363,7 @@
               </label>
               <label>
                 <span>Телефон</span>
-                <input type="tel" name="phone" autocomplete="tel" placeholder="+372 …" />
+                <input type="tel" name="phone" autocomplete="tel" placeholder="+372 439 8384" />
               </label>
               <label>
                 <span>Категория услуги</span>
@@ -395,15 +395,6 @@
               </label>
               <button class="btn btn-primary booking-submit" type="submit">Отправить заявку</button>
             </form>
-
-            <p class="booking-fallback">
-              Полная запись на сайте:
-              <a href="https://alessannailu.com/alessanna.html#booking" target="_blank" rel="noopener noreferrer">alessannailu.com</a>
-              ·
-              <a href="tel:+3725550100">Позвонить</a>
-              ·
-              <a href="mailto:alessanna.ilusalong@gmail.com?subject=Запись">Написать</a>
-            </p>
           </div>
         </div>
       </div>
@@ -420,12 +411,12 @@
           <div class="contact-info">
             <address class="contact-block">
               <span class="contact-label">Адрес</span>
-              <p>Tallinna mnt 70<br />Pärnu, Estonia, 80034</p>
-              <p class="contact-hint">Салон находится в Пярну по адресу Tallinna mnt 70.</p>
+              <p>Härma Keskus<br />Tallinna mnt 70<br />Pärnu, Estonia, 80034</p>
+              <p class="contact-hint">Салон находится в Härma Keskus по адресу Tallinna mnt 70.</p>
             </address>
             <p class="contact-block">
               <span class="contact-label">Телефон</span>
-              <a href="tel:+3725550100">555 0100</a>
+              <a href="tel:+3724398384">439 8384</a>
             </p>
             <p class="contact-block">
               <span class="contact-label">E-mail</span>
@@ -462,12 +453,12 @@
         <li><a href="#teenused">Услуги</a></li>
         <li><a href="#galerii">Галерея</a></li>
         <li><a href="#meist">О салоне</a></li>
-        <li><a href="mave-ru.html">MAVE магазин</a></li>
+        <li><a href="mave-ru.html">Магазин MAVE</a></li>
         <li><a href="#broneeri">Запись</a></li>
         <li><a href="#kontakt">Контакты</a></li>
       </ul>
-      <p class="footer-logo">AlesSanna</p>
-      <p class="footer-meta">Tallinna mnt 70 · Пярну</p>
+      <img class="footer-logo" src="assets/alessanna-logo-transparent.png" alt="AlesSanna Ilusalong" width="1200" height="430" />
+      <p class="footer-meta">Härma Keskus · Tallinna mnt 70 · Pärnu</p>
       <p class="footer-copy">© <span id="year"></span> AlesSanna Ilusalong</p>
     </div>
   </footer>

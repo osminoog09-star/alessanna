@@ -18,10 +18,8 @@
     "title": "Töötaja sisselogimine",
     "subtitle": "Kasuta profiilis olevat telefoninumbrit.",
     "phone": "Telefon",
-    "placeholder": "Sisestage telefoninumber",
+    "placeholder": "Nt 55686845",
     "hint": "Sisesta number ilma riigikoodita",
-    "digitLengthHint": "Ainult numbrid, 8–10 märki",
-    "phoneInvalidLength": "Sisesta 8–10 numbrit (ilma riigikoodita).",
     "button": "Logi sisse",
     "signingIn": "Sisselogimine…",
     "configLine": "Seadista VITE_SUPABASE_URL ja VITE_SUPABASE_ANON_KEY failis work/.env."
@@ -36,18 +34,6 @@
       "accessDenied": "Juurdepääs keelatud"
     }
   },
-  "booking": {
-    "stepLabel": "Samm {{current}} / {{total}}",
-    "step1Title": "Vali üks või mitu teenust (järjekord säilib).",
-    "step2Title": "Määra iga teenuse meister.",
-    "step3Title": "Algusaeg ja kliendi andmed.",
-    "next": "Edasi",
-    "back": "Tagasi",
-    "selectedServices": "Valitud",
-    "timeChain": "Sinu visiit (järjestikku)",
-    "pickAtLeastOneService": "Vali vähemalt üks teenus.",
-    "noServicesInCatalog": "Aktiivseid teenuseid pole või nimekirja ei õnnestunud laadida. Lisa teenused CRM-is jaotises «Teenused» ning kontrolli service_listings õigusi."
-  },
   "nav": {
     "dashboard": "Töölaud",
     "calendar": "Kalender",
@@ -56,26 +42,9 @@
     "adminServices": "Teenused",
     "adminSchedule": "Graafik",
     "adminTimeOff": "Vabad ajad",
-    "adminSiteBuilder": "Lehe ehitaja",
     "analytics": "Analüütika",
-    "finance": "Rahandus",
-    "clients": "Kliendid",
     "logout": "Logi välja",
     "workerHint": "Meistri režiim: ainult oma broneeringud ja kalender. Täielik juurdepääs juhil."
-  },
-  "reception": {
-    "sessionRole": "Seanss",
-    "loginSwitch": "Sisselogimine / kasutaja vahetus",
-    "switchUser": "Vaheta kasutajat",
-    "logoutToReception": "Välju vastuvõttu",
-    "loginTitle": "Töötaja sisselogimine",
-    "sidebarHint": "Kalender ja broneeringud on saadaval ilma sisselogimata. Logi sisse administraatori jaoks.",
-    "dashboardSubtitle": "Ülevaade kõigist broneeringutest. Logi sisse isiklike andmete jaoks.",
-    "quickStaff": "Meister",
-    "enterCompact": "Vastuvõtu režiim",
-    "exitCompact": "Täielik CRM",
-    "switchToReceptionMode": "Vastuvõtu režiim",
-    "switchToCrmMode": "Täielik CRM"
   },
   "preview": {
     "label": "Vaata kui",
@@ -83,22 +52,13 @@
     "banner": "Eelvaade: {{role}}"
   },
   "adminStaff": {
-    "subtitle": "Staff tabel: telefon, nimi, roll, tasu (% / üür), aktiivsus, teenused.",
-    "phoneNameRequired": "Lisa telefon ja nimi.",
-    "deleteStaffConfirm": "Kustutada töötaja «{{name}}» jäädavalt?",
+    "subtitle": "Staff tabel: telefon, nimi, roll, aktiivsus, teenused.",
     "name": "Nimi",
     "active": "Aktiivne",
     "yes": "jah",
     "no": "ei",
     "services": "Teenused",
-    "edit": "Muuda",
-    "actions": "Tegevused",
-    "deleteShort": "Kustuta",
-    "payModel": "Tasu",
-    "payPercentage": "Protsent",
-    "payRent": "Üür",
-    "percentRate": "% meister",
-    "rentPerDay": "Üür/päev €"
+    "edit": "Muuda"
   },
   "adminSchedule": {
     "subtitle": "Nädala graafik (staff_schedule)."
@@ -113,12 +73,11 @@
   },
   "publicBook": {
     "title": "Online broneering",
-    "subtitle": "Teenused, meister iga teenuse jaoks, siis aeg.",
+    "subtitle": "Vali teenus, meister ja aeg.",
     "staffLogin": "Personali sisselogimine",
     "pickStaff": "Vali meister",
     "day": "Kuupäev",
     "slots": "Vabad ajad",
-    "slotsFirstServiceHint": "Ajad põhinevad esimesel teenusel ja selle meistril; järgmised teenused järjest.",
     "noSlots": "Sellel päeval vabu aegu pole.",
     "confirm": "Broneeri",
     "fillAll": "Lisa nimi ja vali aeg.",
@@ -126,8 +85,6 @@
   },
   "role": {
     "label": "Roll",
-    "reception": "Vastuvõtt",
-    "owner": "Omanik",
     "admin": "Admin",
     "manager": "Juht",
     "worker": "Meister",
@@ -144,64 +101,9 @@
     "upcomingSection": "Tulekul",
     "noUpcoming": "Eesolevaid broneeringuid pole."
   },
-  "salonCalendar": {
-    "noSchedule": "Sellel päeval vahetust pole",
-    "blocked": "Hõivatud",
-    "blockTime": "Blokeeri aeg",
-    "cancelBooking": "Tühista broneering",
-    "cancelAppointmentConfirm": "Tühista see broneering?",
-    "legendAppointments": "Broneeringud",
-    "legendBlocked": "Blokeering",
-    "legendFree": "Vaba"
-  },
-  "blockTimeModal": {
-    "title": "Aja blokeering",
-    "start": "Algus",
-    "end": "Lõpp",
-    "reason": "Põhjus",
-    "overlapAppointment": "Kattub broneeringuga.",
-    "overlapTimeOff": "Kattub teise blokeeringuga.",
-    "invalidRange": "Sisesta korrektne intervall (lõpp peab olema pärast algust).",
-    "type": "Tüüp",
-    "typeManual": "Käsitsi blokk",
-    "typeDayOff": "Vaba päev",
-    "typeSick": "Haigusleht"
-  },
-  "timeOffType": {
-    "sick_leave": "Haigus",
-    "day_off": "Vaba päev"
-  },
-  "closeDay": {
-    "title": "Sulge päev",
-    "subtitle": "Valitud meistrite jaoks terve päev blokeeritud.",
-    "date": "Kuupäev",
-    "all": "Kõik",
-    "none": "Tühista",
-    "pickStaff": "Vali vähemalt üks töötaja.",
-    "confirm": "Sulge",
-    "invalidDate": "Vigane kuupäev.",
-    "blockReason": "Salong suletud"
-  },
-  "finance": {
-    "title": "Rahandus",
-    "subtitle": "Tulu, meistri osa (%) ja üür tööpäevade järgi.",
-    "month": "Kuu",
-    "revenue": "Tulu",
-    "staffShare": "Meistri osa",
-    "ownerShare": "Salongi jääk",
-    "workDays": "Tööp.",
-    "rentTotal": "Üür × päevad",
-    "hint": "Tööpäevad: päevad broneeringutega (staff_work_days). Protsent kinnitatud tulust."
-  },
-  "clients": {
-    "title": "Kliendid",
-    "subtitle": "Külastuste ajalugu telefoni järgi.",
-    "empty": "Kliente pole — ilmuvad broneeringuga koos telefoniga.",
-    "noVisits": "Külastusi pole."
-  },
   "calendar": {
     "title": "Kalender",
-    "subtitle": "Päev ja nädal: ajatelg 9–21, broneeringud ja blokid.",
+    "subtitle": "Päev: ruudustik, lohistamine, filtrid. Nädal: ajad.",
     "day": "Päev",
     "week": "Nädal",
     "today": "Täna",
@@ -219,13 +121,7 @@
     "to": "Kuni",
     "submitRequest": "Saada taotlus",
     "statusPending": "ootel",
-    "statusApproved": "kinnitatud",
-    "closeDay": "Sulge päev",
-    "sickLeave": "Haigusleht",
-    "sickLeaveConfirm": "Blokeeri tänane päev haigusena?",
-    "sickLeaveReason": "Haigusleht",
-    "receptionQuickBook": "Uus broneering",
-    "receptionQuickBookHint": "Kiire broneering ülal oleva nupuga — nagu veebis: teenused, meister, aeg ja klient."
+    "statusApproved": "kinnitatud"
   },
   "weekday": {
     "0": "P", "1": "E", "2": "T", "3": "K", "4": "N", "5": "R", "6": "L"
@@ -237,7 +133,6 @@
     "all": "Kõik",
     "staffFilter": "Töötaja",
     "allEmployees": "Kõik töötajad",
-    "allStaff": "Kõik meistrid",
     "hint": "Lohista kaarti ajaks muutmiseks · Tühi lahter — uus broneering",
     "createBookingAria": "Loo broneering kell {{hour}}:00"
   },
@@ -252,8 +147,7 @@
     "cancel": "Tühista",
     "statusPending": "ootel",
     "statusConfirmed": "kinnitatud",
-    "statusCancelled": "tühistatud",
-    "cancelVisit": "Tühista kogu visiit"
+    "statusCancelled": "tühistatud"
   },
   "employees": {
     "title": "Töötajad",
@@ -299,9 +193,7 @@
     "title": "Analüütika",
     "subtitle": "Broneeringud ja tulu töötajate kaupa, populaarsed teenused.",
     "revenueByEmployee": "Tulu ja broneeringud töötajate kaupa",
-    "revenueByStaff": "Tulu ja broneeringud meistrite kaupa",
     "colEmployee": "Töötaja",
-    "colStaff": "Meister",
     "colBookings": "Broneeringuid",
     "colRevenue": "Tulu (teenused)",
     "colEarnings": "Arvestatud väljamaksed",
@@ -312,12 +204,10 @@
     "revenueNote": "Tulu veerg: ainult kinnitatud broneeringud. Broneeringute arv: kõik tühistamata.",
     "utilizationTitle": "Koormus (viimased 30 päeva)",
     "utilizationHint": "Teenuste kestuste summa broneeringute järgi (minutid, sh puhver). Ei võrrelda automaatselt graafikuga.",
-    "colBookedMinutes": "Broneeritud, min",
-    "colLoadApprox": "Koormus ≈"
+    "colBookedMinutes": "Broneeritud, min"
   },
   "modal": {
     "newBooking": "Uus broneering",
-    "startTime": "Algus",
     "client": "Klient",
     "phone": "Telefon",
     "staff": "Töötaja",
@@ -325,8 +215,6 @@
     "pickService": "Vali teenus.",
     "pickStaff": "Selle teenuse jaoks pole meistreid. Lisa oskused töötajate lehel.",
     "overlap": "See aeg pole selle töötaja jaoks enam vaba. Värskenda ja vali teine aeg.",
-    "outsideWorkingHours": "Intervall jääb väljapoole graafiku tööaega.",
-    "timeOffOverlap": "Sel ajal on juba kättesaamatuse blokk.",
     "fillAll": "Täida kõik väljad."
   },
   "site": {
@@ -351,7 +239,7 @@
     "heroLead": "Aeglane hetk, peen käsitöö ja õhk, mis seab esikohale teie heaolu. Siin ei kiirustata — valitakse materjale, kuulatakse soove ja hoitakse vaikust.",
     "btnBook": "Broneeri aeg",
     "btnServices": "Teenused",
-    "trustAddress": "Tallinna mnt 70 · Pärnu",
+    "trustAddress": "Härma Keskus · Tallinna mnt 70 · Pärnu",
     "trustHours": "E–R 10–18 · L 10–16",
     "trustMave": "AlesSanna & MAVE"
   }
