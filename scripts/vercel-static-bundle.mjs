@@ -56,6 +56,16 @@ for (const f of ROOT_FILES) {
 }
 
 copyDir("locales");
+copyDir("assets");
+
+for (const f of [
+  "supabase-public-config.js",
+  "site-services.mjs",
+  "site-team.mjs",
+  "site-builder.mjs",
+]) {
+  copyFile(f);
+}
 
 // public-site/book.html → корень (пути ./book.css, ./book.js)
 for (const f of ["book.html", "book.css", "book.js", "config.js"]) {

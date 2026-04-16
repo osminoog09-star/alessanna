@@ -28,6 +28,9 @@ jobs:
           cp index.html ru.html mave.html mave-ru.html _site/
           cp styles.css script.js translations.js _site/
           cp work.css work.js work.html _site/
+          cp -r assets _site/
+          cp -r locales _site/
+          cp supabase-public-config.js site-services.mjs site-team.mjs site-builder.mjs _site/
           cp .nojekyll CNAME _site/
           cp -r .github/page-bundle/work _site/
       - uses: actions/upload-pages-artifact@v3
