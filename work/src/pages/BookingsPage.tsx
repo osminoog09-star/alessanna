@@ -5,47 +5,32 @@ import { supabase } from "../lib/supabase";
 import { useBookingsRealtime } from "../hooks/useSalonRealtime";
 import { useAuth } from "../context/AuthContext";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
+import type { AppointmentRow, ServiceRow } from "../types/database";
 
-type LineRow = {
-  id: string;
-  appointment_id: string;
-  staff_id: string;
-  service_id: string;
-  start_time: string;
-  end_time: string;
-  appointments: { status: string; client_name: string } | null;
-  service_listings: { name: string } | null;
-  staff: { name: string } | null;
-};
+type StaffName = { id: string; name: string };
 
 export function BookingsPage() {
   const { t } = useTranslation();
-  const { staffMember, isReceptionMode } = useAuth();
+  const { staffMember } = useAuth();
   const { canManage, isWorkerOnlyEffective } = useEffectiveRole();
-  const [rows, setRows] = useState<LineRow[]>([]);
+  const [rows, setRows] = useState<AppointmentRow[]>([]);
+  const [staffNames, setStaffNames] = useState<StaffName[]>([]);
+  const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    let q = supabase
-      .from("appointment_services")
-      .select(
-        `
-        id, appointment_id, staff_id, service_id, start_time, end_time,
-        appointments ( status, client_name ),
-        service_listings ( name ),
-        staff ( name )
-      `
-      )
-      .order("start_time", { ascending: false });
+    let q = supabase.from("appointments").select("*").order("start_time", { ascending: false });
     if (isWorkerOnlyEffective && staffMember) {
       q = q.eq("staff_id", staffMember.id);
     }
-    const { data, error } = await q;
-    if (!error && data) {
-      setRows(
-        (data as LineRow[]).filter((r) => r.appointments && r.appointments.status !== "cancelled")
-      );
-    }
+    const [b, e, s] = await Promise.all([
+      q,
+      supabase.from("staff").select("id,name"),
+      supabase.from("services").select("id,name_et"),
+    ]);
+    if (b.data) setRows(b.data as AppointmentRow[]);
+    if (e.data) setStaffNames(e.data as StaffName[]);
+    if (s.data) setServices(s.data as ServiceRow[]);
     setLoading(false);
   }, [isWorkerOnlyEffective, staffMember]);
 
@@ -55,22 +40,24 @@ export function BookingsPage() {
 
   useBookingsRealtime(load);
 
-  const canShowCancel =
-    canManage || isReceptionMode || (isWorkerOnlyEffective && staffMember);
+  const visible = rows;
 
-  async function cancelVisit(appointmentId: string) {
-    if (!canShowCancel) return;
-    if (!canManage && !isReceptionMode && isWorkerOnlyEffective && staffMember) {
-      const { data: touch } = await supabase
-        .from("appointment_services")
-        .select("id")
-        .eq("appointment_id", appointmentId)
-        .eq("staff_id", staffMember.id)
-        .limit(1);
-      if (!touch?.length) return;
+  async function cancelBooking(id: string) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) return;
+    if (canManage) {
+      /* ok */
+    } else if (isWorkerOnlyEffective && staffMember && row.staff_id === staffMember.id) {
+      /* ok */
+    } else {
+      return;
     }
-    await supabase.from("appointments").update({ status: "cancelled" }).eq("id", appointmentId);
-    void load();
+    let q = supabase.from("appointments").update({ status: "cancelled" }).eq("id", id);
+    if (!canManage && isWorkerOnlyEffective && staffMember) {
+      q = q.eq("staff_id", staffMember.id);
+    }
+    await q;
+    load();
   }
 
   function statusLabel(status: string) {
@@ -91,7 +78,7 @@ export function BookingsPage() {
         <p className="text-zinc-500">{t("common.loading")}</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-800">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-zinc-800 bg-zinc-950 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-3">{t("bookings.when")}</th>
@@ -99,32 +86,34 @@ export function BookingsPage() {
                 <th className="px-4 py-3">{t("bookings.staff")}</th>
                 <th className="px-4 py-3">{t("bookings.service")}</th>
                 <th className="px-4 py-3">{t("bookings.status")}</th>
-                {canShowCancel && <th className="px-4 py-3" />}
+                {(canManage || (isWorkerOnlyEffective && staffMember)) && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {rows.map((r) => {
-                const st = r.appointments?.status ?? "confirmed";
+              {visible.map((b) => {
+                const when = b.start_time;
+                const em = staffNames.find((x) => x.id === b.staff_id);
+                const sv = services.find((x) => x.id === b.service_id);
                 return (
-                  <tr key={r.id} className="bg-zinc-950/80">
+                  <tr key={b.id} className="bg-zinc-950/80">
                     <td className="px-4 py-3 text-zinc-300">
-                      {r.start_time && r.end_time
-                        ? `${format(parseISO(r.start_time), "yyyy-MM-dd HH:mm")}–${format(parseISO(r.end_time), "HH:mm")}`
-                        : t("common.dash")}
+                      {when ? format(parseISO(when), "yyyy-MM-dd HH:mm") : t("common.dash")}
                     </td>
-                    <td className="px-4 py-3 text-white">{r.appointments?.client_name ?? t("common.dash")}</td>
-                    <td className="px-4 py-3 text-zinc-400">{r.staff?.name ?? t("common.dash")}</td>
-                    <td className="px-4 py-3 text-zinc-400">{r.service_listings?.name ?? t("common.dash")}</td>
-                    <td className="px-4 py-3 capitalize text-zinc-400">{statusLabel(st)}</td>
-                    {canShowCancel && (
+                    <td className="px-4 py-3 text-white">{b.client_name}</td>
+                    <td className="px-4 py-3 text-zinc-400">{em?.name ?? t("common.dash")}</td>
+                    <td className="px-4 py-3 text-zinc-400">{sv?.name_et ?? t("common.dash")}</td>
+                    <td className="px-4 py-3 capitalize text-zinc-400">{statusLabel(b.status)}</td>
+                    {(canManage || (isWorkerOnlyEffective && staffMember)) && (
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => void cancelVisit(r.appointment_id)}
-                          className="text-xs text-red-400 hover:text-red-300"
-                        >
-                          {t("bookings.cancelVisit")}
-                        </button>
+                        {b.status !== "cancelled" && (
+                          <button
+                            type="button"
+                            onClick={() => void cancelBooking(b.id)}
+                            className="text-xs text-red-400 hover:text-red-300"
+                          >
+                            {t("bookings.cancel")}
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>

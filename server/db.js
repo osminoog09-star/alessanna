@@ -175,10 +175,45 @@ function seedIfEmpty(db) {
   for (let wd = 1; wd <= 6; wd++) insH.run(wd, 10 * 60, 18 * 60);
 }
 
+function seedEmployeeServicesIfEmpty(db) {
+  const existing = db.prepare("SELECT COUNT(*) AS c FROM employee_services").get().c;
+  if (existing > 0) return;
+
+  const empRows = db.prepare("SELECT id, slug FROM employees WHERE slug IS NOT NULL").all();
+  const svcRows = db.prepare("SELECT id, slug FROM services WHERE slug IS NOT NULL").all();
+  if (!empRows.length || !svcRows.length) return;
+
+  const empBySlug = Object.fromEntries(empRows.map((r) => [r.slug, r.id]));
+  const svcBySlug = Object.fromEntries(svcRows.map((r) => [r.slug, r.id]));
+  const byService = {
+    "hair-cut": ["galina", "irina", "viktoria", "anne"],
+    "hair-color": ["galina", "irina", "viktoria", "anne"],
+    perm: ["galina", "irina", "viktoria", "anne"],
+    styling: ["galina", "irina", "viktoria", "anne"],
+    "brows-lashes": ["aljona", "alesja"],
+    manicure: ["alesja", "aljona"],
+    pedicure: ["alesja", "aljona"],
+  };
+  const ins = db.prepare("INSERT OR IGNORE INTO employee_services (employee_id, service_id) VALUES (?, ?)");
+
+  const run = db.transaction(() => {
+    for (const [serviceSlug, employeeSlugs] of Object.entries(byService)) {
+      const serviceId = svcBySlug[serviceSlug];
+      if (!serviceId) continue;
+      for (const employeeSlug of employeeSlugs) {
+        const employeeId = empBySlug[employeeSlug];
+        if (employeeId) ins.run(employeeId, serviceId);
+      }
+    }
+  });
+  run();
+}
+
 function init() {
   const db = open();
   migrate(db);
   seedIfEmpty(db);
+  seedEmployeeServicesIfEmpty(db);
   ensureAdminEmailFromEnv(db);
   return db;
 }

@@ -1,35 +1,10 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { useServicesCatalogRealtime, useStaffDirectoryRealtime } from "../hooks/useSalonRealtime";
-import { useAuth } from "../context/AuthContext";
-import { normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
-import { serviceListingIsActive } from "../lib/serviceListing";
-import type {
-  ServiceCategoryRow,
-  ServiceListingRow,
-  StaffServiceRow,
-  StaffTableRow,
-  StaffWorkType,
-} from "../types/database";
+import type { ServiceRow, StaffServiceRow, StaffTableRow } from "../types/database";
 import type { Role } from "../types/database";
 
 type UiRole = Role;
-
-const ALL_ROLES: Role[] = ["owner", "admin", "manager", "worker"];
-const MANAGER_ASSIGABLE_ROLES: Role[] = ["manager", "worker"];
-
-function primaryRoleFromRoles(roles: Role[]): Role {
-  if (roles.includes("owner")) return "owner";
-  if (roles.includes("admin")) return "admin";
-  if (roles.includes("manager")) return "manager";
-  return "worker";
-}
-
-function isProtectedAccountRole(raw: unknown): boolean {
-  const roles = normalizeRoles(raw);
-  return roles.includes("admin") || roles.includes("owner");
-}
 
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -37,27 +12,24 @@ function digitsOnly(phone: string): string {
 
 export function AdminStaffPage() {
   const { t } = useTranslation();
-  const { isPrivilegedAdmin } = useAuth();
   const [rows, setRows] = useState<StaffTableRow[]>([]);
-  const [services, setServices] = useState<ServiceListingRow[]>([]);
-  const [categories, setCategories] = useState<ServiceCategoryRow[]>([]);
+  const [services, setServices] = useState<ServiceRow[]>([]);
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [newRoles, setNewRoles] = useState<Role[]>(["worker"]);
+  const [role, setRole] = useState<UiRole>("worker");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
 
   const load = useCallback(async () => {
     setErr(null);
-    const [st, sv, lk, cat] = await Promise.all([
+    const [st, sv, lk] = await Promise.all([
       supabase.from("staff").select("*").order("created_at", { ascending: false }),
-      supabase.from("service_listings").select("id,name,is_active,category_id").order("sort_order", { ascending: true }),
+      supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true }),
       supabase.from("staff_services").select("*"),
-      supabase.from("service_categories").select("id,name,sort_order").order("sort_order", { ascending: true }),
     ]);
     if (st.error) {
       setErr(st.error.message);
@@ -65,9 +37,8 @@ export function AdminStaffPage() {
       return;
     }
     setRows((st.data ?? []) as StaffTableRow[]);
-    if (sv.data) setServices(sv.data as ServiceListingRow[]);
+    if (sv.data) setServices(sv.data as ServiceRow[]);
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
-    if (cat.data) setCategories(cat.data as ServiceCategoryRow[]);
     setLoading(false);
   }, []);
 
@@ -75,32 +46,12 @@ export function AdminStaffPage() {
     void load();
   }, [load]);
 
-  useStaffDirectoryRealtime(load);
-  useServicesCatalogRealtime(load);
+  const activeServices = useMemo(() => services.filter((s) => s.active), [services]);
 
-  const activeServices = useMemo(() => services.filter((s) => serviceListingIsActive(s)), [services]);
-  const servicesByCategory = useMemo(() => {
-    const catNameById = new Map(categories.map((c) => [c.id, c.name]));
-    const groups = new Map<string, { key: string; name: string; items: ServiceListingRow[] }>();
-    for (const s of activeServices) {
-      const key = s.category_id ?? "__none__";
-      const name = s.category_id ? catNameById.get(s.category_id) ?? "Other" : "Other";
-      if (!groups.has(key)) groups.set(key, { key, name, items: [] });
-      groups.get(key)!.items.push(s);
-    }
-    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [activeServices, categories]);
-
-  const assignableRoles = isPrivilegedAdmin ? ALL_ROLES : MANAGER_ASSIGABLE_ROLES;
-
-  function rowRoles(r: StaffTableRow): Role[] {
-    return normalizeRoles((r as { roles?: unknown }).roles ?? r.role);
-  }
-
-  function toggleRoleValue(roles: Role[], role: Role, checked: boolean): Role[] {
-    if (checked) return [...new Set([...roles, role])];
-    const next = roles.filter((x) => x !== role);
-    return next.length ? next : ["worker"];
+  function normalizeDbRole(r: string): UiRole {
+    if (r === "staff") return "worker";
+    if (r === "admin" || r === "manager" || r === "worker") return r;
+    return "worker";
   }
 
   function startEdit(r: StaffTableRow) {
@@ -127,19 +78,9 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function updateStaffRoles(id: string, edited: Role[]) {
+  async function updateStaffRole(id: string, newRole: UiRole) {
     setErr(null);
-    const target = rows.find((x) => x.id === id);
-    if (!target) return;
-    const existing = rowRoles(target);
-    const nextRoles = sanitizeRolesForSave(edited, isPrivilegedAdmin, existing);
-    if (!isPrivilegedAdmin) {
-      if (isProtectedAccountRole(existing)) return;
-    }
-    const { error } = await supabase
-      .from("staff")
-      .update({ roles: nextRoles, role: primaryRoleFromRoles(nextRoles) })
-      .eq("id", id);
+    const { error } = await supabase.from("staff").update({ role: newRole }).eq("id", id);
     if (error) {
       setErr(error.message);
       return;
@@ -157,34 +98,20 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function updateStaffCompensation(
-    id: string,
-    patch: { work_type?: StaffWorkType; percent_rate?: number | null; rent_per_day?: number | null }
-  ) {
-    setErr(null);
-    const { error } = await supabase.from("staff").update(patch).eq("id", id);
-    if (error) setErr(error.message);
-    void load();
-  }
-
   async function onAdd(e: FormEvent) {
     e.preventDefault();
     setErr(null);
     const cleanPhone = digitsOnly(phone);
     const n = name.trim();
     if (!cleanPhone || !n) {
-      setErr(t("adminStaff.phoneNameRequired"));
+      setErr("Phone and name are required.");
       return;
     }
     const { error } = await supabase.from("staff").insert({
       phone: cleanPhone,
       name: n,
-      role: primaryRoleFromRoles(newRoles),
-      roles: newRoles,
+      role,
       is_active: true,
-      work_type: "percentage",
-      percent_rate: 0,
-      rent_per_day: 0,
     });
     if (error) {
       setErr(error.message);
@@ -192,14 +119,13 @@ export function AdminStaffPage() {
     }
     setPhone("");
     setName("");
-    setNewRoles(["worker"]);
+    setRole("worker");
     void load();
   }
 
   async function remove(row: StaffTableRow) {
     setErr(null);
-    if (!isPrivilegedAdmin && isProtectedAccountRole((row as { roles?: unknown }).roles ?? row.role)) return;
-    if (!window.confirm(t("adminStaff.deleteStaffConfirm", { name: row.name }))) return;
+    if (!window.confirm(`Delete ${row.name} permanently?`)) return;
     const { error } = await supabase.from("staff").delete().eq("id", row.id);
     if (error) {
       setErr(error.message);
@@ -208,7 +134,7 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function toggleService(staffId: string, serviceId: string, on: boolean) {
+  async function toggleService(staffId: string, serviceId: number, on: boolean) {
     setErr(null);
     if (on) {
       const { error } = await supabase.from("staff_services").insert({ staff_id: staffId, service_id: serviceId });
@@ -224,26 +150,8 @@ export function AdminStaffPage() {
     void load();
   }
 
-  function hasLink(staffId: string, serviceId: string) {
+  function hasLink(staffId: string, serviceId: number) {
     return links.some((l) => l.staff_id === staffId && l.service_id === serviceId);
-  }
-
-  async function toggleCategoryTag(staffId: string, categoryServiceIds: string[], on: boolean) {
-    setErr(null);
-    if (categoryServiceIds.length === 0) return;
-    if (on) {
-      const payload = categoryServiceIds.map((service_id) => ({ staff_id: staffId, service_id }));
-      const { error } = await supabase.from("staff_services").upsert(payload, { onConflict: "staff_id,service_id" });
-      if (error) setErr(error.message);
-    } else {
-      const { error } = await supabase
-        .from("staff_services")
-        .delete()
-        .eq("staff_id", staffId)
-        .in("service_id", categoryServiceIds);
-      if (error) setErr(error.message);
-    }
-    void load();
   }
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
@@ -266,7 +174,7 @@ export function AdminStaffPage() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
-            placeholder={t("login.placeholder")}
+            placeholder="37255686845"
           />
         </div>
         <div>
@@ -279,18 +187,15 @@ export function AdminStaffPage() {
         </div>
         <div>
           <label className="block text-xs text-zinc-500">{t("role.label")}</label>
-          <div className="mt-1 flex flex-wrap gap-2 rounded border border-zinc-700 bg-black p-2 text-xs">
-            {assignableRoles.map((opt) => (
-              <label key={opt} className="inline-flex items-center gap-1 text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={newRoles.includes(opt)}
-                  onChange={(e) => setNewRoles((prev) => toggleRoleValue(prev, opt, e.target.checked))}
-                />
-                {t(`role.${opt}`)}
-              </label>
-            ))}
-          </div>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as UiRole)}
+            className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
+          >
+            <option value="admin">{t("role.admin")}</option>
+            <option value="manager">{t("role.manager")}</option>
+            <option value="worker">{t("role.worker")}</option>
+          </select>
         </div>
         <button type="submit" className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">
           {t("common.add")}
@@ -305,11 +210,8 @@ export function AdminStaffPage() {
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.name")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("role.label")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.active")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.payModel")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.percentRate")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.rentPerDay")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.services")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.actions")}</th>
+              <th className="border-b border-zinc-800 px-3 py-2">actions</th>
             </tr>
           </thead>
           <tbody>
@@ -338,25 +240,15 @@ export function AdminStaffPage() {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  {!isPrivilegedAdmin && isProtectedAccountRole((r as { roles?: unknown }).roles ?? r.role) ? (
-                    <span className="text-zinc-300">{rowRoles(r).map((x) => t(`role.${x}`)).join(" · ")}</span>
-                  ) : (
-                    <div className="flex max-w-[16rem] flex-wrap gap-2 rounded border border-zinc-700 bg-black p-1.5 text-xs">
-                      {assignableRoles.map((opt) => (
-                        <label key={opt} className="inline-flex items-center gap-1 text-zinc-300">
-                          <input
-                            type="checkbox"
-                            checked={rowRoles(r).includes(opt)}
-                            onChange={(e) => {
-                              const next = toggleRoleValue(rowRoles(r), opt, e.target.checked);
-                              void updateStaffRoles(r.id, next);
-                            }}
-                          />
-                          {t(`role.${opt}`)}
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                  <select
+                    value={normalizeDbRole(r.role)}
+                    onChange={(e) => void updateStaffRole(r.id, e.target.value as UiRole)}
+                    className="max-w-[10rem] rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-white"
+                  >
+                    <option value="admin">{t("role.admin")}</option>
+                    <option value="manager">{t("role.manager")}</option>
+                    <option value="worker">{t("role.worker")}</option>
+                  </select>
                 </td>
                 <td className="px-3 py-2">
                   <label className="inline-flex cursor-pointer items-center gap-2 text-xs">
@@ -369,77 +261,18 @@ export function AdminStaffPage() {
                     <span className="text-zinc-400">{r.is_active ? t("adminStaff.yes") : t("adminStaff.no")}</span>
                   </label>
                 </td>
-                <td className="px-3 py-2">
-                  <select
-                    value={(r.work_type as StaffWorkType) ?? "percentage"}
-                    onChange={(e) =>
-                      void updateStaffCompensation(r.id, { work_type: e.target.value as StaffWorkType })
-                    }
-                    className="max-w-[9rem] rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-white"
-                  >
-                    <option value="percentage">{t("adminStaff.payPercentage")}</option>
-                    <option value="rent">{t("adminStaff.payRent")}</option>
-                  </select>
-                </td>
-                <td className="px-3 py-2">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    defaultValue={r.percent_rate ?? ""}
-                    key={`pct-${r.id}-${r.percent_rate ?? "x"}`}
-                    onBlur={(e) => {
-                      const v = e.target.value === "" ? null : Number(e.target.value);
-                      if (v != null && Number.isFinite(v)) void updateStaffCompensation(r.id, { percent_rate: v });
-                    }}
-                    className="w-16 rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    defaultValue={r.rent_per_day ?? ""}
-                    key={`rent-${r.id}-${r.rent_per_day ?? "x"}`}
-                    onBlur={(e) => {
-                      const v = e.target.value === "" ? null : Number(e.target.value);
-                      if (v != null && Number.isFinite(v)) void updateStaffCompensation(r.id, { rent_per_day: v });
-                    }}
-                    className="w-16 rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
-                  />
-                </td>
                 <td className="max-w-xs px-3 py-2">
-                  <div className="space-y-2">
-                    {servicesByCategory.map((g) => {
-                      const ids = g.items.map((x) => x.id);
-                      const hasAny = ids.some((id) => hasLink(r.id, id));
-                      return (
-                        <div key={g.key} className="rounded border border-zinc-800/80 p-1.5">
-                          <label className="mb-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-300">
-                            <input
-                              type="checkbox"
-                              checked={hasAny}
-                              onChange={(e) => void toggleCategoryTag(r.id, ids, e.target.checked)}
-                            />
-                            {g.name}
-                          </label>
-                          <div className="mt-1 flex flex-wrap gap-2">
-                            {g.items.map((s) => (
-                              <label key={s.id} className="flex items-center gap-1 text-xs text-zinc-400">
-                                <input
-                                  type="checkbox"
-                                  checked={hasLink(r.id, s.id)}
-                                  onChange={(e) => void toggleService(r.id, s.id, e.target.checked)}
-                                />
-                                {s.name}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="flex flex-wrap gap-2">
+                    {activeServices.map((s) => (
+                      <label key={s.id} className="flex items-center gap-1 text-xs text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={hasLink(r.id, s.id)}
+                          onChange={(e) => void toggleService(r.id, s.id, e.target.checked)}
+                        />
+                        {s.name_et}
+                      </label>
+                    ))}
                   </div>
                 </td>
                 <td className="space-x-2 px-3 py-2 whitespace-nowrap">
@@ -457,11 +290,9 @@ export function AdminStaffPage() {
                       <button type="button" className="text-sky-400 underline" onClick={() => startEdit(r)}>
                         {t("adminStaff.edit")}
                       </button>
-                      {(!isProtectedAccountRole((r as { roles?: unknown }).roles ?? r.role) || isPrivilegedAdmin) && (
-                        <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
-                          {t("adminStaff.deleteShort")}
-                        </button>
-                      )}
+                      <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
+                        delete
+                      </button>
                     </>
                   )}
                 </td>

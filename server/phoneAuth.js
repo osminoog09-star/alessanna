@@ -5,7 +5,7 @@ function normalizePhone(input) {
   return String(input || "").replace(/\D/g, "");
 }
 
-/** Match national or international forms (digits only vs +country prefix). */
+/** Match national or international forms (e.g. 55686845 vs +37255686845). */
 function phonesMatch(a, b) {
   const x = normalizePhone(a);
   const y = normalizePhone(b);

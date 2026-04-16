@@ -13,9 +13,6 @@ import { AdminStaffPage } from "./pages/AdminStaffPage";
 import { AdminSchedulePage } from "./pages/AdminSchedulePage";
 import { AdminTimeOffPage } from "./pages/AdminTimeOffPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
-import { FinancePage } from "./pages/FinancePage";
-import { ClientsPage } from "./pages/ClientsPage";
-import { SiteBuilderPage } from "./pages/SiteBuilderPage";
 
 function RequireManage({ children }: { children: React.ReactNode }) {
   const { canManage } = useEffectiveRole();
@@ -23,15 +20,9 @@ function RequireManage({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function RequirePrivileged({ children }: { children: React.ReactNode }) {
-  const { isPrivilegedAdmin } = useAuth();
-  if (!isPrivilegedAdmin) return <Navigate to="/" replace />;
-  return <>{children}</>;
-}
-
-function AppShell() {
+function Protected({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
-  const { loading } = useAuth();
+  const { staffMember, loading } = useAuth();
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black text-zinc-400">
@@ -39,11 +30,8 @@ function AppShell() {
       </div>
     );
   }
-  return (
-    <EffectiveRoleProvider>
-      <Layout />
-    </EffectiveRoleProvider>
-  );
+  if (!staffMember) return <Navigate to="/login" replace />;
+  return <EffectiveRoleProvider>{children}</EffectiveRoleProvider>;
 }
 
 export default function App() {
@@ -51,7 +39,14 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/book" element={<PublicBookingPage />} />
-      <Route path="/" element={<AppShell />}>
+      <Route
+        path="/"
+        element={
+          <Protected>
+            <Layout />
+          </Protected>
+        }
+      >
         <Route index element={<DashboardPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="bookings" element={<BookingsPage />} />
@@ -93,30 +88,6 @@ export default function App() {
             <RequireManage>
               <AnalyticsPage />
             </RequireManage>
-          }
-        />
-        <Route
-          path="finance"
-          element={
-            <RequireManage>
-              <FinancePage />
-            </RequireManage>
-          }
-        />
-        <Route
-          path="clients"
-          element={
-            <RequireManage>
-              <ClientsPage />
-            </RequireManage>
-          }
-        />
-        <Route
-          path="admin/site-builder"
-          element={
-            <RequirePrivileged>
-              <SiteBuilderPage />
-            </RequirePrivileged>
           }
         />
         <Route path="services" element={<Navigate to="/admin/services" replace />} />

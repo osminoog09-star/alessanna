@@ -4,8 +4,8 @@ import i18n from "../i18n";
 import { supabase } from "../lib/supabase";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
 import { useServicesCatalogRealtime } from "../hooks/useSalonRealtime";
-import type { ServiceCategoryRow, ServiceListingRow } from "../types/database";
-import { eurFromEuroAmount } from "../lib/format";
+import type { CategoryRow, ServiceRow } from "../types/database";
+import { eurFromCents } from "../lib/format";
 
 const editableUi =
   "border border-sky-600/45 ring-1 ring-sky-500/25 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/40";
@@ -15,18 +15,18 @@ const fieldBase =
 export function ServicesPage() {
   const { t } = useTranslation();
   const { canManage } = useEffectiveRole();
-  const [categories, setCategories] = useState<ServiceCategoryRow[]>([]);
-  const [listings, setListings] = useState<ServiceListingRow[]>([]);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
 
   const load = useCallback(async () => {
     const [c, s] = await Promise.all([
-      supabase.from("service_categories").select("*").order("sort_order", { ascending: true }).order("name"),
-      supabase.from("service_listings").select("*").order("sort_order", { ascending: true }),
+      supabase.from("categories").select("*").order("name"),
+      supabase.from("services").select("*").order("sort_order", { ascending: true }),
     ]);
-    if (c.data) setCategories(c.data as ServiceCategoryRow[]);
-    if (s.data) setListings(s.data as ServiceListingRow[]);
+    if (c.data) setCategories(c.data as CategoryRow[]);
+    if (s.data) setServices(s.data as ServiceRow[]);
     setLoading(false);
   }, []);
 
@@ -38,63 +38,58 @@ export function ServicesPage() {
 
   async function addCategory() {
     if (!newCat.trim() || !canManage) return;
-    await supabase.from("service_categories").insert({
-      name: newCat.trim(),
-      sort_order: categories.length,
-    });
+    await supabase.from("categories").insert({ name: newCat.trim() });
     setNewCat("");
-    void load();
+    load();
   }
 
-  async function saveListing(row: ServiceListingRow) {
+  async function saveService(s: ServiceRow) {
     if (!canManage) return;
     await supabase
-      .from("service_listings")
+      .from("services")
       .update({
-        name: row.name,
-        price: row.price,
-        duration: row.duration,
-        buffer_after_min: row.buffer_after_min,
-        is_active: row.is_active,
-        category_id: row.category_id,
-        sort_order: row.sort_order,
+        name_et: s.name_et,
+        duration_min: s.duration_min,
+        price_cents: s.price_cents,
+        active: s.active,
+        category_id: s.category_id,
       })
-      .eq("id", row.id);
-    void load();
+      .eq("id", s.id);
+    load();
   }
 
-  async function deleteListing(row: ServiceListingRow) {
+  async function deleteService(s: ServiceRow) {
     if (!canManage) return;
-    if (!window.confirm(t("services.deleteConfirm", { name: row.name }))) return;
+    if (!window.confirm(t("services.deleteConfirm", { name: s.name_et }))) return;
     const { count, error: cErr } = await supabase
-      .from("appointment_services")
+      .from("appointments")
       .select("id", { count: "exact", head: true })
-      .eq("service_id", row.id);
+      .eq("service_id", s.id);
     if (cErr) return;
     if ((count ?? 0) > 0) {
       window.alert(t("services.deleteBlockedBookings"));
       return;
     }
-    await supabase.from("staff_services").delete().eq("service_id", row.id);
-    const { error } = await supabase.from("service_listings").delete().eq("id", row.id);
+    await supabase.from("staff_services").delete().eq("service_id", s.id);
+    const { error } = await supabase.from("services").delete().eq("id", s.id);
     if (error) {
       window.alert(t("services.deleteFailed"));
       return;
     }
-    void load();
+    load();
   }
 
-  async function addListing() {
+  async function addService() {
     if (!canManage) return;
-    await supabase.from("service_listings").insert({
-      name: i18n.t("services.newServiceDefault"),
-      duration: 60,
+    await supabase.from("services").insert({
+      name_et: i18n.t("services.newServiceDefault"),
+      duration_min: 60,
       buffer_after_min: 10,
-      price: 30,
-      is_active: true,
-      sort_order: listings.length,
+      price_cents: 3000,
+      active: true,
+      sort_order: services.length,
     });
-    void load();
+    load();
   }
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
@@ -109,7 +104,7 @@ export function ServicesPage() {
         {canManage && (
           <button
             type="button"
-            onClick={() => void addListing()}
+            onClick={() => void addService()}
             className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
           >
             {t("services.addService")}
@@ -146,21 +141,21 @@ export function ServicesPage() {
       )}
 
       <div className="space-y-4">
-        {listings.map((row) => (
+        {services.map((s) => (
           <div
-            key={row.id}
+            key={s.id}
             className="grid gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-5 md:grid-cols-2 lg:grid-cols-4"
           >
             <label className="block text-xs text-zinc-500">
               {t("services.name")}
               <input
                 disabled={!canManage}
-                value={row.name}
+                value={s.name_et}
                 onChange={(e) => {
                   const v = e.target.value;
-                  setListings((prev) => prev.map((x) => (x.id === row.id ? { ...x, name: v } : x)));
+                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name_et: v } : x)));
                 }}
-                onBlur={() => void saveListing(row)}
+                onBlur={() => void saveService(s)}
                 className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               />
             </label>
@@ -168,43 +163,28 @@ export function ServicesPage() {
               {t("services.priceCents")}
               <input
                 type="number"
-                step="0.01"
                 disabled={!canManage}
-                value={row.price ?? ""}
+                value={s.price_cents}
                 onChange={(e) => {
-                  const v = e.target.value === "" ? null : Number(e.target.value);
-                  setListings((prev) => prev.map((x) => (x.id === row.id ? { ...x, price: v } : x)));
+                  const price_cents = Number(e.target.value);
+                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
                 }}
-                onBlur={() => void saveListing(row)}
+                onBlur={() => void saveService(s)}
                 className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               />
-              <span className="mt-1 block text-zinc-600">{eurFromEuroAmount(Number(row.price ?? 0))}</span>
+              <span className="mt-1 block text-zinc-600">{eurFromCents(s.price_cents)}</span>
             </label>
             <label className="block text-xs text-zinc-500">
               {t("services.duration")}
               <input
                 type="number"
                 disabled={!canManage}
-                value={row.duration ?? ""}
+                value={s.duration_min}
                 onChange={(e) => {
-                  const duration = e.target.value === "" ? null : Number(e.target.value);
-                  setListings((prev) => prev.map((x) => (x.id === row.id ? { ...x, duration } : x)));
+                  const duration_min = Number(e.target.value);
+                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
                 }}
-                onBlur={() => void saveListing(row)}
-                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-              />
-            </label>
-            <label className="block text-xs text-zinc-500">
-              Buffer (min)
-              <input
-                type="number"
-                disabled={!canManage}
-                value={row.buffer_after_min}
-                onChange={(e) => {
-                  const buffer_after_min = Number(e.target.value);
-                  setListings((prev) => prev.map((x) => (x.id === row.id ? { ...x, buffer_after_min } : x)));
-                }}
-                onBlur={() => void saveListing(row)}
+                onBlur={() => void saveService(s)}
                 className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               />
             </label>
@@ -212,12 +192,12 @@ export function ServicesPage() {
               {t("services.category")}
               <select
                 disabled={!canManage}
-                value={row.category_id ?? ""}
+                value={s.category_id ?? ""}
                 onChange={(e) => {
-                  const category_id = e.target.value || null;
-                  const next = { ...row, category_id };
-                  setListings((prev) => prev.map((x) => (x.id === row.id ? next : x)));
-                  void saveListing(next);
+                  const category_id = e.target.value ? Number(e.target.value) : null;
+                  const next = { ...s, category_id };
+                  setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
+                  void saveService(next);
                 }}
                 className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
               >
@@ -233,11 +213,11 @@ export function ServicesPage() {
               <input
                 type="checkbox"
                 disabled={!canManage}
-                checked={row.is_active}
+                checked={s.active}
                 onChange={(e) => {
-                  const is_active = e.target.checked;
-                  setListings((prev) => prev.map((x) => (x.id === row.id ? { ...x, is_active } : x)));
-                  void saveListing({ ...row, is_active });
+                  const active = e.target.checked;
+                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, active } : x)));
+                  void saveService({ ...s, active });
                 }}
               />
               {t("services.active")}
@@ -246,7 +226,7 @@ export function ServicesPage() {
               <div className="lg:col-span-4">
                 <button
                   type="button"
-                  onClick={() => void deleteListing(row)}
+                  onClick={() => void deleteService(s)}
                   className="text-xs font-medium text-red-400 hover:text-red-300"
                 >
                   {t("services.deletePermanent")}

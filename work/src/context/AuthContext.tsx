@@ -8,8 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { hasStaffRole, isPrivilegedAdminRole, isWorkerOnlyView, normalizeStaffMember } from "../lib/roles";
-import { isValidStaffLoginPhoneDigits } from "../lib/staffLoginPhone";
+import { hasStaffRole, isWorkerOnlyView, normalizeStaffMember } from "../lib/roles";
 import type { StaffMember } from "../types/database";
 
 const STORAGE_KEY = "alessanna_crm_staff";
@@ -23,11 +22,8 @@ type AuthState = {
   loading: boolean;
   login: (phone: string) => Promise<LoginResult>;
   logout: () => void;
-  /** No staff session: reception desk mode (calendar + bookings only). */
-  isReceptionMode: boolean;
   canManage: boolean;
-  /** Admin or owner: full CRM control + role preview. */
-  isPrivilegedAdmin: boolean;
+  isAdmin: boolean;
   /** True when real (non-preview) role is worker-only. */
   isWorkerOnly: boolean;
 };
@@ -55,8 +51,8 @@ function staffTableRowToMember(raw: Record<string, unknown>): StaffMember {
 }
 
 /**
- * Legacy: `verify_staff_phone` may return a staff row as JSON (object with `id`).
- * If RPC returns only `true`, the app loads the row from `staff` separately.
+ * `verify_staff_phone` must return a JSON staff row (object with `id`).
+ * Booleans and null mean access denied.
  */
 function parseStaffFromRpcData(data: unknown): StaffMember | null {
   if (data == null || data === false || data === true) return null;
@@ -104,49 +100,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!cleanPhone) {
       return { ok: false, errorKey: "auth.error.phoneRequired" };
     }
-    if (!isValidStaffLoginPhoneDigits(cleanPhone)) {
-      return { ok: false, errorKey: "login.phoneInvalidLength" };
-    }
 
-    const { data: rpcData, error: rpcError } = await supabase.rpc("verify_staff_phone", {
+    const { data, error } = await supabase.rpc("verify_staff_phone", {
       phone_input: cleanPhone,
     });
 
-    if (rpcError) {
-      return { ok: false, errorKey: "auth.error.rpcFailed", message: rpcError.message };
+    if (error) {
+      console.error(error);
+      return { ok: false, errorKey: "auth.error.rpcFailed", message: error.message };
     }
 
-    const rpcSaysOk =
-      rpcData === true ||
-      rpcData === "true" ||
-      (typeof rpcData === "string" && rpcData.trim().toLowerCase() === "true");
-
-    let member: StaffMember | null = null;
-
-    if (rpcSaysOk) {
-      const { data: user, error: staffErr } = await supabase
-        .from("staff")
-        .select("*")
-        .eq("phone", cleanPhone)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (staffErr) {
-        return { ok: false, errorKey: "auth.error.rpcFailed", message: staffErr.message };
-      }
-      if (user && typeof user === "object" && user !== null && "id" in user) {
-        member = staffTableRowToMember(user as Record<string, unknown>);
-      }
-    } else {
-      member = parseStaffFromRpcData(rpcData);
+    const row = parseStaffFromRpcData(data);
+    if (!row) {
+      return { ok: false, errorKey: "auth.error.accessDenied" };
     }
 
-    if (!member) {
-      return { ok: false, errorKey: "auth.error.accessDenied", displayError: "Доступ запрещён" };
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(member));
-    setStaffMember(member);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
+    setStaffMember(row);
     return { ok: true };
   }, []);
 
@@ -161,12 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       logout,
-      isReceptionMode: staffMember == null,
-      canManage:
-        hasStaffRole(staffMember, "owner") ||
-        hasStaffRole(staffMember, "admin") ||
-        hasStaffRole(staffMember, "manager"),
-      isPrivilegedAdmin: isPrivilegedAdminRole(staffMember?.roles),
+      canManage: hasStaffRole(staffMember, "admin") || hasStaffRole(staffMember, "manager"),
+      isAdmin: hasStaffRole(staffMember, "admin"),
       isWorkerOnly: isWorkerOnlyView(staffMember?.roles),
     }),
     [staffMember, loading, login, logout]

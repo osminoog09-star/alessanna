@@ -104,6 +104,51 @@ function employeeAllowedForService(employeeId, serviceId) {
   return forSvc.some((r) => r.employee_id === employeeId);
 }
 
+function serviceIdsForEmployee(employeeId) {
+  return db
+    .prepare("SELECT service_id FROM employee_services WHERE employee_id = ? ORDER BY service_id")
+    .all(employeeId)
+    .map((r) => r.service_id);
+}
+
+function attachServiceIds(row) {
+  return row ? { ...row, serviceIds: serviceIdsForEmployee(row.id) } : row;
+}
+
+function replaceEmployeeServices(employeeId, serviceIds) {
+  if (!Array.isArray(serviceIds)) return;
+  const normalized = [...new Set(serviceIds.map(Number).filter((id) => id > 0))];
+  const del = db.prepare("DELETE FROM employee_services WHERE employee_id = ?");
+  const ins = db.prepare("INSERT OR IGNORE INTO employee_services (employee_id, service_id) VALUES (?, ?)");
+  const run = db.transaction(() => {
+    del.run(employeeId);
+    for (const serviceId of normalized) ins.run(employeeId, serviceId);
+  });
+  run();
+}
+
+function uniqueSortedSlots(slots) {
+  return [...new Set(slots)].sort();
+}
+
+function slotsForAnyEmployee(serviceId, dateStr) {
+  const employees = listPublicEmployees(serviceId);
+  const allSlots = [];
+  for (const employee of employees) {
+    allSlots.push(...getSlots(db, { employeeId: employee.id, dateStr, serviceId }));
+  }
+  return uniqueSortedSlots(allSlots);
+}
+
+function findEmployeeForSlot(serviceId, dateStr, time) {
+  const employees = listPublicEmployees(serviceId);
+  for (const employee of employees) {
+    const slots = getSlots(db, { employeeId: employee.id, dateStr, serviceId });
+    if (slots.includes(time)) return employee;
+  }
+  return null;
+}
+
 app.get("/api/public/employees", (req, res) => {
   res.json(listPublicEmployees(req.query.serviceId));
 });
@@ -123,12 +168,14 @@ app.get("/api/public/services", (_, res) => {
 });
 
 app.get("/api/public/slots", (req, res) => {
+  const anyEmployee = req.query.employeeId === "any";
   const employeeId = Number(req.query.employeeId);
   const date = req.query.date;
   const serviceId = Number(req.query.serviceId);
-  if (!employeeId || !date || !serviceId) {
+  if ((!employeeId && !anyEmployee) || !date || !serviceId) {
     return res.status(400).json({ error: "employeeId, date, serviceId required" });
   }
+  if (anyEmployee) return res.json({ slots: slotsForAnyEmployee(serviceId, date) });
   const emp = db.prepare("SELECT id FROM employees WHERE id = ? AND active = 1").get(employeeId);
   if (!emp) return res.status(404).json({ error: "Employee not found" });
   const slots = getSlots(db, { employeeId, dateStr: date, serviceId });
@@ -137,21 +184,24 @@ app.get("/api/public/slots", (req, res) => {
 
 /** Один запрос на месяц — без десятков отдельных вызовов с клиента */
 app.get("/api/public/calendar-month", (req, res) => {
+  const anyEmployee = req.query.employeeId === "any";
   const employeeId = Number(req.query.employeeId);
   const serviceId = Number(req.query.serviceId);
   const y = Number(req.query.y);
   const m = Number(req.query.m);
-  if (!employeeId || !serviceId || Number.isNaN(y) || Number.isNaN(m) || m < 0 || m > 11) {
+  if ((!employeeId && !anyEmployee) || !serviceId || Number.isNaN(y) || Number.isNaN(m) || m < 0 || m > 11) {
     return res.status(400).json({ error: "employeeId, serviceId, y, m (0-11) required" });
   }
-  const emp = db.prepare("SELECT id FROM employees WHERE id = ? AND active = 1").get(employeeId);
-  if (!emp) return res.status(404).json({ error: "Employee not found" });
+  if (!anyEmployee) {
+    const emp = db.prepare("SELECT id FROM employees WHERE id = ? AND active = 1").get(employeeId);
+    if (!emp) return res.status(404).json({ error: "Employee not found" });
+  }
 
   const dim = new Date(y, m + 1, 0).getDate();
   const days = {};
   for (let d = 1; d <= dim; d++) {
     const key = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const slots = getSlots(db, { employeeId, dateStr: key, serviceId });
+    const slots = anyEmployee ? slotsForAnyEmployee(serviceId, key) : getSlots(db, { employeeId, dateStr: key, serviceId });
     days[key] = { slots };
   }
   res.json({ days });
@@ -159,17 +209,24 @@ app.get("/api/public/calendar-month", (req, res) => {
 
 app.post("/api/public/bookings", (req, res) => {
   const b = req.body || {};
-  const employeeId = Number(b.employeeId);
+  let employeeId = Number(b.employeeId);
+  const anyEmployee = b.employeeId === "any";
   const serviceId = Number(b.serviceId);
   const date = b.date;
   const time = b.time;
   const clientName = (b.clientName || b.name || "").trim();
-  if (!employeeId || !serviceId || !date || !time || !clientName) {
+  if ((!employeeId && !anyEmployee) || !serviceId || !date || !time || !clientName) {
     return res.status(400).json({ error: "Missing fields" });
   }
 
   const service = db.prepare("SELECT * FROM services WHERE id = ? AND active = 1").get(serviceId);
   if (!service) return res.status(400).json({ error: "Invalid service" });
+
+  if (anyEmployee) {
+    const employee = findEmployeeForSlot(serviceId, date, time);
+    if (!employee) return res.status(409).json({ error: "Invalid slot" });
+    employeeId = employee.id;
+  }
 
   const empRow = db.prepare("SELECT id FROM employees WHERE id = ? AND active = 1").get(employeeId);
   if (!empRow) return res.status(400).json({ error: "Invalid employee" });
@@ -702,10 +759,10 @@ app.get("/api/crm/employees", requireAuth, (req, res) => {
     const one = db
       .prepare("SELECT id, name, phone, email, active FROM employees WHERE id = ?")
       .get(Number(req.user.employeeId));
-    return res.json(one ? [one] : []);
+    return res.json(one ? [attachServiceIds(one)] : []);
   }
   const rows = db.prepare("SELECT * FROM employees ORDER BY id").all();
-  res.json(rows);
+  res.json(rows.map(attachServiceIds));
 });
 
 app.post("/api/crm/employees", requireAuth, requireRoles("admin", "manager"), (req, res) => {
@@ -713,6 +770,7 @@ app.post("/api/crm/employees", requireAuth, requireRoles("admin", "manager"), (r
   const info = db
     .prepare("INSERT INTO employees (name, phone, email, slug, active) VALUES (?, ?, ?, ?, 1)")
     .run((e.name || "").trim(), (e.phone || "").trim() || null, (e.email || "").trim() || null, (e.slug || "").trim() || null);
+  replaceEmployeeServices(info.lastInsertRowid, e.serviceIds);
   res.status(201).json({ id: info.lastInsertRowid });
 });
 
@@ -735,6 +793,7 @@ app.patch("/api/crm/employees/:id", requireAuth, requireRoles("admin", "manager"
     e.active !== undefined ? (e.active ? 1 : 0) : null,
     id
   );
+  replaceEmployeeServices(id, e.serviceIds);
   res.json({ ok: true });
 });
 

@@ -21,19 +21,8 @@ import {
 import { addMinutes, isSameDay, parseISO, setHours, setMinutes, startOfDay } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
-import type { StaffMember, StaffScheduleRow, StaffServiceRow, ServiceListingRow } from "../../types/database";
-
-/** One `appointment_services` line (id = service line row, not visit header). */
-type ProCalendarBooking = {
-  id: string;
-  staff_id: string;
-  service_id: string;
-  client_name: string;
-  start_time: string;
-  end_time: string;
-};
+import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow, ServiceRow } from "../../types/database";
 import { staffCanPerformService } from "../../lib/roles";
-import { listingSlotMinutes } from "../../lib/serviceListing";
 import { appointmentInterval, intervalsOverlap, workingWindowsForWeekday } from "../../lib/slots";
 import type { StaffTimeOffRow } from "../../types/database";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -41,22 +30,22 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 const SLOT_PREFIX = "slot-";
 const BOOKING_PREFIX = "booking-";
 
-function slotId(staffId: string, hour: number) {
-  return `${SLOT_PREFIX}${staffId}|${hour}`;
+function slotId(employeeId: string, hour: number) {
+  return `${SLOT_PREFIX}${employeeId}|${hour}`;
 }
 
-function parseSlotId(id: string): { staffId: string; hour: number } | null {
+function parseSlotId(id: string): { employeeId: string; hour: number } | null {
   if (!id.startsWith(SLOT_PREFIX)) return null;
   const rest = id.slice(SLOT_PREFIX.length);
   const pipe = rest.lastIndexOf("|");
   if (pipe <= 0) return null;
-  const sid = rest.slice(0, pipe);
+  const emp = rest.slice(0, pipe);
   const hour = Number(rest.slice(pipe + 1));
   if (!Number.isFinite(hour)) return null;
-  return { staffId: sid, hour };
+  return { employeeId: emp, hour };
 }
 
-type StaffColumn = Pick<StaffMember, "id" | "name">;
+type ColumnEmp = Pick<StaffMember, "id" | "name">;
 
 function hourInWorkingWindow(weekday: number, hour: number, schedules: StaffScheduleRow[], staffId: string): boolean {
   const mine = schedules.filter((s) => s.staff_id === staffId);
@@ -87,9 +76,9 @@ function hourInTimeOff(day: Date, hour: number, staffId: string, timeOff: StaffT
 
 type ProCalendarProps = {
   day: Date;
-  appointments: ProCalendarBooking[];
+  appointments: AppointmentRow[];
   staff: StaffMember[];
-  services: ServiceListingRow[];
+  services: ServiceRow[];
   staffServiceLinks?: StaffServiceRow[];
   schedules: StaffScheduleRow[];
   timeOff: StaffTimeOffRow[];
@@ -172,7 +161,7 @@ const DraggableBooking = memo(function DraggableBooking({
   disabled,
   isMobile,
 }: {
-  booking: ProCalendarBooking;
+  booking: AppointmentRow;
   serviceName: string;
   disabled: boolean;
   isMobile: boolean;
@@ -226,7 +215,7 @@ export function ProCalendar({
   const [staffFilter, setStaffFilter] = useState<string | "all">("all");
   const [mobileTab, setMobileTab] = useState<"day" | "team">("day");
   const [mobileFocusId, setMobileFocusId] = useState<string | null>(null);
-  const [activeDrag, setActiveDrag] = useState<ProCalendarBooking | null>(null);
+  const [activeDrag, setActiveDrag] = useState<AppointmentRow | null>(null);
 
   const weekday = day.getDay();
 
@@ -251,7 +240,7 @@ export function ProCalendar({
     }
   }, [lockToStaffId, activeList, mobileFocusId]);
 
-  const filteredColumns: StaffColumn[] = useMemo(() => {
+  const filteredColumns: ColumnEmp[] = useMemo(() => {
     if (lockToStaffId != null) {
       const one = activeList.find((e) => e.id === lockToStaffId);
       return one ? [{ id: one.id, name: one.name }] : [];
@@ -283,7 +272,7 @@ export function ProCalendar({
   }, [appointments, day]);
 
   const bookingAt = useCallback(
-    (sid: string, hour: number): ProCalendarBooking | undefined => {
+    (sid: string, hour: number): AppointmentRow | undefined => {
       return dayAppointments.find((b) => {
         if (b.staff_id !== sid) return false;
         const iv = appointmentInterval(b);
@@ -295,7 +284,7 @@ export function ProCalendar({
   );
 
   const serviceName = useCallback(
-    (serviceId: string) => services.find((s) => s.id === serviceId)?.name ?? t("common.service"),
+    (serviceId: number) => services.find((s) => s.id === serviceId)?.name_et ?? t("common.service"),
     [services, t]
   );
 
@@ -332,19 +321,19 @@ export function ProCalendar({
       const booking = appointments.find((b) => String(b.id) === bookingId);
       if (!booking) return;
 
-      if (lockToStaffId != null && parsed.staffId !== lockToStaffId) return;
+      if (lockToStaffId != null && parsed.employeeId !== lockToStaffId) return;
 
-      if (!staffCanPerformService(staffServiceLinks, parsed.staffId, booking.service_id, staff)) {
+      if (!staffCanPerformService(staffServiceLinks, parsed.employeeId, booking.service_id, staff)) {
         return;
       }
 
       const svc = services.find((s) => s.id === booking.service_id);
-      const duration = svc ? listingSlotMinutes(svc) : 70;
+      const duration = (svc?.duration_min ?? 60) + (svc?.buffer_after_min ?? 10);
       const slotStart = setMinutes(setHours(startOfDay(day), parsed.hour), 0);
       const slotEnd = addMinutes(slotStart, duration);
 
       const clash = dayAppointments.some((b) => {
-        if (String(b.id) === bookingId || b.staff_id !== parsed.staffId) return false;
+        if (String(b.id) === bookingId || b.staff_id !== parsed.employeeId) return false;
         const iv = appointmentInterval(b);
         if (!iv) return false;
         return intervalsOverlap(slotStart, slotEnd, iv.start, iv.end);
@@ -352,9 +341,9 @@ export function ProCalendar({
       if (clash) return;
 
       const { error } = await supabase
-        .from("appointment_services")
+        .from("appointments")
         .update({
-          staff_id: parsed.staffId,
+          staff_id: parsed.employeeId,
           start_time: slotStart.toISOString(),
           end_time: slotEnd.toISOString(),
         })
@@ -455,7 +444,7 @@ export function ProCalendar({
               }}
               className="min-w-[12rem] rounded-xl border border-white/10 bg-zinc-950/80 px-4 py-2.5 text-sm text-white shadow-inner backdrop-blur-md focus:border-sky-500/40 focus:outline-none focus:ring-1 focus:ring-sky-500/30"
             >
-              <option value="all">{t("proCalendar.allStaff")}</option>
+              <option value="all">{t("proCalendar.allEmployees")}</option>
               {activeList.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.name}
@@ -497,9 +486,9 @@ export function ProCalendar({
                 ))}
               </div>
 
-              {filteredColumns.map((staffCol) => (
+              {filteredColumns.map((emp) => (
                 <div
-                  key={staffCol.id}
+                  key={emp.id}
                   className={`shrink-0 border-r border-white/[0.06] last:border-r-0 ${
                     isMobile ? "min-w-[min(100vw-4rem,320px)]" : "min-w-[160px] flex-1"
                   }`}
@@ -509,16 +498,16 @@ export function ProCalendar({
                       isMobile ? "min-h-[4.25rem] text-base" : "h-16 text-sm"
                     }`}
                   >
-                    {staffCol.name}
+                    {emp.name}
                   </div>
                   {hours.map((h) => {
-                    const b = bookingAt(staffCol.id, h);
-                    const workingBg = hourInWorkingWindow(weekday, h, schedules, staffCol.id);
-                    const timeOffBg = hourInTimeOff(day, h, staffCol.id, timeOff);
+                    const b = bookingAt(emp.id, h);
+                    const workingBg = hourInWorkingWindow(weekday, h, schedules, emp.id);
+                    const timeOffBg = hourInTimeOff(day, h, emp.id, timeOff);
                     return (
                       <DroppableHourCell
                         key={h}
-                        staffId={staffCol.id}
+                        staffId={emp.id}
                         hour={h}
                         day={day}
                         hasBooking={!!b}
@@ -526,7 +515,7 @@ export function ProCalendar({
                         canCreate={canCreate}
                         workingBg={workingBg}
                         timeOffBg={timeOffBg}
-                        onEmptyClick={!b && canCreate ? () => openCreate(h, staffCol.id) : undefined}
+                        onEmptyClick={!b && canCreate ? () => openCreate(h, emp.id) : undefined}
                         emptySlotAriaLabel={t("proCalendar.createBookingAria", { hour: h })}
                       >
                         {b && (

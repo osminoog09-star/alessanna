@@ -2,8 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { useStaffDirectoryRealtime } from "../hooks/useSalonRealtime";
-import type { StaffTimeOffRow, StaffTableRow, TimeOffType } from "../types/database";
+import type { StaffTimeOffRow, StaffTableRow } from "../types/database";
 
 export function AdminTimeOffPage() {
   const { t } = useTranslation();
@@ -12,7 +11,6 @@ export function AdminTimeOffPage() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
-  const [timeOffType, setTimeOffType] = useState<TimeOffType>("manual_block");
   const [blocks, setBlocks] = useState<StaffTimeOffRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -39,8 +37,6 @@ export function AdminTimeOffPage() {
     void loadBlocks();
   }, [loadStaff, loadBlocks]);
 
-  useStaffDirectoryRealtime(loadStaff);
-
   async function onAdd(e: FormEvent) {
     e.preventDefault();
     setErr(null);
@@ -50,7 +46,6 @@ export function AdminTimeOffPage() {
       start_time: new Date(start).toISOString(),
       end_time: new Date(end).toISOString(),
       reason: reason.trim() || null,
-      time_off_type: timeOffType,
     });
     if (error) {
       setErr(error.message);
@@ -112,18 +107,6 @@ export function AdminTimeOffPage() {
           />
         </label>
         <label className="block text-sm text-zinc-400">
-          {t("blockTimeModal.type")}
-          <select
-            value={timeOffType}
-            onChange={(e) => setTimeOffType(e.target.value as TimeOffType)}
-            className="mt-1 block w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
-          >
-            <option value="manual_block">{t("blockTimeModal.typeManual")}</option>
-            <option value="day_off">{t("blockTimeModal.typeDayOff")}</option>
-            <option value="sick_leave">{t("blockTimeModal.typeSick")}</option>
-          </select>
-        </label>
-        <label className="block text-sm text-zinc-400">
           {t("adminTimeOff.reason")}
           <input
             value={reason}
@@ -146,13 +129,6 @@ export function AdminTimeOffPage() {
             >
               <div>
                 <span className="font-medium text-white">{st?.name ?? b.staff_id}</span>
-                <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase text-zinc-400">
-                  {b.time_off_type === "sick_leave"
-                    ? t("timeOffType.sick_leave")
-                    : b.time_off_type === "day_off"
-                      ? t("timeOffType.day_off")
-                      : t("blockTimeModal.typeManual")}
-                </span>
                 <span className="text-zinc-500">
                   {" "}
                   {format(parseISO(b.start_time), "Pp")} – {format(parseISO(b.end_time), "Pp")}

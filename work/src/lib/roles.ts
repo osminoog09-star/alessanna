@@ -1,5 +1,4 @@
-import type { Role, ServiceListingRow, StaffMember, StaffRole, StaffServiceRow } from "../types/database";
-import { serviceListingIsActive } from "./serviceListing";
+import type { Role, ServiceRow, StaffMember, StaffRole, StaffServiceRow } from "../types/database";
 
 export type { Role, StaffRole };
 
@@ -8,7 +7,7 @@ function mapRoleToken(x: unknown): StaffRole | null {
   const l = x.toLowerCase().trim();
   if (l === "viewer") return null;
   if (l === "employee" || l === "staff") return "worker";
-  if (l === "owner" || l === "admin" || l === "manager" || l === "worker") return l;
+  if (l === "admin" || l === "manager" || l === "worker") return l;
   return null;
 }
 
@@ -54,41 +53,29 @@ export function hasStaffRole(
   return normalizeRoles(member.roles).includes(role);
 }
 
-/** Admin or owner: full staff/settings control (managers excluded). */
-export function isPrivilegedAdminRole(roles: StaffRole[] | undefined | null): boolean {
-  const r = normalizeRoles(roles);
-  return r.includes("admin") || r.includes("owner");
-}
-
-/** Line staff only: worker, not manager/admin/owner (after normalization). */
+/** Line staff only: worker, not manager/admin (after normalization). */
 export function isWorkerOnlyView(roles: StaffRole[] | undefined): boolean {
   const r = normalizeRoles(roles);
-  return (
-    r.includes("worker") &&
-    !r.includes("manager") &&
-    !r.includes("admin") &&
-    !r.includes("owner")
-  );
+  return r.includes("worker") && !r.includes("manager") && !r.includes("admin");
 }
 
 export function sanitizeRolesForSave(
   edited: StaffRole[],
-  editorIsPrivilegedAdmin: boolean,
+  editorIsAdmin: boolean,
   storedRoles: StaffRole[] | undefined
 ): StaffRole[] {
   const norm = normalizeRoles(edited);
   const storedNorm = normalizeRoles(storedRoles);
-  if (editorIsPrivilegedAdmin) return attachWorkerForManagers(norm.length ? norm : ["worker"]);
-  let out = norm.filter((r) => r !== "admin" && r !== "owner");
+  if (editorIsAdmin) return attachWorkerForManagers(norm.length ? norm : ["worker"]);
+  let out = norm.filter((r) => r !== "admin");
   if (storedNorm.includes("admin")) out = [...new Set([...out, "admin"])];
-  if (storedNorm.includes("owner")) out = [...new Set([...out, "owner"])];
   return attachWorkerForManagers(out.length ? out : ["worker"]);
 }
 
 export function staffEligibleForService(
   staffList: StaffMember[],
   links: StaffServiceRow[],
-  serviceId: string | null
+  serviceId: number | null
 ): StaffMember[] {
   const active = staffList.filter((s) => s.active);
   if (serviceId == null) return active;
@@ -98,14 +85,14 @@ export function staffEligibleForService(
   return active.filter((e) => {
     if (ids.has(e.id)) return true;
     const r = normalizeRoles(e.roles);
-    return r.includes("manager") || r.includes("admin") || r.includes("owner");
+    return r.includes("manager") || r.includes("admin");
   });
 }
 
 export function staffCanPerformService(
   links: StaffServiceRow[],
   staffId: string,
-  serviceId: string,
+  serviceId: number,
   staffList?: StaffMember[]
 ): boolean {
   const forSvc = links.filter((l) => l.service_id === serviceId);
@@ -114,23 +101,21 @@ export function staffCanPerformService(
   const st = staffList?.find((e) => e.id === staffId);
   if (!st?.active) return false;
   const r = normalizeRoles(st.roles);
-  return r.includes("manager") || r.includes("admin") || r.includes("owner");
+  return r.includes("manager") || r.includes("admin");
 }
 
 export function servicesEligibleForStaff(
-  services: ServiceListingRow[],
+  services: ServiceRow[],
   links: StaffServiceRow[],
   staffId: string,
   staffRow?: Pick<StaffMember, "roles" | "active"> | null
-): ServiceListingRow[] {
-  const active = services.filter((s) => serviceListingIsActive(s));
+): ServiceRow[] {
+  const active = services.filter((s) => s.active);
   const forSt = links.filter((l) => l.staff_id === staffId);
   if (forSt.length === 0) return active;
   if (
     staffRow?.active &&
-    (hasStaffRole(staffRow, "manager") ||
-      hasStaffRole(staffRow, "admin") ||
-      hasStaffRole(staffRow, "owner"))
+    (hasStaffRole(staffRow, "manager") || hasStaffRole(staffRow, "admin"))
   ) {
     return active;
   }
