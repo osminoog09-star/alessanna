@@ -608,6 +608,50 @@ a:hover {
   }
 }
 
+/* Блик по длинной золотой ветке на фоне salon-bg.png (viewBox 1536×1024, как у PNG) */
+.hero-branch-arc {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hero-branch-arc__svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hero-branch-arc__shimmer {
+  filter: url(#hero-branch-shimmer-glow);
+  stroke-dasharray: 5 95;
+  stroke-dashoffset: 0;
+  opacity: 0.82;
+  animation: heroBranchArcShimmer 11s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: stroke-dashoffset, opacity;
+}
+
+@keyframes heroBranchArcShimmer {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.22;
+  }
+
+  14% {
+    opacity: 0.92;
+  }
+
+  86% {
+    opacity: 0.88;
+  }
+
+  100% {
+    stroke-dashoffset: -100;
+    opacity: 0.2;
+  }
+}
+
 .hero-bg {
   display: none;
 }
@@ -878,6 +922,10 @@ a:hover {
   }
 
   .hero-flourish-particles {
+    display: none !important;
+  }
+
+  .hero-branch-arc {
     display: none !important;
   }
 }

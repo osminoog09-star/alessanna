@@ -52,6 +52,51 @@
   <main id="main">
     <section class="hero" id="hero">
       <div class="hero-bg" aria-hidden="true"><div class="hero-bg-motion"></div></div>
+      <div class="hero-branch-arc" aria-hidden="true">
+        <svg class="hero-branch-arc__svg" viewBox="0 0 1536 1024" preserveAspectRatio="xMidYMin slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="hero-branch-shimmer-grad" x1="0%" y1="0%" x2="100%" y2="0%" gradientUnits="objectBoundingBox">
+              <stop offset="0%" stop-color="#fcf8f0" stop-opacity="0.35" />
+              <stop offset="42%" stop-color="#d4af37" stop-opacity="1" />
+              <stop offset="50%" stop-color="#fffef8" stop-opacity="1" />
+              <stop offset="58%" stop-color="#c9a24d" stop-opacity="0.92" />
+              <stop offset="100%" stop-color="#fcf8f0" stop-opacity="0.28" />
+            </linearGradient>
+            <filter id="hero-branch-shimmer-glow" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="b" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b2" />
+              <feMerge>
+                <feMergeNode in="b2" />
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="hero-branch-dot-glow" x="-120%" y="-120%" width="340%" height="340%" color-interpolation-filters="sRGB">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.8" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <radialGradient id="hero-branch-dot-grad" cx="35%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#fffef8" />
+              <stop offset="50%" stop-color="#f5ecd8" />
+              <stop offset="100%" stop-color="#d4af37" />
+            </radialGradient>
+          </defs>
+          <path id="hero-branch-curve" class="hero-branch-arc__shimmer" pathLength="100" fill="none" stroke="url(#hero-branch-shimmer-grad)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" d="M 175 565 C 385 735 565 615 755 395 C 945 210 1105 195 1265 178 C 1340 168 1410 152 1495 132" />
+          <circle class="hero-branch-arc__dot-trail" r="9" fill="rgba(255,254,248,0.42)" opacity="0.55" filter="url(#hero-branch-dot-glow)">
+            <animateMotion dur="11s" begin="0.42s" repeatCount="indefinite" rotate="auto" calcMode="spline" keySplines="0.45 0.05 0.55 0.95" keyTimes="0;1">
+              <mpath href="#hero-branch-curve" />
+            </animateMotion>
+          </circle>
+          <circle class="hero-branch-arc__dot-lead" r="3.2" fill="url(#hero-branch-dot-grad)">
+            <animateMotion dur="11s" repeatCount="indefinite" rotate="auto" calcMode="spline" keySplines="0.45 0.05 0.55 0.95" keyTimes="0;1">
+              <mpath href="#hero-branch-curve" />
+            </animateMotion>
+          </circle>
+        </svg>
+      </div>
       <div class="hero-inner reveal hero-animate">
         <p class="hero-eyebrow">Ametlik maaletooja · Eesti</p>
         <div class="hero-brand-wrap">
