@@ -28,6 +28,8 @@ export function ServicesPage() {
   const [quickBuffer, setQuickBuffer] = useState("10");
   const [quickActive, setQuickActive] = useState(true);
   const [quickStaffIds, setQuickStaffIds] = useState<string[]>([]);
+  const [publicListingNames, setPublicListingNames] = useState<Set<string>>(new Set());
+  const [publicCheckLoading, setPublicCheckLoading] = useState(false);
 
   function categoryNameFromService(service: ServiceRow): string {
     const direct = String(service.category || "").trim();
@@ -196,9 +198,30 @@ export function ServicesPage() {
     setLoading(false);
   }, []);
 
+  const refreshPublicStatus = useCallback(async () => {
+    setPublicCheckLoading(true);
+    try {
+      const resp = await supabase.from("service_listings").select("name");
+      if (!resp.error && resp.data) {
+        const names = new Set(
+          (resp.data as Array<{ name: string | null }>)
+            .map((r) => String(r.name || "").trim().toLowerCase())
+            .filter(Boolean)
+        );
+        setPublicListingNames(names);
+      }
+    } finally {
+      setPublicCheckLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void refreshPublicStatus();
+  }, [refreshPublicStatus]);
 
   useServicesCatalogRealtime(load);
 
@@ -315,6 +338,7 @@ export function ServicesPage() {
       }
     }
     await syncServiceToPublicCatalog(s);
+    await refreshPublicStatus();
     load();
   }
 
@@ -337,6 +361,7 @@ export function ServicesPage() {
       return;
     }
     await deleteServiceFromPublicCatalog(s);
+    await refreshPublicStatus();
     load();
   }
 
@@ -391,6 +416,7 @@ export function ServicesPage() {
           : mapModernServices([row])[0];
       await syncServiceToPublicCatalog(normalized);
     }
+    await refreshPublicStatus();
     load();
   }
 
@@ -451,6 +477,7 @@ export function ServicesPage() {
       await syncServiceToPublicCatalog(normalized);
     }
 
+    await refreshPublicStatus();
     load();
   }
 
@@ -580,6 +607,7 @@ export function ServicesPage() {
     }
 
     closeQuickCreate();
+    await refreshPublicStatus();
     load();
   }
 
@@ -606,15 +634,28 @@ export function ServicesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-white">{t("services.title")}</h1>
           <p className="text-sm text-zinc-500">{t("services.subtitle")}</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            На главной сейчас видно услуг: {publicListingNames.size}
+            {publicCheckLoading ? " (проверка...)" : ""}
+          </p>
         </div>
         {canManage && (
-          <button
-            type="button"
-            onClick={() => void addService()}
-            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
-          >
-            {t("services.addService")}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void refreshPublicStatus()}
+              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-900"
+            >
+              Проверить главную
+            </button>
+            <button
+              type="button"
+              onClick={() => void addService()}
+              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+            >
+              {t("services.addService")}
+            </button>
+          </div>
         )}
       </header>
 
@@ -700,6 +741,22 @@ export function ServicesPage() {
                   key={s.id}
                   className="grid gap-4 rounded-xl border border-zinc-800 bg-black/30 p-4 md:grid-cols-2 lg:grid-cols-5"
                 >
+                  <div className="lg:col-span-5">
+                    {(() => {
+                      const existsOnMain = publicListingNames.has(String(s.name_et || "").trim().toLowerCase());
+                      return (
+                        <span
+                          className={`inline-flex rounded-md px-2 py-1 text-xs ${
+                            existsOnMain
+                              ? "border border-emerald-700/60 text-emerald-300"
+                              : "border border-amber-700/60 text-amber-300"
+                          }`}
+                        >
+                          На главной: {existsOnMain ? "отображается" : "не отображается"}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <label className="block text-xs text-zinc-500">
                     {t("services.name")}
                     <input
