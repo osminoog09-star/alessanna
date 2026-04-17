@@ -310,7 +310,32 @@ async function fetchPriceList(client) {
     return !res.error && Array.isArray(res.data) && res.data.length > 0;
   }
 
-  const listings = await client
+  /* Prefer query without is_active first: some production DBs predate the column and PostgREST returns 400 if it is selected. */
+  const listingsPrimary = await client
+    .from("service_listings")
+    .select(
+      `
+      id,
+      name,
+      price,
+      duration,
+      category:service_categories(name)
+    `
+    )
+    .order("name", { ascending: true });
+
+  info("Supabase response: service_listings (primary)", {
+    data: listingsPrimary.data,
+    error: listingsPrimary.error,
+  });
+
+  if (hasRows(listingsPrimary)) {
+    return { data: listingsPrimary.data || [], error: null, source: "service_listings" };
+  }
+
+  warnLog("service_listings primary query failed", listingsPrimary.error);
+
+  const listingsWithActive = await client
     .from("service_listings")
     .select(
       `
@@ -324,43 +349,19 @@ async function fetchPriceList(client) {
     )
     .order("name", { ascending: true });
 
-  info("Supabase response: service_listings (full)", {
-    data: listings.data,
-    error: listings.error,
+  info("Supabase response: service_listings (with is_active)", {
+    data: listingsWithActive.data,
+    error: listingsWithActive.error,
   });
 
-  if (hasRows(listings)) {
-    const rows = (listings.data || []).filter(function (r) {
+  if (hasRows(listingsWithActive)) {
+    const rows = (listingsWithActive.data || []).filter(function (r) {
       return r.is_active !== false;
     });
-    return { data: rows, error: null, source: "service_listings" };
+    return { data: rows, error: null, source: "service_listings_filtered" };
   }
 
-  warnLog("service_listings full query failed", listings.error);
-
-  const listingsNoActive = await client
-    .from("service_listings")
-    .select(
-      `
-      id,
-      name,
-      price,
-      duration,
-      category:service_categories(name)
-    `
-    )
-    .order("name", { ascending: true });
-
-  info("Supabase response: service_listings (no is_active)", {
-    data: listingsNoActive.data,
-    error: listingsNoActive.error,
-  });
-
-  if (hasRows(listingsNoActive)) {
-    return { data: listingsNoActive.data || [], error: null, source: "service_listings_no_active" };
-  }
-
-  warnLog("service_listings no-is_active query failed", listingsNoActive.error);
+  warnLog("service_listings with-is_active query failed", listingsWithActive.error);
 
   const listingsMinimal = await client
     .from("service_listings")
@@ -478,7 +479,8 @@ async function fetchPriceList(client) {
       legacy.error ||
       servicesModern.error ||
       listingsMinimal.error ||
-      listings.error,
+      listingsWithActive.error ||
+      listingsPrimary.error,
     source: "none",
   };
 }

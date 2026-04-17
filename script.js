@@ -223,6 +223,15 @@
     });
   }
 
+  /* Динамический прайс (site-services.mjs): элементы с .reveal не попадают в observer выше */
+  window.addEventListener("teenused-supabase-ready", function () {
+    var mount = document.getElementById("teenused-supabase-mount");
+    if (!mount) return;
+    mount.querySelectorAll(".reveal").forEach(function (el) {
+      el.classList.add("is-visible");
+    });
+  });
+
   /* =============================================================================
    * Teenused + meistrid → nimekiri ja vorm (klõps praisil / nimel)
    * ============================================================================= */
