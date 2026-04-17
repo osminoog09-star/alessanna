@@ -148,7 +148,8 @@ function render(groups) {
   let panelHtml = "";
   for (let t = 0; t < groups.length; t++) {
     const gr = groups[t];
-    const panelId = "panel-cat-" + String(gr.id).replace(/[^a-zA-Z0-9_-]/g, "-");
+    /* Уникальный id по индексу: slug от кириллицы даёт одинаковую длину дефисов у разных «n:…» → дубли id и все панели видны сразу. */
+    const panelId = "panel-cat-" + t;
     const tabId = "tab-cat-" + t;
     const isFirst = t === 0;
     const catKey = gr.id === "__none__" ? "other" : gr.id;

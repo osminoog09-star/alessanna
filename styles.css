@@ -1182,6 +1182,11 @@ body.page-mave #hero.hero {
   margin: 0 auto;
 }
 
+/* Явно скрываем неактивные панели (дубли id / сторонние стили не должны оставлять их видимыми). */
+#teenused .tab-panel[hidden] {
+  display: none !important;
+}
+
 .price-list-open .tabs-bar {
   margin-bottom: 1.35rem;
 }
