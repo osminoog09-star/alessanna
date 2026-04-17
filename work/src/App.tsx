@@ -12,6 +12,7 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { AdminStaffPage } from "./pages/AdminStaffPage";
 import { AdminSchedulePage } from "./pages/AdminSchedulePage";
 import { AdminTimeOffPage } from "./pages/AdminTimeOffPage";
+import { AdminSupportPage } from "./pages/AdminSupportPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 
 function RequireManage({ children }: { children: React.ReactNode }) {
@@ -87,6 +88,14 @@ export default function App() {
           element={
             <RequireManage>
               <AnalyticsPage />
+            </RequireManage>
+          }
+        />
+        <Route
+          path="admin/support"
+          element={
+            <RequireManage>
+              <AdminSupportPage />
             </RequireManage>
           }
         />
