@@ -28,7 +28,8 @@ export function ToggleSwitch({
       aria-checked={checked}
       aria-label={ariaLabel}
       disabled={disabled}
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation();
         if (!disabled) onCheckedChange(!checked);
       }}
       className={[

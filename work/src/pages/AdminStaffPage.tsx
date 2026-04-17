@@ -62,6 +62,12 @@ function normServiceName(n: string): string {
   return String(n || "").trim().toLowerCase();
 }
 
+function normId(id: string | number | null | undefined): string {
+  return String(id ?? "")
+    .trim()
+    .toLowerCase();
+}
+
 export function AdminStaffPage() {
   const { t } = useTranslation();
   const [rows, setRows] = useState<StaffTableRow[]>([]);
@@ -97,7 +103,9 @@ export function AdminStaffPage() {
     const listMeta = await supabase.from("service_listings").select("id,name");
     const map: Record<string, string> = {};
     if (!listMeta.error && listMeta.data?.length) {
-      const listingIdSet = new Set((listMeta.data as Array<{ id: string }>).map((r) => String(r.id)));
+      const listingIdSet = new Set(
+        (listMeta.data as Array<{ id: string }>).map((r) => normId(String(r.id))),
+      );
       const byNormName = new Map<string, string>();
       for (const row of listMeta.data as Array<{ id: string; name: string | null }>) {
         const k = normServiceName(String(row.name || ""));
@@ -105,10 +113,11 @@ export function AdminStaffPage() {
       }
       for (const s of catalog) {
         const cid = String(s.id);
-        if (listingIdSet.has(cid)) map[cid] = cid;
+        const cidNorm = normId(cid);
+        if (listingIdSet.has(cidNorm)) map[cid] = cidNorm;
         else {
           const lid = byNormName.get(normServiceName(s.name));
-          if (lid) map[cid] = lid;
+          if (lid) map[cid] = String(lid);
         }
       }
     }
@@ -260,15 +269,25 @@ export function AdminStaffPage() {
   }
 
   async function resolveStaffLinkListingId(catalogServiceId: string, serviceName: string): Promise<string | null> {
-    const cid = String(catalogServiceId);
-    const mapped = catalogIdToListingId[cid];
-    if (mapped) return mapped;
+    const cid = String(catalogServiceId || "").trim();
+    const nm = String(serviceName || "").trim();
+    let mapped = catalogIdToListingId[cid];
+    if (!mapped) {
+      for (const [k, v] of Object.entries(catalogIdToListingId)) {
+        if (normId(k) === normId(cid)) {
+          mapped = v;
+          break;
+        }
+      }
+    }
+    if (mapped) return String(mapped);
     const probe = await supabase.from("service_listings").select("id").eq("id", cid).maybeSingle();
     if (!probe.error && probe.data?.id) return String(probe.data.id);
-    const nm = String(serviceName || "").trim();
     if (nm) {
       const byName = await supabase.from("service_listings").select("id").eq("name", nm).maybeSingle();
       if (!byName.error && byName.data?.id) return String(byName.data.id);
+      const byTrim = await supabase.from("service_listings").select("id").eq("name", nm.trim()).maybeSingle();
+      if (!byTrim.error && byTrim.data?.id) return String(byTrim.data.id);
       const byIlike = await supabase.from("service_listings").select("id,name").ilike("name", nm);
       if (!byIlike.error && byIlike.data?.length === 1 && byIlike.data[0].id) return String(byIlike.data[0].id);
       const all = await supabase.from("service_listings").select("id,name");
@@ -312,12 +331,61 @@ export function AdminStaffPage() {
     const catalogSvc = activeServices.find((s) => String(s.id) === String(serviceId));
     const name = catalogSvc?.name || "";
     const rawId = String(serviceId);
+    const explicitForStaff = links.filter((l) => String(l.staff_id) === String(staffId));
+
+    /* Нет строк staff_services у мастера = по смыслу все услуги доступны; первый «выкл» ограничивает список */
+    if (!on && explicitForStaff.length === 0) {
+      const others = activeServices.filter((s) => String(s.id) !== String(serviceId));
+      if (others.length === 0) {
+        setErr(
+          "Нельзя отключить единственную активную услугу: пустой список привязок в БД означает «все услуги». Добавьте в каталог ещё одну активную услугу или отключите мастера.",
+        );
+        return;
+      }
+      const rows: Array<{ staff_id: string; service_id: string; show_on_site: boolean }> = [];
+      for (const s of activeServices) {
+        if (String(s.id) === String(serviceId)) continue;
+        const lid = await resolveStaffLinkListingId(String(s.id), s.name);
+        if (!lid) {
+          setErr(
+            `Услуга «${s.name}» не найдена в service_listings (нужен UUID для staff_services). Синхронизируйте каталог на странице «Услуги».`,
+          );
+          return;
+        }
+        rows.push({ staff_id: staffId, service_id: lid, show_on_site: true });
+      }
+      const { error: delErr } = await supabase.from("staff_services").delete().eq("staff_id", staffId);
+      if (delErr) {
+        setErr(delErr.message);
+        return;
+      }
+      if (rows.length) {
+        let { error: insErr } = await supabase.from("staff_services").insert(rows);
+        if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
+          insErr = (
+            await supabase.from("staff_services").insert(rows.map((r) => ({ staff_id: r.staff_id, service_id: r.service_id })))
+          ).error ?? null;
+        }
+        if (insErr) {
+          setErr(insErr.message);
+          return;
+        }
+      }
+      void load();
+      return;
+    }
+
     const listingId = await resolveStaffLinkListingId(rawId, name);
     const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, name);
-    const candidateIds = [...new Set([listingId, rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+    /* FK staff_services → service_listings: сначала только UUID каталога, иначе legacy-цепочка */
+    const candidateIds = listingId
+      ? [listingId]
+      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
 
     if (candidateIds.length === 0) {
-      setErr(`Не удалось определить id услуги в БД для «${name || rawId}». Проверьте каталог на странице «Услуги».`);
+      setErr(
+        `Не удалось сопоставить «${name || rawId}» с service_listings. Проверьте имя услуги в каталоге (страница «Услуги»).`,
+      );
       return;
     }
 
@@ -365,13 +433,24 @@ export function AdminStaffPage() {
   async function toggleShowOnSiteForLink(staffId: string, serviceId: string, show: boolean) {
     setErr(null);
     const catalogSvc = activeServices.find(
-      (s) => String(s.id) === String(serviceId) || String(catalogIdToListingId[String(s.id)] ?? s.id) === String(serviceId),
+      (s) =>
+        normId(s.id) === normId(serviceId) ||
+        normId(catalogIdToListingId[String(s.id)] ?? s.id) === normId(serviceId),
     );
     const name = catalogSvc?.name || "";
     const rawId = String(serviceId);
     const listingId = await resolveStaffLinkListingId(rawId, name);
     const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, name);
-    const candidateIds = [...new Set([listingId, rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+    const candidateIds = listingId
+      ? [listingId]
+      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+
+    if (candidateIds.length === 0) {
+      setErr(
+        `Не удалось сопоставить «${name || rawId}» с service_listings — обновите каталог на странице «Услуги».`,
+      );
+      return;
+    }
 
     for (const sid of candidateIds) {
       const { error, data } = await supabase
@@ -399,11 +478,22 @@ export function AdminStaffPage() {
   }
 
   function hasLink(staffId: string, serviceId: string) {
-    const listingId = catalogIdToListingId[String(serviceId)] ?? String(serviceId);
-    return links.some(
+    const explicit = links.filter((l) => String(l.staff_id) === String(staffId));
+    if (explicit.length === 0) return true;
+    let listingId = catalogIdToListingId[String(serviceId)];
+    if (!listingId) {
+      for (const [k, v] of Object.entries(catalogIdToListingId)) {
+        if (normId(k) === normId(serviceId)) {
+          listingId = v;
+          break;
+        }
+      }
+    }
+    listingId ??= String(serviceId);
+    return explicit.some(
       (l) =>
-        String(l.staff_id) === String(staffId) &&
-        (String(l.service_id) === String(serviceId) || String(l.service_id) === String(listingId)),
+        normId(l.staff_id) === normId(staffId) &&
+        (normId(l.service_id) === normId(serviceId) || normId(l.service_id) === normId(listingId)),
     );
   }
 
@@ -414,8 +504,8 @@ export function AdminStaffPage() {
         const sid = l.service_id != null ? String(l.service_id) : "";
         const svc = services.find(
           (s) =>
-            String(s.id) === sid ||
-            String(catalogIdToListingId[String(s.id)] ?? s.id) === sid,
+            normId(s.id) === normId(sid) ||
+            normId(catalogIdToListingId[String(s.id)] ?? s.id) === normId(sid),
         );
         return {
           serviceId: sid,

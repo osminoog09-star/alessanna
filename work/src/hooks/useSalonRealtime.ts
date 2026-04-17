@@ -48,7 +48,11 @@ export function useAnalyticsRealtime(onChange: () => void) {
 export function useServicesCatalogRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  useEffect(() => subscribeTables("crm-services", ["services"], onChangeRef), []);
+  useEffect(
+    () =>
+      subscribeTables("crm-services", ["services", "service_listings", "staff_services"], onChangeRef),
+    []
+  );
 }
 
 export function useEmployeesDirectoryRealtime(onChange: () => void) {

@@ -17,6 +17,13 @@ function normServiceName(n: string): string {
   return String(n || "").trim().toLowerCase();
 }
 
+/** Сравнение staff_id / service_id из PostgREST (регистр, пробелы). */
+function normId(id: string | number | null | undefined): string {
+  return String(id ?? "")
+    .trim()
+    .toLowerCase();
+}
+
 /** Услуга из публичного каталога (UUID), даже если catalogSource не проставлен. */
 function rowFromServiceListings(s: ServiceRow): boolean {
   if (s.catalogSource === "listing") return true;
@@ -874,7 +881,15 @@ export function ServicesPage() {
   }
 
   function staffLinksForService(serviceId: string) {
-    return serviceStaffLinksMap[String(serviceId)] ?? [];
+    const k = String(serviceId);
+    const direct = serviceStaffLinksMap[k];
+    if (direct?.length) return direct;
+    const want = normId(k);
+    for (const [key, rows] of Object.entries(serviceStaffLinksMap)) {
+      const list = rows as Array<{ staff_id: string; show_on_site: boolean }>;
+      if (normId(key) === want && list.length) return list;
+    }
+    return [];
   }
 
   async function setStaffLinksForServiceAndReload(
@@ -886,36 +901,39 @@ export function ServicesPage() {
   }
 
   function toggleStaffPerforms(service: ServiceRow, staffId: string, checked: boolean) {
+    if (!canManage) return;
     const serviceId = String(service.id);
     const prev = staffLinksForService(serviceId);
-    const activeIds = staff.filter((m) => m.active).map((m) => m.id);
+    const activeIds = staff.filter((m) => m.active).map((m) => String(m.id));
+    const sid = String(staffId);
     let next: Array<{ staff_id: string; show_on_site: boolean }>;
 
     if (prev.length === 0) {
       if (checked) {
-        next = [{ staff_id: staffId, show_on_site: true }];
+        next = [{ staff_id: sid, show_on_site: true }];
       } else {
-        next = activeIds.filter((id) => id !== staffId).map((id) => ({ staff_id: id, show_on_site: true }));
+        next = activeIds.filter((id) => id !== sid).map((id) => ({ staff_id: id, show_on_site: true }));
       }
     } else if (checked) {
       const byId = new Map<string, { staff_id: string; show_on_site: boolean }>(
-        prev.map((l) => [String(l.staff_id), l]),
+        prev.map((l) => [normId(l.staff_id), { ...l, staff_id: String(l.staff_id) }]),
       );
-      if (!byId.has(String(staffId))) byId.set(String(staffId), { staff_id: staffId, show_on_site: true });
+      if (!byId.has(normId(sid))) byId.set(normId(sid), { staff_id: sid, show_on_site: true });
       next = Array.from(byId.values());
     } else {
-      next = prev.filter((l) => String(l.staff_id) !== String(staffId));
+      next = prev.filter((l) => normId(l.staff_id) !== normId(sid));
     }
 
     void setStaffLinksForServiceAndReload(service, next);
   }
 
   function toggleStaffOnSite(service: ServiceRow, staffId: string, visible: boolean) {
+    if (!canManage) return;
     const serviceId = String(service.id);
     const prev = staffLinksForService(serviceId);
     if (!prev.length) return;
     const next = prev.map((l) =>
-      String(l.staff_id) === String(staffId) ? { ...l, show_on_site: visible } : l,
+      normId(l.staff_id) === normId(staffId) ? { ...l, show_on_site: visible } : l,
     );
     void setStaffLinksForServiceAndReload(service, next);
   }
@@ -1261,8 +1279,9 @@ export function ServicesPage() {
                         .map((m) => {
                           const sid = String(s.id);
                           const prev = staffLinksForService(sid);
-                          const link = prev.find((l) => String(l.staff_id) === String(m.id));
-                          const performs = prev.length > 0 && !!link;
+                          const link = prev.find((l) => normId(l.staff_id) === normId(m.id));
+                          /* Пустой staff_services = все активные мастера могут услугу — показываем включено */
+                          const performs = prev.length === 0 || !!link;
                           const onSite = link ? link.show_on_site !== false : true;
                           return (
                             <div
