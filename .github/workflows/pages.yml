@@ -30,7 +30,7 @@ jobs:
           cp work.css work.js work.html _site/
           cp -r assets _site/
           cp -r locales _site/
-          cp supabase-public-config.js site-services.mjs site-team.mjs site-builder.mjs _site/
+          cp supabase-public-config.js site-services.mjs site-team.mjs site-builder.mjs site-support-chat.mjs _site/
           cp .nojekyll CNAME _site/
           cp -r .github/page-bundle/work _site/
       - uses: actions/upload-pages-artifact@v3
