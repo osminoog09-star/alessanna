@@ -2507,6 +2507,52 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   opacity: 0.85;
 }
 
+.footer-credits {
+  margin: 1rem auto 0;
+  padding-top: 0.85rem;
+  max-width: 28rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.6;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  transition: opacity 0.2s ease;
+}
+
+.footer-credits:hover {
+  opacity: 0.95;
+}
+
+.footer-credits-label {
+  color: var(--text-muted);
+}
+
+.footer-credits-sep {
+  color: var(--gold-dim, rgba(197, 164, 104, 0.4));
+  opacity: 0.7;
+}
+
+.footer-credits-names {
+  color: var(--gold-bright, #e2c185);
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  text-transform: none;
+}
+
+@media (max-width: 480px) {
+  .footer-credits {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    gap: 0.35rem;
+  }
+}
+
 /* ---------- Моб. полоса «Запись» ---------- */
 .mobile-book-bar {
   position: fixed;
