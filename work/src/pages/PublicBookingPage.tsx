@@ -5,11 +5,19 @@ import { Link } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { generateAvailableSlots, formatSlotRange } from "../lib/slots";
 import { normalizeStaffMember, staffEligibleForService } from "../lib/roles";
-import type { AppointmentRow, ServiceRow, StaffMember, StaffScheduleRow, StaffServiceRow } from "../types/database";
+import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow } from "../types/database";
+
+type PublicService = {
+  id: string;
+  name: string;
+  duration_min: number;
+  buffer_after_min: number;
+  active: boolean;
+};
 
 export function PublicBookingPage() {
   const { t, i18n } = useTranslation();
-  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [services, setServices] = useState<PublicService[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
   const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
@@ -18,7 +26,7 @@ export function PublicBookingPage() {
     Array<{ staff_id: string; start_time: string; end_time: string }>
   >([]);
 
-  const [serviceId, setServiceId] = useState<number | null>(null);
+  const [serviceId, setServiceId] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
   const [dayStr, setDayStr] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [clientName, setClientName] = useState("");
@@ -34,12 +42,22 @@ export function PublicBookingPage() {
       return;
     }
     const [sv, st, lk, sc] = await Promise.all([
-      supabase.from("services").select("*").eq("active", true).order("sort_order"),
+      supabase.from("service_listings").select("id,name,duration,is_active").order("name"),
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
     ]);
-    if (sv.data) setServices(sv.data as ServiceRow[]);
+    if (sv.data) {
+      setServices(
+        (sv.data as Array<{ id: string; name: string; duration?: number; is_active?: boolean }>).map((s) => ({
+          id: String(s.id),
+          name: String(s.name || "").trim(),
+          duration_min: Number(s.duration || 0),
+          buffer_after_min: 0,
+          active: s.is_active !== false,
+        }))
+      );
+    }
     if (st.data) {
       setStaff((st.data as Record<string, unknown>[]).map((r) => normalizeStaffMember(r as StaffMember)));
     }
@@ -187,16 +205,16 @@ export function PublicBookingPage() {
             <select
               value={serviceId ?? ""}
               onChange={(e) => {
-                setServiceId(e.target.value ? Number(e.target.value) : null);
+                setServiceId(e.target.value ? String(e.target.value) : null);
                 setStaffId(null);
                 setPickedStart(null);
               }}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
             >
               <option value="">{t("modal.pickService")}</option>
-              {services.map((s) => (
+              {services.filter((s) => s.active).map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name_et}
+                  {s.name}
                 </option>
               ))}
             </select>

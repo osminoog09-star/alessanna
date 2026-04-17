@@ -15,6 +15,8 @@
         ? String(preset.anonKey)
         : String(inheritedAnon || "sb_publishable_tA3Pcv44d9PutcYqP_dYCQ_SEhjXr4D"),
   };
+  // Optional external API base for public fallback, e.g. https://api.example.com
+  window.SALON_PUBLIC_API_BASE = window.SALON_PUBLIC_API_BASE || String(preset.publicApiBase || "");
   window.SALON_SUPABASE_URL = window.SALON_SUPABASE_URL || window.SUPABASE_CONFIG.url;
   window.SALON_SUPABASE_ANON_KEY = window.SALON_SUPABASE_ANON_KEY || window.SUPABASE_CONFIG.anonKey;
 })();

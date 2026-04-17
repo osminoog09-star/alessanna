@@ -31,12 +31,12 @@ export type CategoryRow = {
 };
 
 export type ServiceRow = {
-  id: number;
+  id: string | number;
   slug: string | null;
   name_et: string;
   name_en: string | null;
   category: string | null;
-  category_id: number | null;
+  category_id: string | number | null;
   duration_min: number;
   buffer_after_min: number;
   price_cents: number;
@@ -48,7 +48,7 @@ export type ServiceRow = {
 export type AppointmentRow = {
   id: string;
   staff_id: string;
-  service_id: number;
+  service_id: string | number;
   client_name: string;
   client_phone: string | null;
   start_time: string;
@@ -77,7 +77,7 @@ export type StaffTimeOffRow = {
 
 export type StaffServiceRow = {
   staff_id: string;
-  service_id: number;
+  service_id: string | number;
 };
 
 export type Database = {

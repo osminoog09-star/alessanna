@@ -105,19 +105,34 @@ function buildSlots(day, staffId, durationMin) {
 
 async function load() {
   if (!supabase) return;
-  const [sv, st, lk, sch, ap] = await Promise.all([
-    supabase.from("services").select("*").eq("active", true).order("sort_order"),
-    supabase.from("staff").select("*").eq("is_active", true).order("name"),
-    supabase.from("staff_services").select("*"),
-    supabase.from("staff_schedule").select("*"),
-    supabase.from("appointments").select("*").in("status", ["pending", "confirmed"]),
-  ]);
+  try {
+    const [sv, st, lk, sch, ap] = await Promise.all([
+      supabase.from("services").select("*").order("sort_order"),
+      supabase.from("staff").select("*").eq("is_active", true).order("name"),
+      supabase.from("staff_services").select("*"),
+      supabase.from("staff_schedule").select("*"),
+      supabase.from("appointments").select("*").in("status", ["pending", "confirmed"]),
+    ]);
 
-  state.services = sv.data || [];
-  state.staff = st.data || [];
-  state.links = lk.data || [];
-  state.schedules = sch.data || [];
-  state.appointments = ap.data || [];
+    if (sv.error) console.error("[public-book] services load failed", sv.error);
+    if (st.error) console.error("[public-book] staff load failed", st.error);
+    if (lk.error) console.error("[public-book] staff_services load failed", lk.error);
+    if (sch.error) console.error("[public-book] staff_schedule load failed", sch.error);
+    if (ap.error) console.error("[public-book] appointments load failed", ap.error);
+
+    state.services = (sv.data || []).filter((s) => s.active !== false && s.is_active !== false);
+    state.staff = st.data || [];
+    state.links = lk.data || [];
+    state.schedules = sch.data || [];
+    state.appointments = ap.data || [];
+  } catch (err) {
+    console.error("[public-book] load crashed", err);
+    state.services = [];
+    state.staff = [];
+    state.links = [];
+    state.schedules = [];
+    state.appointments = [];
+  }
 
   renderServices();
 }
@@ -128,7 +143,10 @@ function renderServices() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "card";
-    btn.innerHTML = `<strong>${escapeHtml(s.name_et)}</strong><br/><span class="muted">${(s.price_cents / 100).toFixed(0)} € · ${s.duration_min} min</span>`;
+    const serviceName = s.name_et || s.name || s.slug || "Teenus";
+    const rawPrice = Number.isFinite(Number(s.price_cents)) ? Number(s.price_cents) / 100 : Number(s.price || 0);
+    const duration = Number(s.duration_min || s.duration || 0);
+    btn.innerHTML = `<strong>${escapeHtml(serviceName)}</strong><br/><span class="muted">${rawPrice.toFixed(0)} € · ${duration} min</span>`;
     btn.addEventListener("click", () => {
       state.serviceId = s.id;
       document.querySelectorAll("#services-list .card").forEach((c) => c.classList.remove("is-picked"));

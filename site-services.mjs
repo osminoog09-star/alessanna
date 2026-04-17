@@ -192,7 +192,8 @@ function mapLegacyServiceRows(raw) {
           ? { name: String(r.category).trim() }
           : null;
     const priceCents = Number(r.price_cents);
-    const price = Number.isFinite(priceCents) ? priceCents / 100 : null;
+    const directPrice = Number(r.price);
+    const price = Number.isFinite(priceCents) ? priceCents / 100 : Number.isFinite(directPrice) ? directPrice : null;
     return {
       id: String(r.id),
       name: r.name_et != null ? String(r.name_et) : String(r.name || ""),
@@ -219,7 +220,10 @@ function mapPublicApiRows(raw) {
 }
 
 async function fetchPublicApiFallback() {
-  const endpoints = ["/api/public/services", "https://work.alessannailu.com/api/public/services"];
+  const configuredApiBase = String(globalThis.SALON_PUBLIC_API_BASE || "").trim().replace(/\/+$/, "");
+  const endpoints = ["/api/public/services"];
+  if (configuredApiBase) endpoints.push(configuredApiBase + "/api/public/services");
+  endpoints.push("https://work.alessannailu.com/api/public/services");
   let lastError = null;
   for (let i = 0; i < endpoints.length; i++) {
     const endpoint = endpoints[i];
@@ -228,7 +232,14 @@ async function fetchPublicApiFallback() {
       if (!response.ok) {
         throw new Error("HTTP " + response.status + " at " + endpoint);
       }
+      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("application/json")) {
+        throw new Error("Unexpected content-type (" + contentType + ") at " + endpoint);
+      }
       const json = await response.json();
+      if (!Array.isArray(json)) {
+        throw new Error("Unexpected JSON shape at " + endpoint + " (expected array)");
+      }
       info("Public API fallback succeeded via " + endpoint);
       return mapPublicApiRows(json);
     } catch (err) {
@@ -254,24 +265,59 @@ async function fetchPriceList(client) {
     )
     .order("name", { ascending: true });
 
+  info("Supabase response: service_listings (full)", {
+    data: listings.data,
+    error: listings.error,
+  });
+
   if (!listings.error) {
     const rows = (listings.data || []).filter(function (r) {
-      return r.is_active !== false;
+      return r.is_active !== false && r.active !== false;
     });
     return { data: rows, error: null, source: "service_listings" };
   }
 
-  const listingsMinimal = await client
+  warnLog("service_listings full query failed", listings.error);
+
+  const listingsNoActive = await client
     .from("service_listings")
-    .select("id,name,price,duration,is_active")
+    .select(
+      `
+      id,
+      name,
+      price,
+      duration,
+      category:service_categories(name)
+    `
+    )
     .order("name", { ascending: true });
 
-  if (!listingsMinimal.error) {
-    const rows = (listingsMinimal.data || []).filter(function (r) {
-      return r.is_active !== false;
-    });
-    return { data: rows, error: null, source: "service_listings_minimal" };
+  info("Supabase response: service_listings (no is_active)", {
+    data: listingsNoActive.data,
+    error: listingsNoActive.error,
+  });
+
+  if (!listingsNoActive.error) {
+    return { data: listingsNoActive.data || [], error: null, source: "service_listings_no_active" };
   }
+
+  warnLog("service_listings no-is_active query failed", listingsNoActive.error);
+
+  const listingsMinimal = await client
+    .from("service_listings")
+    .select("id,name,price,duration")
+    .order("name", { ascending: true });
+
+  info("Supabase response: service_listings (minimal)", {
+    data: listingsMinimal.data,
+    error: listingsMinimal.error,
+  });
+
+  if (!listingsMinimal.error) {
+    return { data: listingsMinimal.data || [], error: null, source: "service_listings_minimal" };
+  }
+
+  warnLog("service_listings minimal query failed", listingsMinimal.error);
 
   const legacy = await client
     .from("services")
@@ -279,9 +325,16 @@ async function fetchPriceList(client) {
     .eq("active", true)
     .order("sort_order", { ascending: true });
 
+  info("Supabase response: services (legacy with categories)", {
+    data: legacy.data,
+    error: legacy.error,
+  });
+
   if (!legacy.error) {
     return { data: mapLegacyServiceRows(legacy.data), error: null, source: "legacy_services" };
   }
+
+  warnLog("legacy services query with categories failed", legacy.error);
 
   const legacyNoJoin = await client
     .from("services")
@@ -289,13 +342,62 @@ async function fetchPriceList(client) {
     .eq("active", true)
     .order("sort_order", { ascending: true });
 
+  info("Supabase response: services (legacy no categories)", {
+    data: legacyNoJoin.data,
+    error: legacyNoJoin.error,
+  });
+
   if (!legacyNoJoin.error) {
     return { data: mapLegacyServiceRows(legacyNoJoin.data), error: null, source: "legacy_services_minimal" };
   }
 
+  warnLog("legacy services query no-join failed", legacyNoJoin.error);
+
+  const legacyAlt = await client
+    .from("services")
+    .select("id,name,price,duration,active,sort_order,category,categories(name)")
+    .order("sort_order", { ascending: true });
+
+  info("Supabase response: services (alt schema)", {
+    data: legacyAlt.data,
+    error: legacyAlt.error,
+  });
+
+  if (!legacyAlt.error) {
+    const rows = (legacyAlt.data || []).filter(function (r) {
+      return r.active !== false && r.is_active !== false;
+    });
+    return { data: mapLegacyServiceRows(rows), error: null, source: "legacy_services_alt" };
+  }
+
+  warnLog("legacy services alt-schema query failed", legacyAlt.error);
+
+  const legacyAltNoJoin = await client
+    .from("services")
+    .select("id,name,price,duration,active,sort_order,category")
+    .order("sort_order", { ascending: true });
+
+  info("Supabase response: services (alt schema no categories)", {
+    data: legacyAltNoJoin.data,
+    error: legacyAltNoJoin.error,
+  });
+
+  if (!legacyAltNoJoin.error) {
+    const rows = (legacyAltNoJoin.data || []).filter(function (r) {
+      return r.active !== false && r.is_active !== false;
+    });
+    return { data: mapLegacyServiceRows(rows), error: null, source: "legacy_services_alt_minimal" };
+  }
+
   return {
     data: null,
-    error: legacyNoJoin.error || legacy.error || listingsMinimal.error || listings.error,
+    error:
+      legacyAltNoJoin.error ||
+      legacyAlt.error ||
+      legacyNoJoin.error ||
+      legacy.error ||
+      listingsMinimal.error ||
+      listings.error,
     source: "none",
   };
 }
@@ -303,9 +405,28 @@ async function fetchPriceList(client) {
 async function run(client) {
   const result = await fetchPriceList(client);
   if (!result.error) {
-    info("Loaded services from " + result.source + " (" + (result.data || []).length + ")");
-    render(groupRows(result.data || []));
-    return true;
+    const rows = result.data || [];
+    info("Loaded services from " + result.source + " (" + rows.length + ")");
+    if (rows.length > 0) {
+      render(groupRows(rows));
+      return true;
+    }
+    warnLog("Supabase returned zero services, trying /api/public/services fallback");
+    try {
+      const fallbackData = await fetchPublicApiFallback();
+      if (fallbackData.length > 0) {
+        info("Loaded services from public API fallback (" + fallbackData.length + ")");
+        render(groupRows(fallbackData));
+        return true;
+      }
+      info("Fallback returned zero services too; rendering empty state");
+      render(groupRows(rows));
+      return true;
+    } catch (fallbackEmptyError) {
+      warnLog("Fallback failed after empty Supabase response; rendering empty state", fallbackEmptyError);
+      render(groupRows(rows));
+      return true;
+    }
   }
 
   warnLog("Supabase fetch failed, trying /api/public/services fallback", result.error);

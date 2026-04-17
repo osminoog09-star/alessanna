@@ -75,11 +75,12 @@ export function sanitizeRolesForSave(
 export function staffEligibleForService(
   staffList: StaffMember[],
   links: StaffServiceRow[],
-  serviceId: number | null
+  serviceId: string | number | null
 ): StaffMember[] {
   const active = staffList.filter((s) => s.active);
   if (serviceId == null) return active;
-  const forSvc = links.filter((l) => l.service_id === serviceId);
+  const wantedId = String(serviceId);
+  const forSvc = links.filter((l) => String(l.service_id) === wantedId);
   if (forSvc.length === 0) return active;
   const ids = new Set(forSvc.map((l) => l.staff_id));
   return active.filter((e) => {
@@ -92,10 +93,11 @@ export function staffEligibleForService(
 export function staffCanPerformService(
   links: StaffServiceRow[],
   staffId: string,
-  serviceId: number,
+  serviceId: string | number,
   staffList?: StaffMember[]
 ): boolean {
-  const forSvc = links.filter((l) => l.service_id === serviceId);
+  const wantedId = String(serviceId);
+  const forSvc = links.filter((l) => String(l.service_id) === wantedId);
   if (forSvc.length === 0) return true;
   if (forSvc.some((l) => l.staff_id === staffId)) return true;
   const st = staffList?.find((e) => e.id === staffId);
@@ -119,6 +121,6 @@ export function servicesEligibleForStaff(
   ) {
     return active;
   }
-  const ids = new Set(forSt.map((l) => l.service_id));
-  return active.filter((s) => ids.has(s.id));
+  const ids = new Set(forSt.map((l) => String(l.service_id)));
+  return active.filter((s) => ids.has(String(s.id)));
 }

@@ -20,6 +20,64 @@ export function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
 
+  const syncServiceToPublicCatalog = useCallback(async (service: ServiceRow) => {
+    const serviceName = String(service.name_et || "").trim();
+    if (!serviceName) return;
+
+    try {
+      let categoryName = "";
+      if (service.category_id != null) {
+        const catRes = await supabase.from("categories").select("name").eq("id", service.category_id).maybeSingle();
+        categoryName = String(catRes.data?.name || "").trim();
+      }
+
+      let publicCategoryId: string | null = null;
+      if (categoryName) {
+        const existing = await supabase.from("service_categories").select("id").eq("name", categoryName).maybeSingle();
+        if (existing.data?.id) {
+          publicCategoryId = String(existing.data.id);
+        } else {
+          const inserted = await supabase
+            .from("service_categories")
+            .insert({ name: categoryName })
+            .select("id")
+            .single();
+          publicCategoryId = inserted.data?.id ? String(inserted.data.id) : null;
+        }
+      }
+
+      const payload = {
+        name: serviceName,
+        price: Number(service.price_cents || 0) / 100,
+        duration: Number(service.duration_min || 0),
+        category_id: publicCategoryId,
+        is_active: service.active !== false,
+      };
+
+      const existingListing = await supabase.from("service_listings").select("id").eq("name", serviceName).maybeSingle();
+      if (existingListing.data?.id) {
+        const { error } = await supabase.from("service_listings").update(payload).eq("id", existingListing.data.id);
+        if (error) console.error("[services-sync] update service_listings failed", error);
+      } else {
+        const { error } = await supabase.from("service_listings").insert(payload);
+        if (error) console.error("[services-sync] insert service_listings failed", error);
+      }
+    } catch (err) {
+      console.error("[services-sync] syncServiceToPublicCatalog crashed", err);
+    }
+  }, []);
+
+  const deleteServiceFromPublicCatalog = useCallback(async (service: ServiceRow) => {
+    const serviceName = String(service.name_et || "").trim();
+    if (!serviceName) return;
+    try {
+      const { error } = await supabase.from("service_listings").delete().eq("name", serviceName);
+      if (error) console.error("[services-sync] delete service_listings failed", error);
+    } catch (err) {
+      console.error("[services-sync] deleteServiceFromPublicCatalog crashed", err);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     const [c, s] = await Promise.all([
       supabase.from("categories").select("*").order("name"),
@@ -38,14 +96,23 @@ export function ServicesPage() {
 
   async function addCategory() {
     if (!newCat.trim() || !canManage) return;
-    await supabase.from("categories").insert({ name: newCat.trim() });
+    const categoryName = newCat.trim();
+    await supabase.from("categories").insert({ name: categoryName });
+    try {
+      const { error } = await supabase.from("service_categories").insert({ name: categoryName });
+      if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
+        console.error("[services-sync] insert service_categories failed", error);
+      }
+    } catch (err) {
+      console.error("[services-sync] addCategory public sync crashed", err);
+    }
     setNewCat("");
     load();
   }
 
   async function saveService(s: ServiceRow) {
     if (!canManage) return;
-    await supabase
+    const { error } = await supabase
       .from("services")
       .update({
         name_et: s.name_et,
@@ -55,6 +122,11 @@ export function ServicesPage() {
         category_id: s.category_id,
       })
       .eq("id", s.id);
+    if (error) {
+      console.error("[services] save failed", error);
+      return;
+    }
+    await syncServiceToPublicCatalog(s);
     load();
   }
 
@@ -76,19 +148,29 @@ export function ServicesPage() {
       window.alert(t("services.deleteFailed"));
       return;
     }
+    await deleteServiceFromPublicCatalog(s);
     load();
   }
 
   async function addService() {
     if (!canManage) return;
-    await supabase.from("services").insert({
+    const insertRes = await supabase
+      .from("services")
+      .insert({
       name_et: i18n.t("services.newServiceDefault"),
       duration_min: 60,
       buffer_after_min: 10,
       price_cents: 3000,
       active: true,
       sort_order: services.length,
-    });
+      })
+      .select("*")
+      .single();
+    if (insertRes.error) {
+      console.error("[services] add failed", insertRes.error);
+      return;
+    }
+    if (insertRes.data) await syncServiceToPublicCatalog(insertRes.data as ServiceRow);
     load();
   }
 
