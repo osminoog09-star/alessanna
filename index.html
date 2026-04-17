@@ -304,14 +304,17 @@
               </label>
               <label>
                 <span>Категория услуги</span>
+                <!-- data-category-name — CRM-название категории (lowercase, RU). script.js по нему
+                     находит <div class="team-group" data-category-name="..."> и показывает в списке
+                     «Мастер» только тех, кто реально закреплён за услугами этой категории. -->
                 <select name="service">
-                  <option value="hair-cut">Стрижка</option>
-                  <option value="hair-color">Окрашивание</option>
-                  <option value="perm">Химическая завивка</option>
-                  <option value="styling">Укладки</option>
-                  <option value="brows-lashes">Брови и ресницы</option>
-                  <option value="manicure">Маникюр</option>
-                  <option value="pedicure">Педикюр</option>
+                  <option value="hair-cut" data-category-name="стрижка">Стрижка</option>
+                  <option value="hair-color" data-category-name="окрашивание">Окрашивание</option>
+                  <option value="perm" data-category-name="химическая завивка">Химическая завивка</option>
+                  <option value="styling" data-category-name="укладки">Укладки</option>
+                  <option value="brows-lashes" data-category-name="брови и ресницы">Брови и ресницы</option>
+                  <option value="manicure" data-category-name="маникюр">Маникюр</option>
+                  <option value="pedicure" data-category-name="педикюр">Педикюр</option>
                 </select>
               </label>
               <label>

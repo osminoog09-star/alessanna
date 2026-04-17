@@ -1416,14 +1416,55 @@
       });
     }
 
+    function cssEscapeAttrValue(val) {
+      var v = String(val || "");
+      if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(v);
+      return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    }
+
+    /** Категория (RU, lowercase) для выбранной опции в select[name="service"].
+     * Если option без data-category-name — возвращает пустую строку = «не фильтровать». */
+    function currentFormCategoryName() {
+      if (!serviceSelectEl) return "";
+      var opt = serviceSelectEl.options[serviceSelectEl.selectedIndex];
+      if (!opt) return "";
+      return String(opt.getAttribute("data-category-name") || "").trim().toLowerCase();
+    }
+
+    /** Выбираем только мастеров, которые закреплены за услугами выбранной категории.
+     * Источник истины — отрисованные site-team.mjs .team-group[data-category-name] li[data-master-id].
+     * Если team-group ещё не готов или в нужной категории нет мастеров — fallback на всех публичных. */
+    function filterMastersByFormCategory(masters) {
+      if (!Array.isArray(masters) || !masters.length) return masters || [];
+      var catName = currentFormCategoryName();
+      if (!catName) return masters;
+      var teamRoot = document.querySelector("#meistrid .team-groups");
+      if (!teamRoot) return masters;
+      var sel =
+        '.team-group[data-category-name="' +
+        cssEscapeAttrValue(catName) +
+        '"] li[data-master-id]';
+      var lis = teamRoot.querySelectorAll(sel);
+      if (!lis.length) return masters;
+      var allowed = {};
+      for (var i = 0; i < lis.length; i++) {
+        var mid = lis[i].getAttribute("data-master-id");
+        if (mid) allowed[String(mid)] = true;
+      }
+      var filtered = masters.filter(function (m) {
+        return allowed[String(m.id)];
+      });
+      return filtered.length ? filtered : masters;
+    }
+
     function refillDemoMastersForCurrentService() {
-      var pub = publicStaffAsMasterOptions();
-      setMasterOptions(pub || []);
+      var pub = publicStaffAsMasterOptions() || [];
+      setMasterOptions(filterMastersByFormCategory(pub));
     }
 
     function setupDemoMasters() {
-      var pub = publicStaffAsMasterOptions();
-      setMasterOptions(pub || []);
+      var pub = publicStaffAsMasterOptions() || [];
+      setMasterOptions(filterMastersByFormCategory(pub));
     }
 
     /** Rebuild master dropdown from API for the selected service (employee_services filter). */
@@ -1476,10 +1517,17 @@
     window.addEventListener("site-team-ready", function () {
       var pub = publicStaffAsMasterOptions();
       if (!pub) return;
-      setMasterOptions(pub);
+      setMasterOptions(filterMastersByFormCategory(pub));
       invalidateMonthCache();
       clearSelection();
       renderCalendar();
+    });
+
+    /* .team-group[data-category-name] появляется чуть позже, чем сам staff-список.
+     * После перерисовки команды прогоняем фильтр заново — иначе до первого клика
+     * по select остаются все мастера. */
+    window.addEventListener("site-team-rendered", function () {
+      if (!apiBooking) refillDemoMastersForCurrentService();
     });
 
     prevBtn.addEventListener("click", function () {
