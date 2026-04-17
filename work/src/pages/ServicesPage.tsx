@@ -6,6 +6,7 @@ import { useEffectiveRole } from "../context/EffectiveRoleContext";
 import { useServicesCatalogRealtime } from "../hooks/useSalonRealtime";
 import type { CategoryRow, ServiceRow, StaffMember } from "../types/database";
 import { eurFromCents } from "../lib/format";
+import { normalizeRoles } from "../lib/roles";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 
 const editableUi =
@@ -22,6 +23,15 @@ function normId(id: string | number | null | undefined): string {
   return String(id ?? "")
     .trim()
     .toLowerCase();
+}
+
+/** Админы CRM не показываются в блоке «Мастера» у услуги. */
+function isStaffSalonAdmin(m: StaffMember): boolean {
+  return normalizeRoles(m.roles).includes("admin");
+}
+
+function staffListedAsMasters(members: StaffMember[]): StaffMember[] {
+  return members.filter((m) => m.active && !isStaffSalonAdmin(m));
 }
 
 /** Услуга из публичного каталога (UUID), даже если catalogSource не проставлен. */
@@ -904,7 +914,7 @@ export function ServicesPage() {
     if (!canManage) return;
     const serviceId = String(service.id);
     const prev = staffLinksForService(serviceId);
-    const activeIds = staff.filter((m) => m.active).map((m) => String(m.id));
+    const activeIds = staffListedAsMasters(staff).map((m) => String(m.id));
     const sid = String(staffId);
     let next: Array<{ staff_id: string; show_on_site: boolean }>;
 
@@ -1274,9 +1284,7 @@ export function ServicesPage() {
                       CRM остаётся).
                     </p>
                     <div className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
-                      {staff
-                        .filter((m) => m.active)
-                        .map((m) => {
+                      {staffListedAsMasters(staff).map((m) => {
                           const sid = String(s.id);
                           const prev = staffLinksForService(sid);
                           const link = prev.find((l) => normId(l.staff_id) === normId(m.id));
@@ -1286,7 +1294,7 @@ export function ServicesPage() {
                           return (
                             <div
                               key={m.id}
-                              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded border border-zinc-800/80 px-2 py-2"
+                              className="flex flex-wrap items-center gap-x-4 gap-y-2 py-1.5"
                             >
                               <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-zinc-300">
                                 <ToggleSwitch
@@ -1314,7 +1322,7 @@ export function ServicesPage() {
                             </div>
                           );
                         })}
-                      {staff.filter((m) => m.active).length === 0 && (
+                      {staffListedAsMasters(staff).length === 0 && (
                         <p className="text-xs text-zinc-500">Нет активных мастеров в справочнике.</p>
                       )}
                     </div>
@@ -1429,7 +1437,7 @@ export function ServicesPage() {
                   Если не выбрать никого, услуга будет доступна всем активным мастерам.
                 </p>
                 <div className="mt-2 max-h-40 space-y-1 overflow-auto">
-                  {staff.filter((m) => m.active).map((m) => {
+                  {staffListedAsMasters(staff).map((m) => {
                     const on = quickStaffIds.includes(m.id);
                     return (
                       <div key={m.id} className="flex items-center gap-2 text-xs text-zinc-300">
@@ -1445,7 +1453,7 @@ export function ServicesPage() {
                       </div>
                     );
                   })}
-                  {staff.filter((m) => m.active).length === 0 && (
+                  {staffListedAsMasters(staff).length === 0 && (
                     <p className="text-xs text-zinc-500">Активные мастера не найдены.</p>
                   )}
                 </div>

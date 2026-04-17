@@ -33,7 +33,7 @@ export function ToggleSwitch({
         if (!disabled) onCheckedChange(!checked);
       }}
       className={[
-        "relative inline-flex shrink-0 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50",
+        "relative inline-flex shrink-0 items-center rounded-full border transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0",
         track,
         checked ? "border-emerald-600/50 bg-emerald-600" : "border-zinc-600 bg-zinc-700",
         disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer",
@@ -42,7 +42,7 @@ export function ToggleSwitch({
       <span
         aria-hidden
         className={[
-          "pointer-events-none inline-block rounded-full bg-white shadow transition-transform duration-200 ease-out",
+          "pointer-events-none inline-block rounded-full bg-white transition-transform duration-200 ease-out",
           thumb,
           checked ? thumbOn : "translate-x-0.5",
         ].join(" ")}
