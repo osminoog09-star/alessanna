@@ -210,6 +210,10 @@ function showConfigWarn(msg) {
   warn.textContent = msg;
 }
 
+function showCatalogWarn(msg) {
+  showConfigWarn(msg);
+}
+
 /** Normalize legacy `public.services` (+ optional categories join) to service_listings shape. */
 function mapLegacyServiceRows(raw) {
   const rows = raw || [];
@@ -493,6 +497,9 @@ async function run(client) {
       if (names.length > 0) {
         info("Loaded categories without services (" + names.length + ")");
         render(groupsFromCategoryNames(names));
+        showCatalogWarn(
+          "Kategooriad on olemas, kuid teenuseid ei leitud. Lisa vähemalt üks teenus CRM-is või kontrolli, et teenused sünkroniseeritakse tabelisse service_listings."
+        );
         return true;
       }
     } catch (catErr) {
@@ -508,10 +515,16 @@ async function run(client) {
       }
       info("Fallback returned zero services too; rendering empty state");
       render(groupRows(rows));
+      showCatalogWarn(
+        "Teenuste nimekiri on tühi nii Supabase'is kui ka varu API-s. Kontrolli, et teenused oleksid lisatud ja aktiivsed."
+      );
       return true;
     } catch (fallbackEmptyError) {
       warnLog("Fallback failed after empty Supabase response; rendering empty state", fallbackEmptyError);
       render(groupRows(rows));
+      showCatalogWarn(
+        "Teenuseid ei saadud laadida: Supabase tagastas tühja kataloogi ja varu API ei vastanud korrektselt. Kontrolli RLS õiguseid ja SALON_PUBLIC_API_BASE väärtust."
+      );
       return true;
     }
   }

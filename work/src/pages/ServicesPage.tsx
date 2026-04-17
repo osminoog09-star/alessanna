@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { supabase } from "../lib/supabase";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
 import { useServicesCatalogRealtime } from "../hooks/useSalonRealtime";
-import type { CategoryRow, ServiceRow } from "../types/database";
+import type { CategoryRow, ServiceRow, StaffMember } from "../types/database";
 import { eurFromCents } from "../lib/format";
 
 const editableUi =
@@ -19,6 +19,15 @@ export function ServicesPage() {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
+  const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [quickCreateCategory, setQuickCreateCategory] = useState<string | null>(null);
+  const [quickName, setQuickName] = useState("");
+  const [quickPriceEur, setQuickPriceEur] = useState("30");
+  const [quickDuration, setQuickDuration] = useState("60");
+  const [quickBuffer, setQuickBuffer] = useState("10");
+  const [quickActive, setQuickActive] = useState(true);
+  const [quickStaffIds, setQuickStaffIds] = useState<string[]>([]);
 
   function categoryNameFromService(service: ServiceRow): string {
     const direct = String(service.category || "").trim();
@@ -165,6 +174,19 @@ export function ServicesPage() {
         .order("name", { ascending: true });
       if (sModern.data) setServices(mapModernServices(sModern.data as Array<Record<string, unknown>>));
     }
+
+    const staffRes = await supabase.from("staff").select("id,name,phone,is_active,role,roles").order("name");
+    if (!staffRes.error && staffRes.data) {
+      setStaff(
+        (staffRes.data as Array<Record<string, unknown>>).map((r) => ({
+          id: String(r.id || ""),
+          name: String(r.name || ""),
+          phone: r.phone != null ? String(r.phone) : null,
+          active: r.is_active !== false,
+          roles: [],
+        }))
+      );
+    }
     setLoading(false);
   }, []);
 
@@ -190,6 +212,57 @@ export function ServicesPage() {
       }
     }
     setNewCat("");
+    load();
+  }
+
+  async function renameCategory(category: CategoryRow) {
+    if (!canManage) return;
+    const key = String(category.id);
+    const nextName = String(categoryDrafts[key] ?? category.name).trim();
+    if (!nextName || nextName === String(category.name).trim()) return;
+
+    let updated = false;
+    const legacy = await supabase.from("categories").update({ name: nextName }).eq("id", category.id);
+    if (!legacy.error) {
+      updated = true;
+    }
+
+    const modern = await supabase.from("service_categories").update({ name: nextName }).eq("id", category.id);
+    if (!modern.error) {
+      updated = true;
+    }
+
+    if (!updated) {
+      console.error("[services] rename category failed", { legacy: legacy.error, modern: modern.error });
+      return;
+    }
+
+    setCategoryDrafts((prev) => ({ ...prev, [key]: nextName }));
+    load();
+  }
+
+  async function deleteCategory(category: CategoryRow) {
+    if (!canManage) return;
+    const categoryName = String(category.name || "").trim();
+    const hasServices = services.some((s) => categoryNameFromService(s) === categoryName);
+    if (hasServices) {
+      window.alert("Сначала перенесите или удалите услуги из этой категории.");
+      return;
+    }
+    if (!window.confirm(`Удалить категорию "${categoryName}"?`)) return;
+
+    let removed = false;
+    const legacy = await supabase.from("categories").delete().eq("id", category.id);
+    if (!legacy.error) removed = true;
+
+    const modern = await supabase.from("service_categories").delete().eq("id", category.id);
+    if (!modern.error) removed = true;
+
+    if (!removed) {
+      console.error("[services] delete category failed", { legacy: legacy.error, modern: modern.error });
+      return;
+    }
+
     load();
   }
 
@@ -292,6 +365,186 @@ export function ServicesPage() {
     load();
   }
 
+  async function addServiceToCategory(categoryName: string) {
+    if (!canManage) return;
+    const found = categories.find((c) => String(c.name || "").trim() === categoryName);
+    const categoryId = found ? String(found.id) : null;
+
+    let insertRes = await supabase
+      .from("services")
+      .insert({
+        name_et: i18n.t("services.newServiceDefault"),
+        duration_min: 60,
+        buffer_after_min: 10,
+        price_cents: 3000,
+        active: true,
+        sort_order: services.length,
+        category_id: categoryId,
+        category: categoryName || null,
+      })
+      .select("*")
+      .single();
+
+    if (insertRes.error) {
+      insertRes = await supabase
+        .from("services")
+        .insert({
+          name: i18n.t("services.newServiceDefault"),
+          duration: 60,
+          buffer_after_min: 10,
+          price: 30,
+          category: categoryName || null,
+        })
+        .select("*")
+        .single();
+    }
+
+    if (insertRes.error) {
+      console.error("[services] add service in category failed", insertRes.error);
+      return;
+    }
+
+    if (insertRes.data) {
+      const row = insertRes.data as Record<string, unknown>;
+      const normalized = row.name_et != null ? (insertRes.data as ServiceRow) : mapModernServices([row])[0];
+      await syncServiceToPublicCatalog(normalized);
+    }
+
+    load();
+  }
+
+  function openQuickCreate(categoryName: string) {
+    setQuickCreateCategory(categoryName || "");
+    setQuickName(i18n.t("services.newServiceDefault"));
+    setQuickPriceEur("30");
+    setQuickDuration("60");
+    setQuickBuffer("10");
+    setQuickActive(true);
+    setQuickStaffIds([]);
+  }
+
+  function closeQuickCreate() {
+    setQuickCreateCategory(null);
+    setQuickName("");
+    setQuickPriceEur("30");
+    setQuickDuration("60");
+    setQuickBuffer("10");
+    setQuickActive(true);
+    setQuickStaffIds([]);
+  }
+
+  function toggleQuickStaff(staffId: string) {
+    setQuickStaffIds((prev) => (prev.includes(staffId) ? prev.filter((x) => x !== staffId) : [...prev, staffId]));
+  }
+
+  async function replaceServiceStaffLinks(serviceId: string, selectedStaffIds: string[]) {
+    // If no links exist for service, backend treats it as "all staff can perform service".
+    // We keep explicit links only when at least one staff member is selected.
+    const { error: delErr } = await supabase.from("staff_services").delete().eq("service_id", serviceId);
+    if (delErr) {
+      console.error("[services] clear staff links failed", delErr);
+      return;
+    }
+    if (!selectedStaffIds.length) return;
+    const rows = selectedStaffIds.map((staffId) => ({ staff_id: staffId, service_id: serviceId }));
+    const { error: insErr } = await supabase.from("staff_services").insert(rows);
+    if (insErr) {
+      console.error("[services] create staff links failed", insErr);
+    }
+  }
+
+  async function createServiceFromQuickForm() {
+    if (!canManage || quickCreateCategory == null) return;
+    const serviceName = String(quickName || "").trim();
+    if (!serviceName) {
+      window.alert("Введите название услуги.");
+      return;
+    }
+
+    const priceEur = Number(quickPriceEur);
+    const durationMin = Number(quickDuration);
+    const bufferMin = Number(quickBuffer);
+    if (!Number.isFinite(priceEur) || priceEur < 0) {
+      window.alert("Цена должна быть числом >= 0.");
+      return;
+    }
+    if (!Number.isFinite(durationMin) || durationMin <= 0) {
+      window.alert("Длительность должна быть больше 0 минут.");
+      return;
+    }
+    if (!Number.isFinite(bufferMin) || bufferMin < 0) {
+      window.alert("Пауза должна быть числом >= 0.");
+      return;
+    }
+
+    const categoryName = String(quickCreateCategory || "").trim();
+    const found = categories.find((c) => String(c.name || "").trim() === categoryName);
+    const categoryId = found ? String(found.id) : null;
+
+    let insertRes = await supabase
+      .from("services")
+      .insert({
+        name_et: serviceName,
+        duration_min: Math.round(durationMin),
+        buffer_after_min: Math.round(bufferMin),
+        price_cents: Math.round(priceEur * 100),
+        active: quickActive,
+        sort_order: services.length,
+        category_id: categoryId,
+        category: categoryName || null,
+      })
+      .select("*")
+      .single();
+
+    if (insertRes.error) {
+      insertRes = await supabase
+        .from("services")
+        .insert({
+          name: serviceName,
+          duration: Math.round(durationMin),
+          buffer_after_min: Math.round(bufferMin),
+          price: Number(priceEur.toFixed(2)),
+          category: categoryName || null,
+        })
+        .select("*")
+        .single();
+    }
+
+    if (insertRes.error) {
+      console.error("[services] quick create failed", insertRes.error);
+      window.alert("Не удалось создать услугу. Проверьте права и структуру таблицы.");
+      return;
+    }
+
+    if (insertRes.data) {
+      const row = insertRes.data as Record<string, unknown>;
+      const normalized =
+        row.name_et != null
+          ? ({ ...(insertRes.data as ServiceRow), active: quickActive } as ServiceRow)
+          : ({ ...mapModernServices([row])[0], active: quickActive } as ServiceRow);
+      await syncServiceToPublicCatalog(normalized);
+      await replaceServiceStaffLinks(String(normalized.id), quickStaffIds);
+    }
+
+    closeQuickCreate();
+    load();
+  }
+
+  const groupedServices = useMemo(() => {
+    const map = new Map<string, ServiceRow[]>();
+    for (const service of services) {
+      const categoryName = categoryNameFromService(service) || "Без категории";
+      if (!map.has(categoryName)) map.set(categoryName, []);
+      map.get(categoryName)?.push(service);
+    }
+    // Show empty category sections too, so user can add first service directly into category.
+    for (const c of categories) {
+      const name = String(c.name || "").trim();
+      if (name && !map.has(name)) map.set(name, []);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "ru"));
+  }, [services, categories]);
+
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
   return (
@@ -315,6 +568,7 @@ export function ServicesPage() {
       {canManage && (
         <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
           <h2 className="text-sm font-semibold text-white">{t("services.categories")}</h2>
+          <p className="mt-1 text-xs text-zinc-500">Это категории услуг. В каждую категорию можно добавить услуги.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <input
               value={newCat}
@@ -332,111 +586,294 @@ export function ServicesPage() {
           </div>
           <ul className="mt-3 flex flex-wrap gap-2 text-sm text-zinc-400">
             {categories.map((c) => (
-              <li key={c.id} className="rounded-full border border-zinc-800 px-3 py-1">
-                {c.name}
+              <li key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2">
+                <input
+                  value={categoryDrafts[String(c.id)] ?? c.name}
+                  onChange={(e) =>
+                    setCategoryDrafts((prev) => ({
+                      ...prev,
+                      [String(c.id)]: e.target.value,
+                    }))
+                  }
+                  onBlur={() => void renameCategory(c)}
+                  className="w-44 rounded border border-zinc-700 bg-black px-2 py-1 text-xs text-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => void renameCategory(c)}
+                  className="text-xs text-sky-400 hover:text-sky-300"
+                >
+                  Сохранить
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openQuickCreate(String(c.name || "").trim())}
+                  className="text-xs text-emerald-400 hover:text-emerald-300"
+                >
+                  + Услуга
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void deleteCategory(c)}
+                  className="text-xs text-red-400 hover:text-red-300"
+                >
+                  Удалить
+                </button>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      <div className="space-y-4">
-        {services.map((s) => (
-          <div
-            key={s.id}
-            className="grid gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-5 md:grid-cols-2 lg:grid-cols-4"
-          >
-            <label className="block text-xs text-zinc-500">
-              {t("services.name")}
-              <input
-                disabled={!canManage}
-                value={s.name_et}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name_et: v } : x)));
-                }}
-                onBlur={() => void saveService(s)}
-                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-              />
-            </label>
-            <label className="block text-xs text-zinc-500">
-              {t("services.priceCents")}
-              <input
-                type="number"
-                disabled={!canManage}
-                value={s.price_cents}
-                onChange={(e) => {
-                  const price_cents = Number(e.target.value);
-                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
-                }}
-                onBlur={() => void saveService(s)}
-                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-              />
-              <span className="mt-1 block text-zinc-600">{eurFromCents(s.price_cents)}</span>
-            </label>
-            <label className="block text-xs text-zinc-500">
-              {t("services.duration")}
-              <input
-                type="number"
-                disabled={!canManage}
-                value={s.duration_min}
-                onChange={(e) => {
-                  const duration_min = Number(e.target.value);
-                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
-                }}
-                onBlur={() => void saveService(s)}
-                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-              />
-            </label>
-            <label className="block text-xs text-zinc-500">
-              {t("services.category")}
-              <select
-                disabled={!canManage}
-                value={String(s.category_id ?? s.category ?? "")}
-                onChange={(e) => {
-                  const category_id = e.target.value || null;
-                  const selectedCategory = categories.find((c) => String(c.id) === String(category_id));
-                  const next = { ...s, category_id, category: selectedCategory?.name ?? null };
-                  setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
-                  void saveService(next);
-                }}
-                className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-              >
-                <option value="">{t("common.dash")}</option>
-                {categories.map((c) => (
-                  <option key={String(c.id)} value={String(c.id)}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-zinc-400 lg:col-span-4">
-              <input
-                type="checkbox"
-                disabled={!canManage}
-                checked={s.active}
-                onChange={(e) => {
-                  const active = e.target.checked;
-                  setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, active } : x)));
-                  void saveService({ ...s, active });
-                }}
-              />
-              {t("services.active")}
-            </label>
-            {canManage && (
-              <div className="lg:col-span-4">
+      <div className="space-y-6">
+        {groupedServices.map(([categoryName, list]) => (
+          <section key={categoryName} className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-zinc-200">{categoryName}</h3>
+              {canManage && (
                 <button
                   type="button"
-                  onClick={() => void deleteService(s)}
-                  className="text-xs font-medium text-red-400 hover:text-red-300"
+                  onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
+                  className="rounded-md border border-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-900"
                 >
-                  {t("services.deletePermanent")}
+                  + Добавить услугу в категорию
                 </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {list.map((s) => (
+                <div
+                  key={s.id}
+                  className="grid gap-4 rounded-xl border border-zinc-800 bg-black/30 p-4 md:grid-cols-2 lg:grid-cols-5"
+                >
+                  <label className="block text-xs text-zinc-500">
+                    {t("services.name")}
+                    <input
+                      disabled={!canManage}
+                      value={s.name_et}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name_et: v } : x)));
+                      }}
+                      onBlur={() => void saveService(s)}
+                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
+                    />
+                  </label>
+                  <label className="block text-xs text-zinc-500">
+                    {t("services.priceCents")}
+                    <input
+                      type="number"
+                      disabled={!canManage}
+                      value={s.price_cents}
+                      onChange={(e) => {
+                        const price_cents = Number(e.target.value);
+                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
+                      }}
+                      onBlur={() => void saveService(s)}
+                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
+                    />
+                    <span className="mt-1 block text-zinc-600">{eurFromCents(s.price_cents)}</span>
+                  </label>
+                  <label className="block text-xs text-zinc-500">
+                    {t("services.duration")}
+                    <input
+                      type="number"
+                      min={5}
+                      step={5}
+                      disabled={!canManage}
+                      value={s.duration_min}
+                      onChange={(e) => {
+                        const duration_min = Number(e.target.value);
+                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
+                      }}
+                      onBlur={() => void saveService(s)}
+                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
+                    />
+                    <span className="mt-1 block text-zinc-600">Минуты работы</span>
+                  </label>
+                  <label className="block text-xs text-zinc-500">
+                    Пауза после (мин)
+                    <input
+                      type="number"
+                      min={0}
+                      step={5}
+                      disabled={!canManage}
+                      value={s.buffer_after_min}
+                      onChange={(e) => {
+                        const buffer_after_min = Number(e.target.value);
+                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, buffer_after_min } : x)));
+                      }}
+                      onBlur={() => void saveService(s)}
+                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
+                    />
+                    <span className="mt-1 block text-zinc-600">Тоже блокирует слот</span>
+                  </label>
+                  <label className="block text-xs text-zinc-500">
+                    {t("services.category")}
+                    <select
+                      disabled={!canManage}
+                      value={String(s.category_id ?? s.category ?? "")}
+                      onChange={(e) => {
+                        const category_id = e.target.value || null;
+                        const selectedCategory = categories.find((c) => String(c.id) === String(category_id));
+                        const next = { ...s, category_id, category: selectedCategory?.name ?? null };
+                        setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
+                        void saveService(next);
+                      }}
+                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
+                    >
+                      <option value="">{t("common.dash")}</option>
+                      {categories.map((c) => (
+                        <option key={String(c.id)} value={String(c.id)}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-zinc-400 lg:col-span-5">
+                    <input
+                      type="checkbox"
+                      disabled={!canManage}
+                      checked={s.active}
+                      onChange={(e) => {
+                        const active = e.target.checked;
+                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, active } : x)));
+                        void saveService({ ...s, active });
+                      }}
+                    />
+                    {t("services.active")}
+                  </label>
+                  {canManage && (
+                    <div className="lg:col-span-5">
+                      <button
+                        type="button"
+                        onClick={() => void deleteService(s)}
+                        className="text-xs font-medium text-red-400 hover:text-red-300"
+                      >
+                        {t("services.deletePermanent")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {list.length === 0 && canManage && (
+                <div className="rounded-lg border border-dashed border-zinc-700 bg-black/20 p-4">
+                  <p className="text-sm text-zinc-400">В этой категории пока нет услуг.</p>
+                  <button
+                    type="button"
+                    onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
+                    className="mt-3 rounded-md border border-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-900"
+                  >
+                    + Добавить первую услугу
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
         ))}
       </div>
+
+      {quickCreateCategory !== null && canManage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+            <h3 className="text-base font-semibold text-white">Быстрое создание услуги</h3>
+            <p className="mt-1 text-xs text-zinc-500">
+              Категория: {String(quickCreateCategory || "Без категории")}
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <label className="block text-xs text-zinc-400">
+                Название
+                <input
+                  value={quickName}
+                  onChange={(e) => setQuickName(e.target.value)}
+                  className={`${fieldBase} border border-zinc-700`}
+                />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                Цена (EUR)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={quickPriceEur}
+                  onChange={(e) => setQuickPriceEur(e.target.value)}
+                  className={`${fieldBase} border border-zinc-700`}
+                />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                Длительность (мин)
+                <input
+                  type="number"
+                  min={5}
+                  step={5}
+                  value={quickDuration}
+                  onChange={(e) => setQuickDuration(e.target.value)}
+                  className={`${fieldBase} border border-zinc-700`}
+                />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                Пауза после (мин)
+                <input
+                  type="number"
+                  min={0}
+                  step={5}
+                  value={quickBuffer}
+                  onChange={(e) => setQuickBuffer(e.target.value)}
+                  className={`${fieldBase} border border-zinc-700`}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={quickActive}
+                  onChange={(e) => setQuickActive(e.target.checked)}
+                />
+                Услуга активна
+              </label>
+              <div className="rounded-lg border border-zinc-800 p-3">
+                <p className="text-xs text-zinc-400">Мастера, которые могут выполнять услугу</p>
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Если не выбрать никого, услуга будет доступна всем активным мастерам.
+                </p>
+                <div className="mt-2 max-h-40 space-y-1 overflow-auto">
+                  {staff.filter((m) => m.active).map((m) => (
+                    <label key={m.id} className="flex items-center gap-2 text-xs text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={quickStaffIds.includes(m.id)}
+                        onChange={() => toggleQuickStaff(m.id)}
+                      />
+                      {m.name || m.id}
+                    </label>
+                  ))}
+                  {staff.filter((m) => m.active).length === 0 && (
+                    <p className="text-xs text-zinc-500">Активные мастера не найдены.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => closeQuickCreate()}
+                className="rounded-md border border-zinc-700 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-900"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => void createServiceFromQuickForm()}
+                className="rounded-md bg-sky-600 px-3 py-2 text-xs font-medium text-white hover:bg-sky-500"
+              >
+                Создать услугу
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
