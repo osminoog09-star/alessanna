@@ -330,21 +330,30 @@ export function AdminStaffPage() {
     setErr(null);
     const cleanPhone = digitsOnly(phone);
     const n = name.trim();
-    if (!cleanPhone || !n) {
-      setErr("Phone and name are required.");
+    if (!n) {
+      setErr("Укажите имя мастера.");
       return;
     }
     const normalizedNewRoles = sanitizeRolesForSave(newRoles, true, newRoles) as UiRole[];
     const primaryRole = pickPrimaryRole(normalizedNewRoles);
     const { error } = await supabase.from("staff").insert({
-      phone: cleanPhone,
+      phone: cleanPhone || null,
       name: n,
       role: primaryRole,
       roles: normalizedNewRoles,
       is_active: true,
     });
     if (error) {
-      setErr(error.message);
+      const raw = String(error.message || "");
+      if (/null value.*column .?phone/i.test(raw)) {
+        setErr(
+          "В базе у колонки staff.phone стоит NOT NULL — примените миграцию 021, чтобы разрешить мастеров без телефона.",
+        );
+      } else if (/duplicate key|unique/i.test(raw) && cleanPhone) {
+        setErr(`Мастер с телефоном ${cleanPhone} уже существует.`);
+      } else {
+        setErr(raw);
+      }
       return;
     }
     setPhone("");
@@ -816,12 +825,16 @@ export function AdminStaffPage() {
 
       <form onSubmit={onAdd} className="flex flex-wrap items-end gap-3 border border-zinc-800 bg-zinc-950 p-4">
         <div>
-          <label className="block text-xs text-zinc-500">{t("login.phone")}</label>
+          <label className="block text-xs text-zinc-500">
+            {t("login.phone")} <span className="text-zinc-600">(необязательно)</span>
+          </label>
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
-            placeholder="37255686845"
+            placeholder="введите номер"
+            inputMode="tel"
+            autoComplete="off"
           />
         </div>
         <div>
@@ -830,6 +843,7 @@ export function AdminStaffPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
+            placeholder="имя мастера"
           />
         </div>
         <div>

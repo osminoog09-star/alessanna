@@ -1,5 +1,5 @@
 -- =========================================================================
--- APPLY-ALL bundle: 012 + 018 + 019 + 020
+-- APPLY-ALL bundle: 012 + 018 + 019 + 020 + 021
 -- Run once in Supabase SQL Editor. All statements are idempotent, so it is
 -- safe to re-run on a partially applied database.
 -- =========================================================================
@@ -231,8 +231,29 @@ where lower(coalesce(s.role, '')) in ('admin', 'owner')
    );
 
 
+-- -------------------------------------------------------------------------
+-- 021_staff_phone_optional.sql
+-- Allow staff without a phone (masters who don't log in themselves).
+-- Partial unique index keeps uniqueness only for non-null phones.
+-- -------------------------------------------------------------------------
+
+alter table public.staff alter column phone drop not null;
+
+update public.staff set phone = null where phone is not null and btrim(phone) = '';
+
+alter table public.staff drop constraint if exists staff_phone_key;
+
+create unique index if not exists uq_staff_phone_not_null
+  on public.staff (phone)
+  where phone is not null;
+
+comment on column public.staff.phone is
+  'Optional phone used for CRM login. NULL is allowed for staff who never log in themselves; uniqueness is enforced only for non-null values via uq_staff_phone_not_null.';
+
+
 -- =========================================================================
 -- Done. Expected result in the CRM:
---   * /admin/staff: no amber banners; service toggles save without FK errors
+--   * /admin/staff: no amber banners; service toggles save without FK errors;
+--     master can be added without a phone number.
 --   * /admin/services: "Активна" toggle persists on click (no more flicker)
 -- =========================================================================
