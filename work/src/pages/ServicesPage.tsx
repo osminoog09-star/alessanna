@@ -937,28 +937,6 @@ export function ServicesPage() {
     void setStaffLinksForServiceAndReload(service, next);
   }
 
-  async function toggleStaffOnSite(service: ServiceRow, staffId: string, visible: boolean) {
-    if (!canManage) return;
-    const serviceId = String(service.id);
-    let prev = staffLinksForService(serviceId);
-    /* Пустой staff_services = «все мастера»; без строк в БД нельзя менять show_on_site по мастеру — сначала материализуем привязки. */
-    if (!prev.length) {
-      const rows = staffListedAsMasters(staff).map((m) => ({
-        staff_id: String(m.id),
-        show_on_site: true,
-      }));
-      const ok = await replaceServiceStaffLinks(service, rows);
-      if (!ok) return;
-      await load();
-      prev = staffLinksForService(serviceId);
-      if (!prev.length) return;
-    }
-    const next = prev.map((l) =>
-      normId(l.staff_id) === normId(staffId) ? { ...l, show_on_site: visible } : l,
-    );
-    await setStaffLinksForServiceAndReload(service, next);
-  }
-
   async function createServiceFromQuickForm() {
     if (!canManage || quickCreateCategory == null) return;
     const serviceName = String(quickName || "").trim();
@@ -1290,9 +1268,8 @@ export function ServicesPage() {
                   <div className="rounded-lg border border-zinc-800 bg-black/20 p-3 lg:col-span-5">
                     <p className="text-xs text-zinc-400">Мастера</p>
                     <p className="mt-1 text-[11px] text-zinc-500">
-                      Без отметок — услугу могут все активные мастера, на сайте тоже все. Отметьте мастеров, чтобы
-                      ограничить, кто выполняет услугу; «На сайте» скрывает мастера только с главной и онлайн-записи (в
-                      CRM остаётся).
+                      Без отметок — услугу выполняют все активные мастера. Включите тумблер, чтобы закрепить
+                      услугу за конкретным мастером — он сразу станет «доступен» на сайте и в онлайн-записи.
                     </p>
                     <div className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
                       {staffListedAsMasters(staff).map((m) => {
@@ -1301,7 +1278,8 @@ export function ServicesPage() {
                           const link = prev.find((l) => normId(l.staff_id) === normId(m.id));
                           /* Пустой staff_services = все активные мастера могут услугу — показываем включено */
                           const performs = prev.length === 0 || !!link;
-                          const onSite = link ? link.show_on_site !== false : true;
+                          /* Доступен = мастер закреплён за услугой И услуга активна И сам мастер активен. */
+                          const available = performs && s.active && m.active;
                           return (
                             <div
                               key={m.id}
@@ -1317,19 +1295,32 @@ export function ServicesPage() {
                                 />
                                 <span className="truncate font-medium">{m.name || m.id}</span>
                               </div>
-                              <div
-                                className={`flex items-center gap-2 text-[11px] ${link ? "text-zinc-400" : "text-zinc-600"}`}
-                                title={!link ? "Сначала включите «выполняет услугу»" : undefined}
+                              <span
+                                className={
+                                  "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
+                                  (available
+                                    ? "border-emerald-700/50 bg-emerald-900/20 text-emerald-300"
+                                    : "border-zinc-700 bg-zinc-900/40 text-zinc-500")
+                                }
+                                title={
+                                  available
+                                    ? "Услуга доступна у этого мастера — он появится в блоке «Мастера» и в онлайн-записи"
+                                    : !performs
+                                      ? "Включите тумблер слева, чтобы услуга стала доступна у мастера"
+                                      : !s.active
+                                        ? "Услуга выключена (снят тумблер «Активна» ниже)"
+                                        : "Мастер выключен в /admin/staff"
+                                }
                               >
-                                <span className="whitespace-nowrap">На сайте</span>
-                                <ToggleSwitch
-                                  size="sm"
-                                  disabled={!canManage || (prev.length > 0 && !link)}
-                                  checked={onSite}
-                                  onCheckedChange={(v) => void toggleStaffOnSite(s, m.id, v)}
-                                  aria-label={`${m.name}: на сайте`}
+                                <span
+                                  aria-hidden="true"
+                                  className={
+                                    "h-1.5 w-1.5 rounded-full " +
+                                    (available ? "bg-emerald-400" : "bg-zinc-600")
+                                  }
                                 />
-                              </div>
+                                {available ? "доступен" : "не доступен"}
+                              </span>
                             </div>
                           );
                         })}
