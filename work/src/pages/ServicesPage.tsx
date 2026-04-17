@@ -20,15 +20,46 @@ export function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
 
+  function categoryNameFromService(service: ServiceRow): string {
+    const direct = String(service.category || "").trim();
+    if (direct) return direct;
+    const byId = categories.find((c) => String(c.id) === String(service.category_id || ""));
+    return String(byId?.name || "").trim();
+  }
+
+  function mapModernServices(rows: Array<Record<string, unknown>>): ServiceRow[] {
+    return rows.map((r, idx) => {
+      const priceNum = Number(r.price);
+      return {
+        id: String(r.id || ""),
+        slug: null,
+        name_et: String(r.name || ""),
+        name_en: null,
+        category: r.category != null ? String(r.category) : null,
+        category_id: r.category != null ? String(r.category) : null,
+        duration_min: Number(r.duration || 0),
+        buffer_after_min: Number(r.buffer_after_min || 10),
+        price_cents: Number.isFinite(priceNum) ? Math.round(priceNum * 100) : 0,
+        active: r.active !== false && r.is_active !== false,
+        sort_order: idx,
+        created_at: r.created_at != null ? String(r.created_at) : undefined,
+      };
+    });
+  }
+
   const syncServiceToPublicCatalog = useCallback(async (service: ServiceRow) => {
     const serviceName = String(service.name_et || "").trim();
     if (!serviceName) return;
 
     try {
-      let categoryName = "";
-      if (service.category_id != null) {
-        const catRes = await supabase.from("categories").select("name").eq("id", service.category_id).maybeSingle();
-        categoryName = String(catRes.data?.name || "").trim();
+      let categoryName = categoryNameFromService(service);
+      if (!categoryName && service.category_id != null) {
+        const catLegacy = await supabase.from("categories").select("name").eq("id", service.category_id).maybeSingle();
+        categoryName = String(catLegacy.data?.name || "").trim();
+      }
+      if (!categoryName && service.category_id != null) {
+        const catModern = await supabase.from("service_categories").select("name").eq("id", service.category_id).maybeSingle();
+        categoryName = String(catModern.data?.name || "").trim();
       }
 
       let publicCategoryId: string | null = null;
@@ -50,22 +81,52 @@ export function ServicesPage() {
         name: serviceName,
         price: Number(service.price_cents || 0) / 100,
         duration: Number(service.duration_min || 0),
+        buffer_after_min: Number(service.buffer_after_min || 10),
         category_id: publicCategoryId,
         is_active: service.active !== false,
+      };
+      const payloadNoBuffer = {
+        name: serviceName,
+        price: Number(service.price_cents || 0) / 100,
+        duration: Number(service.duration_min || 0),
+        category_id: publicCategoryId,
+        is_active: service.active !== false,
+      };
+      const payloadMinimal = {
+        name: serviceName,
+        price: Number(service.price_cents || 0) / 100,
+        duration: Number(service.duration_min || 0),
+        category_id: publicCategoryId,
       };
 
       const existingListing = await supabase.from("service_listings").select("id").eq("name", serviceName).maybeSingle();
       if (existingListing.data?.id) {
-        const { error } = await supabase.from("service_listings").update(payload).eq("id", existingListing.data.id);
+        let { error } = await supabase.from("service_listings").update(payload).eq("id", existingListing.data.id);
+        if (error && String(error.message || "").includes("buffer_after_min")) {
+          const retry = await supabase.from("service_listings").update(payloadNoBuffer).eq("id", existingListing.data.id);
+          error = retry.error || null;
+        }
+        if (error && String(error.message || "").includes("is_active")) {
+          const retry = await supabase.from("service_listings").update(payloadMinimal).eq("id", existingListing.data.id);
+          error = retry.error || null;
+        }
         if (error) console.error("[services-sync] update service_listings failed", error);
       } else {
-        const { error } = await supabase.from("service_listings").insert(payload);
+        let { error } = await supabase.from("service_listings").insert(payload);
+        if (error && String(error.message || "").includes("buffer_after_min")) {
+          const retry = await supabase.from("service_listings").insert(payloadNoBuffer);
+          error = retry.error || null;
+        }
+        if (error && String(error.message || "").includes("is_active")) {
+          const retry = await supabase.from("service_listings").insert(payloadMinimal);
+          error = retry.error || null;
+        }
         if (error) console.error("[services-sync] insert service_listings failed", error);
       }
     } catch (err) {
       console.error("[services-sync] syncServiceToPublicCatalog crashed", err);
     }
-  }, []);
+  }, [categories]);
 
   const deleteServiceFromPublicCatalog = useCallback(async (service: ServiceRow) => {
     const serviceName = String(service.name_et || "").trim();
@@ -79,12 +140,31 @@ export function ServicesPage() {
   }, []);
 
   const load = useCallback(async () => {
-    const [c, s] = await Promise.all([
-      supabase.from("categories").select("*").order("name"),
-      supabase.from("services").select("*").order("sort_order", { ascending: true }),
-    ]);
-    if (c.data) setCategories(c.data as CategoryRow[]);
-    if (s.data) setServices(s.data as ServiceRow[]);
+    const cLegacy = await supabase.from("categories").select("*").order("name");
+    if (!cLegacy.error && cLegacy.data) {
+      setCategories(cLegacy.data as CategoryRow[]);
+    } else {
+      const cModern = await supabase.from("service_categories").select("id,name").order("name");
+      if (cModern.data) {
+        setCategories(
+          (cModern.data as Array<{ id: string; name: string }>).map((r) => ({
+            id: String(r.id) as unknown as number,
+            name: String(r.name || ""),
+          }))
+        );
+      }
+    }
+
+    const sLegacy = await supabase.from("services").select("*").order("sort_order", { ascending: true });
+    if (!sLegacy.error && sLegacy.data) {
+      setServices(sLegacy.data as ServiceRow[]);
+    } else {
+      const sModern = await supabase
+        .from("services")
+        .select("id,name,category,duration,buffer_after_min,price,created_at")
+        .order("name", { ascending: true });
+      if (sModern.data) setServices(mapModernServices(sModern.data as Array<Record<string, unknown>>));
+    }
     setLoading(false);
   }, []);
 
@@ -97,14 +177,17 @@ export function ServicesPage() {
   async function addCategory() {
     if (!newCat.trim() || !canManage) return;
     const categoryName = newCat.trim();
-    await supabase.from("categories").insert({ name: categoryName });
-    try {
-      const { error } = await supabase.from("service_categories").insert({ name: categoryName });
-      if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
-        console.error("[services-sync] insert service_categories failed", error);
+    const legacyInsert = await supabase.from("categories").insert({ name: categoryName });
+    if (legacyInsert.error) {
+      const modernInsert = await supabase.from("service_categories").insert({ name: categoryName });
+      if (modernInsert.error && !String(modernInsert.error.message || "").toLowerCase().includes("duplicate")) {
+        console.error("[services] add category failed", modernInsert.error);
       }
-    } catch (err) {
-      console.error("[services-sync] addCategory public sync crashed", err);
+    } else {
+      const mirror = await supabase.from("service_categories").insert({ name: categoryName });
+      if (mirror.error && !String(mirror.error.message || "").toLowerCase().includes("duplicate")) {
+        console.error("[services-sync] insert service_categories failed", mirror.error);
+      }
     }
     setNewCat("");
     load();
@@ -112,19 +195,34 @@ export function ServicesPage() {
 
   async function saveService(s: ServiceRow) {
     if (!canManage) return;
-    const { error } = await supabase
+    const categoryName = categoryNameFromService(s) || null;
+    const legacy = await supabase
       .from("services")
       .update({
         name_et: s.name_et,
         duration_min: s.duration_min,
+        buffer_after_min: s.buffer_after_min,
         price_cents: s.price_cents,
         active: s.active,
         category_id: s.category_id,
+        category: categoryName,
       })
       .eq("id", s.id);
-    if (error) {
-      console.error("[services] save failed", error);
-      return;
+    if (legacy.error) {
+      const modern = await supabase
+        .from("services")
+        .update({
+          name: s.name_et,
+          duration: s.duration_min,
+          buffer_after_min: s.buffer_after_min,
+          price: Number(s.price_cents || 0) / 100,
+          category: categoryName,
+        })
+        .eq("id", s.id);
+      if (modern.error) {
+        console.error("[services] save failed", modern.error);
+        return;
+      }
     }
     await syncServiceToPublicCatalog(s);
     load();
@@ -154,23 +252,43 @@ export function ServicesPage() {
 
   async function addService() {
     if (!canManage) return;
-    const insertRes = await supabase
+    let insertRes = await supabase
       .from("services")
       .insert({
-      name_et: i18n.t("services.newServiceDefault"),
-      duration_min: 60,
-      buffer_after_min: 10,
-      price_cents: 3000,
-      active: true,
-      sort_order: services.length,
+        name_et: i18n.t("services.newServiceDefault"),
+        duration_min: 60,
+        buffer_after_min: 10,
+        price_cents: 3000,
+        active: true,
+        sort_order: services.length,
       })
       .select("*")
       .single();
     if (insertRes.error) {
+      insertRes = await supabase
+        .from("services")
+        .insert({
+          name: i18n.t("services.newServiceDefault"),
+          duration: 60,
+          buffer_after_min: 10,
+          price: 30,
+          category: null,
+        })
+        .select("*")
+        .single();
+    }
+    if (insertRes.error) {
       console.error("[services] add failed", insertRes.error);
       return;
     }
-    if (insertRes.data) await syncServiceToPublicCatalog(insertRes.data as ServiceRow);
+    if (insertRes.data) {
+      const row = insertRes.data as Record<string, unknown>;
+      const normalized =
+        row.name_et != null
+          ? (insertRes.data as ServiceRow)
+          : mapModernServices([row])[0];
+      await syncServiceToPublicCatalog(normalized);
+    }
     load();
   }
 
@@ -274,10 +392,11 @@ export function ServicesPage() {
               {t("services.category")}
               <select
                 disabled={!canManage}
-                value={s.category_id ?? ""}
+                value={String(s.category_id ?? s.category ?? "")}
                 onChange={(e) => {
-                  const category_id = e.target.value ? Number(e.target.value) : null;
-                  const next = { ...s, category_id };
+                  const category_id = e.target.value || null;
+                  const selectedCategory = categories.find((c) => String(c.id) === String(category_id));
+                  const next = { ...s, category_id, category: selectedCategory?.name ?? null };
                   setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
                   void saveService(next);
                 }}
@@ -285,7 +404,7 @@ export function ServicesPage() {
               >
                 <option value="">{t("common.dash")}</option>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={String(c.id)} value={String(c.id)}>
                     {c.name}
                   </option>
                 ))}

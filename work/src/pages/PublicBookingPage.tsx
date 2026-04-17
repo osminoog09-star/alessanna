@@ -41,21 +41,31 @@ export function PublicBookingPage() {
       setLoading(false);
       return;
     }
-    const [sv, st, lk, sc] = await Promise.all([
-      supabase.from("service_listings").select("id,name,duration,buffer_after_min,is_active").order("name"),
+    const [st, lk, sc] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
     ]);
+    let sv = await supabase
+      .from("service_listings")
+      .select("id,name,duration,buffer_after_min,is_active")
+      .order("name");
+    if (sv.error) {
+      sv = await supabase.from("service_listings").select("id,name,duration,is_active").order("name");
+      if (sv.error) {
+        sv = await supabase.from("service_listings").select("id,name,duration,buffer_after_min").order("name");
+      }
+      if (sv.error) {
+        sv = await supabase.from("service_listings").select("id,name,duration").order("name");
+      }
+    }
     if (sv.data) {
       setServices(
-        (
-          sv.data as Array<{ id: string; name: string; duration?: number; buffer_after_min?: number; is_active?: boolean }>
-        ).map((s) => ({
+        (sv.data as Array<{ id: string; name: string; duration?: number; buffer_after_min?: number; is_active?: boolean }>).map((s) => ({
           id: String(s.id),
           name: String(s.name || "").trim(),
           duration_min: Number(s.duration || 0),
-          buffer_after_min: Number(s.buffer_after_min || 0),
+          buffer_after_min: Number(s.buffer_after_min || 10),
           active: s.is_active !== false,
         }))
       );
