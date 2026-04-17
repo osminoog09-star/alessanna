@@ -127,11 +127,76 @@ function groupsFromCategoryNames(names) {
   });
 }
 
-function render(groups) {
+/**
+ * Публично показываем мастера, если он is_active, не скрыт от сайта и не admin/owner.
+ * Совпадает с логикой site-team.mjs — иначе в корзине всплывают сотрудники, которых
+ * на странице «Мастера» нет.
+ */
+function staffRowIsPublicVisible(r) {
+  if (!r) return false;
+  if (r.is_active === false) return false;
+  if (r.show_on_marketing_site === false) return false;
+  const role = String(r.role || "").toLowerCase();
+  if (role === "admin" || role === "owner") return false;
+  const roles = Array.isArray(r.roles) ? r.roles : [];
+  for (let i = 0; i < roles.length; i++) {
+    const rr = String(roles[i] || "").toLowerCase();
+    if (rr === "admin" || rr === "owner") return false;
+  }
+  return true;
+}
+
+/**
+ * Грузит `staff_services` и строит карту service_id -> [visible_master_id...].
+ * Ошибки тихо глотаем: при сбое карта останется пустой — корзина упадёт в старое
+ * поведение (категория из блока «Мастера»).
+ */
+async function fetchServiceMasters(client) {
+  const out = new Map();
+  try {
+    const staff = await client
+      .from("staff")
+      .select("id,is_active,show_on_marketing_site,role,roles")
+      .eq("is_active", true);
+    if (staff.error) {
+      warnLog("staff lookup failed for service-masters map", staff.error);
+      return out;
+    }
+    const visibleIds = new Set(
+      (staff.data || [])
+        .filter(staffRowIsPublicVisible)
+        .map((r) => String(r.id))
+    );
+    if (!visibleIds.size) return out;
+
+    const links = await client
+      .from("staff_services")
+      .select("service_id, staff_id, show_on_site");
+    if (links.error) {
+      warnLog("staff_services lookup failed for service-masters map", links.error);
+      return out;
+    }
+    for (const row of links.data || []) {
+      if (row.show_on_site === false) continue;
+      const sid = String(row.staff_id ?? "");
+      const svc = String(row.service_id ?? "");
+      if (!sid || !svc) continue;
+      if (!visibleIds.has(sid)) continue;
+      if (!out.has(svc)) out.set(svc, []);
+      out.get(svc).push(sid);
+    }
+  } catch (e) {
+    warnLog("fetchServiceMasters threw", e);
+  }
+  return out;
+}
+
+function render(groups, serviceMasters) {
   const mount = mountEl();
   const warn = document.getElementById("teenused-config-warn");
   const form = document.getElementById("booking-form");
   const serviceSelect = form ? form.querySelector('select[name="service"]') : null;
+  const svcMasters = serviceMasters instanceof Map ? serviceMasters : new Map();
 
   if (!mount) return;
 
@@ -196,8 +261,17 @@ function render(groups) {
       for (let j = 0; j < gr.items.length; j++) {
         const it = gr.items[j];
         /* Длительность не показываем на сайте: она для CRM и слотов календаря. */
+        const svcId = String(it.id || "");
+        const masters = svcMasters.get(svcId) || [];
+        /* data-service-masters — список мастеров, закреплённых за ЭТОЙ услугой
+         * (пустая строка = «все активные мастера»). script.js использует эти id,
+         * чтобы в корзине показать только тех, кто реально делает услугу. */
         panelHtml +=
-          "<li><span>" +
+          '<li data-service-id="' +
+          esc(svcId) +
+          '" data-service-masters="' +
+          esc(masters.join(",")) +
+          '"><span>' +
           esc(it.name) +
           '</span><span class="price">' +
           esc(fmtPrice(it.price)) +
@@ -496,19 +570,20 @@ async function fetchPriceList(client) {
 }
 
 async function run(client) {
-  const result = await fetchPriceList(client);
+  const [result, svcMasters] = await Promise.all([fetchPriceList(client), fetchServiceMasters(client)]);
   if (!result.error) {
     const rows = result.data || [];
     info("Loaded services from " + result.source + " (" + rows.length + ")");
+    info("Loaded service→masters map (" + svcMasters.size + " services with explicit staff)");
     if (rows.length > 0) {
-      render(groupRows(rows));
+      render(groupRows(rows), svcMasters);
       return true;
     }
     try {
       const names = await fetchCategoryNames(client);
       if (names.length > 0) {
         info("Loaded categories without services (" + names.length + ")");
-        render(groupsFromCategoryNames(names));
+        render(groupsFromCategoryNames(names), svcMasters);
         showCatalogWarn(
           "Kategooriad on olemas, kuid teenuseid ei leitud. Lisa vähemalt üks teenus CRM-is või kontrolli, et teenused sünkroniseeritakse tabelisse service_listings."
         );
@@ -522,18 +597,18 @@ async function run(client) {
       const fallbackData = await fetchPublicApiFallback();
       if (fallbackData.length > 0) {
         info("Loaded services from public API fallback (" + fallbackData.length + ")");
-        render(groupRows(fallbackData));
+        render(groupRows(fallbackData), svcMasters);
         return true;
       }
       info("Fallback returned zero services too; rendering empty state");
-      render(groupRows(rows));
+      render(groupRows(rows), svcMasters);
       showCatalogWarn(
         "Teenuste nimekiri on tühi nii Supabase'is kui ka varu API-s. Kontrolli, et teenused oleksid lisatud ja aktiivsed."
       );
       return true;
     } catch (fallbackEmptyError) {
       warnLog("Fallback failed after empty Supabase response; rendering empty state", fallbackEmptyError);
-      render(groupRows(rows));
+      render(groupRows(rows), svcMasters);
       showCatalogWarn(
         "Teenuseid ei saadud laadida: Supabase tagastas tühja kataloogi ja varu API ei vastanud korrektselt. Kontrolli RLS õiguseid ja SALON_PUBLIC_API_BASE väärtust."
       );
@@ -545,7 +620,7 @@ async function run(client) {
   try {
     const fallbackData = await fetchPublicApiFallback();
     info("Loaded services from public API fallback (" + fallbackData.length + ")");
-    render(groupRows(fallbackData));
+    render(groupRows(fallbackData), svcMasters);
     return true;
   } catch (fallbackError) {
     errorLog("Both Supabase and fallback API failed", {
@@ -598,6 +673,11 @@ async function main() {
     .on("postgres_changes", { event: "*", schema: "public", table: "service_categories" }, refresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "services" }, refresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, refresh)
+    /* staff_services / staff меняют карту «услуга → мастера», которая рендерится
+     * в data-service-masters на каждой строке .menu-list, и корзина сразу
+     * подхватывает новые назначения без перезагрузки страницы. */
+    .on("postgres_changes", { event: "*", schema: "public", table: "staff_services" }, refresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, refresh)
     .subscribe(function (status) {
       info("Realtime channel status: " + status);
     });

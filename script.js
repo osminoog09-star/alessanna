@@ -519,9 +519,53 @@
       return out;
     }
 
+    /**
+     * Мастера конкретной услуги по данным из DOM.
+     * site-services.mjs кладёт list мастеров в data-service-masters на каждую
+     * строку .menu-list li (через запятую). Возвращаем:
+     *   - null    — нет data-атрибута / строку не нашли → откат на категорию
+     *   - []      — услуга в БД, но явных мастеров нет (пустой staff_services) →
+     *               откат на категорию (все активные мастера)
+     *   - [ids]   — явный список: показываем только этих
+     */
+    function serviceMastersFromDom(pick) {
+      if (!pick || !pick.key) return null;
+      var li = teenused
+        ? teenused.querySelector('.menu-list li[data-pick-key="' + escapeCssAttrKey(pick.key) + '"]')
+        : null;
+      if (!li || !li.hasAttribute("data-service-masters")) return null;
+      var raw = String(li.getAttribute("data-service-masters") || "").trim();
+      if (!raw) return [];
+      return raw
+        .split(",")
+        .map(function (s) {
+          return String(s || "").trim();
+        })
+        .filter(Boolean);
+    }
+
     function staffIdsForPick(teamRootEl, pick) {
       var all = allStaffIdsFromTeamDom(teamRootEl);
       if (!all.length) return [];
+
+      /* 1) Точный список мастеров под конкретную услугу (data-service-masters). */
+      var bySvc = serviceMastersFromDom(pick);
+      if (bySvc && bySvc.length) {
+        var allowed = {};
+        for (var a = 0; a < all.length; a++) allowed[all[a]] = true;
+        var filtered = [];
+        var seenSvc = {};
+        for (var b = 0; b < bySvc.length; b++) {
+          var mid = bySvc[b];
+          if (!allowed[mid] || seenSvc[mid]) continue;
+          seenSvc[mid] = true;
+          filtered.push(mid);
+        }
+        return filtered;
+      }
+
+      /* 2) Fallback — старая логика по категории (услуга без явных мастеров =
+       *    «все активные мастера из категории»). */
       var ck = teamCategoryKeyFromPickCategory(pick.category);
       if (ck === null) return all.slice();
       var scoped = staffIdsInTeamGroup(teamRootEl, ck);
@@ -812,6 +856,13 @@
     window.addEventListener("teenused-supabase-ready", function () {
       wireMenuPickRows();
       syncMenuRowsPickedClass();
+      /* После ре-рендера каталога (в т.ч. при realtime-изменениях staff_services)
+       * обновляем и «Мастера по выбранным услугам» в корзине — иначе там
+       * останутся мастера по старой карте. */
+      renderMasterChips();
+      validateMasterForPicks();
+      syncTeamMasterEligibility();
+      syncMasterSelectEligibility();
     });
 
     window.addEventListener("site-team-ready", function () {
