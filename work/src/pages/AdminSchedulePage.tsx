@@ -5,10 +5,10 @@ import type { StaffScheduleRow, StaffTableRow } from "../types/database";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
-type DayRow = { day_of_week: number; start: string; end: string };
+type DayRow = { day_of_week: number; start: string; end: string; working: boolean };
 
 function emptyWeek(): DayRow[] {
-  return DAYS.map((d) => ({ day_of_week: d, start: "09:00", end: "17:00" }));
+  return DAYS.map((d) => ({ day_of_week: d, start: "09:00", end: "17:00", working: true }));
 }
 
 export function AdminSchedulePage() {
@@ -41,13 +41,23 @@ export function AdminSchedulePage() {
     }
     const list = (data ?? []) as StaffScheduleRow[];
     const map = new Map(list.map((r) => [r.day_of_week, r]));
+    const hasAnySaved = list.length > 0;
     setRows(
       DAYS.map((d) => {
         const ex = map.get(d);
+        if (ex) {
+          return {
+            day_of_week: d,
+            start: ex.start_time.slice(0, 5),
+            end: ex.end_time.slice(0, 5),
+            working: true,
+          };
+        }
         return {
           day_of_week: d,
-          start: ex ? ex.start_time.slice(0, 5) : "09:00",
-          end: ex ? ex.end_time.slice(0, 5) : "17:00",
+          start: "09:00",
+          end: "17:00",
+          working: !hasAnySaved,
         };
       })
     );
@@ -65,21 +75,31 @@ export function AdminSchedulePage() {
     setRows((prev) => prev.map((r) => (r.day_of_week === day ? { ...r, [field]: value } : r)));
   }
 
+  function setDayWorking(day: number, working: boolean) {
+    setRows((prev) => prev.map((r) => (r.day_of_week === day ? { ...r, working } : r)));
+  }
+
   async function onSave(e: FormEvent) {
     e.preventDefault();
     if (!staffId) return;
     setSaving(true);
     setErr(null);
     await supabase.from("staff_schedule").delete().eq("staff_id", staffId);
-    const inserts = rows.map((r) => ({
-      staff_id: staffId,
-      day_of_week: r.day_of_week,
-      start_time: r.start.length === 5 ? `${r.start}:00` : r.start,
-      end_time: r.end.length === 5 ? `${r.end}:00` : r.end,
-    }));
+    const inserts = rows
+      .filter((r) => r.working)
+      .map((r) => ({
+        staff_id: staffId,
+        day_of_week: r.day_of_week,
+        start_time: r.start.length === 5 ? `${r.start}:00` : r.start,
+        end_time: r.end.length === 5 ? `${r.end}:00` : r.end,
+      }));
     const { error } = await supabase.from("staff_schedule").insert(inserts);
     setSaving(false);
-    if (error) setErr(error.message);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    void loadSchedule(staffId);
   }
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
@@ -105,25 +125,40 @@ export function AdminSchedulePage() {
           ))}
         </select>
       </label>
+      <p className="text-xs text-zinc-500">
+        Снимите галочку «работает в этот день», чтобы пометить выходной: строка в графике не сохраняется, в календаре в
+        этот день слоты не строятся.
+      </p>
       <form onSubmit={onSave} className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
         {rows.map((r) => {
           const k = String(r.day_of_week) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
           return (
             <div key={r.day_of_week} className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="w-24 text-zinc-400">{t(`weekday.${k}`)}</span>
+              <label className="flex w-44 shrink-0 cursor-pointer items-center gap-2 text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={r.working}
+                  onChange={(e) => setDayWorking(r.day_of_week, e.target.checked)}
+                  className="rounded border-zinc-600"
+                />
+                <span className="w-24 text-zinc-400">{t(`weekday.${k}`)}</span>
+              </label>
               <input
                 type="time"
                 value={r.start}
+                disabled={!r.working}
                 onChange={(e) => setDayField(r.day_of_week, "start", e.target.value)}
-                className="rounded border border-zinc-700 bg-black px-2 py-1"
+                className="rounded border border-zinc-700 bg-black px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
               />
               <span className="text-zinc-600">–</span>
               <input
                 type="time"
                 value={r.end}
+                disabled={!r.working}
                 onChange={(e) => setDayField(r.day_of_week, "end", e.target.value)}
-                className="rounded border border-zinc-700 bg-black px-2 py-1"
+                className="rounded border border-zinc-700 bg-black px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
               />
+              {!r.working && <span className="text-xs text-zinc-600">выходной</span>}
             </div>
           );
         })}

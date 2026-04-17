@@ -159,9 +159,11 @@ function renderServices() {
 }
 
 function staffForService(serviceId) {
-  const linked = state.links.filter((l) => l.service_id === serviceId).map((l) => l.staff_id);
-  if (!linked.length) return state.staff;
-  return state.staff.filter((e) => linked.includes(e.id));
+  const raw = state.links.filter((l) => String(l.service_id) === String(serviceId));
+  if (!raw.length) return state.staff;
+  const visible = raw.filter((l) => l.show_on_site !== false).map((l) => l.staff_id);
+  if (!visible.length) return [];
+  return state.staff.filter((e) => visible.includes(e.id));
 }
 
 function renderStaff() {

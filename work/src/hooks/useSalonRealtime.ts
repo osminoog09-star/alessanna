@@ -56,3 +56,13 @@ export function useEmployeesDirectoryRealtime(onChange: () => void) {
   onChangeRef.current = onChange;
   useEffect(() => subscribeTables("crm-staff-dir", ["staff", "staff_services"], onChangeRef), []);
 }
+
+/** Staff page catalog may come from `services` or `service_listings`. */
+export function useStaffAssignmentsCatalogRealtime(onChange: () => void) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(
+    () => subscribeTables("crm-staff-assign-catalog", ["services", "service_listings"], onChangeRef),
+    []
+  );
+}

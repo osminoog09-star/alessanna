@@ -79,6 +79,9 @@ export function ServicesPage() {
   const [quickBuffer, setQuickBuffer] = useState("10");
   const [quickActive, setQuickActive] = useState(true);
   const [quickStaffIds, setQuickStaffIds] = useState<string[]>([]);
+  const [serviceStaffLinksMap, setServiceStaffLinksMap] = useState<
+    Record<string, Array<{ staff_id: string; show_on_site: boolean }>>
+  >({});
   const [publicListingNames, setPublicListingNames] = useState<Set<string>>(new Set());
   const [publicCheckLoading, setPublicCheckLoading] = useState(false);
 
@@ -246,6 +249,23 @@ export function ServicesPage() {
     }
 
     setServices(loadedServices);
+
+    const svcIds = loadedServices.map((x) => String(x.id));
+    const linksByService: Record<string, Array<{ staff_id: string; show_on_site: boolean }>> = {};
+    if (svcIds.length > 0) {
+      const lk = await supabase.from("staff_services").select("staff_id, service_id, show_on_site").in("service_id", svcIds);
+      if (!lk.error && lk.data) {
+        for (const row of lk.data as Array<{ staff_id: string; service_id: string; show_on_site?: boolean }>) {
+          const sid = String(row.service_id);
+          if (!linksByService[sid]) linksByService[sid] = [];
+          linksByService[sid].push({
+            staff_id: String(row.staff_id),
+            show_on_site: row.show_on_site !== false,
+          });
+        }
+      }
+    }
+    setServiceStaffLinksMap(linksByService);
 
     /* Главный сайт читает service_listings: подтягиваем отсутствующие строки из services (старые данные / ручной SQL). */
     const listingsProbe = await supabase.from("service_listings").select("name");
@@ -493,6 +513,7 @@ export function ServicesPage() {
     if (!window.confirm(t("services.deleteConfirm", { name: s.name_et }))) return;
 
     if (s.catalogSource === "listing") {
+      await supabase.from("staff_services").delete().eq("service_id", s.id);
       const { error } = await supabase.from("service_listings").delete().eq("id", s.id);
       if (error) {
         window.alert(t("services.deleteFailed"));
@@ -663,7 +684,10 @@ export function ServicesPage() {
     setQuickStaffIds((prev) => (prev.includes(staffId) ? prev.filter((x) => x !== staffId) : [...prev, staffId]));
   }
 
-  async function replaceServiceStaffLinks(serviceId: string, selectedStaffIds: string[]) {
+  async function replaceServiceStaffLinks(
+    serviceId: string,
+    links: Array<{ staff_id: string; show_on_site: boolean }>,
+  ) {
     // If no links exist for service, backend treats it as "all staff can perform service".
     // We keep explicit links only when at least one staff member is selected.
     const { error: delErr } = await supabase.from("staff_services").delete().eq("service_id", serviceId);
@@ -671,12 +695,61 @@ export function ServicesPage() {
       console.error("[services] clear staff links failed", delErr);
       return;
     }
-    if (!selectedStaffIds.length) return;
-    const rows = selectedStaffIds.map((staffId) => ({ staff_id: staffId, service_id: serviceId }));
-    const { error: insErr } = await supabase.from("staff_services").insert(rows);
-    if (insErr) {
-      console.error("[services] create staff links failed", insErr);
+    if (!links.length) return;
+    const rows = links.map((l) => ({
+      staff_id: l.staff_id,
+      service_id: serviceId,
+      show_on_site: l.show_on_site,
+    }));
+    let { error: insErr } = await supabase.from("staff_services").insert(rows);
+    if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
+      const legacy = links.map((l) => ({ staff_id: l.staff_id, service_id: serviceId }));
+      insErr = (await supabase.from("staff_services").insert(legacy)).error ?? null;
     }
+    if (insErr) console.error("[services] create staff links failed", insErr);
+  }
+
+  function staffLinksForService(serviceId: string) {
+    return serviceStaffLinksMap[String(serviceId)] ?? [];
+  }
+
+  async function setStaffLinksForServiceAndReload(
+    serviceId: string,
+    next: Array<{ staff_id: string; show_on_site: boolean }>,
+  ) {
+    await replaceServiceStaffLinks(serviceId, next);
+    await load();
+  }
+
+  function toggleStaffPerforms(service: ServiceRow, staffId: string, checked: boolean) {
+    const serviceId = String(service.id);
+    const prev = staffLinksForService(serviceId);
+    const activeIds = staff.filter((m) => m.active).map((m) => m.id);
+    let next: Array<{ staff_id: string; show_on_site: boolean }>;
+
+    if (prev.length === 0) {
+      if (checked) {
+        next = [{ staff_id: staffId, show_on_site: true }];
+      } else {
+        next = activeIds.filter((id) => id !== staffId).map((id) => ({ staff_id: id, show_on_site: true }));
+      }
+    } else if (checked) {
+      const byId = new Map<string, { staff_id: string; show_on_site: boolean }>(prev.map((l) => [l.staff_id, l]));
+      if (!byId.has(staffId)) byId.set(staffId, { staff_id: staffId, show_on_site: true });
+      next = Array.from(byId.values());
+    } else {
+      next = prev.filter((l) => l.staff_id !== staffId);
+    }
+
+    void setStaffLinksForServiceAndReload(serviceId, next);
+  }
+
+  function toggleStaffOnSite(service: ServiceRow, staffId: string, visible: boolean) {
+    const serviceId = String(service.id);
+    const prev = staffLinksForService(serviceId);
+    if (!prev.length) return;
+    const next = prev.map((l) => (l.staff_id === staffId ? { ...l, show_on_site: visible } : l));
+    void setStaffLinksForServiceAndReload(serviceId, next);
   }
 
   async function createServiceFromQuickForm() {
@@ -761,7 +834,10 @@ export function ServicesPage() {
           ? ({ ...(insertRes.data as ServiceRow), active: quickActive } as ServiceRow)
           : ({ ...mapModernServices([row])[0], active: quickActive } as ServiceRow);
       await syncServiceToPublicCatalog(normalized);
-      await replaceServiceStaffLinks(String(normalized.id), quickStaffIds);
+      await replaceServiceStaffLinks(
+        String(normalized.id),
+        quickStaffIds.map((id) => ({ staff_id: id, show_on_site: true })),
+      );
     }
 
     closeQuickCreate();
@@ -1007,6 +1083,55 @@ export function ServicesPage() {
                       ))}
                     </select>
                   </label>
+                  <div className="rounded-lg border border-zinc-800 bg-black/20 p-3 lg:col-span-5">
+                    <p className="text-xs text-zinc-400">Мастера</p>
+                    <p className="mt-1 text-[11px] text-zinc-500">
+                      Без отметок — услугу могут все активные мастера, на сайте тоже все. Отметьте мастеров, чтобы
+                      ограничить, кто выполняет услугу; «На сайте» скрывает мастера только с главной и онлайн-записи (в
+                      CRM остаётся).
+                    </p>
+                    <div className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                      {staff
+                        .filter((m) => m.active)
+                        .map((m) => {
+                          const sid = String(s.id);
+                          const prev = staffLinksForService(sid);
+                          const link = prev.find((l) => l.staff_id === m.id);
+                          const performs = prev.length > 0 && !!link;
+                          const onSite = link ? link.show_on_site !== false : true;
+                          return (
+                            <div
+                              key={m.id}
+                              className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded border border-zinc-800/80 px-2 py-1.5"
+                            >
+                              <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-zinc-300">
+                                <input
+                                  type="checkbox"
+                                  disabled={!canManage}
+                                  checked={performs}
+                                  onChange={(e) => toggleStaffPerforms(s, m.id, e.target.checked)}
+                                />
+                                <span className="truncate">{m.name || m.id}</span>
+                              </label>
+                              <label
+                                className={`flex items-center gap-2 text-[11px] ${link ? "text-zinc-400" : "text-zinc-600"}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  disabled={!canManage || !link}
+                                  checked={onSite}
+                                  onChange={(e) => toggleStaffOnSite(s, m.id, e.target.checked)}
+                                />
+                                На сайте
+                              </label>
+                            </div>
+                          );
+                        })}
+                      {staff.filter((m) => m.active).length === 0 && (
+                        <p className="text-xs text-zinc-500">Нет активных мастеров в справочнике.</p>
+                      )}
+                    </div>
+                  </div>
                   <label className="flex items-center gap-2 text-sm text-zinc-400 lg:col-span-5">
                     <input
                       type="checkbox"

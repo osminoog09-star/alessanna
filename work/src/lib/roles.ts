@@ -90,6 +90,22 @@ export function staffEligibleForService(
   });
 }
 
+/** Customer-facing booking: drop masters with show_on_site = false; implicit-all (no rows) unchanged. */
+export function applyPublicStaffVisibility(
+  eligible: StaffMember[],
+  allLinks: StaffServiceRow[],
+  serviceId: string | number | null
+): StaffMember[] {
+  if (serviceId == null) return eligible;
+  const wantedId = String(serviceId);
+  const raw = allLinks.filter((l) => String(l.service_id) === wantedId);
+  if (raw.length === 0) return eligible;
+  return eligible.filter((e) => {
+    const link = raw.find((l) => String(l.staff_id) === e.id);
+    return link != null && link.show_on_site !== false;
+  });
+}
+
 export function staffCanPerformService(
   links: StaffServiceRow[],
   staffId: string,

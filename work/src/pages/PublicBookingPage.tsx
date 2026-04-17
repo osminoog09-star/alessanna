@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { generateAvailableSlots, formatSlotRange } from "../lib/slots";
-import { normalizeStaffMember, staffEligibleForService } from "../lib/roles";
+import { applyPublicStaffVisibility, normalizeStaffMember, staffEligibleForService } from "../lib/roles";
 import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow } from "../types/database";
 
 type PublicService = {
@@ -123,7 +123,8 @@ export function PublicBookingPage() {
 
   const eligibleStaff = useMemo(() => {
     if (serviceId == null) return [];
-    return staffEligibleForService(staff, links, serviceId);
+    const base = staffEligibleForService(staff, links, serviceId);
+    return applyPublicStaffVisibility(base, links, serviceId);
   }, [staff, links, serviceId]);
 
   const svc = services.find((s) => s.id === serviceId);

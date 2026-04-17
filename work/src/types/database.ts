@@ -81,6 +81,8 @@ export type StaffTimeOffRow = {
 export type StaffServiceRow = {
   staff_id: string;
   service_id: string | number;
+  /** false = CRM only; hidden from public team + public booking */
+  show_on_site?: boolean;
 };
 
 export type Database = {

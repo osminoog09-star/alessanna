@@ -39,6 +39,7 @@ function slugKey(s) {
 function buildGroups(links, staffMap) {
   const groups = new Map();
   for (const row of links) {
+    if (row.show_on_site === false) continue;
     const sid = row.staff_id;
     const st = staffMap.get(sid);
     if (!st) continue;
@@ -120,7 +121,7 @@ async function main() {
 
     const { data: linksRows } = await supabase
       .from("staff_services")
-      .select("staff_id, service_listings!inner(id, service_categories(name))")
+      .select("staff_id, show_on_site, service_listings!inner(id, service_categories(name))")
       .in("staff_id", staffIds);
 
     const groups = buildGroups(linksRows || [], staffMap);

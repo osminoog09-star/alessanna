@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { useEmployeesDirectoryRealtime, useStaffAssignmentsCatalogRealtime } from "../hooks/useSalonRealtime";
 import { normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
 import type { StaffServiceRow, StaffTableRow } from "../types/database";
 import type { Role } from "../types/database";
@@ -11,6 +12,41 @@ type CatalogSkillService = {
   name: string;
   is_active: boolean;
 };
+
+async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
+  const sLegacy = await supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true });
+  if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
+    return (sLegacy.data as Array<{ id: unknown; name_et?: string; active?: boolean }>)
+      .map((s) => ({
+        id: String(s.id),
+        name: String(s.name_et || "").trim(),
+        is_active: s.active !== false,
+      }))
+      .filter((x) => x.name);
+  }
+  let sModern = await supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true });
+  if (sModern.data && sModern.data.length > 0) {
+    return (sModern.data as Array<{ id: unknown; name?: string; active?: boolean; is_active?: boolean }>)
+      .map((s) => ({
+        id: String(s.id),
+        name: String(s.name || "").trim(),
+        is_active: s.is_active !== false && s.active !== false,
+      }))
+      .filter((x) => x.name);
+  }
+  let sl = await supabase.from("service_listings").select("id,name,is_active").order("name", { ascending: true });
+  if (sl.error && String(sl.error.message || "").includes("is_active")) {
+    sl = await supabase.from("service_listings").select("id,name").order("name", { ascending: true });
+  }
+  if (!sl.error && sl.data && sl.data.length > 0) {
+    return (sl.data as Array<{ id: string; name?: string; is_active?: boolean }>).map((s) => ({
+      id: String(s.id),
+      name: String(s.name || "").trim(),
+      is_active: s.is_active !== false,
+    })).filter((x) => x.name);
+  }
+  return [];
+}
 
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -32,9 +68,8 @@ export function AdminStaffPage() {
 
   const load = useCallback(async () => {
     setErr(null);
-    const [st, sv, lk] = await Promise.all([
+    const [st, lk] = await Promise.all([
       supabase.from("staff").select("*").order("created_at", { ascending: false }),
-      supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true }),
       supabase.from("staff_services").select("*"),
     ]);
     if (st.error) {
@@ -43,15 +78,7 @@ export function AdminStaffPage() {
       return;
     }
     setRows((st.data ?? []) as StaffTableRow[]);
-    if (sv.data) {
-      setServices(
-        (sv.data as Array<{ id: string; name?: string; active?: boolean; is_active?: boolean }>).map((s) => ({
-          id: String(s.id),
-          name: String(s.name || "").trim(),
-          is_active: s.is_active !== false && s.active !== false,
-        }))
-      );
-    }
+    setServices(await loadStaffPageCatalog());
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
     setLoading(false);
   }, []);
@@ -59,6 +86,9 @@ export function AdminStaffPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEmployeesDirectoryRealtime(load);
+  useStaffAssignmentsCatalogRealtime(load);
 
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
 
@@ -166,7 +196,12 @@ export function AdminStaffPage() {
   async function toggleService(staffId: string, serviceId: string, on: boolean) {
     setErr(null);
     if (on) {
-      const { error } = await supabase.from("staff_services").insert({ staff_id: staffId, service_id: serviceId });
+      let { error } = await supabase
+        .from("staff_services")
+        .insert({ staff_id: staffId, service_id: serviceId, show_on_site: true });
+      if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
+        error = (await supabase.from("staff_services").insert({ staff_id: staffId, service_id: serviceId })).error;
+      }
       if (error) setErr(error.message);
     } else {
       const { error } = await supabase
@@ -179,8 +214,33 @@ export function AdminStaffPage() {
     void load();
   }
 
+  async function toggleShowOnSiteForLink(staffId: string, serviceId: string, show: boolean) {
+    setErr(null);
+    let { error } = await supabase
+      .from("staff_services")
+      .update({ show_on_site: show })
+      .eq("staff_id", staffId)
+      .eq("service_id", serviceId);
+    if (error && String(error.message || "").toLowerCase().includes("show_on_site")) return;
+    if (error) setErr(error.message);
+    void load();
+  }
+
   function hasLink(staffId: string, serviceId: string) {
     return links.some((l) => l.staff_id === staffId && String(l.service_id) === serviceId);
+  }
+
+  function assignedServicesForStaff(staffId: string) {
+    return links
+      .filter((l) => l.staff_id === staffId)
+      .map((l) => {
+        const svc = services.find((s) => String(s.id) === String(l.service_id));
+        return {
+          serviceId: String(l.service_id),
+          name: svc?.name?.trim() || `Услуга ${l.service_id}`,
+          show_on_site: l.show_on_site !== false,
+        };
+      });
   }
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
@@ -242,12 +302,14 @@ export function AdminStaffPage() {
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.name")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("role.label")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.active")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.services")}</th>
+              <th className="min-w-[14rem] border-b border-zinc-800 px-3 py-2">{t("adminStaff.services")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">actions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {rows.map((r) => {
+              const assigned = assignedServicesForStaff(r.id);
+              return (
               <tr key={r.id} className="border-b border-zinc-800/80 align-top">
                 <td className="px-3 py-2 font-mono text-zinc-300">
                   {editingId === r.id ? (
@@ -305,18 +367,58 @@ export function AdminStaffPage() {
                     <span className="text-zinc-400">{r.is_active ? t("adminStaff.yes") : t("adminStaff.no")}</span>
                   </label>
                 </td>
-                <td className="max-w-xs px-3 py-2">
-                  <div className="flex flex-wrap gap-2">
-                    {activeServices.map((s) => (
-                      <label key={s.id} className="flex items-center gap-1 text-xs text-zinc-400">
-                        <input
-                          type="checkbox"
-                          checked={hasLink(r.id, s.id)}
-                          onChange={(e) => void toggleService(r.id, s.id, e.target.checked)}
-                        />
-                        {s.name}
-                      </label>
-                    ))}
+                <td className="max-w-xl min-w-[14rem] px-3 py-2">
+                  <div className="mb-2 rounded border border-zinc-800/80 bg-black/20 px-2 py-2">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Назначено явно</p>
+                    {assigned.length === 0 ? (
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Нет привязок к услугам. На услугах без своего списка мастеров этот мастер всё равно может
+                        подставляться вместе со всеми активными.
+                      </p>
+                    ) : (
+                      <ul className="mt-1 space-y-1.5 text-xs text-zinc-200">
+                        {assigned.map((a) => (
+                          <li key={a.serviceId} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zinc-800/60 pb-1 last:border-0 last:pb-0">
+                            <span className="min-w-0 flex-1 font-medium text-zinc-100">{a.name}</span>
+                            <span
+                              className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${
+                                a.show_on_site
+                                  ? "border border-emerald-800/60 text-emerald-300"
+                                  : "border border-amber-800/60 text-amber-200"
+                              }`}
+                            >
+                              {a.show_on_site ? "на сайте" : "только CRM"}
+                            </span>
+                            <label className="inline-flex shrink-0 items-center gap-1 text-[11px] text-zinc-400">
+                              <input
+                                type="checkbox"
+                                checked={a.show_on_site}
+                                onChange={(e) => void toggleShowOnSiteForLink(r.id, a.serviceId, e.target.checked)}
+                              />
+                              сайт
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <p className="mb-1 text-[11px] text-zinc-500">Отметьте услуги, чтобы ограничить этого мастера.</p>
+                  <div className="max-h-44 overflow-y-auto rounded border border-zinc-800/60 p-2">
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {activeServices.map((s) => (
+                        <label key={s.id} className="flex items-center gap-1 text-xs text-zinc-400">
+                          <input
+                            type="checkbox"
+                            checked={hasLink(r.id, s.id)}
+                            onChange={(e) => void toggleService(r.id, s.id, e.target.checked)}
+                          />
+                          {s.name}
+                        </label>
+                      ))}
+                    </div>
+                    {activeServices.length === 0 && (
+                      <p className="text-xs text-zinc-500">Каталог услуг пуст — добавьте услуги на странице «Услуги».</p>
+                    )}
                   </div>
                 </td>
                 <td className="space-x-2 px-3 py-2 whitespace-nowrap">
@@ -341,7 +443,8 @@ export function AdminStaffPage() {
                   )}
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
