@@ -1,11 +1,39 @@
 /**
- * Marketing site: price list from Supabase (service_listings, fallback legacy `services`) + categories.
- * Config: supabase-public-config.js sets window.SUPABASE_CONFIG { url, anonKey }.
- * Fallback: import.meta.env (Vite), then SALON_* / VITE_* globals.
+ * Marketing site services loader.
+ * Pipeline: config -> Supabase -> public API fallback -> render.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const POLL_FALLBACK_MS = 60000;
+const LOG_PREFIX = "[site-services]";
+
+function info(msg, extra) {
+  if (extra !== undefined) console.info(LOG_PREFIX, msg, extra);
+  else console.info(LOG_PREFIX, msg);
+}
+function warnLog(msg, extra) {
+  if (extra !== undefined) console.warn(LOG_PREFIX, msg, extra);
+  else console.warn(LOG_PREFIX, msg);
+}
+function errorLog(msg, extra) {
+  if (extra !== undefined) console.error(LOG_PREFIX, msg, extra);
+  else console.error(LOG_PREFIX, msg);
+}
+
+function mountEl() {
+  return document.getElementById("teenused-supabase-mount");
+}
+
+function setLoading() {
+  const mount = mountEl();
+  if (!mount) return;
+  mount.innerHTML = '<p class="menu-footnote">Teenused laadivad...</p>';
+}
+
+function isPlaceholder(v) {
+  const s = String(v || "").trim().toLowerCase();
+  return !s || s.includes("your_anon_key") || s.includes("placeholder") || s === "your_key";
+}
 
 function cfg() {
   const sc = globalThis.SUPABASE_CONFIG;
@@ -23,6 +51,7 @@ function cfg() {
   if (!url) url = String(globalThis.SALON_SUPABASE_URL || globalThis.VITE_SUPABASE_URL || "").trim();
   if (!key) key = String(globalThis.SALON_SUPABASE_ANON_KEY || globalThis.VITE_SUPABASE_ANON_KEY || "").trim();
   url = url.replace(/\/+$/, "");
+  if (isPlaceholder(key)) key = "";
   return { url, key };
 }
 
@@ -64,7 +93,7 @@ function groupRows(rows) {
 }
 
 function render(groups) {
-  const mount = document.getElementById("teenused-supabase-mount");
+  const mount = mountEl();
   const warn = document.getElementById("teenused-config-warn");
   const form = document.getElementById("booking-form");
   const serviceSelect = form ? form.querySelector('select[name="service"]') : null;
@@ -73,7 +102,7 @@ function render(groups) {
 
   if (!groups || groups.length === 0) {
     mount.innerHTML =
-      '<p class="menu-footnote">Teenuseid pole veel lisatud või need pole aktiivsed. Halda CRM-is.</p>';
+      '<p class="menu-footnote">Teenuseid ei leitud. Kontrolli, et teenused oleksid andmebaasis aktiivsed.</p>';
     if (warn) warn.hidden = true;
     window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
     return;
@@ -145,6 +174,13 @@ function render(groups) {
   window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
 }
 
+function showConfigWarn(msg) {
+  const warn = document.getElementById("teenused-config-warn");
+  if (!warn) return;
+  warn.hidden = false;
+  warn.textContent = msg;
+}
+
 /** Normalize legacy `public.services` (+ optional categories join) to service_listings shape. */
 function mapLegacyServiceRows(raw) {
   const rows = raw || [];
@@ -167,6 +203,30 @@ function mapLegacyServiceRows(raw) {
   });
 }
 
+function mapPublicApiRows(raw) {
+  const rows = Array.isArray(raw) ? raw : [];
+  return rows.map(function (r) {
+    const name = r.name_et != null ? String(r.name_et) : String(r.name || r.slug || "Teenus");
+    const cents = Number(r.price_cents);
+    return {
+      id: String(r.id),
+      name,
+      price: Number.isFinite(cents) ? cents / 100 : null,
+      duration: r.duration_min != null ? Number(r.duration_min) : null,
+      category: null,
+    };
+  });
+}
+
+async function fetchPublicApiFallback() {
+  const response = await fetch("/api/public/services", { headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    throw new Error("Public services API failed with HTTP " + response.status);
+  }
+  const json = await response.json();
+  return mapPublicApiRows(json);
+}
+
 async function fetchPriceList(client) {
   const listings = await client
     .from("service_listings")
@@ -186,24 +246,19 @@ async function fetchPriceList(client) {
     const rows = (listings.data || []).filter(function (r) {
       return r.is_active !== false;
     });
-    return { data: rows, error: null };
+    return { data: rows, error: null, source: "service_listings" };
   }
 
   const listingsMinimal = await client
     .from("service_listings")
-    .select(
-      `
-      id,
-      name,
-      price,
-      duration,
-      category:service_categories(name)
-    `
-    )
+    .select("id,name,price,duration,is_active")
     .order("name", { ascending: true });
 
   if (!listingsMinimal.error) {
-    return { data: listingsMinimal.data || [], error: null };
+    const rows = (listingsMinimal.data || []).filter(function (r) {
+      return r.is_active !== false;
+    });
+    return { data: rows, error: null, source: "service_listings_minimal" };
   }
 
   const legacy = await client
@@ -213,7 +268,7 @@ async function fetchPriceList(client) {
     .order("sort_order", { ascending: true });
 
   if (!legacy.error) {
-    return { data: mapLegacyServiceRows(legacy.data), error: null };
+    return { data: mapLegacyServiceRows(legacy.data), error: null, source: "legacy_services" };
   }
 
   const legacyNoJoin = await client
@@ -223,56 +278,89 @@ async function fetchPriceList(client) {
     .order("sort_order", { ascending: true });
 
   if (!legacyNoJoin.error) {
-    return { data: mapLegacyServiceRows(legacyNoJoin.data), error: null };
+    return { data: mapLegacyServiceRows(legacyNoJoin.data), error: null, source: "legacy_services_minimal" };
   }
 
-  return { data: null, error: listingsMinimal.error || listings.error };
+  return {
+    data: null,
+    error: legacyNoJoin.error || legacy.error || listingsMinimal.error || listings.error,
+    source: "none",
+  };
 }
 
 async function run(client) {
-  const warn = document.getElementById("teenused-config-warn");
-  const { data, error } = await fetchPriceList(client);
-
-  if (error) {
-    if (warn) {
-      warn.hidden = false;
-      warn.textContent =
-        "Teenuste laadimine ebaõnnestus. Kontrolli Supabase URL / anon võti (SUPABASE_CONFIG), RLS ja tabelid service_listings või services (+ kategooriad).";
-    }
-    window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
-    return;
+  const result = await fetchPriceList(client);
+  if (!result.error) {
+    info("Loaded services from " + result.source + " (" + (result.data || []).length + ")");
+    render(groupRows(result.data || []));
+    return true;
   }
-  render(groupRows(data || []));
+
+  warnLog("Supabase fetch failed, trying /api/public/services fallback", result.error);
+  try {
+    const fallbackData = await fetchPublicApiFallback();
+    info("Loaded services from public API fallback (" + fallbackData.length + ")");
+    render(groupRows(fallbackData));
+    return true;
+  } catch (fallbackError) {
+    errorLog("Both Supabase and fallback API failed", {
+      supabaseError: result.error,
+      fallbackError,
+    });
+    showConfigWarn(
+      "Teenuste laadimine ebaõnnestus. Kontrolli SUPABASE_CONFIG (url/anonKey), RLS õiguseid ja tabeleid service_listings/services. Vaata konsooli täpse veateate jaoks."
+    );
+    window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
+    return false;
+  }
 }
 
-function main() {
+async function main() {
+  setLoading();
   const c = cfg();
-  const warn = document.getElementById("teenused-config-warn");
+  info("Resolved config", {
+    hasUrl: Boolean(c.url),
+    hasAnonKey: Boolean(c.key),
+    urlHost: c.url ? c.url.replace(/^https?:\/\//, "") : "",
+  });
+
   if (!c.url || !c.key) {
-    if (warn) warn.hidden = false;
-    window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
-    return;
+    warnLog("Supabase config missing, trying /api/public/services fallback", c);
+    try {
+      const fallbackData = await fetchPublicApiFallback();
+      info("Loaded services from public API fallback (" + fallbackData.length + ")");
+      render(groupRows(fallbackData));
+      return;
+    } catch (fallbackError) {
+      errorLog("Missing config and fallback failed", fallbackError);
+      showConfigWarn(
+        "Uuenda supabase-public-config.js: määra korrektne URL ja anonKey. Või kontrolli, et /api/public/services oleks saadaval. Vaata konsooli."
+      );
+      window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
+      return;
+    }
   }
 
   const client = createClient(c.url, c.key);
   const refresh = () => void run(client);
 
-  void run(client);
+  await run(client);
 
-  const ch = client
+  client
     .channel("site-service-catalog")
     .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, refresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "service_categories" }, refresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "services" }, refresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, refresh)
-    .subscribe();
+    .subscribe(function (status) {
+      info("Realtime channel status: " + status);
+    });
 
   setInterval(refresh, POLL_FALLBACK_MS);
 
   window.addEventListener("storage", function (ev) {
     if (ev.key === "salon-services-bump") refresh();
   });
-
 }
 
-main();
+void main();
