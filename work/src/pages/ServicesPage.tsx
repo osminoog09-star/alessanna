@@ -1294,7 +1294,7 @@ export function ServicesPage() {
                           return (
                             <div
                               key={m.id}
-                              className="flex flex-wrap items-center gap-x-4 gap-y-2 py-1.5"
+                              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded border border-zinc-800/80 px-2 py-2"
                             >
                               <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-zinc-300">
                                 <ToggleSwitch
