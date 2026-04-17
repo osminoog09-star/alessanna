@@ -704,6 +704,29 @@ export function AdminStaffPage() {
     );
   }
 
+  /* Для UI админки: true только если строка реально существует в staff_services.
+   * Отличается от `hasLink()`: там 0 привязок = «все услуги неявно» (для паблика),
+   * а при назначении услуг мастеру нам нужно чётко видеть, что ещё не включено. */
+  function hasExplicitLink(staffId: string, serviceId: string) {
+    const explicit = links.filter((l) => String(l.staff_id) === String(staffId));
+    if (explicit.length === 0) return false;
+    let listingId = catalogIdToListingId[String(serviceId)];
+    if (!listingId) {
+      for (const [k, v] of Object.entries(catalogIdToListingId)) {
+        if (normId(k) === normId(serviceId)) {
+          listingId = v;
+          break;
+        }
+      }
+    }
+    listingId ??= String(serviceId);
+    return explicit.some(
+      (l) =>
+        normId(l.staff_id) === normId(staffId) &&
+        (normId(l.service_id) === normId(serviceId) || normId(l.service_id) === normId(listingId)),
+    );
+  }
+
   function skillCatPanelKey(staffId: string, catName: string) {
     return `${staffId}::${catName}`;
   }
@@ -812,12 +835,12 @@ export function AdminStaffPage() {
       return;
     }
 
-    if (explicitForStaff.length === 0) {
-      return;
-    }
+    /* Нет ни одной строки в staff_services = мастер в режиме «все услуги по умолчанию».
+     * Когда админ впервые явно включает категорию, переводим его в режим «явный список»,
+     * добавляя переданные услуги. Остальные услуги перестают считаться доступными. */
     const failed: string[] = [];
     for (const s of catSvcs) {
-      if (hasLink(staffId, s.id)) continue;
+      if (explicitForStaff.length > 0 && hasLink(staffId, s.id)) continue;
       const r = await insertStaffServiceRow(staffId, s);
       if (!r.ok) failed.push(s.name);
     }
@@ -1407,7 +1430,7 @@ export function AdminStaffPage() {
                               const inactiveByCat = activeServicesByCategory
                                 .map(({ name: catName, services: catSvcs }) => ({
                                   name: catName,
-                                  services: catSvcs.filter((s) => !hasLink(r.id, s.id)),
+                                  services: catSvcs.filter((s) => !hasExplicitLink(r.id, s.id)),
                                   total: catSvcs.length,
                                 }))
                                 .filter((c) => c.services.length > 0);
