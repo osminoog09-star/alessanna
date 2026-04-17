@@ -75,6 +75,14 @@ function esc(s) {
   return d.innerHTML;
 }
 
+function uncategorizedGroupLabel() {
+  const lang = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
+  if (lang === "ru") return "Прочее";
+  if (lang === "en") return "Other";
+  if (lang === "fi") return "Muut";
+  return "Muu";
+}
+
 function groupRows(rows) {
   const map = new Map();
   for (let i = 0; i < rows.length; i++) {
@@ -82,7 +90,7 @@ function groupRows(rows) {
     const cat = r.category;
     const hasName = cat && cat.name != null && String(cat.name).trim() !== "";
     const id = hasName ? "n:" + String(cat.name).trim() : "__none__";
-    const name = hasName ? String(cat.name).trim() : "Muu";
+    const name = hasName ? String(cat.name).trim() : uncategorizedGroupLabel();
     if (!map.has(id)) map.set(id, { id, name, items: [] });
     map.get(id).items.push(r);
   }
