@@ -2553,6 +2553,20 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   color: var(--gold-bright);
   opacity: 0.92;
   line-height: 1.1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.footer-baseline-copy {
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-weight: 300;
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  color: var(--gold);
+  opacity: 0.7;
+  transform: translateY(-0.05em);
 }
 
 .footer-baseline-caption {
@@ -2587,6 +2601,10 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   }
   .footer-baseline-names {
     font-size: 1rem;
+    gap: 0.35rem;
+  }
+  .footer-baseline-copy {
+    font-size: 0.7rem;
   }
   .footer-baseline-caption {
     font-size: 0.52rem;
