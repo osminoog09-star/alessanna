@@ -31,10 +31,10 @@ export function ServicesPage() {
   const [publicListingNames, setPublicListingNames] = useState<Set<string>>(new Set());
   const [publicCheckLoading, setPublicCheckLoading] = useState(false);
 
-  function categoryNameFromService(service: ServiceRow): string {
+  function categoryNameFromService(service: ServiceRow, catList: CategoryRow[] = categories): string {
     const direct = String(service.category || "").trim();
     if (direct) return direct;
-    const byId = categories.find((c) => String(c.id) === String(service.category_id || ""));
+    const byId = catList.find((c) => String(c.id) === String(service.category_id || ""));
     return String(byId?.name || "").trim();
   }
 
@@ -58,12 +58,13 @@ export function ServicesPage() {
     });
   }
 
-  const syncServiceToPublicCatalog = useCallback(async (service: ServiceRow) => {
+  const syncServiceToPublicCatalog = useCallback(async (service: ServiceRow, categoriesOverride?: CategoryRow[]) => {
     const serviceName = String(service.name_et || "").trim();
     if (!serviceName) return;
 
     try {
-      let categoryName = categoryNameFromService(service);
+      const catSource = categoriesOverride ?? categories;
+      let categoryName = categoryNameFromService(service, catSource);
       if (!categoryName && service.category_id != null) {
         const catLegacy = await supabase.from("categories").select("name").eq("id", service.category_id).maybeSingle();
         categoryName = String(catLegacy.data?.name || "").trim();
@@ -151,24 +152,28 @@ export function ServicesPage() {
   }, []);
 
   const load = useCallback(async () => {
+    let loadedCategories: CategoryRow[] = [];
+
     const cLegacy = await supabase.from("categories").select("*").order("name");
     if (!cLegacy.error && cLegacy.data) {
-      setCategories(cLegacy.data as CategoryRow[]);
+      loadedCategories = cLegacy.data as CategoryRow[];
+      setCategories(loadedCategories);
     } else {
       const cModern = await supabase.from("service_categories").select("id,name").order("name");
       if (cModern.data) {
-        setCategories(
-          (cModern.data as Array<{ id: string; name: string }>).map((r) => ({
-            id: String(r.id) as unknown as number,
-            name: String(r.name || ""),
-          }))
-        );
+        loadedCategories = (cModern.data as Array<{ id: string; name: string }>).map((r) => ({
+          id: String(r.id) as unknown as number,
+          name: String(r.name || ""),
+        }));
+        setCategories(loadedCategories);
       }
     }
 
+    let loadedServices: ServiceRow[] = [];
     const sLegacy = await supabase.from("services").select("*").order("sort_order", { ascending: true });
     if (!sLegacy.error && sLegacy.data) {
-      setServices(sLegacy.data as ServiceRow[]);
+      loadedServices = sLegacy.data as ServiceRow[];
+      setServices(loadedServices);
     } else {
       let sModern = await supabase
         .from("services")
@@ -180,7 +185,37 @@ export function ServicesPage() {
           .select("id,name,category,duration,price,created_at")
           .order("name", { ascending: true });
       }
-      if (sModern.data) setServices(mapModernServices(sModern.data as Array<Record<string, unknown>>));
+      if (sModern.data) {
+        loadedServices = mapModernServices(sModern.data as Array<Record<string, unknown>>);
+        setServices(loadedServices);
+      }
+    }
+
+    /* Главный сайт читает service_listings: подтягиваем отсутствующие строки из services (старые данные / ручной SQL). */
+    const listingsProbe = await supabase.from("service_listings").select("name");
+    if (!listingsProbe.error && listingsProbe.data && loadedServices.length) {
+      const onMain = new Set(
+        (listingsProbe.data as Array<{ name: string | null }>)
+          .map((r) => String(r.name || "").trim().toLowerCase())
+          .filter(Boolean)
+      );
+      for (const svc of loadedServices) {
+        const nm = String(svc.name_et || "").trim();
+        if (!nm || svc.active === false) continue;
+        if (onMain.has(nm.toLowerCase())) continue;
+        await syncServiceToPublicCatalog(svc, loadedCategories);
+        onMain.add(nm.toLowerCase());
+      }
+      const pubAgain = await supabase.from("service_listings").select("name");
+      if (!pubAgain.error && pubAgain.data) {
+        setPublicListingNames(
+          new Set(
+            (pubAgain.data as Array<{ name: string | null }>)
+              .map((r) => String(r.name || "").trim().toLowerCase())
+              .filter(Boolean)
+          )
+        );
+      }
     }
 
     const staffRes = await supabase.from("staff").select("id,name,phone,is_active,role,roles").order("name");
@@ -196,7 +231,7 @@ export function ServicesPage() {
       );
     }
     setLoading(false);
-  }, []);
+  }, [syncServiceToPublicCatalog]);
 
   const refreshPublicStatus = useCallback(async () => {
     setPublicCheckLoading(true);
@@ -214,6 +249,18 @@ export function ServicesPage() {
       setPublicCheckLoading(false);
     }
   }, []);
+
+  /** Полная выгрузка всех активных услуг в service_listings (цена, категория, сроки). */
+  const syncAllServicesToPublicSite = useCallback(async () => {
+    if (!canManage) return;
+    for (const s of services) {
+      if (s.active === false) continue;
+      const nm = String(s.name_et || "").trim();
+      if (!nm) continue;
+      await syncServiceToPublicCatalog(s);
+    }
+    await refreshPublicStatus();
+  }, [canManage, services, syncServiceToPublicCatalog, refreshPublicStatus]);
 
   useEffect(() => {
     void load();
@@ -647,6 +694,14 @@ export function ServicesPage() {
               className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-900"
             >
               Проверить главную
+            </button>
+            <button
+              type="button"
+              onClick={() => void syncAllServicesToPublicSite()}
+              className="rounded-lg border border-amber-700/60 bg-amber-950/40 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-950/70"
+              title="Записывает все активные услуги из CRM в таблицу для главного сайта (service_listings)"
+            >
+              Обновить всё на сайте
             </button>
             <button
               type="button"
