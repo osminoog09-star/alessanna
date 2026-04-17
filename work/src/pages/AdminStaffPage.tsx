@@ -261,11 +261,35 @@ export function AdminStaffPage() {
     return (next.length ? next : ["worker"]) as UiRole[];
   }
 
-  async function updateStaffRoles(id: string, currentDbRoles: UiRole[], nextUiRoles: UiRole[]) {
+  async function updateStaffRoles(
+    id: string,
+    currentDbRoles: UiRole[],
+    nextUiRoles: UiRole[],
+    row?: StaffTableRow,
+  ) {
     const nextRoles = sanitizeRolesForSave(nextUiRoles, true, currentDbRoles) as UiRole[];
     const primaryRole = pickPrimaryRole(nextRoles);
     setErr(null);
-    const { error } = await supabase.from("staff").update({ role: primaryRole, roles: nextRoles }).eq("id", id);
+
+    const isActiveNow = row ? row.is_active : true;
+    const nextShow = computeShowOnSite(isActiveNow, nextRoles, primaryRole);
+    const payload: Record<string, unknown> = { role: primaryRole, roles: nextRoles };
+    if (!staffMarketingColumnMissing) payload.show_on_marketing_site = nextShow;
+
+    const { error } = await supabase.from("staff").update(payload).eq("id", id);
+    if (error && isMissingStaffMarketingColumnError(error)) {
+      setStaffMarketingColumnMissing(true);
+      const retry = await supabase
+        .from("staff")
+        .update({ role: primaryRole, roles: nextRoles })
+        .eq("id", id);
+      if (retry.error) {
+        setErr(retry.error.message);
+        return;
+      }
+      void load();
+      return;
+    }
     if (error) {
       setErr(error.message);
       return;
@@ -298,25 +322,33 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function updateStaffActive(id: string, is_active: boolean) {
-    setErr(null);
-    const { error } = await supabase.from("staff").update({ is_active }).eq("id", id);
-    if (error) {
-      setErr(error.message);
-      return;
-    }
-    void load();
+  /** admin/owner никогда не светится на публичном сайте. Для остальных — показ совпадает с is_active. */
+  function computeShowOnSite(isActive: boolean, roles: UiRole[], primaryRole?: string): boolean {
+    if (!isActive) return false;
+    const pr = String(primaryRole || "").toLowerCase();
+    if (pr === "admin" || pr === "owner") return false;
+    if (roles.some((r) => r === "admin")) return false;
+    return true;
   }
 
-  async function updateStaffMarketingVisibility(id: string, show: boolean) {
-    if (staffMarketingColumnMissing) return;
+  /** Один тумблер: «Активен» для CRM + публичный сайт. Для admin/owner публичный показ принудительно выключен. */
+  async function updateStaffActive(r: StaffTableRow, is_active: boolean) {
     setErr(null);
-    const { error } = await supabase.from("staff").update({ show_on_marketing_site: show }).eq("id", id);
+    const roles = rowRoles(r);
+    const show = computeShowOnSite(is_active, roles, r.role);
+
+    const payload: Record<string, unknown> = { is_active };
+    if (!staffMarketingColumnMissing) payload.show_on_marketing_site = show;
+
+    const { error } = await supabase.from("staff").update(payload).eq("id", r.id);
     if (error && isMissingStaffMarketingColumnError(error)) {
       setStaffMarketingColumnMissing(true);
-      setErr(
-        "Нужна миграция БД: staff.show_on_marketing_site — выполните supabase/migrations/020_staff_show_on_marketing_site.sql в Supabase, затем обновите страницу.",
-      );
+      const retry = await supabase.from("staff").update({ is_active }).eq("id", r.id);
+      if (retry.error) {
+        setErr(retry.error.message);
+        return;
+      }
+      void load();
       return;
     }
     if (error) {
@@ -337,13 +369,17 @@ export function AdminStaffPage() {
     }
     const normalizedNewRoles = sanitizeRolesForSave(newRoles, true, newRoles) as UiRole[];
     const primaryRole = pickPrimaryRole(normalizedNewRoles);
-    const { error } = await supabase.from("staff").insert({
+    const payload: Record<string, unknown> = {
       phone: cleanPhone || null,
       name: n,
       role: primaryRole,
       roles: normalizedNewRoles,
       is_active: true,
-    });
+    };
+    if (!staffMarketingColumnMissing) {
+      payload.show_on_marketing_site = computeShowOnSite(true, normalizedNewRoles, primaryRole);
+    }
+    const { error } = await supabase.from("staff").insert(payload);
     if (error) {
       const raw = String(error.message || "");
       if (/null value.*column .?phone/i.test(raw)) {
@@ -938,9 +974,6 @@ export function AdminStaffPage() {
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.name")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.roleBrief")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.active")}</th>
-              <th className="min-w-[8rem] border-b border-zinc-800 px-3 py-2 text-xs font-normal text-zinc-500">
-                Сайт / запись
-              </th>
               <th className="min-w-[10rem] border-b border-zinc-800 px-3 py-2">{t("adminStaff.services")}</th>
               <th className="border-b border-zinc-800 px-3 py-2">actions</th>
             </tr>
@@ -976,26 +1009,30 @@ export function AdminStaffPage() {
                     </td>
                     <td className="max-w-[14rem] px-3 py-2 text-xs text-zinc-400">{roleLabelsSummary(r)}</td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        <ToggleSwitch
-                          checked={r.is_active}
-                          onCheckedChange={(v) => void updateStaffActive(r.id, v)}
-                          aria-label={`${r.name}: активен в CRM`}
-                        />
-                        <span className="text-zinc-500">{r.is_active ? t("adminStaff.yes") : t("adminStaff.no")}</span>
-                      </div>
-                    </td>
-                    <td className="max-w-[8rem] px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        <ToggleSwitch
-                          disabled={staffMarketingColumnMissing}
-                          checked={r.show_on_marketing_site !== false}
-                          onCheckedChange={(v) => void updateStaffMarketingVisibility(r.id, v)}
-                          aria-label={`${r.name}: на главном сайте и в публичной записи`}
-                        />
-                        <span className="text-zinc-500">
-                          {r.show_on_marketing_site !== false ? t("adminStaff.yes") : t("adminStaff.no")}
-                        </span>
+                      <div className="flex flex-col gap-0.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <ToggleSwitch
+                            checked={r.is_active}
+                            onCheckedChange={(v) => void updateStaffActive(r, v)}
+                            aria-label={`${r.name}: активен в CRM и на сайте`}
+                          />
+                          <span className="text-zinc-500">
+                            {r.is_active ? t("adminStaff.yes") : t("adminStaff.no")}
+                          </span>
+                        </div>
+                        {(() => {
+                          const pr = String(r.role || "").toLowerCase();
+                          const isAdmin =
+                            pr === "admin" || pr === "owner" || rowRoles(r).some((x) => x === "admin");
+                          if (isAdmin) {
+                            return (
+                              <span className="text-[10px] leading-snug text-zinc-600">
+                                админ — скрыт на сайте
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </td>
                     <td className="px-3 py-2">
@@ -1038,7 +1075,7 @@ export function AdminStaffPage() {
                   </tr>
                   {expanded && (
                     <tr className="border-b border-zinc-800/80 bg-zinc-950/50 align-top">
-                      <td colSpan={7} className="px-3 py-3">
+                      <td colSpan={6} className="px-3 py-3">
                         <div className="flex flex-col gap-4 text-sm">
                           <div>
                             <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
@@ -1057,6 +1094,7 @@ export function AdminStaffPage() {
                                           r.id,
                                           current,
                                           toggleRoleToken(current, roleToken, e.target.checked),
+                                          r,
                                         )
                                       }
                                     />
@@ -1070,39 +1108,34 @@ export function AdminStaffPage() {
                               })}
                             </div>
                           </div>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
-                              <span className="text-[11px] font-medium uppercase text-zinc-500">{t("adminStaff.active")}</span>
-                              <div className="flex items-center gap-2 text-xs">
-                                <ToggleSwitch
-                                  checked={r.is_active}
-                                  onCheckedChange={(v) => void updateStaffActive(r.id, v)}
-                                  aria-label={`${r.name}: активен в CRM`}
-                                />
-                                <span className="text-zinc-400">{r.is_active ? "Активен" : "Неактивен"}</span>
-                              </div>
-                              <span className="text-[10px] text-zinc-600">
-                                {r.is_active ? "может входить и попадать в списки" : "не входит в работу салона"}
+                          <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
+                            <span className="text-[11px] font-medium uppercase text-zinc-500">
+                              {t("adminStaff.active")}
+                            </span>
+                            <div className="flex items-center gap-2 text-xs">
+                              <ToggleSwitch
+                                checked={r.is_active}
+                                onCheckedChange={(v) => void updateStaffActive(r, v)}
+                                aria-label={`${r.name}: активен в CRM и на сайте`}
+                              />
+                              <span className="text-zinc-400">
+                                {r.is_active ? "Активен" : "Неактивен"}
                               </span>
                             </div>
-                            <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
-                              <span className="text-[11px] font-medium uppercase text-zinc-500">Сайт / запись</span>
-                              <div className="flex items-center gap-2 text-xs">
-                                <ToggleSwitch
-                                  disabled={staffMarketingColumnMissing}
-                                  checked={r.show_on_marketing_site !== false}
-                                  onCheckedChange={(v) => void updateStaffMarketingVisibility(r.id, v)}
-                                  aria-label={`${r.name}: на главном сайте и в публичной записи`}
-                                />
-                                <span className="text-zinc-400">
-                                  {r.show_on_marketing_site !== false ? "виден" : "скрыт"}
+                            {(() => {
+                              const pr = String(r.role || "").toLowerCase();
+                              const isAdmin =
+                                pr === "admin" || pr === "owner" || rowRoles(r).some((x) => x === "admin");
+                              return (
+                                <span className="text-[10px] leading-snug text-zinc-600">
+                                  Один переключатель: включает мастера и в CRM, и в публичной записи, и в блоке
+                                  «Мастера» на сайте.
+                                  {isAdmin
+                                    ? " Для ролей admin/owner публичный показ принудительно выключен."
+                                    : ""}
                                 </span>
-                              </div>
-                              <span className="text-[10px] leading-snug text-zinc-600">
-                                Теневой режим: выключите для продакшена, включите — появится в блоке «Мастера» и в
-                                онлайн-записи (для теста услуг).
-                              </span>
-                            </div>
+                              );
+                            })()}
                           </div>
                           <div>
                             <div className="mb-2 rounded border border-zinc-800/80 bg-black/20 px-2 py-2">

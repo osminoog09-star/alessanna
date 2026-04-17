@@ -1,5 +1,5 @@
 -- =========================================================================
--- APPLY-ALL bundle: 012 + 018 + 019 + 020 + 021
+-- APPLY-ALL bundle: 012 + 018 + 019 + 020 + 021 + 022
 -- Run once in Supabase SQL Editor. All statements are idempotent, so it is
 -- safe to re-run on a partially applied database.
 -- =========================================================================
@@ -251,9 +251,60 @@ comment on column public.staff.phone is
   'Optional phone used for CRM login. NULL is allowed for staff who never log in themselves; uniqueness is enforced only for non-null values via uq_staff_phone_not_null.';
 
 
+-- -------------------------------------------------------------------------
+-- 022_staff_admin_hidden_from_site.sql
+-- Invariant: admin/owner staff are never visible on the public marketing
+-- site. Enforced at the DB level via a BEFORE INSERT/UPDATE trigger so the
+-- rule holds even if the row is written outside the CRM.
+-- -------------------------------------------------------------------------
+
+alter table public.staff
+  add column if not exists show_on_marketing_site boolean not null default true;
+
+update public.staff s
+set show_on_marketing_site = false
+where lower(coalesce(s.role, '')) in ('admin', 'owner')
+   or exists (
+     select 1
+     from unnest(coalesce(s.roles, array[]::text[])) as u(role)
+     where lower(u.role) in ('admin', 'owner')
+   );
+
+create or replace function public.staff_hide_admin_from_site()
+returns trigger
+language plpgsql
+as $fn$
+declare
+  is_admin boolean;
+begin
+  is_admin := lower(coalesce(new.role, '')) in ('admin', 'owner')
+    or exists (
+      select 1
+      from unnest(coalesce(new.roles, array[]::text[])) as u(role)
+      where lower(u.role) in ('admin', 'owner')
+    );
+  if is_admin then
+    new.show_on_marketing_site := false;
+  end if;
+  return new;
+end
+$fn$;
+
+drop trigger if exists trg_staff_hide_admin_from_site on public.staff;
+create trigger trg_staff_hide_admin_from_site
+  before insert or update on public.staff
+  for each row
+  execute function public.staff_hide_admin_from_site();
+
+comment on function public.staff_hide_admin_from_site is
+  'Keeps show_on_marketing_site = false for admin/owner staff regardless of how the row was written (CRM, SQL, etc.).';
+
+
 -- =========================================================================
 -- Done. Expected result in the CRM:
 --   * /admin/staff: no amber banners; service toggles save without FK errors;
---     master can be added without a phone number.
+--     master can be added without a phone number; single "Активен" toggle
+--     controls both CRM activity and public-site visibility; admin/owner
+--     rows are always hidden from the marketing site (DB trigger enforced).
 --   * /admin/services: "Активна" toggle persists on click (no more flicker)
 -- =========================================================================
