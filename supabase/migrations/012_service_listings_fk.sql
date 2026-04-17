@@ -127,6 +127,55 @@ begin
   end if;
 end $$;
 
+-- Final safety net: even if a previous partial run left FKs pointing at legacy
+-- public.services (bigint), or the column type was converted without the FK
+-- being recreated, force FKs to reference public.service_listings here.
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.staff_services'::regclass
+      and conname = 'staff_services_service_id_fkey'
+      and confrelid <> 'public.service_listings'::regclass
+  ) then
+    alter table public.staff_services drop constraint staff_services_service_id_fkey;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.staff_services'::regclass
+      and conname = 'staff_services_service_id_fkey'
+  ) then
+    alter table public.staff_services
+      add constraint staff_services_service_id_fkey
+      foreign key (service_id) references public.service_listings (id) on delete cascade;
+  end if;
+
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.appointment_services'::regclass
+      and conname = 'appointment_services_service_id_fkey'
+      and confrelid <> 'public.service_listings'::regclass
+  ) then
+    alter table public.appointment_services drop constraint appointment_services_service_id_fkey;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.appointment_services'::regclass
+      and conname = 'appointment_services_service_id_fkey'
+  ) then
+    alter table public.appointment_services
+      add constraint appointment_services_service_id_fkey
+      foreign key (service_id) references public.service_listings (id) on delete restrict;
+  end if;
+end $$;
+
+-- Drop any lingering staff_services rows with null service_id (can happen when
+-- the USING cast in a previous run could not match a legacy bigint to a listing).
+delete from public.staff_services where service_id is null;
+
+alter table public.staff_services alter column service_id set not null;
+alter table public.staff_services alter column staff_id set not null;
+
 alter table public.service_categories drop column if exists _migrated_from;
 alter table public.service_listings drop column if exists _migrated_from;
 
