@@ -12,6 +12,7 @@ const out = path.join(root, "vercel-static-out");
 
 const ROOT_FILES = [
   "index.html",
+  "ru.html",
   "work.html",
   "styles.css",
   "script.js",

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!--
+  Старые ссылки вида /ru.html#kontakt (GitHub Pages — только статика, без Express).
+  Редирект на основной лендинг index.html с тем же hash и query.
+-->
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AlesSanna Ilusalong</title>
+  <script>
+    (function () {
+      var h = location.hash || "";
+      var q = location.search || "";
+      location.replace("index.html" + q + h);
+    })();
+  </script>
+  <noscript>
+    <meta http-equiv="refresh" content="0;url=index.html" />
+  </noscript>
+</head>
+<body>
+  <p><a href="index.html">Перейти на главную</a></p>
+</body>
+</html>
