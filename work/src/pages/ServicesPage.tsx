@@ -168,10 +168,16 @@ export function ServicesPage() {
     if (!sLegacy.error && sLegacy.data) {
       setServices(sLegacy.data as ServiceRow[]);
     } else {
-      const sModern = await supabase
+      let sModern = await supabase
         .from("services")
         .select("id,name,category,duration,buffer_after_min,price,created_at")
         .order("name", { ascending: true });
+      if (sModern.error && String(sModern.error.message || "").includes("buffer_after_min")) {
+        sModern = await supabase
+          .from("services")
+          .select("id,name,category,duration,price,created_at")
+          .order("name", { ascending: true });
+      }
       if (sModern.data) setServices(mapModernServices(sModern.data as Array<Record<string, unknown>>));
     }
 
@@ -282,7 +288,7 @@ export function ServicesPage() {
       })
       .eq("id", s.id);
     if (legacy.error) {
-      const modern = await supabase
+      let modern = await supabase
         .from("services")
         .update({
           name: s.name_et,
@@ -292,6 +298,17 @@ export function ServicesPage() {
           category: categoryName,
         })
         .eq("id", s.id);
+      if (modern.error && String(modern.error.message || "").includes("buffer_after_min")) {
+        modern = await supabase
+          .from("services")
+          .update({
+            name: s.name_et,
+            duration: s.duration_min,
+            price: Number(s.price_cents || 0) / 100,
+            category: categoryName,
+          })
+          .eq("id", s.id);
+      }
       if (modern.error) {
         console.error("[services] save failed", modern.error);
         return;
@@ -349,6 +366,18 @@ export function ServicesPage() {
         })
         .select("*")
         .single();
+      if (insertRes.error && String(insertRes.error.message || "").includes("buffer_after_min")) {
+        insertRes = await supabase
+          .from("services")
+          .insert({
+            name: i18n.t("services.newServiceDefault"),
+            duration: 60,
+            price: 30,
+            category: null,
+          })
+          .select("*")
+          .single();
+      }
     }
     if (insertRes.error) {
       console.error("[services] add failed", insertRes.error);
@@ -397,6 +426,18 @@ export function ServicesPage() {
         })
         .select("*")
         .single();
+      if (insertRes.error && String(insertRes.error.message || "").includes("buffer_after_min")) {
+        insertRes = await supabase
+          .from("services")
+          .insert({
+            name: i18n.t("services.newServiceDefault"),
+            duration: 60,
+            price: 30,
+            category: categoryName || null,
+          })
+          .select("*")
+          .single();
+      }
     }
 
     if (insertRes.error) {
@@ -508,6 +549,18 @@ export function ServicesPage() {
         })
         .select("*")
         .single();
+      if (insertRes.error && String(insertRes.error.message || "").includes("buffer_after_min")) {
+        insertRes = await supabase
+          .from("services")
+          .insert({
+            name: serviceName,
+            duration: Math.round(durationMin),
+            price: Number(priceEur.toFixed(2)),
+            category: categoryName || null,
+          })
+          .select("*")
+          .single();
+      }
     }
 
     if (insertRes.error) {
