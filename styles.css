@@ -1611,16 +1611,22 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
 }
 
 .team-groups {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
   gap: clamp(1.25rem, 3vw, 1.75rem);
   margin-top: 0.5rem;
 }
 
-@media (min-width: 720px) {
-  .team-groups {
-    grid-template-columns: repeat(3, 1fr);
-    align-items: stretch;
+.team-groups > .team-group {
+  flex: 0 1 18rem;
+  max-width: 100%;
+}
+
+@media (max-width: 719px) {
+  .team-groups > .team-group {
+    flex-basis: min(22rem, 100%);
   }
 }
 
