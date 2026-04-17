@@ -117,8 +117,11 @@
             <p class="selection-summary-hint">Нажмите на услугу в прайсе, чтобы добавить или убрать её из списка. Для интерактивного бронирования выберите услугу и мастера, затем перейдите к записи.</p>
             <ul class="pick-list" data-selected-services-list hidden></ul>
             <p class="pick-list-empty" data-selected-services-empty>Услуги пока не выбраны.</p>
+            <!-- Итоговая длительность всей цепочки услуг (picked[].duration + buffer_after_min).
+                 Заполняется script.js функцией renderPlanSummary(). -->
+            <p class="pick-plan-summary" data-plan-summary hidden></p>
             <div class="selection-masters" data-summary-masters-wrap hidden>
-              <p class="selection-masters-label" id="summary-masters-label" data-summary-masters-label>Мастера по выбранным услугам</p>
+              <p class="selection-masters-label" id="summary-masters-label" data-summary-masters-label>Один мастер на всё (если подходит)</p>
               <div class="selection-masters-chips" data-summary-master-chips role="radiogroup" aria-labelledby="summary-masters-label"></div>
             </div>
             <div class="selection-master-row">
@@ -333,6 +336,15 @@
                   <option value="">Сначала выберите день</option>
                 </select>
               </label>
+              <!-- Цепочка времени для мульти-записи (Стрижка 10:00 → Маникюр 10:30 …).
+                   Заполняется script.js (updateBookingChainPreview) на основании picked[]
+                   и выбранного в форме стартового времени. Если корзина пуста — блок скрыт. -->
+              <div class="booking-chain" data-chain-preview hidden>
+                <p class="booking-chain-label">Ваш план на день</p>
+                <ol class="booking-chain-list" data-chain-preview-list></ol>
+                <p class="booking-chain-total" data-chain-preview-total></p>
+                <p class="booking-chain-hint" data-chain-preview-hint hidden></p>
+              </div>
               <button class="btn btn-primary booking-submit" type="submit">Отправить заявку</button>
             </form>
           </div>

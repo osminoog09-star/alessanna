@@ -1452,10 +1452,9 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
 
 .pick-chip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.55rem 0.65rem 0.55rem 0.85rem;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.6rem 0.65rem 0.7rem 0.85rem;
   border-radius: 0.55rem;
   border: 1px solid var(--stroke);
   background: rgba(0, 0, 0, 0.28);
@@ -1464,9 +1463,96 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   color: var(--text);
 }
 
+.pick-chip-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .pick-chip-text {
   flex: 1;
   min-width: 0;
+}
+
+.pick-chip-duration {
+  flex-shrink: 0;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(197, 160, 89, 0.35);
+  color: var(--gold);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(197, 160, 89, 0.08);
+}
+
+.pick-chip-masters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.1rem;
+}
+
+.pick-chip-masters-empty {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.pick-master-chip {
+  appearance: none;
+  margin: 0;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  cursor: pointer;
+  transition:
+    border-color 0.35s var(--ease-silk),
+    background 0.35s var(--ease-silk),
+    color 0.35s var(--ease-silk);
+}
+
+.pick-master-chip:hover {
+  border-color: var(--stroke-strong);
+  color: var(--gold-bright);
+}
+
+.pick-master-chip[aria-checked="true"] {
+  border-color: var(--stroke-strong);
+  background: rgba(168, 155, 130, 0.15);
+  color: var(--gold-bright);
+  box-shadow: 0 0 14px var(--gold-glow);
+}
+
+.pick-master-chip--any[aria-checked="true"] {
+  background: rgba(197, 160, 89, 0.22);
+}
+
+.pick-master-chip:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
+.pick-plan-summary {
+  margin: 0 0 0.85rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(197, 160, 89, 0.08);
+  border: 1px dashed rgba(197, 160, 89, 0.35);
+  color: var(--gold-bright);
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-align: left;
 }
 
 .pick-chip-remove {
@@ -2314,6 +2400,103 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
 .booking-submit {
   width: 100%;
   margin-top: 0.25rem;
+}
+
+.booking-chain {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(197, 160, 89, 0.32);
+  background: rgba(197, 160, 89, 0.05);
+}
+
+.booking-chain-label {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.booking-chain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.booking-chain-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 0.45rem 0.7rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  background: rgba(10, 10, 10, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.booking-chain-time {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--gold-bright);
+  letter-spacing: 0.04em;
+}
+
+.booking-chain-main {
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.booking-chain-duration {
+  grid-column: 3;
+  grid-row: 1;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(197, 160, 89, 0.3);
+  background: rgba(197, 160, 89, 0.05);
+  color: var(--gold);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.booking-chain-master {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.booking-chain-master--empty {
+  color: #d6a84a;
+  font-style: italic;
+}
+
+.booking-chain-total {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+
+.booking-chain-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
 }
 
 .booking-fallback {

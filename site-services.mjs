@@ -260,9 +260,15 @@ function render(groups, serviceMasters) {
     } else {
       for (let j = 0; j < gr.items.length; j++) {
         const it = gr.items[j];
-        /* Длительность не показываем на сайте: она для CRM и слотов календаря. */
+        /* Длительность в блоке прайса не показываем (она для CRM / цепочки бронирования),
+         * но кладём в data-attr — script.js использует её для расчёта суммарного времени
+         * в корзине «Ваш выбор» и для превью цепочки в форме записи. */
         const svcId = String(it.id || "");
         const masters = svcMasters.get(svcId) || [];
+        const durNum = Number(it.duration);
+        const durAttr = Number.isFinite(durNum) && durNum > 0 ? String(durNum) : "";
+        const bufNum = Number(it.buffer_after_min);
+        const bufAttr = Number.isFinite(bufNum) && bufNum > 0 ? String(bufNum) : "";
         /* data-service-masters — список мастеров, закреплённых за ЭТОЙ услугой
          * (пустая строка = «все активные мастера»). script.js использует эти id,
          * чтобы в корзине показать только тех, кто реально делает услугу. */
@@ -271,6 +277,12 @@ function render(groups, serviceMasters) {
           esc(svcId) +
           '" data-service-masters="' +
           esc(masters.join(",")) +
+          '" data-service-duration="' +
+          esc(durAttr) +
+          '" data-service-buffer="' +
+          esc(bufAttr) +
+          '" data-service-name="' +
+          esc(it.name) +
           '"><span>' +
           esc(it.name) +
           '</span><span class="price">' +
@@ -403,6 +415,7 @@ async function fetchPriceList(client) {
       name,
       price,
       duration,
+      buffer_after_min,
       category:service_categories(name)
     `
     )

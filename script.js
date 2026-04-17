@@ -727,11 +727,138 @@
 
     function syncHiddenField() {
       if (!detailField) return;
+      /* В hidden-поле кладём все позиции цепочки, чтобы submit-handler мог взять готовый
+       * текст (mailto или payload для backend). Формат:
+       *   «Стрижка (30 €, 30 мин, мастер: Alesja); Маникюр (25 €, 45 мин, мастер: Не важно)».
+       */
       detailField.value = picked
         .map(function (p) {
-          return p.label + " (" + p.price + ")";
+          var parts = [p.price];
+          if (Number(p.duration) > 0) parts.push(formatDuration(p.duration));
+          var mid = p.selectedMaster;
+          var masterLabel = "";
+          if (mid === ANY_MASTER_ID) masterLabel = anyMasterLabelForChip();
+          else if (mid) masterLabel = masterNameById(mid);
+          if (masterLabel) parts.push("мастер: " + masterLabel);
+          return p.label + " (" + parts.join(", ") + ")";
         })
         .join("; ");
+    }
+
+    function parseTimeHm(str) {
+      var m = String(str || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      var h = Number(m[1]);
+      var min = Number(m[2]);
+      if (!(h >= 0 && h < 24 && min >= 0 && min < 60)) return null;
+      return h * 60 + min;
+    }
+
+    function formatTimeHm(totalMin) {
+      var h = Math.floor(totalMin / 60) % 24;
+      var m = totalMin % 60;
+      var hh = String(h).padStart(2, "0");
+      var mm = String(m).padStart(2, "0");
+      return hh + ":" + mm;
+    }
+
+    /** Рисуем цепочку «время → услуга · мастер» в форме записи.
+     * Источник: picked[] + значение selectedMaster у каждой позиции
+     *         + стартовое время из select[data-booking-time]. */
+    function updateBookingChainPreview() {
+      var wrap = bookingForm.querySelector("[data-chain-preview]");
+      var listEl = bookingForm.querySelector("[data-chain-preview-list]");
+      var totalEl = bookingForm.querySelector("[data-chain-preview-total]");
+      var hintEl = bookingForm.querySelector("[data-chain-preview-hint]");
+      if (!wrap || !listEl || !totalEl) return;
+      if (!picked.length) {
+        wrap.hidden = true;
+        listEl.innerHTML = "";
+        totalEl.textContent = "";
+        if (hintEl) {
+          hintEl.hidden = true;
+          hintEl.textContent = "";
+        }
+        return;
+      }
+      wrap.hidden = false;
+      var timeSel = bookingForm.querySelector("[data-booking-time]");
+      var startMin = timeSel ? parseTimeHm(timeSel.value) : null;
+      listEl.innerHTML = "";
+      var cursor = Number.isFinite(startMin) ? startMin : null;
+      var hasDur = picked.some(function (p) {
+        return (Number(p.duration) || 0) > 0;
+      });
+      var missingMaster = false;
+      for (var i = 0; i < picked.length; i++) {
+        var p = picked[i];
+        var li = document.createElement("li");
+        li.className = "booking-chain-item";
+
+        var timePart = document.createElement("span");
+        timePart.className = "booking-chain-time";
+        if (cursor != null) {
+          timePart.textContent = formatTimeHm(cursor);
+        } else {
+          timePart.textContent = "—";
+        }
+        li.appendChild(timePart);
+
+        var main = document.createElement("span");
+        main.className = "booking-chain-main";
+        main.textContent = p.label;
+        li.appendChild(main);
+
+        if (Number(p.duration) > 0) {
+          var dur = document.createElement("span");
+          dur.className = "booking-chain-duration";
+          dur.textContent = formatDuration(p.duration);
+          li.appendChild(dur);
+        }
+
+        var master = document.createElement("span");
+        master.className = "booking-chain-master";
+        if (p.selectedMaster === ANY_MASTER_ID) {
+          master.textContent = anyMasterLabelForChip();
+        } else if (p.selectedMaster) {
+          master.textContent = masterNameById(p.selectedMaster);
+        } else {
+          master.textContent = "мастер не выбран";
+          master.classList.add("booking-chain-master--empty");
+          missingMaster = true;
+        }
+        li.appendChild(master);
+
+        listEl.appendChild(li);
+
+        if (cursor != null) {
+          var d = Number(p.duration) || 0;
+          var b = i < picked.length - 1 ? Number(p.buffer) || 0 : 0;
+          cursor = cursor + d + b;
+        }
+      }
+
+      if (hasDur) {
+        var totalMin = computePlanTotalMinutes();
+        var tail = startMin != null ? " · ориентировочно до " + formatTimeHm(startMin + totalMin) : "";
+        totalEl.textContent = "Суммарно ~" + formatDuration(totalMin) + tail;
+      } else {
+        totalEl.textContent = "";
+      }
+
+      if (hintEl) {
+        if (missingMaster) {
+          hintEl.hidden = false;
+          hintEl.textContent =
+            "Выберите мастера для каждой услуги в блоке «Ваш выбор» (или «Не важно» — тогда распределим мы).";
+        } else if (startMin == null) {
+          hintEl.hidden = false;
+          hintEl.textContent = "Выберите день и время — и мы покажем точное расписание визита.";
+        } else {
+          hintEl.hidden = true;
+          hintEl.textContent = "";
+        }
+      }
     }
 
     function syncMenuRowsPickedClass() {
@@ -747,6 +874,126 @@
       }
     }
 
+    function formatDuration(min) {
+      var m = Math.max(0, Math.round(Number(min) || 0));
+      if (!m) return "";
+      if (m < 60) return m + " мин";
+      var h = Math.floor(m / 60);
+      var r = m % 60;
+      return r ? h + " ч " + r + " мин" : h + " ч";
+    }
+
+    function mastersForSpecificPick(pick) {
+      /* Если у услуги явно заданы мастера (data-service-masters) — используем их;
+       * иначе берём всех публичных мастеров. */
+      var pub = globalThis.__SALON_PUBLIC_STAFF__;
+      if (!Array.isArray(pub) || !pub.length) return [];
+      if (pick && pick.masters && pick.masters.length) {
+        var allow = {};
+        for (var i = 0; i < pick.masters.length; i++) allow[String(pick.masters[i])] = true;
+        return pub.filter(function (s) {
+          return allow[String(s.id)];
+        });
+      }
+      return pub.slice();
+    }
+
+    function applyPickMaster(pickKeyStr, staffIdOrAny) {
+      var changed = false;
+      for (var i = 0; i < picked.length; i++) {
+        if (picked[i].key === pickKeyStr) {
+          if (picked[i].selectedMaster !== staffIdOrAny) {
+            picked[i].selectedMaster = staffIdOrAny;
+            changed = true;
+          }
+          break;
+        }
+      }
+      if (changed) {
+        renderList();
+        updateBookingChainPreview();
+      }
+    }
+
+    function anyMasterLabelForChip() {
+      if (selRu) return "Не важно";
+      if (selEn) return "No preference";
+      if (selFi) return "Ei väliä";
+      return "Pole oluline";
+    }
+
+    function renderPickMasterChips(host, pick) {
+      host.innerHTML = "";
+      host.className = "pick-chip-masters";
+      host.setAttribute("role", "radiogroup");
+      host.setAttribute("aria-label", "Мастер для услуги " + pick.label);
+      var masters = mastersForSpecificPick(pick);
+      if (!masters.length) {
+        var empty = document.createElement("span");
+        empty.className = "pick-chip-masters-empty";
+        empty.textContent = "Мастера пока не загружены";
+        host.appendChild(empty);
+        return;
+      }
+      /* «Не важно» — всегда первый чип, даёт салону распределить мастера. */
+      var anyBtn = document.createElement("button");
+      anyBtn.type = "button";
+      anyBtn.className = "pick-master-chip pick-master-chip--any";
+      anyBtn.setAttribute("data-staff-id", ANY_MASTER_ID);
+      anyBtn.setAttribute("aria-checked", pick.selectedMaster === ANY_MASTER_ID ? "true" : "false");
+      anyBtn.textContent = anyMasterLabelForChip();
+      anyBtn.addEventListener("click", function () {
+        applyPickMaster(pick.key, pick.selectedMaster === ANY_MASTER_ID ? "" : ANY_MASTER_ID);
+      });
+      host.appendChild(anyBtn);
+
+      for (var i = 0; i < masters.length; i++) {
+        (function (m) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "pick-master-chip";
+          btn.setAttribute("data-staff-id", String(m.id));
+          btn.setAttribute("aria-checked", pick.selectedMaster === String(m.id) ? "true" : "false");
+          btn.textContent = m.name;
+          btn.addEventListener("click", function () {
+            applyPickMaster(pick.key, pick.selectedMaster === String(m.id) ? "" : String(m.id));
+          });
+          host.appendChild(btn);
+        })(masters[i]);
+      }
+    }
+
+    function computePlanTotalMinutes() {
+      var total = 0;
+      for (var i = 0; i < picked.length; i++) {
+        var d = Number(picked[i].duration) || 0;
+        var b = i < picked.length - 1 ? Number(picked[i].buffer) || 0 : 0;
+        total += d + b;
+      }
+      return total;
+    }
+
+    function renderPlanSummary() {
+      var host = summary.querySelector("[data-plan-summary]");
+      if (!host) return;
+      if (!picked.length) {
+        host.hidden = true;
+        host.textContent = "";
+        return;
+      }
+      var total = computePlanTotalMinutes();
+      var hasDurations = picked.some(function (p) {
+        return (Number(p.duration) || 0) > 0;
+      });
+      if (!hasDurations) {
+        host.hidden = true;
+        host.textContent = "";
+        return;
+      }
+      host.hidden = false;
+      host.textContent = "Общая длительность: ~" + formatDuration(total);
+    }
+
     function renderList() {
       listEl.innerHTML = "";
       if (!picked.length) {
@@ -759,9 +1006,23 @@
           (function (item) {
             var li = document.createElement("li");
             li.className = "pick-chip";
+            li.setAttribute("data-pick-key", item.key);
+
+            var head = document.createElement("div");
+            head.className = "pick-chip-head";
+
             var text = document.createElement("span");
             text.className = "pick-chip-text";
             text.textContent = item.label + " — " + item.price;
+            head.appendChild(text);
+
+            if (Number(item.duration) > 0) {
+              var durBadge = document.createElement("span");
+              durBadge.className = "pick-chip-duration";
+              durBadge.textContent = formatDuration(item.duration);
+              head.appendChild(durBadge);
+            }
+
             var btn = document.createElement("button");
             btn.type = "button";
             btn.className = "pick-chip-remove";
@@ -772,12 +1033,19 @@
               e.stopPropagation();
               removeByKey(item.key);
             });
-            li.appendChild(text);
-            li.appendChild(btn);
+            head.appendChild(btn);
+
+            li.appendChild(head);
+
+            var mastersHost = document.createElement("div");
+            renderPickMasterChips(mastersHost, item);
+            li.appendChild(mastersHost);
+
             listEl.appendChild(li);
           })(picked[j]);
         }
       }
+      renderPlanSummary();
       syncHiddenField();
       syncMenuRowsPickedClass();
       updateTeamSectionVisibility();
@@ -787,6 +1055,7 @@
       syncMasterSelectEligibility();
       renderMasterChips();
       validateMasterForPicks();
+      updateBookingChainPreview();
     }
 
     function removeByKey(key) {
@@ -795,6 +1064,38 @@
       });
       if (picked.length) syncFormCategory();
       renderList();
+    }
+
+    function readPickFromLi(li, panel, label, price) {
+      var category = serviceCategoryFromPanel(panel);
+      var key = pickKey(panel.id, label);
+      var svcId = String(li.getAttribute("data-service-id") || "").trim();
+      var dur = Number(li.getAttribute("data-service-duration"));
+      var buf = Number(li.getAttribute("data-service-buffer"));
+      var mastersRaw = String(li.getAttribute("data-service-masters") || "").trim();
+      var masters = mastersRaw
+        ? mastersRaw
+            .split(",")
+            .map(function (s) {
+              return String(s || "").trim();
+            })
+            .filter(Boolean)
+        : [];
+      return {
+        key: key,
+        label: label,
+        price: price,
+        category: category,
+        serviceId: svcId,
+        duration: Number.isFinite(dur) && dur > 0 ? dur : 0,
+        buffer: Number.isFinite(buf) && buf > 0 ? buf : 0,
+        masters: masters,
+        /* Выбранный мастер для конкретной услуги.
+         *   ""  = ещё не выбран,
+         *   "any" = «Не важно» (салон распределит),
+         *   "<uuid>" = конкретный мастер. */
+        selectedMaster: "",
+      };
     }
 
     function togglePick(li) {
@@ -818,7 +1119,7 @@
       if (idx >= 0) {
         picked.splice(idx, 1);
       } else {
-        picked.push({ key: key, label: label, price: price, category: category });
+        picked.push(readPickFromLi(li, panel, label, price));
       }
       syncFormCategory();
       renderList();
@@ -928,6 +1229,21 @@
           var tid = li2.getAttribute("data-master-id") || nameToId[li2.textContent.trim().toLowerCase()];
           li2.setAttribute("aria-pressed", v && tid === v ? "true" : "false");
         }
+      });
+    }
+
+    /* Когда пользователь меняет «Свободное время» — пересчитываем цепочку услуг в форме.
+     * Сама опция «Выберите время» = пустой value, тогда таймлайн показывает «—». */
+    var chainTimeSelect = bookingForm.querySelector("[data-booking-time]");
+    if (chainTimeSelect) {
+      chainTimeSelect.addEventListener("change", function () {
+        updateBookingChainPreview();
+      });
+    }
+    var chainDateInput = bookingForm.querySelector("[data-booking-date]");
+    if (chainDateInput) {
+      chainDateInput.addEventListener("change", function () {
+        updateBookingChainPreview();
       });
     }
 
