@@ -143,6 +143,7 @@ export function AdminStaffPage() {
   const [err, setErr] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
+  const [noPhone, setNoPhone] = useState(false);
   const [newRoles, setNewRoles] = useState<UiRole[]>(["worker"]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -328,7 +329,7 @@ export function AdminStaffPage() {
   async function onAdd(e: FormEvent) {
     e.preventDefault();
     setErr(null);
-    const cleanPhone = digitsOnly(phone);
+    const cleanPhone = noPhone ? "" : digitsOnly(phone);
     const n = name.trim();
     if (!n) {
       setErr("Укажите имя мастера.");
@@ -358,6 +359,7 @@ export function AdminStaffPage() {
     }
     setPhone("");
     setName("");
+    setNoPhone(false);
     setNewRoles(["worker"]);
     void load();
   }
@@ -825,17 +827,24 @@ export function AdminStaffPage() {
 
       <form onSubmit={onAdd} className="flex flex-wrap items-end gap-3 border border-zinc-800 bg-zinc-950 p-4">
         <div>
-          <label className="block text-xs text-zinc-500">
-            {t("login.phone")} <span className="text-zinc-600">(необязательно)</span>
-          </label>
+          <label className="block text-xs text-zinc-500">{t("login.phone")}</label>
           <input
-            value={phone}
+            value={noPhone ? "" : phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
-            placeholder="введите номер"
+            disabled={noPhone}
+            className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder={noPhone ? "без номера" : "введите номер"}
             inputMode="tel"
             autoComplete="off"
           />
+          <label className="mt-1 flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400 select-none">
+            <input
+              type="checkbox"
+              checked={noPhone}
+              onChange={(e) => setNoPhone(e.target.checked)}
+            />
+            Без номера
+          </label>
         </div>
         <div>
           <label className="block text-xs text-zinc-500">{t("adminStaff.name")}</label>
