@@ -176,7 +176,7 @@
       </div>
     </section>
 
-    <!-- Команда: .team-groups → .team-group + заголовок + ul.team-names (script.js клик по li) -->
+    <!-- Команда: .team-groups заполняет site-team.mjs из Supabase (staff + staff_services) -->
     <section class="section" id="meistrid">
       <div class="container">
         <div class="section-head reveal">
@@ -189,32 +189,7 @@
         </div>
         <div class="team-block reveal">
           <div class="team-groups" aria-label="Meistrid teenuste kaupa">
-            <div class="team-group" data-team-group="hair">
-              <h3 class="team-group-title">Juuksed</h3>
-              <p class="team-group-desc">Lõikus, värvimine, keemiline lokk, soengud</p>
-              <ul class="team-names">
-                <li>Galina</li>
-                <li>Irina</li>
-                <li>Viktoria</li>
-                <li>Anne</li>
-              </ul>
-            </div>
-            <div class="team-group" data-team-group="nails">
-              <h3 class="team-group-title">Küüned</h3>
-              <p class="team-group-desc">Maniküür, pediküür, geellakk</p>
-              <ul class="team-names">
-                <li>Alesja</li>
-                <li>Aljona</li>
-              </ul>
-            </div>
-            <div class="team-group" data-team-group="brows">
-              <h3 class="team-group-title">Kulmud ja ripsmed</h3>
-              <p class="team-group-desc">Värvimine, korrigeerimine. Kulmud — Aljona, ripsmed — Alesja.</p>
-              <ul class="team-names">
-                <li>Aljona</li>
-                <li>Alesja</li>
-              </ul>
-            </div>
+            <p class="menu-footnote team-load-hint" data-team-placeholder>Meeskond laaditakse CRM-ist…</p>
           </div>
           <div class="team-skip-action">
             <a href="#broneeri" class="btn btn-outline">Ei oska valida</a>

@@ -276,39 +276,7 @@
       "panel-pedicure": "pedicure",
     };
 
-    var MASTERS_PICK = [
-      { id: "galina", name: "Galina" },
-      { id: "irina", name: "Irina" },
-      { id: "viktoria", name: "Viktoria" },
-      { id: "anne", name: "Anne" },
-      { id: "alesja", name: "Alesja" },
-      { id: "aljona", name: "Aljona" },
-    ];
-
     var ANY_MASTER_ID = "any";
-
-    /** Meistrid teenusekategooriate järgi (sama loogika mis #meistrid plokis) */
-    var CATEGORY_TO_MASTER_IDS = {
-      "hair-cut": ["galina", "irina", "viktoria", "anne"],
-      "hair-color": ["galina", "irina", "viktoria", "anne"],
-      perm: ["galina", "irina", "viktoria", "anne"],
-      styling: ["galina", "irina", "viktoria", "anne"],
-      manicure: ["alesja", "aljona"],
-      pedicure: ["alesja", "aljona"],
-      "brows-lashes": ["aljona", "alesja"],
-      lashes: ["alesja"],
-    };
-
-    function masterFilterForCategoryKey(catKey) {
-      var fixed = String(catKey || "");
-      if (Object.prototype.hasOwnProperty.call(CATEGORY_TO_MASTER_IDS, fixed)) return fixed;
-      var namePart = fixed.indexOf("n:") === 0 ? fixed.slice(2).toLowerCase() : fixed.toLowerCase();
-      if (namePart === "other" || namePart === "__none__") return "hair-cut";
-      if (/pedik|педик|jalg/.test(namePart)) return "pedicure";
-      if (/manik|маник|küün|kyun|nail|nogt|geel/.test(namePart)) return "manicure";
-      if (/kulm|rips|brow|lash|ресниц|бров/.test(namePart)) return "brows-lashes";
-      return "hair-cut";
-    }
 
     function serviceCategoryFromPanel(panel) {
       if (!panel) return "";
@@ -321,11 +289,6 @@
     var chipsEl = summary.querySelector("[data-summary-master-chips]");
     var dockToggle = summary.querySelector("[data-selection-dock-toggle]");
     var dockCollapseKey = "alessanna-selection-dock-collapsed";
-
-    function isLashesPickLabel(label) {
-      var s = String(label || "").toLowerCase();
-      return s.indexOf("ресниц") !== -1 || s.indexOf("ripsme") !== -1 || s.indexOf("lash") !== -1;
-    }
 
     function readDockCollapsedPref() {
       try {
@@ -367,18 +330,13 @@
 
     function rebuildNameToId() {
       nameToId = {};
-      if (teamRoot) {
-        var domLis = teamRoot.querySelectorAll(".team-names li");
-        for (var di = 0; di < domLis.length; di++) {
-          var dli = domLis[di];
-          var did = dli.getAttribute("data-master-id");
-          if (!did) continue;
-          nameToId[dli.textContent.trim().toLowerCase()] = did;
-        }
-      }
-      for (var mi = 0; mi < MASTERS_PICK.length; mi++) {
-        var nm = MASTERS_PICK[mi].name.toLowerCase();
-        if (!nameToId[nm]) nameToId[nm] = MASTERS_PICK[mi].id;
+      if (!teamRoot) return;
+      var domLis = teamRoot.querySelectorAll(".team-names li[data-master-id]");
+      for (var di = 0; di < domLis.length; di++) {
+        var dli = domLis[di];
+        var did = dli.getAttribute("data-master-id");
+        if (!did) continue;
+        nameToId[dli.textContent.trim().toLowerCase()] = did;
       }
     }
 
@@ -436,8 +394,9 @@
           if (String(st[si].id) === String(id)) return st[si].name;
         }
       }
-      for (var i = 0; i < MASTERS_PICK.length; i++) {
-        if (MASTERS_PICK[i].id === id) return MASTERS_PICK[i].name;
+      if (teamRoot && id) {
+        var cand = teamRoot.querySelector('li[data-master-id="' + escapeCssAttrKey(id) + '"]');
+        if (cand) return cand.textContent.trim();
       }
       return UI.masterNone;
     }
@@ -506,53 +465,23 @@
       return scoped;
     }
 
-    /** Varu: vanad slug-id (galina jne), kui #meistrid pole Supabase UUID-ga laetud. */
-    function mastersForPickedCategoriesLegacy() {
-      if (!picked.length) return [];
-      var categories = [];
-      var seen = {};
-      for (var ci = 0; ci < picked.length; ci++) {
-        var cat = picked[ci].masterFilter || picked[ci].category;
-        if (seen[cat]) continue;
-        seen[cat] = true;
-        categories.push(cat);
-      }
-      var first = CATEGORY_TO_MASTER_IDS[categories[0]];
-      if (!first || !first.length) return [];
-      var out = first.slice();
-      for (var c = 1; c < categories.length; c++) {
-        var ids = CATEGORY_TO_MASTER_IDS[categories[c]];
-        if (!ids || !ids.length) return [];
-        out = out.filter(function (id) {
-          return ids.indexOf(id) !== -1;
-        });
-        if (!out.length) return [];
-      }
-      out.sort(function (a, b) {
-        return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
-      });
-      return out;
-    }
-
-    /** Пересечение по категориям; при разметке CRM (#meistrid li[data-master-id]) — только эти мастера. */
+    /** Только мастера из CRM (#meistrid li[data-master-id]); без статического списка. */
     function mastersForPickedCategories() {
       if (!picked.length) return [];
-      if (teamRoot && teamRoot.querySelector(".team-names li[data-master-id]")) {
-        var firstIds = staffIdsForPick(teamRoot, picked[0]);
-        var outDom = firstIds.slice();
-        for (var p = 1; p < picked.length; p++) {
-          var nextIds = staffIdsForPick(teamRoot, picked[p]);
-          outDom = outDom.filter(function (sid) {
-            return nextIds.indexOf(sid) !== -1;
-          });
-          if (!outDom.length) return [];
-        }
-        outDom.sort(function (a, b) {
-          return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
+      if (!teamRoot || !teamRoot.querySelector(".team-names li[data-master-id]")) return [];
+      var firstIds = staffIdsForPick(teamRoot, picked[0]);
+      var outDom = firstIds.slice();
+      for (var p = 1; p < picked.length; p++) {
+        var nextIds = staffIdsForPick(teamRoot, picked[p]);
+        outDom = outDom.filter(function (sid) {
+          return nextIds.indexOf(sid) !== -1;
         });
-        return outDom;
+        if (!outDom.length) return [];
       }
-      return mastersForPickedCategoriesLegacy();
+      outDom.sort(function (a, b) {
+        return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
+      });
+      return outDom;
     }
 
     function validateMasterForPicks() {
@@ -781,9 +710,7 @@
       if (idx >= 0) {
         picked.splice(idx, 1);
       } else {
-        var masterFilter = masterFilterForCategoryKey(category);
-        if (masterFilter === "brows-lashes" && isLashesPickLabel(label)) masterFilter = "lashes";
-        picked.push({ key: key, label: label, price: price, category: category, masterFilter: masterFilter });
+        picked.push({ key: key, label: label, price: price, category: category });
       }
       syncFormCategory();
       renderList();
@@ -998,26 +925,6 @@
               slotsAvailable: "Saadaval:",
             };
 
-    /* Список мастеров: id — для hash в dayAvailability; name — текст в option */
-    var MASTERS = [
-      { id: "galina", name: "Galina" },
-      { id: "irina", name: "Irina" },
-      { id: "viktoria", name: "Viktoria" },
-      { id: "anne", name: "Anne" },
-      { id: "alesja", name: "Alesja" },
-      { id: "aljona", name: "Aljona" },
-    ];
-
-    var DEMO_SERVICE_MASTERS = {
-      "hair-cut": ["galina", "irina", "viktoria", "anne"],
-      "hair-color": ["galina", "irina", "viktoria", "anne"],
-      perm: ["galina", "irina", "viktoria", "anne"],
-      styling: ["galina", "irina", "viktoria", "anne"],
-      "brows-lashes": ["aljona", "alesja"],
-      manicure: ["alesja", "aljona"],
-      pedicure: ["alesja", "aljona"],
-    };
-
     var ANY_MASTER_ID = "any";
 
     var SLOT_POOL = ["10:00", "11:30", "13:00", "14:30", "16:00", "17:30"];
@@ -1101,7 +1008,7 @@
       }
       if (masterId === ANY_MASTER_ID) {
         var combined = [];
-        var demoMasters = demoMastersForCurrentService();
+        var demoMasters = publicStaffAsMasterOptions() || [];
         for (var dm = 0; dm < demoMasters.length; dm++) {
           var demoInfo = dayAvailability(demoMasters[dm].id, y, m, d);
           combined = combined.concat(demoInfo.slots);
@@ -1386,14 +1293,6 @@
       }
     }
 
-    function demoMastersForCurrentService() {
-      var ids = DEMO_SERVICE_MASTERS[serviceSelectEl.value];
-      if (!ids || !ids.length) return MASTERS.slice();
-      return MASTERS.filter(function (m) {
-        return ids.indexOf(m.id) !== -1;
-      });
-    }
-
     function publicStaffAsMasterOptions() {
       var st = globalThis.__SALON_PUBLIC_STAFF__;
       if (!st || !st.length) return null;
@@ -1404,20 +1303,12 @@
 
     function refillDemoMastersForCurrentService() {
       var pub = publicStaffAsMasterOptions();
-      if (pub) {
-        setMasterOptions(pub);
-        return;
-      }
-      setMasterOptions(demoMastersForCurrentService());
+      setMasterOptions(pub || []);
     }
 
     function setupDemoMasters() {
       var pub = publicStaffAsMasterOptions();
-      if (pub) {
-        setMasterOptions(pub);
-        return;
-      }
-      refillDemoMastersForCurrentService();
+      setMasterOptions(pub || []);
     }
 
     /** Rebuild master dropdown from API for the selected service (employee_services filter). */
