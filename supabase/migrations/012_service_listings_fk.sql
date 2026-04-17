@@ -1,5 +1,10 @@
 -- Point CRM/booking FKs at service_listings (uuid) and migrate data from legacy
 -- public.services (bigint) + public.categories when present.
+--
+-- NOTE: bare `select ... from public.categories` / `from public.services` fails at
+-- parse time on databases where those legacy tables don't exist (42P01), even if
+-- the WHERE guard would skip execution. We wrap those legacy-data inserts in
+-- dynamic SQL (`EXECUTE`) so the parser sees them only when the tables exist.
 
 create extension if not exists pgcrypto;
 
@@ -16,37 +21,67 @@ create unique index if not exists uq_service_listings_migrated_from
   on public.service_listings (_migrated_from)
   where _migrated_from is not null;
 
--- Categories: legacy bigint -> service_categories
-insert into public.service_categories (name, sort_order, _migrated_from)
-select c.name, 0, c.id
-from public.categories c
-where exists (select 1 from information_schema.tables t where t.table_schema = 'public' and t.table_name = 'categories')
-  and not exists (
-    select 1 from public.service_categories sc where sc._migrated_from = c.id
-  );
+-- Categories: legacy bigint -> service_categories (only if legacy table exists)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'categories'
+  ) then
+    execute $sql$
+      insert into public.service_categories (name, sort_order, _migrated_from)
+      select c.name, 0, c.id
+      from public.categories c
+      where not exists (
+        select 1 from public.service_categories sc where sc._migrated_from = c.id
+      )
+    $sql$;
+  end if;
+end $$;
 
--- Services: legacy -> service_listings
-insert into public.service_listings (
-  name, price, duration, category_id, is_active, sort_order, buffer_after_min, _migrated_from
-)
-select
-  s.name_et,
-  (s.price_cents::numeric / 100.0),
-  s.duration_min,
-  (select sc.id from public.service_categories sc where sc._migrated_from = s.category_id limit 1),
-  coalesce(s.active, true),
-  coalesce(s.sort_order, 0),
-  coalesce(s.buffer_after_min, 10),
-  s.id
-from public.services s
-where exists (select 1 from information_schema.tables t where t.table_schema = 'public' and t.table_name = 'services')
-  and exists (
-    select 1 from information_schema.columns c
-    where c.table_schema = 'public' and c.table_name = 'services' and c.column_name = 'name_et'
-  )
-  and not exists (
-    select 1 from public.service_listings sl where sl._migrated_from = s.id
-  );
+-- Services: legacy -> service_listings (only if legacy table + required columns exist)
+do $$
+declare
+  has_services boolean;
+  has_name_et  boolean;
+begin
+  select exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'services'
+  ) into has_services;
+
+  if not has_services then
+    return;
+  end if;
+
+  select exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'services' and column_name = 'name_et'
+  ) into has_name_et;
+
+  if not has_name_et then
+    return;
+  end if;
+
+  execute $sql$
+    insert into public.service_listings (
+      name, price, duration, category_id, is_active, sort_order, buffer_after_min, _migrated_from
+    )
+    select
+      s.name_et,
+      (s.price_cents::numeric / 100.0),
+      s.duration_min,
+      (select sc.id from public.service_categories sc where sc._migrated_from = s.category_id limit 1),
+      coalesce(s.active, true),
+      coalesce(s.sort_order, 0),
+      coalesce(s.buffer_after_min, 10),
+      s.id
+    from public.services s
+    where not exists (
+      select 1 from public.service_listings sl where sl._migrated_from = s.id
+    )
+  $sql$;
+end $$;
 
 -- appointment_services.service_id: bigint -> uuid
 do $$
