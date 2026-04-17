@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * AlesSanna Ilusalong — логика страницы (index.html + ru.html)
+ * AlesSanna Ilusalong — логика публичного лендинга (index.html, lang из <html>)
  * ============================================================================
  * Весь код обёрнут в IIFE (function () { ... })(); чтобы не засорять глобальную область.
  *
@@ -12,6 +12,7 @@
  *   4) Вкладки услуг: .tab-btn с aria-controls показывает соответствующий .tab-panel (hidden).
  *   5) .reveal: IntersectionObserver добавляет .is-visible при появлении в зоне видимости
  *      (у .hero-inner.hero-animate каскад только у дочерних блоков — см. styles.css).
+ *   5a) #review-form: mailto на рабочий ящик с темой «модерация» (как у бронирования без API).
  *   5b) Прайс #teenused: клик по строке добавляет/убирает услугу в [data-selected-services-list],
  *      синхронизирует select[name=service] и скрытое services_detail; #meistrid — мастера,
  *      которые закрывают все выбранные категории (пересечение по направлениям).
@@ -127,7 +128,7 @@
   }
 
   document.querySelectorAll(
-    'a[href="#broneeri"], a[href="#teenused"], a[href="#meistrid"], a[href="#galerii"], a[href="#meist"], a[href="#kinkekaardid"], a[href="#tagasiside"], a[href="#kontakt"]'
+    'a[href="#broneeri"], a[href="#teenused"], a[href="#meistrid"], a[href="#meist"], a[href="#kinkekaardid"], a[href="#tagasiside"], a[href="#kontakt"]'
   ).forEach(function (link) {
     link.addEventListener("click", function (e) {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
@@ -1516,6 +1517,95 @@
           : isFi
             ? encodeURIComponent("Varaus AlesSanna")
             : encodeURIComponent("Broneering AlesSanna");
+      var body = encodeURIComponent(lines.join("\n"));
+      window.location.href = "mailto:alessanna.ilusalong@gmail.com?subject=" + subject + "&body=" + body;
+    });
+  }
+
+  /* Tagasiside / отзыв: mailto salongi töömeilile modereerimiseks (sama aadress mis broneeringul) */
+  var reviewForm = document.getElementById("review-form");
+  if (reviewForm) {
+    var langRev = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
+    if (langRev !== "ru" && langRev !== "et" && langRev !== "fi" && langRev !== "en") langRev = "et";
+    var revMsg =
+      langRev === "ru"
+        ? {
+            subject: "AlesSanna: отзыв (на модерацию)",
+            name: "Имя",
+            email: "Эл. почта",
+            rating: "Оценка (звёзды)",
+            message: "Текст отзыва",
+            alertName: "Укажите имя.",
+            alertMsg: "Напишите отзыв хотя бы в несколько слов.",
+            alertEmail: "Проверьте формат e-mail или оставьте поле пустым.",
+          }
+        : langRev === "en"
+          ? {
+              subject: "AlesSanna: review (moderation)",
+              name: "Name",
+              email: "Email",
+              rating: "Rating (stars)",
+              message: "Your feedback",
+              alertName: "Please enter your name.",
+              alertMsg: "Please write a few words of feedback.",
+              alertEmail: "Check the email format or leave the field empty.",
+            }
+          : langRev === "fi"
+            ? {
+                subject: "AlesSanna: palaute (moderaatio)",
+                name: "Nimi",
+                email: "Sähköposti",
+                rating: "Arvio (tähdet)",
+                message: "Palautteesi",
+                alertName: "Kirjoita nimi.",
+                alertMsg: "Kirjoita palaute vähintään muutamalla sanalla.",
+                alertEmail: "Tarkista sähköpostin muoto tai jätä kenttä tyhjäksi.",
+              }
+            : {
+                subject: "AlesSanna: tagasiside (modereerimiseks)",
+                name: "Nimi",
+                email: "E-post",
+                rating: "Hinnang (tärnid)",
+                message: "Tagasiside tekst",
+                alertName: "Palun sisestage nimi.",
+                alertMsg: "Palun kirjutage tagasiside vähemalt mõne sõnaga.",
+                alertEmail: "Kontrollige e-posti vormingut või jätke väli tühjaks.",
+              };
+
+    reviewForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var nameEl = reviewForm.querySelector('[name="review_name"]');
+      var emailEl = reviewForm.querySelector('[name="review_email"]');
+      var ratingEl = reviewForm.querySelector('[name="review_rating"]');
+      var msgEl = reviewForm.querySelector('[name="review_message"]');
+      var name = nameEl ? nameEl.value.trim() : "";
+      var email = emailEl ? emailEl.value.trim() : "";
+      var rating = ratingEl && ratingEl.value ? ratingEl.value : "";
+      var msg = msgEl ? msgEl.value.trim() : "";
+      if (!name) {
+        window.alert(revMsg.alertName);
+        if (nameEl) nameEl.focus();
+        return;
+      }
+      if (msg.length < 8) {
+        window.alert(revMsg.alertMsg);
+        if (msgEl) msgEl.focus();
+        return;
+      }
+      if (email && email.indexOf("@") < 1) {
+        window.alert(revMsg.alertEmail);
+        if (emailEl) emailEl.focus();
+        return;
+      }
+      var lines = [
+        revMsg.name + ": " + name,
+        revMsg.email + ": " + (email || "—"),
+        revMsg.rating + ": " + rating + "/5",
+        "",
+        revMsg.message + ":",
+        msg,
+      ];
+      var subject = encodeURIComponent(revMsg.subject);
       var body = encodeURIComponent(lines.join("\n"));
       window.location.href = "mailto:alessanna.ilusalong@gmail.com?subject=" + subject + "&body=" + body;
     });

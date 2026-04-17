@@ -66,7 +66,11 @@
     "edit": "Muuda"
   },
   "adminSchedule": {
-    "subtitle": "Nädala graafik (staff_schedule)."
+    "subtitle": "Nädala graafik (staff_schedule).",
+    "allStaff": "Kõik töötajad",
+    "allStaffHint": "Praegune nädalaplaan salvestatakse iga aktiivse töötaja jaoks — individuaalsed graafikud asendatakse.",
+    "saveAllConfirm": "Asendada kõigi aktiivsete töötajate nädala graafik alloleva plaaniga? Ühe nupuga tagasi ei pöörata.",
+    "saveForAll": "Salvesta kõigile"
   },
   "adminTimeOff": {
     "subtitle": "Kättesaamatuse blokid (staff_time_off).",
@@ -228,7 +232,6 @@
     "navLabel": "Põhinavigatsioon",
     "navServices": "Teenused",
     "navMasters": "Meistrid",
-    "navGallery": "Galerii",
     "navSalon": "Salong",
     "navGift": "Kinkekaardid",
     "navReviews": "Tagasiside",
@@ -246,6 +249,17 @@
     "btnServices": "Teenused",
     "trustAddress": "Härma Keskus · Tallinna mnt 70 · Pärnu",
     "trustHours": "E–R 10–18 · L 10–16",
-    "trustMave": "AlesSanna & MAVE"
+    "trustSalon": "AlesSanna Ilusalong",
+    "reviewTitle": "Jäta meile sõnum",
+    "reviewLead": "Tahame kuulda teie kogemusest — vaikselt ja ausalt, nagu meie ruumiski.",
+    "reviewModeration": "Teie sõnum saadetakse salongi meilile kontrolliks. Avalikku lehte ei kuvata enne, kui oleme teksti üle vaadanud.",
+    "reviewNameLabel": "Nimi",
+    "reviewEmailLabel": "E-post",
+    "reviewEmailPlaceholder": "valikuline, vastuse jaoks",
+    "reviewRatingLabel": "Hinnang",
+    "reviewMessageLabel": "Teie tagasiside",
+    "reviewMessagePlaceholder": "Kirjutage mõni lause…",
+    "reviewSubmit": "Saada meile",
+    "reviewMailHint": "Avaneb teie meiliklient; saatke kiri salongi aadressile. Avaldamise otsustab salong."
   }
 }

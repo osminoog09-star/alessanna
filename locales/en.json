@@ -178,7 +178,6 @@
     "navLabel": "Main navigation",
     "navServices": "Services",
     "navMasters": "Masters",
-    "navGallery": "Gallery",
     "navSalon": "Salon",
     "navGift": "Gift cards",
     "navReviews": "Reviews",
@@ -196,6 +195,17 @@
     "btnServices": "Services",
     "trustAddress": "Härma Keskus · Tallinna mnt 70 · Pärnu",
     "trustHours": "Mon–Fri 10–18 · Sat 10–16",
-    "trustMave": "AlesSanna & MAVE"
+    "trustSalon": "AlesSanna beauty salon",
+    "reviewTitle": "Send us your feedback",
+    "reviewLead": "We would love to hear about your visit — calmly and honestly, like our space.",
+    "reviewModeration": "Your message goes to the salon inbox for review. Nothing is shown on the site until we approve the text.",
+    "reviewNameLabel": "Name",
+    "reviewEmailLabel": "Email",
+    "reviewEmailPlaceholder": "optional, if you want a reply",
+    "reviewRatingLabel": "Rating",
+    "reviewMessageLabel": "Your feedback",
+    "reviewMessagePlaceholder": "Write a few sentences…",
+    "reviewSubmit": "Send to us",
+    "reviewMailHint": "Your mail app will open; send the message to the salon address. The salon decides on publication."
   }
 }

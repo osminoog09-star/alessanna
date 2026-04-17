@@ -25,7 +25,7 @@ jobs:
         run: |
           set -e
           mkdir -p _site
-          cp index.html ru.html mave.html mave-ru.html _site/
+          cp index.html _site/
           cp styles.css script.js translations.js _site/
           cp work.css work.js work.html _site/
           cp -r assets _site/

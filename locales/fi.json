@@ -163,7 +163,6 @@
     "navLabel": "Päänavigaatio",
     "navServices": "Palvelut",
     "navMasters": "Mestarit",
-    "navGallery": "Galleria",
     "navSalon": "Salonki",
     "navGift": "Lahjakortit",
     "navReviews": "Palaute",
@@ -181,6 +180,17 @@
     "btnServices": "Palvelut",
     "trustAddress": "Härma Keskus · Tallinna mnt 70 · Pärnu",
     "trustHours": "Ma–Pe 10–18 · La 10–16",
-    "trustMave": "AlesSanna & MAVE"
+    "trustSalon": "AlesSanna kauneushoitola",
+    "reviewTitle": "Lähetä meille palaute",
+    "reviewLead": "Haluamme kuulla käynnistäsi — rauhallisesti ja rehellisesti, kuten tilassamme.",
+    "reviewModeration": "Viestisi menee salongin sähköpostiin tarkistettavaksi. Sivulla mitään ei näytetä ennen kuin hyväksymme tekstin.",
+    "reviewNameLabel": "Nimi",
+    "reviewEmailLabel": "Sähköposti",
+    "reviewEmailPlaceholder": "valinnainen, jos haluat vastauksen",
+    "reviewRatingLabel": "Arvio",
+    "reviewMessageLabel": "Palautteesi",
+    "reviewMessagePlaceholder": "Kirjoita muutama lause…",
+    "reviewSubmit": "Lähetä meille",
+    "reviewMailHint": "Sähköpostiohjelmasi avautuu; lähetä viesti salongin osoitteeseen. Julkaisun päättää salongi."
   }
 }

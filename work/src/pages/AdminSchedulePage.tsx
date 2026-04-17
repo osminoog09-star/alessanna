@@ -6,6 +6,9 @@ import type { StaffScheduleRow, StaffTableRow } from "../types/database";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
+/** Выбор в списке: применить график ко всем активным сотрудникам */
+const ALL_STAFF_VALUE = "__all_staff__";
+
 type DayRow = { day_of_week: number; start: string; end: string; working: boolean };
 
 function emptyWeek(): DayRow[] {
@@ -28,8 +31,14 @@ export function AdminSchedulePage() {
       setLoading(false);
       return;
     }
-    setStaffList((data ?? []) as StaffTableRow[]);
-    setStaffId((prev) => prev || ((data?.[0] as StaffTableRow | undefined)?.id ?? ""));
+    const list = (data ?? []) as StaffTableRow[];
+    setStaffList(list);
+    setStaffId((prev) => {
+      if (list.length === 0) return "";
+      if (prev === ALL_STAFF_VALUE) return ALL_STAFF_VALUE;
+      if (prev && list.some((s) => s.id === prev)) return prev;
+      return list[0]!.id;
+    });
     setLoading(false);
   }, []);
 
@@ -69,7 +78,7 @@ export function AdminSchedulePage() {
   }, [loadStaff]);
 
   useEffect(() => {
-    if (staffId) void loadSchedule(staffId);
+    if (staffId && staffId !== ALL_STAFF_VALUE) void loadSchedule(staffId);
   }, [staffId, loadSchedule]);
 
   function setDayField(day: number, field: "start" | "end", value: string) {
@@ -80,20 +89,54 @@ export function AdminSchedulePage() {
     setRows((prev) => prev.map((r) => (r.day_of_week === day ? { ...r, working } : r)));
   }
 
+  function buildInsertsForStaff(targetStaffId: string) {
+    return rows
+      .filter((r) => r.working)
+      .map((r) => ({
+        staff_id: targetStaffId,
+        day_of_week: r.day_of_week,
+        start_time: r.start.length === 5 ? `${r.start}:00` : r.start,
+        end_time: r.end.length === 5 ? `${r.end}:00` : r.end,
+      }));
+  }
+
   async function onSave(e: FormEvent) {
     e.preventDefault();
     if (!staffId) return;
     setSaving(true);
     setErr(null);
+
+    if (staffId === ALL_STAFF_VALUE) {
+      if (staffList.length === 0) {
+        setSaving(false);
+        return;
+      }
+      if (!window.confirm(t("adminSchedule.saveAllConfirm"))) {
+        setSaving(false);
+        return;
+      }
+      const ids = staffList.map((s) => s.id);
+      const { error: delErr } = await supabase.from("staff_schedule").delete().in("staff_id", ids);
+      if (delErr) {
+        setErr(delErr.message);
+        setSaving(false);
+        return;
+      }
+      const inserts = ids.flatMap((id) => buildInsertsForStaff(id));
+      if (inserts.length > 0) {
+        const { error: insErr } = await supabase.from("staff_schedule").insert(inserts);
+        if (insErr) {
+          setErr(insErr.message);
+          setSaving(false);
+          return;
+        }
+      }
+      setSaving(false);
+      return;
+    }
+
     await supabase.from("staff_schedule").delete().eq("staff_id", staffId);
-    const inserts = rows
-      .filter((r) => r.working)
-      .map((r) => ({
-        staff_id: staffId,
-        day_of_week: r.day_of_week,
-        start_time: r.start.length === 5 ? `${r.start}:00` : r.start,
-        end_time: r.end.length === 5 ? `${r.end}:00` : r.end,
-      }));
+    const inserts = buildInsertsForStaff(staffId);
     const { error } = await supabase.from("staff_schedule").insert(inserts);
     setSaving(false);
     if (error) {
@@ -119,6 +162,7 @@ export function AdminSchedulePage() {
           onChange={(e) => setStaffId(e.target.value)}
           className="mt-1 block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
         >
+          {staffList.length > 0 ? <option value={ALL_STAFF_VALUE}>{t("adminSchedule.allStaff")}</option> : null}
           {staffList.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -126,6 +170,9 @@ export function AdminSchedulePage() {
           ))}
         </select>
       </label>
+      {staffId === ALL_STAFF_VALUE && (
+        <p className="text-xs text-amber-200/90">{t("adminSchedule.allStaffHint")}</p>
+      )}
       <p className="text-xs text-zinc-500">
         Снимите галочку «работает в этот день», чтобы пометить выходной: строка в графике не сохраняется, в календаре в
         этот день слоты не строятся.
@@ -165,10 +212,10 @@ export function AdminSchedulePage() {
         })}
         <button
           type="submit"
-          disabled={saving || !staffId}
+          disabled={saving || !staffId || (staffId === ALL_STAFF_VALUE && staffList.length === 0)}
           className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {t("common.save")}
+          {staffId === ALL_STAFF_VALUE ? t("adminSchedule.saveForAll") : t("common.save")}
         </button>
       </form>
     </div>

@@ -65,7 +65,7 @@ function sendPublicFile(name) {
   };
 }
 
-["mave.html", "mave-ru.html", "work.html", "work.css", "work.js", "styles.css", "script.js", "translations.js"].forEach(
+["work.html", "work.css", "work.js", "styles.css", "script.js", "translations.js"].forEach(
   (name) => {
     app.get("/" + name, sendPublicFile(name));
   }
@@ -92,7 +92,8 @@ app.get("/", (req, res) => {
   res.redirect(302, `/${target}`);
 });
 
-app.get("/index.html", (_, res) => res.redirect(302, "/et"));
+app.get("/index.html", (_, res) => res.redirect(302, "/ru"));
+/** Старые закладки на ru.html */
 app.get("/ru.html", (_, res) => res.redirect(302, "/ru"));
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));

@@ -269,39 +269,93 @@ export function AdminStaffPage() {
     if (nm) {
       const byName = await supabase.from("service_listings").select("id").eq("name", nm).maybeSingle();
       if (!byName.error && byName.data?.id) return String(byName.data.id);
+      const byIlike = await supabase.from("service_listings").select("id,name").ilike("name", nm);
+      if (!byIlike.error && byIlike.data?.length === 1 && byIlike.data[0].id) return String(byIlike.data[0].id);
+      const all = await supabase.from("service_listings").select("id,name");
+      if (!all.error && all.data?.length) {
+        const want = normServiceName(nm);
+        for (const row of all.data as Array<{ id: string; name: string | null }>) {
+          if (normServiceName(String(row.name || "")) === want) return String(row.id);
+        }
+      }
     }
     return null;
+  }
+
+  /** Если staff_services всё ещё ссылается на legacy `services`, нужен числовой id. */
+  async function resolveLegacyServiceIdForStaffLink(rawCatalogId: string, serviceName: string): Promise<string | null> {
+    const cid = String(rawCatalogId || "").trim();
+    const nm = String(serviceName || "").trim();
+    if (/^\d+$/.test(cid)) {
+      const p = await supabase.from("services").select("id").eq("id", cid).maybeSingle();
+      if (!p.error && p.data && (p.data as { id?: unknown }).id != null) return String((p.data as { id: unknown }).id);
+    }
+    if (nm) {
+      const r1 = await supabase.from("services").select("id").eq("name_et", nm).limit(1).maybeSingle();
+      if (!r1.error && r1.data && (r1.data as { id?: unknown }).id != null) return String((r1.data as { id: unknown }).id);
+      const r2 = await supabase.from("services").select("id").eq("name", nm).limit(1).maybeSingle();
+      if (!r2.error && r2.data && (r2.data as { id?: unknown }).id != null) return String((r2.data as { id: unknown }).id);
+    }
+    return null;
+  }
+
+  function isStaffServicesServiceFkError(msg: unknown): boolean {
+    const m = String(msg || "").toLowerCase();
+    return (
+      m.includes("staff_services_service_id_fkey") ||
+      (m.includes("foreign key") && m.includes("staff_services") && m.includes("service_id"))
+    );
   }
 
   async function toggleService(staffId: string, serviceId: string, on: boolean) {
     setErr(null);
     const catalogSvc = activeServices.find((s) => String(s.id) === String(serviceId));
-    const listingId = await resolveStaffLinkListingId(serviceId, catalogSvc?.name || "");
-    if (!listingId) {
-      setErr(
-        `Не найдена строка в service_listings для услуги «${catalogSvc?.name || serviceId}». staff_services ссылается только на публичный каталог — проверьте страницу «Услуги» и синхронизацию.`,
-      );
+    const name = catalogSvc?.name || "";
+    const rawId = String(serviceId);
+    const listingId = await resolveStaffLinkListingId(rawId, name);
+    const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, name);
+    const candidateIds = [...new Set([listingId, rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+
+    if (candidateIds.length === 0) {
+      setErr(`Не удалось определить id услуги в БД для «${name || rawId}». Проверьте каталог на странице «Услуги».`);
       return;
     }
+
     if (on) {
-      let { error } = await supabase
-        .from("staff_services")
-        .insert({ staff_id: staffId, service_id: listingId, show_on_site: true });
-      if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
-        error = (await supabase.from("staff_services").insert({ staff_id: staffId, service_id: listingId })).error;
+      let lastFkMsg: string | null = null;
+      for (const sid of candidateIds) {
+        let { error } = await supabase
+          .from("staff_services")
+          .insert({ staff_id: staffId, service_id: sid, show_on_site: true });
+        if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
+          error = (await supabase.from("staff_services").insert({ staff_id: staffId, service_id: sid })).error ?? null;
+        }
+        if (!error) {
+          void load();
+          return;
+        }
+        const em = String(error.message || "").toLowerCase();
+        if (em.includes("duplicate key") || em.includes("unique constraint")) {
+          void load();
+          return;
+        }
+        if (error && isStaffServicesServiceFkError(error.message)) {
+          lastFkMsg = error.message;
+          continue;
+        }
+        if (error) {
+          setErr(error.message);
+          return;
+        }
       }
-      if (error) {
-        setErr(error.message);
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from("staff_services")
-        .delete()
-        .eq("staff_id", staffId)
-        .eq("service_id", listingId);
-      if (error) {
-        setErr(error.message);
+      setErr(lastFkMsg || "Не удалось сохранить привязку к услуге.");
+      return;
+    }
+
+    for (const sid of candidateIds) {
+      const { error } = await supabase.from("staff_services").delete().eq("staff_id", staffId).eq("service_id", sid);
+      if (!error) {
+        void load();
         return;
       }
     }
@@ -313,27 +367,35 @@ export function AdminStaffPage() {
     const catalogSvc = activeServices.find(
       (s) => String(s.id) === String(serviceId) || String(catalogIdToListingId[String(s.id)] ?? s.id) === String(serviceId),
     );
-    const listingId = await resolveStaffLinkListingId(serviceId, catalogSvc?.name || "");
-    if (!listingId) {
-      setErr(`Не найдена услуга в service_listings для привязки (id: ${serviceId}).`);
-      return;
+    const name = catalogSvc?.name || "";
+    const rawId = String(serviceId);
+    const listingId = await resolveStaffLinkListingId(rawId, name);
+    const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, name);
+    const candidateIds = [...new Set([listingId, rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+
+    for (const sid of candidateIds) {
+      const { error, data } = await supabase
+        .from("staff_services")
+        .update({ show_on_site: show })
+        .eq("staff_id", staffId)
+        .eq("service_id", sid)
+        .select("staff_id");
+      if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
+        setErr(
+          "Нужна миграция БД: staff_services.show_on_site (файл supabase/migrations/019_staff_services_show_on_site.sql).",
+        );
+        return;
+      }
+      if (error) {
+        setErr(error.message);
+        return;
+      }
+      if (data && data.length > 0) {
+        void load();
+        return;
+      }
     }
-    let { error } = await supabase
-      .from("staff_services")
-      .update({ show_on_site: show })
-      .eq("staff_id", staffId)
-      .eq("service_id", listingId);
-    if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
-      setErr(
-        "Нужна миграция БД: staff_services.show_on_site (файл supabase/migrations/019_staff_services_show_on_site.sql).",
-      );
-      return;
-    }
-    if (error) {
-      setErr(error.message);
-      return;
-    }
-    void load();
+    setErr("Не найдена привязка staff_services для этой услуги (проверьте id в каталоге).");
   }
 
   function hasLink(staffId: string, serviceId: string) {

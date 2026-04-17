@@ -43,15 +43,15 @@ function escapeAttr(s) {
     .replace(/</g, "&lt;");
 }
 
-/** Server-side locale guess from Accept-Language; default et (salon in Estonia, aligns with /index.html → /et). */
+/** Server-side locale guess from Accept-Language; default ru (корневой лендинг — русский). */
 function pickLocaleFromAcceptLanguage(header) {
-  if (!header || typeof header !== "string") return "et";
+  if (!header || typeof header !== "string") return "ru";
   const parts = header.split(",").map((p) => p.trim().split(";")[0].toLowerCase());
   for (const p of parts) {
     const code = p.slice(0, 2);
     if (PUBLIC_LANGS.includes(code)) return code;
   }
-  return "et";
+  return "ru";
 }
 
 let indexTemplate = null;
@@ -125,15 +125,6 @@ function renderPublicLandingHtml(rootDir, req, lang) {
   html = html.replace(
     /<span class="lang-switch"[^>]*>[\s\S]*?<\/span>/,
     `<span class="lang-switch" data-i18n-attr="aria-label:common.language">\n          ${langLinks}\n        </span>`
-  );
-
-  html = html.replace(
-    /<div class="site-switcher"[^>]*>[\s\S]*?<\/div>/,
-    `<div class="site-switcher" data-i18n-attr="aria-label:site.siteSwitcherLabel">
-        <a href="/${safeLang}" class="is-active" data-i18n="site.siteSwitcherSalon">Ilusalong</a>
-        <span class="site-switcher-sep" aria-hidden="true">/</span>
-        <a href="mave.html">MAVE</a>
-      </div>`
   );
 
   html = html.replace("<!-- __SEO_EXTRAS__ -->", `${hreflangBlock}\n${ogBlock}\n${syncScript}`);

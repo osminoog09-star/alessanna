@@ -17,6 +17,14 @@ function normServiceName(n: string): string {
   return String(n || "").trim().toLowerCase();
 }
 
+/** Услуга из публичного каталога (UUID), даже если catalogSource не проставлен. */
+function rowFromServiceListings(s: ServiceRow): boolean {
+  if (s.catalogSource === "listing") return true;
+  const id = String(s.id ?? "").trim();
+  if (!id) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
 type ListingCatalogRow = {
   id: string;
   name?: string | null;
@@ -453,8 +461,9 @@ export function ServicesPage() {
   async function saveService(s: ServiceRow) {
     if (!canManage) return;
     const categoryName = categoryNameFromService(s) || null;
+    const rowId = String(s.id);
 
-    if (s.catalogSource === "listing") {
+    if (rowFromServiceListings(s)) {
       const publicCategoryId =
         s.category_id != null && String(s.category_id).trim() !== "" ? String(s.category_id) : null;
       const payload = {
@@ -478,17 +487,25 @@ export function ServicesPage() {
         duration: Number(s.duration_min || 0),
         category_id: publicCategoryId,
       };
-      let { error } = await supabase.from("service_listings").update(payload).eq("id", s.id);
+      let res = await supabase.from("service_listings").update(payload).eq("id", rowId).select("id");
+      let error = res.error;
       if (error && String(error.message || "").includes("buffer_after_min")) {
-        const retry = await supabase.from("service_listings").update(payloadNoBuffer).eq("id", s.id);
-        error = retry.error || null;
+        res = await supabase.from("service_listings").update(payloadNoBuffer).eq("id", rowId).select("id");
+        error = res.error || null;
       }
       if (error && String(error.message || "").includes("is_active")) {
-        const retry = await supabase.from("service_listings").update(payloadMinimal).eq("id", s.id);
-        error = retry.error || null;
+        res = await supabase.from("service_listings").update(payloadMinimal).eq("id", rowId).select("id");
+        error = res.error || null;
       }
       if (error) {
         console.error("[services] save listing failed", error);
+        window.alert(`Не удалось сохранить услугу: ${error.message}`);
+        return;
+      }
+      if (!res.data?.length) {
+        window.alert(
+          "В service_listings не найдена строка с этим id — изменения не применены. Обновите страницу или проверьте синхронизацию каталога.",
+        );
         return;
       }
       await refreshPublicStatus();
@@ -507,7 +524,7 @@ export function ServicesPage() {
         category_id: s.category_id,
         category: categoryName,
       })
-      .eq("id", s.id);
+      .eq("id", rowId);
     if (legacy.error) {
       let modern = await supabase
         .from("services")
@@ -517,8 +534,10 @@ export function ServicesPage() {
           buffer_after_min: s.buffer_after_min,
           price: Number(s.price_cents || 0) / 100,
           category: categoryName,
+          active: s.active,
+          is_active: s.active,
         })
-        .eq("id", s.id);
+        .eq("id", rowId);
       if (modern.error && String(modern.error.message || "").includes("buffer_after_min")) {
         modern = await supabase
           .from("services")
@@ -527,11 +546,26 @@ export function ServicesPage() {
             duration: s.duration_min,
             price: Number(s.price_cents || 0) / 100,
             category: categoryName,
+            active: s.active,
+            is_active: s.active,
           })
-          .eq("id", s.id);
+          .eq("id", rowId);
+      }
+      if (modern.error && String(modern.error.message || "").includes("is_active")) {
+        modern = await supabase
+          .from("services")
+          .update({
+            name: s.name_et,
+            duration: s.duration_min,
+            price: Number(s.price_cents || 0) / 100,
+            category: categoryName,
+            active: s.active,
+          })
+          .eq("id", rowId);
       }
       if (modern.error) {
         console.error("[services] save failed", modern.error);
+        window.alert(`Не удалось сохранить услугу: ${modern.error.message}`);
         return;
       }
     }
@@ -544,9 +578,9 @@ export function ServicesPage() {
     if (!canManage) return;
     if (!window.confirm(t("services.deleteConfirm", { name: s.name_et }))) return;
 
-    if (s.catalogSource === "listing") {
-      await supabase.from("staff_services").delete().eq("service_id", s.id);
-      const { error } = await supabase.from("service_listings").delete().eq("id", s.id);
+    if (rowFromServiceListings(s)) {
+      await supabase.from("staff_services").delete().eq("service_id", String(s.id));
+      const { error } = await supabase.from("service_listings").delete().eq("id", String(s.id));
       if (error) {
         window.alert(t("services.deleteFailed"));
         return;
@@ -725,7 +759,7 @@ export function ServicesPage() {
     const nameRaw = String(service.name_et || "").trim();
     if (!nameRaw) return null;
 
-    if (service.catalogSource === "listing") {
+    if (rowFromServiceListings(service)) {
       const probe = await supabase.from("service_listings").select("id").eq("id", sid).maybeSingle();
       if (!probe.error && probe.data?.id) return String(probe.data.id);
     }
@@ -733,10 +767,21 @@ export function ServicesPage() {
     const byName = await supabase.from("service_listings").select("id").eq("name", nameRaw).maybeSingle();
     if (!byName.error && byName.data?.id) return String(byName.data.id);
 
+    const byIlike = await supabase.from("service_listings").select("id,name").ilike("name", nameRaw);
+    if (!byIlike.error && byIlike.data?.length === 1 && byIlike.data[0].id) return String(byIlike.data[0].id);
+
+    const all = await supabase.from("service_listings").select("id,name");
+    if (!all.error && all.data?.length) {
+      const want = normServiceName(nameRaw);
+      for (const row of all.data as Array<{ id: string; name: string | null }>) {
+        if (normServiceName(String(row.name || "")) === want) return String(row.id);
+      }
+    }
+
     const byId = await supabase.from("service_listings").select("id").eq("id", sid).maybeSingle();
     if (!byId.error && byId.data?.id) return String(byId.data.id);
 
-    if (service.catalogSource !== "listing") {
+    if (!rowFromServiceListings(service)) {
       await syncServiceToPublicCatalog(service);
       const again = await supabase.from("service_listings").select("id").eq("name", nameRaw).maybeSingle();
       if (!again.error && again.data?.id) return String(again.data.id);
@@ -745,45 +790,87 @@ export function ServicesPage() {
     return null;
   }
 
+  /** Если FK staff_services всё ещё на legacy `services`, нужен числовой id. */
+  async function resolveLegacyServiceIdForStaffLinks(service: ServiceRow): Promise<string | null> {
+    const cid = String(service.id || "").trim();
+    const nm = String(service.name_et || "").trim();
+    if (/^\d+$/.test(cid)) {
+      const p = await supabase.from("services").select("id").eq("id", cid).maybeSingle();
+      if (!p.error && p.data && (p.data as { id?: unknown }).id != null) return String((p.data as { id: unknown }).id);
+    }
+    if (nm) {
+      const r1 = await supabase.from("services").select("id").eq("name_et", nm).limit(1).maybeSingle();
+      if (!r1.error && r1.data && (r1.data as { id?: unknown }).id != null) return String((r1.data as { id: unknown }).id);
+      const r2 = await supabase.from("services").select("id").eq("name", nm).limit(1).maybeSingle();
+      if (!r2.error && r2.data && (r2.data as { id?: unknown }).id != null) return String((r2.data as { id: unknown }).id);
+    }
+    return null;
+  }
+
+  function isStaffServicesServiceFkError(msg: unknown): boolean {
+    const m = String(msg || "").toLowerCase();
+    return (
+      m.includes("staff_services_service_id_fkey") ||
+      (m.includes("foreign key") && m.includes("staff_services") && m.includes("service_id"))
+    );
+  }
+
   /** @returns false если запись в БД не удалась */
   async function replaceServiceStaffLinks(
     service: ServiceRow,
     links: Array<{ staff_id: string; show_on_site: boolean }>,
   ): Promise<boolean> {
+    const rawId = String(service.id || "").trim();
     const listingId = await resolveListingIdForStaffLinks(service);
-    if (!listingId) {
+    const legacyId = await resolveLegacyServiceIdForStaffLinks(service);
+    const candidateIds = [...new Set([listingId, rawId, legacyId].filter((x): x is string => Boolean(x)))];
+
+    if (candidateIds.length === 0) {
       window.alert(
-        `Не найдена строка в service_listings для услуги «${String(service.name_et || "").trim() || service.id}». ` +
-          `Привязки мастеров пишутся только к публичному каталогу (проверьте название или выполните «Обновить всё на сайте»).`,
+        `Не удалось определить id услуги в БД для «${String(service.name_et || "").trim() || service.id}». Проверьте каталог и синхронизацию с service_listings.`,
       );
       return false;
     }
 
     // If no links exist for service, backend treats it as "all staff can perform service".
     // We keep explicit links only when at least one staff member is selected.
-    const { error: delErr } = await supabase.from("staff_services").delete().eq("service_id", listingId);
+    const { error: delErr } = await supabase.from("staff_services").delete().in("service_id", candidateIds);
     if (delErr) {
       console.error("[services] clear staff links failed", delErr);
       window.alert(`Не удалось обновить привязки мастеров: ${delErr.message || "ошибка"}.`);
       return false;
     }
     if (!links.length) return true;
-    const rows = links.map((l) => ({
-      staff_id: l.staff_id,
-      service_id: listingId,
-      show_on_site: l.show_on_site,
-    }));
-    let { error: insErr } = await supabase.from("staff_services").insert(rows);
-    if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
-      const legacy = links.map((l) => ({ staff_id: l.staff_id, service_id: listingId }));
-      insErr = (await supabase.from("staff_services").insert(legacy)).error ?? null;
-    }
-    if (insErr) {
+
+    let lastFkMsg: string | null = null;
+    for (const svcId of candidateIds) {
+      const rows = links.map((l) => ({
+        staff_id: l.staff_id,
+        service_id: svcId,
+        show_on_site: l.show_on_site,
+      }));
+      let { error: insErr } = await supabase.from("staff_services").insert(rows);
+      if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
+        const legacyRows = links.map((l) => ({ staff_id: l.staff_id, service_id: svcId }));
+        insErr = (await supabase.from("staff_services").insert(legacyRows)).error ?? null;
+      }
+      if (!insErr) return true;
+      const em = String(insErr.message || "").toLowerCase();
+      if (em.includes("duplicate key") || em.includes("unique constraint")) return true;
+      if (isStaffServicesServiceFkError(insErr.message)) {
+        lastFkMsg = insErr.message;
+        continue;
+      }
       console.error("[services] create staff links failed", insErr);
       window.alert(`Не удалось сохранить привязки мастеров: ${insErr.message || "ошибка"}.`);
       return false;
     }
-    return true;
+
+    window.alert(
+      lastFkMsg ||
+        "Не удалось сохранить привязки мастеров: ни один вариант service_id не подошёл к ограничению FK в вашей базе.",
+    );
+    return false;
   }
 
   function staffLinksForService(serviceId: string) {
@@ -1219,8 +1306,11 @@ export function ServicesPage() {
                         disabled={!canManage}
                         checked={s.active}
                         onCheckedChange={(active) => {
-                          setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, active } : x)));
-                          void saveService({ ...s, active });
+                          const updated = { ...s, active };
+                          setServices((prev) =>
+                            prev.map((x) => (String(x.id) === String(s.id) ? updated : x)),
+                          );
+                          void saveService(updated);
                         }}
                         aria-label={`${s.name_et}: услуга активна`}
                       />

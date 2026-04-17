@@ -2,7 +2,7 @@
  * ==========================================================================
  * AlesSanna Ilusalong — luxury beauty: глубокий чёрный, дымчатый серый, золото-акцент
  * ==========================================================================
- * Подключение: <link rel="stylesheet" href="styles.css"> в index.html и ru.html.
+ * Подключение: <link rel="stylesheet" href="styles.css"> в index.html (корень лендинга).
  *
  * Как ориентироваться в файле (поиск Ctrl+F по заголовку секции ниже):
  *   :root              — палитра, шрифты, --header-h (высота под фиксированную шапку)
@@ -12,7 +12,7 @@
  *   Кнопки             — .btn, .btn-primary, .btn-outline
  *   Секции общие       — .section, .section-head, .reveal / .is-visible
  *   Услуги (вкладки)   — .tab-btn, .tab-panel, .menu-list
- *   Команда / отзывы   — .team-groups, .team-group, .team-names, .review
+ *   Команда / отзывы   — .team-groups, .team-group, .team-names, #review-form
  *   Бронирование       — .booking-shell, .booking-calendar, .calendar-day, .booking-form
  *   Контакты, футер    — .contact-*, .site-footer
  *   Моб. полоса записи — .mobile-book-bar + .is-visible (класс вешает script.js)
@@ -135,13 +135,7 @@ html {
   .btn:hover,
   .menu-list li.menu-pick-row:hover,
   .gift-card:hover,
-  .review:hover,
-  .gallery-item:hover,
   .team-names li.is-master-picked {
-    transform: none;
-  }
-
-  .gallery-item:hover img {
     transform: none;
   }
 
@@ -279,46 +273,6 @@ a:hover {
   gap: 0.5rem 1rem;
   margin-left: auto;
   flex-shrink: 0;
-}
-
-.brand-pair {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(0.45rem, 1.1vw, 0.85rem);
-  flex-shrink: 0;
-}
-
-.brand-pair__cross {
-  color: var(--gold);
-  font-family: var(--font-sans);
-  font-size: clamp(0.78rem, 1.15vw, 1rem);
-  font-weight: 300;
-  line-height: 1;
-  opacity: 0.88;
-}
-
-.mave-logo-link {
-  display: inline-flex;
-  align-items: center;
-  color: var(--gold);
-  transition: transform 0.45s var(--ease-silk), filter 0.55s var(--ease-silk);
-}
-
-.mave-logo-link:hover {
-  transform: translate3d(0, -1px, 0);
-}
-
-.mave-logo-link__image {
-  display: block;
-  width: clamp(3.2rem, 4.7vw, 4.6rem);
-  height: auto;
-  transform: scaleX(1.1);
-  transform-origin: center;
-  filter:
-    brightness(0) saturate(100%)
-    invert(69%) sepia(17%) saturate(681%) hue-rotate(359deg) brightness(92%) contrast(89%)
-    drop-shadow(0 0 12px rgba(196, 165, 116, 0.12));
 }
 
 .nav-backdrop {
@@ -542,9 +496,8 @@ a:hover {
   background: #030303;
 }
 
-/* Мрамор + золотая ветка на PNG: явно для салона (ET/RU) и MAVE — одинаковый фон */
-body.site-ilusalong #hero.hero,
-body.page-mave #hero.hero {
+/* Мрамор + золотая ветка на PNG: фон hero для лендинга салона */
+body.site-ilusalong #hero.hero {
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.38) 0%, rgba(0, 0, 0, 0.58) 48%, rgba(0, 0, 0, 0.86) 100%),
     url("assets/salon-bg.png") center top / cover no-repeat,
@@ -851,10 +804,6 @@ body.page-mave #hero.hero {
   gap: 1rem;
   justify-content: center;
   margin-top: 2.5rem;
-}
-
-.hero-actions--secondary {
-  margin-top: 1rem;
 }
 
 .hero-actions .btn {
@@ -1788,174 +1737,33 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   line-height: 1.75;
 }
 
-.reviews-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.5rem;
+.review-moderation-note {
+  max-width: 42rem;
+  margin: 0 auto 1.75rem;
+  text-align: center;
+  font-size: 0.88rem;
+  line-height: 1.75;
+  color: var(--text-muted);
 }
 
-.review {
-  margin: 0;
+.review-form-wrap {
+  max-width: 28rem;
+  margin: 0 auto;
   padding: 1.5rem 1.35rem;
   border: 1px solid var(--line-strong);
   border-radius: 0.85rem;
   background: linear-gradient(165deg, rgba(20, 20, 20, 0.96), rgba(10, 10, 10, 0.99));
   box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  position: relative;
-  transition: transform 0.45s var(--ease-out), box-shadow 0.45s var(--ease-out), border-color 0.35s var(--ease-out);
 }
 
-.review:hover {
-  transform: translateY(-3px);
-  border-color: var(--stroke);
-  box-shadow: var(--shadow-card), 0 20px 48px rgba(0, 0, 0, 0.45), 0 0 28px var(--gold-glow), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.review-stars {
-  margin: 0 0 0.75rem;
-  font-size: 0.85rem;
-  color: var(--gold);
-  opacity: 0.85;
-}
-
-.review-text {
-  margin: 0 0 1rem;
-  font-family: var(--font-display);
-  font-size: 1.0625rem;
-  font-style: italic;
-  font-weight: 400;
-  line-height: 1.65;
-  color: var(--text);
-}
-
-.review-author {
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-
-/* ---------- Галерея ---------- */
-.section--gallery {
-  position: relative;
-}
-
-.section--gallery::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 0;
-  transform: translateX(-50%);
-  width: min(72rem, 100%);
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
-  pointer-events: none;
-}
-
-.gallery-intro {
-  max-width: 40ch;
-  margin: 0 auto 2.5rem;
-  text-align: center;
-  font-size: 0.95rem;
-  line-height: 1.85;
-  font-weight: 300;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
-}
-
-.gallery-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(10rem, 1fr) minmax(10rem, 1fr);
-  gap: 0.65rem;
-  min-height: clamp(18rem, 52vw, 26rem);
-}
-
-@media (max-width: 900px) {
-  .gallery-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: none;
-    min-height: 0;
-  }
-}
-
-.gallery-item {
-  position: relative;
-  margin: 0;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: var(--bg-elevated);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
-  min-height: 0;
-  aspect-ratio: 4 / 5;
-  transition: transform 0.5s var(--ease-out), border-color 0.4s var(--ease-out), box-shadow 0.5s var(--ease-out);
-}
-
-.gallery-item::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, 0.45) 100%);
-  opacity: 0.85;
-  pointer-events: none;
-  transition: opacity 0.45s var(--ease-out);
-}
-
-.gallery-item:hover {
-  transform: translateY(-4px) scale(1.01);
-  border-color: var(--stroke);
-  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.55), 0 0 32px var(--gold-glow);
-}
-
-.gallery-item:hover::after {
-  opacity: 0.65;
-}
-
-.gallery-item:first-child {
-  grid-row: 1 / -1;
-  aspect-ratio: auto;
-}
-
-@media (max-width: 900px) {
-  .gallery-item {
-    aspect-ratio: 3 / 4;
-  }
-
-  .gallery-item:first-child {
-    grid-column: 1 / -1;
-    grid-row: auto;
-    aspect-ratio: 16 / 10;
-    max-height: 14rem;
-  }
-}
-
-.gallery-item img {
+.review-form-wrap .review-submit {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  filter: grayscale(0.25) contrast(0.96) brightness(0.92);
-  transition: filter 0.6s var(--ease-out), transform 0.7s var(--ease-out);
+  margin-top: 0.35rem;
 }
 
-.gallery-item:hover img {
-  filter: grayscale(0) contrast(1) brightness(0.96);
-  transform: scale(1.04);
-}
-
-.gallery-caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
-  padding: 0.85rem 1rem;
-  font-size: 0.62rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(232, 232, 229, 0.72);
-  line-height: 1.4;
+.review-mail-hint {
+  max-width: 28rem;
+  margin: 1rem auto 0;
 }
 
 /* ---------- О салоне (редакционный блок) ---------- */
@@ -2453,7 +2261,8 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
 }
 
 .booking-form input,
-.booking-form select {
+.booking-form select,
+.booking-form textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
   border-radius: 0.55rem;
@@ -2465,12 +2274,20 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.booking-form input::placeholder {
+.booking-form textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.booking-form input::placeholder,
+.booking-form textarea::placeholder {
   color: rgba(154, 149, 140, 0.65);
 }
 
 .booking-form input:focus-visible,
-.booking-form select:focus-visible {
+.booking-form select:focus-visible,
+.booking-form textarea:focus-visible {
   outline: none;
   border-color: rgba(197, 160, 89, 0.55);
   box-shadow: 0 0 0 1px rgba(197, 160, 89, 0.2);
@@ -2712,216 +2529,5 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
 @media (min-width: 901px) {
   .mobile-book-bar {
     display: none;
-  }
-}
-
-/* ---------- Переключатель «Салон ↔ MAVE» + шапка магазина ---------- */
-.site-switcher {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem 0.5rem;
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  line-height: 1.5;
-}
-
-.site-switcher a {
-  color: var(--text-muted);
-  padding: 0.2em 0.15em;
-  border-bottom: 1px solid transparent;
-  transition: color 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
-}
-
-.site-switcher a:hover {
-  color: var(--gold-bright);
-}
-
-.site-switcher a.is-active {
-  color: var(--gold-bright);
-  border-bottom-color: rgba(156, 143, 120, 0.35);
-}
-
-.site-switcher-sep {
-  color: var(--text-fog);
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  user-select: none;
-}
-
-.logo-link--mave {
-  font-family: var(--font-sans);
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-  line-height: 1.15;
-}
-
-.logo-link--mave .logo-link__dual {
-  font-family: var(--font-sans);
-  font-size: clamp(0.78rem, 2.2vw, 0.9rem);
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text);
-}
-
-.logo-link--mave small {
-  font-size: 0.55rem;
-  letter-spacing: 0.22em;
-  opacity: 0.72;
-}
-
-.page-mave .hero-wordmark {
-  font-size: clamp(2.35rem, 7.5vw, 4.25rem);
-  letter-spacing: 0.03em;
-  max-width: 95vw;
-}
-
-.page-mave .hero-subbrand {
-  letter-spacing: 0.28em;
-}
-
-.mave-intro-grid {
-  display: grid;
-  gap: 2rem;
-  max-width: 48rem;
-  margin: 0 auto;
-}
-
-@media (min-width: 768px) {
-  .mave-intro-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    align-items: start;
-  }
-}
-
-.mave-intro-grid p {
-  margin: 0;
-  font-size: 0.94rem;
-  line-height: 1.88;
-  font-weight: 300;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
-}
-
-.mave-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.85rem;
-  margin-bottom: 1.25rem;
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--gold-bright);
-  border: 1px solid var(--stroke);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.mave-product-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1.25rem;
-}
-
-.mave-product-card {
-  padding: 1.5rem 1.35rem;
-  border: 1px solid var(--line-strong);
-  border-radius: 0.65rem;
-  background: linear-gradient(165deg, rgba(16, 16, 16, 0.9), rgba(6, 6, 6, 0.96));
-  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  transition: border-color 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out), transform 0.35s var(--ease-out);
-}
-
-.mave-product-card:hover {
-  border-color: var(--stroke);
-  box-shadow: var(--shadow-card), 0 0 28px var(--gold-glow);
-  transform: translateY(-2px);
-}
-
-.mave-product-card h3 {
-  margin: 0 0 0.65rem;
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 500;
-  color: var(--text);
-  letter-spacing: 0.02em;
-}
-
-.mave-product-card p {
-  margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.65;
-  color: var(--text-muted);
-  font-weight: 300;
-}
-
-.mave-salon-bridge {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
-  text-align: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 0.85rem;
-  background: var(--panel-solid);
-}
-
-.mave-salon-bridge p {
-  margin: 0 0 1.25rem;
-  font-size: 0.92rem;
-  line-height: 1.8;
-  color: var(--text-muted);
-  font-weight: 300;
-}
-
-.mave-order-steps {
-  list-style: none;
-  margin: 0 auto;
-  padding: 0;
-  max-width: 32rem;
-  counter-reset: mave-step;
-}
-
-.mave-order-steps li {
-  position: relative;
-  padding: 1.15rem 0 1.15rem 3.25rem;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.9rem;
-  line-height: 1.65;
-  color: var(--text-muted);
-  counter-increment: mave-step;
-}
-
-.mave-order-steps li::before {
-  content: counter(mave-step, decimal-leading-zero);
-  position: absolute;
-  left: 0;
-  top: 1.05rem;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--gold);
-}
-
-.mave-order-steps li strong {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 500;
-  color: var(--text);
-  letter-spacing: 0.02em;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mave-product-card:hover {
-    transform: none;
   }
 }

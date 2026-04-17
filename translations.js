@@ -1,6 +1,7 @@
 /**
  * Public landing: loads /locales/{lang}.json (same keys as CRM) and applies [data-i18n] strings.
- * Lang is taken from the first URL segment when it is ru | et | fi | en (see server /{lang} routes).
+ * Lang: первый сегмент пути ru|et|fi|en (маршруты сервера /{lang}), иначе — <html lang>, если он поддерживается
+ * (одиночный index.html в корне после редиректа или GitHub Pages).
  */
 (function () {
   "use strict";
@@ -11,9 +12,11 @@
     }, obj);
   }
 
-  function langFromPath() {
+  function resolveLang() {
     var seg = (location.pathname.split("/").filter(Boolean)[0] || "").toLowerCase();
     if (["ru", "et", "fi", "en"].indexOf(seg) >= 0) return seg;
+    var docLang = (document.documentElement.getAttribute("lang") || "").toLowerCase().slice(0, 2);
+    if (["ru", "et", "fi", "en"].indexOf(docLang) >= 0) return docLang;
     return null;
   }
 
@@ -44,7 +47,7 @@
   }
 
   function load() {
-    var lang = langFromPath();
+    var lang = resolveLang();
     if (!lang) return;
     var base = "";
     fetch(base + "/locales/" + lang + ".json")

@@ -66,7 +66,11 @@
     "edit": "Изменить"
   },
   "adminSchedule": {
-    "subtitle": "Недельный график по сотруднику (staff_schedule)."
+    "subtitle": "Недельный график по сотруднику (staff_schedule).",
+    "allStaff": "Все сотрудники",
+    "allStaffHint": "Текущая сетка дней и времени будет записана каждому активному сотруднику — индивидуальные графики будут заменены.",
+    "saveAllConfirm": "Заменить недельный график у всех активных сотрудников на выбранный ниже? Это нельзя отменить одной кнопкой.",
+    "saveForAll": "Сохранить всем"
   },
   "adminTimeOff": {
     "subtitle": "Блоки недоступности (staff_time_off).",
@@ -234,7 +238,6 @@
     "navLabel": "Основная навигация",
     "navServices": "Услуги",
     "navMasters": "Мастера",
-    "navGallery": "Галерея",
     "navSalon": "Салон",
     "navGift": "Подарочные карты",
     "navReviews": "Отзывы",
@@ -252,6 +255,17 @@
     "btnServices": "Услуги",
     "trustAddress": "Härma Keskus · Tallinna mnt 70 · Pärnu",
     "trustHours": "Пн–Пт 10–18 · Сб 10–16",
-    "trustMave": "AlesSanna и MAVE"
+    "trustSalon": "AlesSanna Ilusalong",
+    "reviewTitle": "Оставьте отзыв",
+    "reviewLead": "Мы будем рады услышать о вашем визите — спокойно и по делу, как у нас в салоне.",
+    "reviewModeration": "Сообщение уйдёт на рабочую почту салона для проверки. На сайте оно не появится, пока мы его не одобрим.",
+    "reviewNameLabel": "Имя",
+    "reviewEmailLabel": "Электронная почта",
+    "reviewEmailPlaceholder": "необязательно, если нужен ответ",
+    "reviewRatingLabel": "Оценка",
+    "reviewMessageLabel": "Ваш отзыв",
+    "reviewMessagePlaceholder": "Напишите пару предложений…",
+    "reviewSubmit": "Отправить нам",
+    "reviewMailHint": "Откроется ваш почтовый клиент; отправьте письмо на адрес салона. Публикацию решает салон."
   }
 }

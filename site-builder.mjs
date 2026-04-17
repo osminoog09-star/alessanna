@@ -23,7 +23,7 @@ function pageSlug() {
   if (q && q.trim()) return q.trim();
   const p = window.location.pathname.toLowerCase();
   if (p.endsWith("/ru.html")) return "home-ru";
-  return "home";
+  return "home-ru";
 }
 
 function toNum(v, fallback) {

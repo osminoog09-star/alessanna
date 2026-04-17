@@ -1,35 +1,17 @@
 <!DOCTYPE html>
 <!--
   =============================================================================
-  AlesSanna Ilusalong — одностраничный лендинг (эстонский язык интерфейса)
+  AlesSanna Ilusalong — публичный лендинг (русский интерфейс, корень сайта index.html)
   =============================================================================
-  Файлы рядом с этим HTML:
-    styles.css  — внешний вид (переменные :root, сетка, hero, календарь, форма).
-    script.js   — логика: шапка при скролле, бургер-меню, вкладки услуг,
-                  появление блоков .reveal, год в #year, мобильная полоса записи,
-                  отрисовка календаря и отправка формы (mailto).
-
-  Как править контент:
-    • Тексты секций — прямо в разметке ниже (абзацы, заголовки, пункты меню).
-    • Цвета и отступы — в styles.css (ищите по классу секции, напр. .hero, .section--booking).
-    • Календарь: data-* атрибуты не переименовывать — на них завязан script.js.
-
-  Якорная навигация (href="#..." в шапке и футере должны совпадать с id секций):
-    #hero #teenused #meistrid #galerii #meist #kinkekaardid #tagasiside #broneeri #kontakt · mave.html (MAVE)
-
-  Доступность:
-    • .skip-link — пропуск к основному содержимому (фокус с клавиатуры).
-    • У вкладок услуг: role="tablist" / role="tab" / aria-controls → id панели.
-
-  Класс .reveal: блок изначально полупрозрачный; при прокрутке script.js добавляет .is-visible.
+  styles.css, script.js, site-*.mjs — как в репозитории. <html lang="ru"> — календарь и mailto в script.js (isRu).
   =============================================================================
 -->
-<html lang="et">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="AlesSanna Ilusalong — luksuslik ilusalong Pärnus. Elegantsus, ilu, hoolitsus." />
-  <title>AlesSanna Ilusalong | Pärnu</title>
+  <meta name="description" content="AlesSanna Ilusalong — премиальный салон в Пярну. Элегантность, красота, забота." />
+  <title>AlesSanna Ilusalong | Пярну</title>
   <meta name="theme-color" content="#0a0a0a" />
   <!-- __SEO_EXTRAS__ -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -40,60 +22,40 @@
   <script src="translations.js" defer></script>
 </head>
 <body class="site-ilusalong">
-  <!-- Ссылка видна только при Tab с начала страницы — см. .skip-link в CSS -->
-  <a class="skip-link" href="#main" data-i18n="site.skip">Liigu põhisisu juurde</a>
+  <a class="skip-link" href="#main">К основному содержимому</a>
 
-  <!-- Шапка: id="header" нужен script.js для класса .is-scrolled при прокрутке -->
   <header class="site-header" id="header">
     <div class="container header-inner">
-      <div class="brand-pair" aria-label="AlesSanna x MAVE">
-        <a class="logo-link" href="#hero" aria-label="AlesSanna Ilusalong">
-          <img class="logo-link__image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
-        </a>
-        <span class="brand-pair__cross" aria-hidden="true">×</span>
-        <a class="mave-logo-link" href="mave.html" aria-label="MAVE pood">
-          <img class="mave-logo-link__image" src="assets/mave-logo.svg" alt="" width="842" height="595" />
-        </a>
-      </div>
+      <a class="logo-link" href="#hero" aria-label="AlesSanna Ilusalong">
+        <img class="logo-link__image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
+      </a>
       <div class="header-actions">
-        <span class="lang-switch" data-i18n-attr="aria-label:common.language">
-          <a href="ru.html">RU</a>
-          <a href="index.html" class="is-active">ET</a>
-        </span>
-        <a href="#broneeri" class="nav-cta" data-i18n="site.ctaBook">Broneeri aeg</a>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" id="nav-toggle" data-i18n="site.menu">Menüü</button>
+        <a href="#broneeri" class="nav-cta">Записаться</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" id="nav-toggle">Меню</button>
       </div>
     </div>
   </header>
-  <!-- Nav väljaspool headerit: vältimaks fixed-paneeli lõikumist headeri kontekstis -->
-  <nav class="nav" id="site-nav" data-i18n-attr="aria-label:site.navLabel">
+  <!-- Вне header: иначе fixed-панель навигации может обрезаться контекстом шапки -->
+  <nav class="nav" id="site-nav" aria-label="Основная навигация">
     <ul class="nav-list">
-      <li><a href="#teenused" data-i18n="site.navServices">Teenused</a></li>
-      <li><a href="#meistrid" data-i18n="site.navMasters">Meistrid</a></li>
-      <li><a href="#galerii" data-i18n="site.navGallery">Galerii</a></li>
-      <li><a href="#meist" data-i18n="site.navSalon">Salong</a></li>
-      <li><a href="mave.html">MAVE</a></li>
-      <li><a href="#kinkekaardid" data-i18n="site.navGift">Kinkekaardid</a></li>
-      <li><a href="#tagasiside" data-i18n="site.navReviews">Tagasiside</a></li>
-      <li><a href="#kontakt" data-i18n="site.navContact">Kontakt</a></li>
+      <li><a href="#teenused">Услуги</a></li>
+      <li><a href="#meistrid">Мастера</a></li>
+      <li><a href="#meist">О салоне</a></li>
+      <li><a href="#kinkekaardid">Подарки</a></li>
+      <li><a href="#tagasiside">Отзывы</a></li>
+      <li><a href="#kontakt">Контакты</a></li>
     </ul>
     <div class="nav-panel-wrap">
-      <div class="site-switcher" data-i18n-attr="aria-label:site.siteSwitcherLabel">
-        <a href="index.html" class="is-active" data-i18n="site.siteSwitcherSalon">Ilusalong</a>
-        <span class="site-switcher-sep" aria-hidden="true">/</span>
-        <a href="mave.html">MAVE</a>
-      </div>
-      <a href="#broneeri" class="btn btn-outline nav-drawer-cta" data-i18n="site.ctaBook">Broneeri aeg</a>
+      <a href="#broneeri" class="btn btn-outline nav-drawer-cta">Записаться</a>
     </div>
   </nav>
-  <button type="button" class="nav-backdrop" id="nav-backdrop" data-i18n-attr="aria-label:site.closeMenu" tabindex="-1" hidden></button>
+  <button type="button" class="nav-backdrop" id="nav-backdrop" aria-label="Закрыть меню" tabindex="-1" hidden></button>
 
   <main id="main">
-    <!-- Hero: бренд текстом (без баннера-картинки с полосой услуг). Декор SVG — не ссылка. -->
     <section class="hero" id="hero">
       <div class="hero-bg" aria-hidden="true"><div class="hero-bg-motion"></div></div>
+      <!-- Hero: текстовый бренд + SVG-декор; язык интерфейса — русский в .hero-lead и кнопках -->
       <div class="hero-inner reveal hero-animate">
-        <!-- Текстовый hero в стиле бренда: без PNG-полосы услуг (её путают с кликабельным меню) -->
         <div class="hero-brand-wrap">
           <div class="hero-flourish-wrap">
           <svg class="hero-flourish" width="48" height="112" viewBox="0 0 48 112" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -108,24 +70,20 @@
             <img class="hero-wordmark-image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
           </div>
         </div>
-        <p class="hero-display" data-i18n="site.heroDisplay">Vaikne ruum, kus ilu saab oma aega</p>
+        <p class="hero-display">Пространство, где красота дышит спокойно</p>
         <div class="hero-actions">
-          <a href="#teenused" class="btn btn-outline" data-services-tabs-toggle data-i18n="site.btnServices">Teenused</a>
-          <a href="#teenused" class="btn btn-outline" data-price-list-toggle>Hinnakiri</a>
-          <a href="#broneeri" class="btn btn-primary" data-i18n="site.btnBook">Broneeri aeg</a>
-        </div>
-        <div class="hero-actions hero-actions--secondary">
-          <a href="mave.html" class="btn btn-outline">MAVE pood</a>
+          <a href="#teenused" class="btn btn-outline" data-services-tabs-toggle>Услуги</a>
+          <a href="#teenused" class="btn btn-outline" data-price-list-toggle>Прайс лист</a>
+          <a href="#broneeri" class="btn btn-primary">Записаться</a>
         </div>
       </div>
     </section>
 
-    <!-- Короткая полоса доверия: адрес, часы, телефон (не дублирует навигацию) -->
     <div class="trust-strip">
       <div class="container trust-inner">
-        <span data-i18n="site.trustAddress">Härma Keskus · Tallinna mnt 70 · Pärnu</span>
-        <span data-i18n="site.trustHours">E–R 10–18 · L 10–16</span>
-        <span><a href="mave.html" data-i18n="site.trustMave">AlesSanna &amp; Mave</a></span>
+        <span>Härma Keskus · Tallinna mnt 70 · Pärnu</span>
+        <span>Пн–Пт 10–18 · Сб 10–16</span>
+        <span><a href="#meist">AlesSanna Ilusalong</a></span>
         <span><a href="tel:+3724398384">439 8384</a></span>
       </div>
     </div>
@@ -136,123 +94,87 @@
       </div>
     </section>
 
-    <!-- Teenused: Supabase CRM (site-services.mjs) -->
     <section class="section" id="teenused">
       <div class="container">
         <div class="section-head reveal">
-          <span class="section-kicker">Teenused</span>
+          <span class="section-kicker">Услуги</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Vali kategooria</h2>
-          <p class="section-lead">Hinnad ja teenused tulevad otse salongi CRM-ist (Supabase) — uuendused kuvatakse siin automaatselt.</p>
+          <h2 class="section-title">Выберите категорию</h2>
+          <p class="section-lead">Цены и перечень услуг подгружаются из CRM салона (Supabase) — обновления на этой странице появляются автоматически.</p>
         </div>
         <p class="section-lead reveal" id="teenused-config-warn" hidden style="color: #c9a227">
-          Täida <code>supabase-public-config.js</code> väli <code>anonKey</code> (vt <code>supabase-public-config.example.js</code>). URL on vaikimisi projekt; Vite keskkonnas kasutatakse <code>import.meta.env</code> fallback’i moodulis.
+          Укажите <code>anonKey</code> в <code>supabase-public-config.js</code> (шаблон — <code>supabase-public-config.example.js</code>). URL по умолчанию задан; в сборке Vite модуль может взять <code>import.meta.env</code>.
         </p>
         <div id="teenused-supabase-mount"></div>
         <div class="selection-summary reveal" data-selection-summary aria-live="polite">
-          <button type="button" class="selection-dock-toggle" data-selection-dock-toggle aria-expanded="true" aria-controls="selection-dock-panel" title="Peida või näita">
+          <button type="button" class="selection-dock-toggle" data-selection-dock-toggle aria-expanded="true" aria-controls="selection-dock-panel" title="Свернуть или развернуть">
             <span class="selection-dock-toggle-chevron" aria-hidden="true"></span>
-            <span class="selection-dock-toggle-label">Teie valik</span>
+            <span class="selection-dock-toggle-label">Ваш выбор</span>
             <span class="selection-dock-toggle-count" data-cart-count hidden>0</span>
           </button>
           <div class="selection-dock-body" id="selection-dock-panel">
-            <p class="selection-summary-kicker">Teie valik</p>
-            <p class="selection-summary-hint">Klõpsake teenusel, et lisada või eemaldada nimekirjast. Interaktiivseks broneerimiseks valige teenus ja meister, seejärel liikuge broneeringu juurde.</p>
+            <p class="selection-summary-kicker">Ваш выбор</p>
+            <p class="selection-summary-hint">Нажмите на услугу в прайсе, чтобы добавить или убрать её из списка. Для интерактивного бронирования выберите услугу и мастера, затем перейдите к записи.</p>
             <ul class="pick-list" data-selected-services-list hidden></ul>
-            <p class="pick-list-empty" data-selected-services-empty>Teenuseid pole veel valitud.</p>
+            <p class="pick-list-empty" data-selected-services-empty>Услуги пока не выбраны.</p>
             <div class="selection-masters" data-summary-masters-wrap hidden>
-              <p class="selection-masters-label" id="summary-masters-label" data-summary-masters-label>Soovitatav meister teenuste järgi</p>
+              <p class="selection-masters-label" id="summary-masters-label" data-summary-masters-label>Мастера по выбранным услугам</p>
               <div class="selection-masters-chips" data-summary-master-chips role="radiogroup" aria-labelledby="summary-masters-label"></div>
             </div>
             <div class="selection-master-row">
-              <span class="selection-master-label">Meister:</span>
+              <span class="selection-master-label">Мастер:</span>
               <strong class="selection-master-value" data-selected-master-display>—</strong>
             </div>
-            <a href="#broneeri" class="btn btn-outline selection-summary-cta">Broneerimise juurde</a>
+            <a href="#broneeri" class="btn btn-outline selection-summary-cta">К записи</a>
           </div>
         </div>
-        <p class="menu-footnote reveal text-zinc-500 text-sm">Hindade muudatused salvestatakse CRM-is ja kajastuvad siin (reaalajas, kui Supabase Realtime on sisse lülitatud).</p>
+        <p class="menu-footnote reveal text-zinc-500 text-sm">Изменения цен сохраняются в CRM и отображаются здесь (в реальном времени, если включён Supabase Realtime).</p>
 
       </div>
     </section>
 
-    <!-- Команда: .team-groups заполняет site-team.mjs из Supabase (staff + staff_services) -->
     <section class="section" id="meistrid">
       <div class="container">
         <div class="section-head reveal">
-          <span class="section-kicker">Meeskond</span>
+          <span class="section-kicker">Команда</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Meistrid</h2>
+          <h2 class="section-title">Мастера</h2>
           <p class="section-lead">
-            Iga meister toob oma käe ja kuulamise oskuse. Klõpsake nimel, et kanda valik broneeringusse — sama nimi võib esineda mitmes suunas.
+            У каждого мастера — свой почерк и умение слышать. Нажмите на имя, чтобы перенести выбор в форму записи — один специалист может быть в нескольких направлениях.
           </p>
         </div>
         <div class="team-block reveal">
-          <div class="team-groups" aria-label="Meistrid teenuste kaupa">
-            <p class="menu-footnote team-load-hint" data-team-placeholder>Meeskond laaditakse CRM-ist…</p>
+          <div class="team-groups" aria-label="Мастера по категориям услуг">
+            <p class="menu-footnote team-load-hint" data-team-placeholder>Состав команды подгружается из CRM…</p>
           </div>
           <div class="team-skip-action">
-            <a href="#broneeri" class="btn btn-outline">Ei oska valida</a>
+            <a href="#broneeri" class="btn btn-outline">Не могу выбрать</a>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="section section--gallery" id="galerii">
-      <div class="container">
-        <div class="section-head reveal">
-          <span class="section-kicker">Galerii</span>
-          <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Hetked salongist</h2>
-        </div>
-        <p class="gallery-intro reveal">Tekstuurid, valgus ja vaikus — väike valik atmosfäärist ja tulemustest, mida meie ruumis loome.</p>
-        <div class="gallery-grid">
-          <figure class="gallery-item reveal">
-            <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=900&amp;q=80" width="900" height="1200" alt="Salongi interjöör, pehme valgus" loading="lazy" decoding="async" />
-            <figcaption class="gallery-caption">Interjöör</figcaption>
-          </figure>
-          <figure class="gallery-item reveal">
-            <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&amp;q=80" width="600" height="750" alt="Hoolikalt viimistletud küüned" loading="lazy" decoding="async" />
-            <figcaption class="gallery-caption">Detailid</figcaption>
-          </figure>
-          <figure class="gallery-item reveal">
-            <img src="https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=600&amp;q=80" width="600" height="750" alt="Juuksurisessioon" loading="lazy" decoding="async" />
-            <figcaption class="gallery-caption">Juuksed</figcaption>
-          </figure>
-          <figure class="gallery-item reveal">
-            <img src="https://images.unsplash.com/photo-1604654894610-df63bc536371?w=600&amp;q=80" width="600" height="750" alt="Maniküür ja geellakk" loading="lazy" decoding="async" />
-            <figcaption class="gallery-caption">Küüned</figcaption>
-          </figure>
-          <figure class="gallery-item reveal">
-            <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&amp;q=80" width="600" height="750" alt="Stiilne soeng" loading="lazy" decoding="async" />
-            <figcaption class="gallery-caption">Siluett</figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-    <!-- О салоне -->
     <section class="section" id="meist">
       <div class="container">
         <div class="section-head reveal">
-          <span class="section-kicker">Salong</span>
+          <span class="section-kicker">Салон</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Meist</h2>
+          <h2 class="section-title">О салоне</h2>
         </div>
         <div class="about-editorial reveal">
           <div>
-            <p class="about-editorial__lead">AlesSanna on koht, kus aeg aeglustub ja tähelepanu suunatakse ainult teie vastu.</p>
+            <p class="about-editorial__lead">AlesSanna — место, где время замедляется, а внимание обращено только к вам.</p>
             <div class="about-editorial__divider" aria-hidden="true"></div>
             <p class="about-editorial__body">
-              Asume Härma Keskuses — vaikses, mõtlikus ruumis, kus materjalid on valitud vastupidavuse ja esteetika järgi. Me ei täida lihtsalt broneeringuid: loome hetki, kus tunnete end hoituna ja kergendatuna.
+              Мы находимся в Härma Keskus — в спокойном, собранном пространстве, где материалы выбирают по долговечности и эстетике. Мы не просто закрываем запись: создаём паузы, в которых чувствуешь опору и лёгкость.
             </p>
             <p class="about-editorial__body">
-              Olgu teie soov juuksed, küüned või õrn hooldus — iga kohtumine algab kuulamisega ja lõpeb tulemusega, mis näeb välja loomulik ja kallis.
+              Волосы, ногти или деликатный уход — каждая встреча начинается с внимательного разговора и заканчивается результатом, который выглядит естественно и дорого.
             </p>
           </div>
-          <aside class="about-editorial__aside" aria-label="Filosoofia">
+          <aside class="about-editorial__aside" aria-label="Философия">
             <blockquote class="about-editorial__quote">
-              «Ilu ei ole kiirus. See on ruum, kus saab hingata.»
+              «Красота не в спешке. Это место, где можно выдохнуть.»
               <footer>AlesSanna</footer>
             </blockquote>
           </aside>
@@ -260,177 +182,181 @@
       </div>
     </section>
 
-    <!-- Подарочные карты -->
     <section class="section" id="kinkekaardid">
       <div class="container">
         <div class="gift-card reveal">
           <div class="section-head" style="margin-bottom: 1rem">
-            <span class="section-kicker">Kingitus</span>
-            <h2 class="section-title" style="font-size: 1.5rem">Kinkekaardid</h2>
+            <span class="section-kicker">Подарок</span>
+            <h2 class="section-title" style="font-size: 1.5rem">Подарочные карты</h2>
           </div>
-          <p>Kinkige aega ja tähelepanu — kinkekaart on kutse peatuda. Suurused ja kehtivus selguvad salongis või telefonitsi.</p>
-          <a href="tel:+3724398384" class="btn btn-outline">Helista ja küsi</a>
+          <p>Подарите время и внимание — карта это приглашение остановиться. Номинал и срок уточняйте в салоне или по телефону.</p>
+          <a href="tel:+3724398384" class="btn btn-outline">Позвонить</a>
         </div>
       </div>
     </section>
 
-    <!-- Отзывы: блоки .review с классом .reveal -->
     <section class="section" id="tagasiside">
       <div class="container">
         <div class="section-head reveal">
-          <span class="section-kicker">Tagasiside</span>
+          <span class="section-kicker">Отзывы</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Sõnad, mis jäävad meelde</h2>
-          <p class="section-lead" style="max-width: 36ch; margin-inline: auto">Tagasiside, mis kõlab vaikselt — nagu meie ruumiski.</p>
+          <h2 class="section-title">Оставьте отзыв</h2>
+          <p class="section-lead" style="max-width: 40ch; margin-inline: auto">
+            Мы будем рады услышать о вашем визите — спокойно и по делу, как у нас в салоне.
+          </p>
         </div>
-        <div class="reviews-grid">
-          <blockquote class="review reveal">
-            <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Õhk on vaikne, valgus pehme — tulemus täiuslik. Tunnen end alati hoituna.»</p>
-            <footer class="review-author">— Karlotta</footer>
-          </blockquote>
-          <blockquote class="review reveal">
-            <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Igas liigutuses on kogemus. See on minu Pärnu pelgupaik.»</p>
-            <footer class="review-author">— Merilin</footer>
-          </blockquote>
-          <blockquote class="review reveal">
-            <p class="review-stars" aria-hidden="true">★ ★ ★ ★ ★</p>
-            <p class="review-text">«Delikaatne käsi, vaikne rütm — luksus, mis ei karju.»</p>
-            <footer class="review-author">— Liis</footer>
-          </blockquote>
+        <p class="review-moderation-note reveal">
+          Сообщение уйдёт на рабочую почту салона для проверки. На сайте оно не появится, пока мы его не одобрим.
+        </p>
+        <div class="review-form-wrap reveal">
+          <form id="review-form" class="booking-form" novalidate>
+            <label>
+              <span>Имя</span>
+              <input type="text" name="review_name" required maxlength="100" autocomplete="name" />
+            </label>
+            <label>
+              <span>Электронная почта</span>
+              <input type="email" name="review_email" maxlength="120" autocomplete="email" placeholder="необязательно, если нужен ответ" />
+            </label>
+            <label>
+              <span>Оценка</span>
+              <select name="review_rating" aria-label="Оценка по шкале звёзд">
+                <option value="5">5 ★</option>
+                <option value="4">4 ★</option>
+                <option value="3">3 ★</option>
+                <option value="2">2 ★</option>
+                <option value="1">1 ★</option>
+              </select>
+            </label>
+            <label>
+              <span>Ваш отзыв</span>
+              <textarea name="review_message" required maxlength="2000" rows="5" placeholder="Напишите пару предложений…"></textarea>
+            </label>
+            <button type="submit" class="btn btn-primary review-submit">Отправить нам</button>
+          </form>
         </div>
+        <p class="booking-fallback review-mail-hint reveal">
+          Откроется ваш почтовый клиент; отправьте письмо на адрес салона. Публикацию решает салон.
+        </p>
       </div>
     </section>
 
-    <!--
-      Бронирование: календарь + форма. Обязательные для JS селекторы:
-        [data-calendar-grid] — сюда вставляются дни;
-        [data-calendar-title] — заголовок месяца;
-        data-calendar-prev / data-calendar-next — кнопки месяцев;
-        [data-master-select] — выбор мастера (пока не выбран — дни неактивны);
-        [data-booking-date] — выбранная дата (readonly, заполняет скрипт);
-        [data-booking-time] — слоты времени после выбора дня;
-        [data-calendar-note-primary|secondary] — подписи под сеткой;
-        form#booking-form — отправка через mailto (замените на API при необходимости).
-    -->
     <section class="section section--booking" id="broneeri">
       <div class="container container--booking">
         <div class="section-head reveal">
-          <span class="section-kicker">Broneering</span>
+          <span class="section-kicker">Запись</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Broneering</h2>
+          <h2 class="section-title">Запись</h2>
         </div>
         <p class="booking-intro reveal">
-          Valige päev, mis sobib teie graafikuga. Pärast saadetud päringut võtame ühendust, et kinnitada aeg ja üksikasjad — rahulikult, ilma kiirustamata.
+          Выберите день, который совпадает с вашим графиком. После заявки мы свяжемся, чтобы спокойно подтвердить время и детали — без суеты.
         </p>
 
         <div class="booking-shell reveal">
-          <div class="booking-calendar" aria-label="Broneerimiskalender">
+          <div class="booking-calendar" aria-label="Календарь записи">
             <div class="calendar-head">
               <div class="calendar-head-top">
                 <div>
-                  <p class="calendar-label">Broneerimiskalender</p>
-                  <h3 class="calendar-title" data-calendar-title>Aprill 2026</h3>
+                  <p class="calendar-label">Календарь записи</p>
+                  <h3 class="calendar-title" data-calendar-title>Апрель 2026</h3>
                 </div>
-                <div class="calendar-nav" aria-label="Kuude vahetamine">
-                  <button class="calendar-nav-button" type="button" data-calendar-prev aria-label="Eelmine kuu">‹</button>
-                  <button class="calendar-nav-button" type="button" data-calendar-next aria-label="Järgmine kuu">›</button>
+                <div class="calendar-nav" aria-label="Переключение месяцев">
+                  <button class="calendar-nav-button" type="button" data-calendar-prev aria-label="Предыдущий месяц">‹</button>
+                  <button class="calendar-nav-button" type="button" data-calendar-next aria-label="Следующий месяц">›</button>
                 </div>
               </div>
               <div class="calendar-legend">
-                <span><i class="legend-dot legend-dot-soft" aria-hidden="true"></i>Palju vabu aegu</span>
-                <span><i class="legend-dot legend-dot-busy" aria-hidden="true"></i>Peaaegu täis</span>
-                <span><i class="legend-dot legend-dot-featured" aria-hidden="true"></i>Soovitatud ajad</span>
+                <span><i class="legend-dot legend-dot-soft" aria-hidden="true"></i>Много окон</span>
+                <span><i class="legend-dot legend-dot-busy" aria-hidden="true"></i>Почти занято</span>
+                <span><i class="legend-dot legend-dot-featured" aria-hidden="true"></i>Лучшие даты</span>
               </div>
             </div>
             <div class="calendar-weekdays" aria-hidden="true">
-              <span>E</span><span>T</span><span>K</span><span>N</span><span>R</span><span>L</span><span>P</span>
+              <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
             </div>
             <div class="calendar-grid" data-calendar-grid></div>
             <div class="calendar-note" aria-live="polite">
-              <span class="calendar-note-primary" data-calendar-note-primary>Pole vaba aega</span>
-              <span class="calendar-note-secondary" data-calendar-note-secondary>Vali meister, et näha vabu päevi</span>
+              <span class="calendar-note-primary" data-calendar-note-primary>Нет свободного времени</span>
+              <span class="calendar-note-secondary" data-calendar-note-secondary>Выберите мастера, чтобы увидеть свободные даты</span>
             </div>
           </div>
 
           <div class="booking-side">
-            <aside class="booking-steps-card" aria-label="Kuidas broneerimine käib">
-              <p class="booking-steps-label">3 sammu</p>
-              <strong class="booking-steps-title">Kuidas broneerimine käib</strong>
+            <aside class="booking-steps-card" aria-label="Как проходит запись">
+              <p class="booking-steps-label">3 шага</p>
+              <strong class="booking-steps-title">Как проходит запись</strong>
               <ul class="booking-steps-list">
-                <li><span class="booking-steps-num">01</span><em>Vali päev kalendrist</em></li>
-                <li><span class="booking-steps-num">02</span><em>Täida lühike vorm</em></li>
-                <li><span class="booking-steps-num">03</span><em>Saadame kinnituse</em></li>
+                <li><span class="booking-steps-num">01</span><em>Выберите день</em></li>
+                <li><span class="booking-steps-num">02</span><em>Заполните форму</em></li>
+                <li><span class="booking-steps-num">03</span><em>Мы подтвердим время</em></li>
               </ul>
             </aside>
 
             <form class="booking-form" id="booking-form" novalidate>
               <input type="hidden" name="services_detail" value="" data-field-services-detail />
               <label>
-                <span>Sinu nimi</span>
-                <input type="text" name="name" autocomplete="name" placeholder="Anna" />
+                <span>Ваше имя</span>
+                <input type="text" name="name" autocomplete="name" placeholder="Анна" />
               </label>
               <label>
-                <span>Telefon</span>
+                <span>Телефон</span>
                 <input type="tel" name="phone" autocomplete="tel" placeholder="+372 439 8384" />
               </label>
               <label>
-                <span>Teenuse kategooria</span>
+                <span>Категория услуги</span>
                 <select name="service">
-                  <option value="hair-cut">Lõikus</option>
-                  <option value="hair-color">Värvimine</option>
-                  <option value="perm">Keemiline lokk</option>
-                  <option value="styling">Soengud</option>
-                  <option value="brows-lashes">Ripsmed ja kulmud</option>
-                  <option value="manicure">Maniküür</option>
-                  <option value="pedicure">Pediküür</option>
+                  <option value="hair-cut">Стрижка</option>
+                  <option value="hair-color">Окрашивание</option>
+                  <option value="perm">Химическая завивка</option>
+                  <option value="styling">Укладки</option>
+                  <option value="brows-lashes">Брови и ресницы</option>
+                  <option value="manicure">Маникюр</option>
+                  <option value="pedicure">Педикюр</option>
                 </select>
               </label>
               <label>
-                <span>Meister</span>
+                <span>Мастер</span>
                 <select name="master" data-master-select required>
-                  <option value="">Vali meister</option>
+                  <option value="">Выберите мастера</option>
                 </select>
               </label>
               <label>
-                <span>Valitud kuupäev</span>
-                <input type="text" name="date" data-booking-date readonly placeholder="Vali kalendrist sobiv päev" />
+                <span>Выбранная дата</span>
+                <input type="text" name="date" data-booking-date readonly placeholder="Выберите день в календаре" />
               </label>
               <label>
-                <span>Vaba aeg</span>
+                <span>Свободное время</span>
                 <select name="time" data-booking-time>
-                  <option value="">Vali kõigepealt päev</option>
+                  <option value="">Сначала выберите день</option>
                 </select>
               </label>
-              <button class="btn btn-primary booking-submit" type="submit">Saada päring</button>
+              <button class="btn btn-primary booking-submit" type="submit">Отправить заявку</button>
             </form>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Контакты + карта Google (iframe; адрес в параметре q=) -->
     <section class="section section--contact" id="kontakt">
       <div class="container">
         <div class="section-head reveal">
-          <span class="section-kicker">Asukoht</span>
+          <span class="section-kicker">Локация</span>
           <span class="section-ornament" aria-hidden="true"></span>
-          <h2 class="section-title">Kontakt</h2>
+          <h2 class="section-title">Контакты</h2>
         </div>
         <div class="contact-grid reveal">
           <div class="contact-info">
             <address class="contact-block">
-              <span class="contact-label">Aadress</span>
-              <p>Härma Keskus<br />Tallinna mnt 70<br />Pärnu, Eesti, 80034</p>
-              <p class="contact-hint">Salong asub Härma Keskuses aadressil Tallinna mnt 70.</p>
+              <span class="contact-label">Адрес</span>
+              <p>Härma Keskus<br />Tallinna mnt 70<br />Pärnu, Estonia, 80034</p>
+              <p class="contact-hint">Салон находится в Härma Keskus по адресу Tallinna mnt 70.</p>
             </address>
             <p class="contact-block">
-              <span class="contact-label">Telefon</span>
+              <span class="contact-label">Телефон</span>
               <a href="tel:+3724398384">439 8384</a>
             </p>
             <p class="contact-block">
-              <span class="contact-label">E-post</span>
+              <span class="contact-label">E-mail</span>
               <a href="mailto:alessanna.ilusalong@gmail.com">alessanna.ilusalong@gmail.com</a>
             </p>
             <p class="contact-block">
@@ -438,36 +364,33 @@
               <a href="https://www.instagram.com/alessanna.ilusalong/" target="_blank" rel="noopener noreferrer">@alessanna.ilusalong</a>
             </p>
             <div class="contact-block">
-              <span class="contact-label">Lahtiolekuajad</span>
-              <p>E–R 10:00–18:00 · L 10:00–16:00</p>
-              <p class="contact-hint">Broneeringuid võtame vastu märgitud lahtiolekuaegadel.</p>
+              <span class="contact-label">Часы работы</span>
+              <p>Пн–Пт 10:00–18:00 · Сб 10:00–16:00</p>
+              <p class="contact-hint">Запись принимаем в указанные часы работы.</p>
             </div>
             <div class="contact-block">
-              <span class="contact-label">Parkimine</span>
-              <p>Tasuta parkimine salongi juures — võimalik tulla autoga.</p>
+              <span class="contact-label">Парковка</span>
+              <p>Бесплатная парковка рядом с салоном — удобно приехать на машине.</p>
             </div>
           </div>
           <div class="contact-map">
-            <iframe title="Asukoht kaardil" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034&output=embed"></iframe>
+            <iframe title="Карта" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034&output=embed"></iframe>
           </div>
         </div>
         <div class="contact-cta reveal">
-          <a href="#broneeri" class="btn btn-primary">Broneeri aeg</a>
+          <a href="#broneeri" class="btn btn-primary">Записаться</a>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Футер: span#year заполняется текущим годом в script.js -->
   <footer class="site-footer">
     <div class="container footer-inner">
       <ul class="footer-links">
-        <li><a href="#teenused">Teenused</a></li>
-        <li><a href="#galerii">Galerii</a></li>
-        <li><a href="#meist">Salong</a></li>
-        <li><a href="mave.html">MAVE pood</a></li>
-        <li><a href="#broneeri">Broneeri</a></li>
-        <li><a href="#kontakt">Kontakt</a></li>
+        <li><a href="#teenused">Услуги</a></li>
+        <li><a href="#meist">О салоне</a></li>
+        <li><a href="#broneeri">Запись</a></li>
+        <li><a href="#kontakt">Контакты</a></li>
       </ul>
       <img class="footer-logo" src="assets/alessanna-logo-transparent.png" alt="AlesSanna Ilusalong" width="1200" height="430" />
       <p class="footer-meta">Härma Keskus · Tallinna mnt 70 · Pärnu</p>
@@ -475,16 +398,14 @@
     </div>
   </footer>
 
-  <!-- Фиксированная кнопка внизу на мобильных; .is-visible вешает script.js после прокрутки -->
-  <div class="mobile-book-bar" role="region" aria-label="Kiire broneering">
-    <a href="#broneeri" class="btn btn-primary" tabindex="-1">Broneeri aeg</a>
+  <div class="mobile-book-bar" role="region" aria-label="Быстрая запись">
+    <a href="#broneeri" class="btn btn-primary" tabindex="-1">Записаться</a>
   </div>
 
   <script src="supabase-public-config.js"></script>
   <script type="module" src="site-services.mjs"></script>
   <script type="module" src="site-team.mjs"></script>
   <script type="module" src="site-builder.mjs"></script>
-  <!-- defer: скрипт выполнится после разбора HTML; весь код в IIFE внутри script.js -->
   <script src="script.js" defer></script>
 </body>
 </html>
