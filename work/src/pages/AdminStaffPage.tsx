@@ -12,42 +12,82 @@ type CatalogSkillService = {
   id: string;
   name: string;
   is_active: boolean;
+  /** Для группировки в блоке навыков мастера */
+  category_name: string;
 };
 
 async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
+  const uncategorized = "Без категории";
   /* После миграции 012 `staff_services.service_id` → UUID `service_listings.id`.
    * Раньше сюда первым шёл legacy `services` (bigint id): переключатели не совпадали с БД и insert ломался по FK. */
-  let sl = await supabase.from("service_listings").select("id,name,is_active").order("name", { ascending: true });
-  if (sl.error && String(sl.error.message || "").includes("is_active")) {
+  let sl = await supabase
+    .from("service_listings")
+    .select("id,name,is_active,category_id,service_categories(name)")
+    .order("name", { ascending: true });
+  if (sl.error) {
+    sl = await supabase.from("service_listings").select("id,name,is_active,category_id").order("name", { ascending: true });
+  }
+  if (sl.error) {
+    sl = await supabase.from("service_listings").select("id,name,is_active").order("name", { ascending: true });
+  }
+  if (sl.error) {
     sl = await supabase.from("service_listings").select("id,name").order("name", { ascending: true });
   }
   if (!sl.error && sl.data && sl.data.length > 0) {
-    return (sl.data as Array<{ id: string; name?: string; is_active?: boolean }>)
+    return (
+      sl.data as Array<{
+        id: string;
+        name?: string;
+        is_active?: boolean;
+        service_categories?: { name?: string | null } | null;
+      }>
+    )
       .map((s) => ({
         id: String(s.id),
         name: String(s.name || "").trim(),
         is_active: s.is_active !== false,
+        category_name: String(s.service_categories?.name || "").trim() || uncategorized,
       }))
       .filter((x) => x.name);
   }
 
-  const sLegacy = await supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true });
+  let sLegacy = await supabase
+    .from("services")
+    .select("id,name_et,active,category")
+    .order("sort_order", { ascending: true });
+  if (sLegacy.error) {
+    sLegacy = await supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true });
+  }
   if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
-    return (sLegacy.data as Array<{ id: unknown; name_et?: string; active?: boolean }>)
+    return (sLegacy.data as Array<{ id: unknown; name_et?: string; active?: boolean; category?: string | null }>)
       .map((s) => ({
         id: String(s.id),
         name: String(s.name_et || "").trim(),
         is_active: s.active !== false,
+        category_name: String(s.category || "").trim() || uncategorized,
       }))
       .filter((x) => x.name);
   }
-  const sModern = await supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true });
+  let sModern = await supabase
+    .from("services")
+    .select("id,name,active,is_active,category")
+    .order("name", { ascending: true });
+  if (sModern.error) {
+    sModern = await supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true });
+  }
   if (sModern.data && sModern.data.length > 0) {
-    return (sModern.data as Array<{ id: unknown; name?: string; active?: boolean; is_active?: boolean }>)
+    return (sModern.data as Array<{
+      id: unknown;
+      name?: string;
+      active?: boolean;
+      is_active?: boolean;
+      category?: string | null;
+    }>)
       .map((s) => ({
         id: String(s.id),
         name: String(s.name || "").trim(),
         is_active: s.is_active !== false && s.active !== false,
+        category_name: String(s.category || "").trim() || uncategorized,
       }))
       .filter((x) => x.name);
   }
@@ -85,6 +125,8 @@ export function AdminStaffPage() {
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({});
   /** id строки в каталоге CRM → UUID service_listings (FK staff_services.service_id). */
   const [catalogIdToListingId, setCatalogIdToListingId] = useState<Record<string, string>>({});
+  /** Раскрытые категории услуг в строке мастера: ключ `staffId::название категории`. */
+  const [skillCategoryExpanded, setSkillCategoryExpanded] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setErr(null);
@@ -136,6 +178,21 @@ export function AdminStaffPage() {
   useStaffAssignmentsCatalogRealtime(load);
 
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
+
+  const activeServicesByCategory = useMemo(() => {
+    const m = new Map<string, CatalogSkillService[]>();
+    for (const s of activeServices) {
+      const c = String(s.category_name || "").trim() || "Без категории";
+      if (!m.has(c)) m.set(c, []);
+      m.get(c)!.push(s);
+    }
+    return [...m.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, "ru"))
+      .map(([name, svcs]) => ({
+        name,
+        services: [...svcs].sort((x, y) => x.name.localeCompare(y.name, "ru")),
+      }));
+  }, [activeServices]);
 
   function pickPrimaryRole(roles: UiRole[]): UiRole {
     if (roles.includes("admin")) return "admin";
@@ -497,6 +554,135 @@ export function AdminStaffPage() {
     );
   }
 
+  function skillCatPanelKey(staffId: string, catName: string) {
+    return `${staffId}::${catName}`;
+  }
+
+  function toggleSkillCategoryPanel(staffId: string, catName: string) {
+    const k = skillCatPanelKey(staffId, catName);
+    setSkillCategoryExpanded((prev) => ({ ...prev, [k]: !prev[k] }));
+  }
+
+  function categoryAllLinkedForStaff(staffId: string, catSvcs: CatalogSkillService[]): boolean {
+    if (!catSvcs.length) return true;
+    const explicit = links.filter((l) => String(l.staff_id) === String(staffId));
+    if (explicit.length === 0) return true;
+    return catSvcs.every((s) => hasLink(staffId, s.id));
+  }
+
+  async function deleteStaffServiceRow(staffId: string, s: CatalogSkillService): Promise<boolean> {
+    const rawId = String(s.id);
+    const listingId = await resolveStaffLinkListingId(rawId, s.name);
+    const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, s.name);
+    const candidateIds = listingId
+      ? [listingId]
+      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+    for (const svcId of candidateIds) {
+      const { error } = await supabase.from("staff_services").delete().eq("staff_id", staffId).eq("service_id", svcId);
+      if (!error) return true;
+    }
+    return false;
+  }
+
+  async function insertStaffServiceRow(
+    staffId: string,
+    s: CatalogSkillService,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const rawId = String(s.id);
+    const listingId = await resolveStaffLinkListingId(rawId, s.name);
+    const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, s.name);
+    const candidateIds = listingId
+      ? [listingId]
+      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+    if (!candidateIds.length) return { ok: false, error: `«${s.name}»: нет UUID в service_listings` };
+    let lastFkMsg: string | null = null;
+    for (const sid of candidateIds) {
+      let { error } = await supabase
+        .from("staff_services")
+        .insert({ staff_id: staffId, service_id: sid, show_on_site: true });
+      if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
+        error = (await supabase.from("staff_services").insert({ staff_id: staffId, service_id: sid })).error ?? null;
+      }
+      if (!error) return { ok: true };
+      const em = String(error.message || "").toLowerCase();
+      if (em.includes("duplicate key") || em.includes("unique constraint")) return { ok: true };
+      if (error && isStaffServicesServiceFkError(error.message)) {
+        lastFkMsg = error.message;
+        continue;
+      }
+      if (error) return { ok: false, error: error.message };
+    }
+    return { ok: false, error: lastFkMsg || "FK staff_services" };
+  }
+
+  async function toggleCategoryForStaff(staffId: string, catSvcs: CatalogSkillService[], turnOn: boolean) {
+    setErr(null);
+    if (!catSvcs.length) return;
+    const catIdSet = new Set(catSvcs.map((s) => String(s.id)));
+    const explicitForStaff = links.filter((l) => String(l.staff_id) === String(staffId));
+
+    if (!turnOn) {
+      if (explicitForStaff.length === 0) {
+        const others = activeServices.filter((s) => !catIdSet.has(String(s.id)));
+        if (others.length === 0) {
+          setErr(
+            "Нельзя отключить всю категорию: в каталоге нет услуг вне неё. Добавьте услуги в другой категории или снимайте отметки по одной услуге.",
+          );
+          return;
+        }
+        const rows: Array<{ staff_id: string; service_id: string; show_on_site: boolean }> = [];
+        for (const s of others) {
+          const lid = await resolveStaffLinkListingId(String(s.id), s.name);
+          if (!lid) {
+            setErr(`Услуга «${s.name}» не найдена в service_listings. Синхронизируйте каталог на странице «Услуги».`);
+            return;
+          }
+          rows.push({ staff_id: staffId, service_id: lid, show_on_site: true });
+        }
+        const { error: delErr } = await supabase.from("staff_services").delete().eq("staff_id", staffId);
+        if (delErr) {
+          setErr(delErr.message);
+          return;
+        }
+        if (rows.length) {
+          let { error: insErr } = await supabase.from("staff_services").insert(rows);
+          if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
+            insErr = (
+              await supabase
+                .from("staff_services")
+                .insert(rows.map((r) => ({ staff_id: r.staff_id, service_id: r.service_id })))
+            ).error ?? null;
+          }
+          if (insErr) {
+            setErr(insErr.message);
+            return;
+          }
+        }
+        void load();
+        return;
+      }
+      for (const s of catSvcs) {
+        await deleteStaffServiceRow(staffId, s);
+      }
+      void load();
+      return;
+    }
+
+    if (explicitForStaff.length === 0) {
+      return;
+    }
+    for (const s of catSvcs) {
+      if (hasLink(staffId, s.id)) continue;
+      const r = await insertStaffServiceRow(staffId, s);
+      if (!r.ok) {
+        setErr(r.error || "Не удалось добавить привязку");
+        void load();
+        return;
+      }
+    }
+    void load();
+  }
+
   function assignedServicesForStaff(staffId: string) {
     return links
       .filter((l) => String(l.staff_id) === String(staffId))
@@ -781,24 +967,64 @@ export function AdminStaffPage() {
                               )}
                             </div>
                             <p className="mb-1 text-[11px] text-zinc-500">
-                              Отметьте услуги, чтобы ограничить этого мастера.
+                              Сначала переключатель категории — все услуги в ней; раскройте категорию (▶), чтобы
+                              отметить услуги по отдельности.
                             </p>
-                            <div className="max-h-44 overflow-y-auto rounded border border-zinc-800/60 p-2">
-                              <div className="flex flex-wrap gap-x-3 gap-y-1">
-                                {activeServices.map((s) => (
-                                  <div key={s.id} className="flex max-w-[11rem] items-center gap-1.5 text-xs text-zinc-400">
-                                    <ToggleSwitch
-                                      size="sm"
-                                      checked={hasLink(r.id, s.id)}
-                                      onCheckedChange={(v) => void toggleService(r.id, s.id, v)}
-                                      aria-label={`${r.name}: ${s.name}`}
-                                    />
-                                    <span className="min-w-0 truncate" title={s.name}>
-                                      {s.name}
-                                    </span>
+                            <div className="max-h-[min(28rem,70vh)] space-y-2 overflow-y-auto rounded border border-zinc-800/60 p-2">
+                              {activeServicesByCategory.map(({ name: catName, services: catSvcs }, catIdx) => {
+                                const expanded = !!skillCategoryExpanded[skillCatPanelKey(r.id, catName)];
+                                const catAll = categoryAllLinkedForStaff(r.id, catSvcs);
+                                const catPanelId = `staff-${r.id}-catpanel-${catIdx}`;
+                                return (
+                                  <div key={catName} className="rounded border border-zinc-800/60 bg-black/25">
+                                    <div className="flex flex-wrap items-center gap-2 px-2 py-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSkillCategoryPanel(r.id, catName)}
+                                        className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800"
+                                        aria-expanded={expanded}
+                                        aria-controls={catPanelId}
+                                        title={expanded ? "Свернуть список услуг" : "Показать услуги категории"}
+                                      >
+                                        {expanded ? "▼" : "▶"}
+                                      </button>
+                                      <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
+                                        {catName}
+                                      </span>
+                                      <span className="shrink-0 text-[10px] text-zinc-500">{catSvcs.length}</span>
+                                      <ToggleSwitch
+                                        size="sm"
+                                        checked={catAll}
+                                        onCheckedChange={(v) => void toggleCategoryForStaff(r.id, catSvcs, v)}
+                                        aria-label={`${r.name}: все услуги «${catName}»`}
+                                      />
+                                    </div>
+                                    {expanded && (
+                                      <div
+                                        id={catPanelId}
+                                        className="flex flex-wrap gap-x-3 gap-y-1 border-t border-zinc-800/50 px-2 py-2"
+                                      >
+                                        {catSvcs.map((s) => (
+                                          <div
+                                            key={s.id}
+                                            className="flex max-w-[11rem] items-center gap-1.5 text-xs text-zinc-400"
+                                          >
+                                            <ToggleSwitch
+                                              size="sm"
+                                              checked={hasLink(r.id, s.id)}
+                                              onCheckedChange={(v) => void toggleService(r.id, s.id, v)}
+                                              aria-label={`${r.name}: ${s.name}`}
+                                            />
+                                            <span className="min-w-0 truncate" title={s.name}>
+                                              {s.name}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                ))}
-                              </div>
+                                );
+                              })}
                               {activeServices.length === 0 && (
                                 <p className="text-xs text-zinc-500">
                                   Каталог услуг пуст — добавьте услуги на странице «Услуги».
