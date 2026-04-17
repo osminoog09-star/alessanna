@@ -58,11 +58,11 @@ function buildGroups(links, staffMap) {
   return out;
 }
 
-function renderTeam(groups, allNames) {
+function renderTeam(groups, staffList) {
   const root = document.querySelector("#meistrid .team-groups");
   if (!root) return;
 
-  if (!allNames.length) {
+  if (!staffList.length) {
     root.innerHTML =
       '<div class="team-group"><h3 class="team-group-title">Meistrid</h3><ul class="team-names">' +
       "<li>—</li>" +
@@ -73,7 +73,9 @@ function renderTeam(groups, allNames) {
   if (!groups.length) {
     root.innerHTML =
       '<div class="team-group"><h3 class="team-group-title">Meistrid</h3><ul class="team-names">' +
-      allNames.map((n) => "<li>" + esc(n) + "</li>").join("") +
+      staffList
+        .map((s) => '<li data-master-id="' + esc(String(s.id)) + '">' + esc(String(s.name || "")) + "</li>")
+        .join("") +
       "</ul></div>";
     return;
   }
@@ -98,6 +100,7 @@ function renderTeam(groups, allNames) {
 
 async function main() {
   try {
+    globalThis.__SALON_PUBLIC_STAFF__ = [];
     const c = cfg();
     if (!c.url || !c.key) {
       renderTeam([], []);
@@ -121,7 +124,8 @@ async function main() {
       .in("staff_id", staffIds);
 
     const groups = buildGroups(linksRows || [], staffMap);
-    renderTeam(groups, staff.map((s) => s.name));
+    globalThis.__SALON_PUBLIC_STAFF__ = staff.map((s) => ({ id: String(s.id), name: s.name }));
+    renderTeam(groups, staff);
   } finally {
     notifyReady();
   }

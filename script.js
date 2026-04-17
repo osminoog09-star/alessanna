@@ -364,9 +364,25 @@
     }
 
     var nameToId = {};
-    for (var mi = 0; mi < MASTERS_PICK.length; mi++) {
-      nameToId[MASTERS_PICK[mi].name.toLowerCase()] = MASTERS_PICK[mi].id;
+
+    function rebuildNameToId() {
+      nameToId = {};
+      if (teamRoot) {
+        var domLis = teamRoot.querySelectorAll(".team-names li");
+        for (var di = 0; di < domLis.length; di++) {
+          var dli = domLis[di];
+          var did = dli.getAttribute("data-master-id");
+          if (!did) continue;
+          nameToId[dli.textContent.trim().toLowerCase()] = did;
+        }
+      }
+      for (var mi = 0; mi < MASTERS_PICK.length; mi++) {
+        var nm = MASTERS_PICK[mi].name.toLowerCase();
+        if (!nameToId[nm]) nameToId[nm] = MASTERS_PICK[mi].id;
+      }
     }
+
+    rebuildNameToId();
 
     var picked = [];
 
@@ -414,6 +430,12 @@
         if (selFi) return "Ei väliä";
         return "Pole oluline";
       }
+      var st = globalThis.__SALON_PUBLIC_STAFF__;
+      if (st && id) {
+        for (var si = 0; si < st.length; si++) {
+          if (String(st[si].id) === String(id)) return st[si].name;
+        }
+      }
       for (var i = 0; i < MASTERS_PICK.length; i++) {
         if (MASTERS_PICK[i].id === id) return MASTERS_PICK[i].name;
       }
@@ -424,13 +446,73 @@
       if (masterDisplay) masterDisplay.textContent = text || UI.masterNone;
     }
 
-    /** Мастера, которые закрывают все выбранные категории услуг (пересечение, не объединение). */
-    function mastersForPickedCategories() {
+    function slugKeyForTeam(s) {
+      return String(s || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "")
+        .replace(/-+/g, "-");
+    }
+
+    function teamCategoryKeyFromPickCategory(catRaw) {
+      var s = String(catRaw || "").trim();
+      if (!s || s === "other") return null;
+      if (s.indexOf("n:") === 0) return slugKeyForTeam(s.slice(2));
+      return slugKeyForTeam(s);
+    }
+
+    function escapeCssAttrKey(val) {
+      var v = String(val || "");
+      if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(v);
+      return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    }
+
+    function allStaffIdsFromTeamDom(teamRootEl) {
+      var lis = teamRootEl.querySelectorAll(".team-names li[data-master-id]");
+      var ids = [];
+      var seen = {};
+      for (var ai = 0; ai < lis.length; ai++) {
+        var aid = lis[ai].getAttribute("data-master-id");
+        if (!aid || seen[aid]) continue;
+        seen[aid] = true;
+        ids.push(aid);
+      }
+      return ids;
+    }
+
+    function staffIdsInTeamGroup(teamRootEl, categoryKey) {
+      if (!categoryKey) return [];
+      var sel = '.team-group[data-category-key="' + escapeCssAttrKey(categoryKey) + '"] li[data-master-id]';
+      var groupLis = teamRootEl.querySelectorAll(sel);
+      var out = [];
+      var seenG = {};
+      for (var gj = 0; gj < groupLis.length; gj++) {
+        var gid = groupLis[gj].getAttribute("data-master-id");
+        if (!gid || seenG[gid]) continue;
+        seenG[gid] = true;
+        out.push(gid);
+      }
+      return out;
+    }
+
+    function staffIdsForPick(teamRootEl, pick) {
+      var all = allStaffIdsFromTeamDom(teamRootEl);
+      if (!all.length) return [];
+      var ck = teamCategoryKeyFromPickCategory(pick.category);
+      if (ck === null) return all.slice();
+      var scoped = staffIdsInTeamGroup(teamRootEl, ck);
+      if (!scoped.length) return all.slice();
+      return scoped;
+    }
+
+    /** Varu: vanad slug-id (galina jne), kui #meistrid pole Supabase UUID-ga laetud. */
+    function mastersForPickedCategoriesLegacy() {
       if (!picked.length) return [];
       var categories = [];
       var seen = {};
-      for (var i = 0; i < picked.length; i++) {
-        var cat = picked[i].masterFilter || picked[i].category;
+      for (var ci = 0; ci < picked.length; ci++) {
+        var cat = picked[ci].masterFilter || picked[ci].category;
         if (seen[cat]) continue;
         seen[cat] = true;
         categories.push(cat);
@@ -450,6 +532,27 @@
         return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
       });
       return out;
+    }
+
+    /** Пересечение по категориям; при разметке CRM (#meistrid li[data-master-id]) — только эти мастера. */
+    function mastersForPickedCategories() {
+      if (!picked.length) return [];
+      if (teamRoot && teamRoot.querySelector(".team-names li[data-master-id]")) {
+        var firstIds = staffIdsForPick(teamRoot, picked[0]);
+        var outDom = firstIds.slice();
+        for (var p = 1; p < picked.length; p++) {
+          var nextIds = staffIdsForPick(teamRoot, picked[p]);
+          outDom = outDom.filter(function (sid) {
+            return nextIds.indexOf(sid) !== -1;
+          });
+          if (!outDom.length) return [];
+        }
+        outDom.sort(function (a, b) {
+          return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
+        });
+        return outDom;
+      }
+      return mastersForPickedCategoriesLegacy();
     }
 
     function validateMasterForPicks() {
@@ -495,7 +598,7 @@
       var allowed = mastersForPickedCategories();
       for (var j = 0; j < lis.length; j++) {
         var li = lis[j];
-        var tid = nameToId[li.textContent.trim().toLowerCase()];
+        var tid = li.getAttribute("data-master-id") || nameToId[li.textContent.trim().toLowerCase()];
         var bad = !tid || !allowed.length || allowed.indexOf(tid) === -1;
         li.classList.toggle("is-master-ineligible", bad);
         if (bad) {
@@ -720,12 +823,17 @@
       syncMenuRowsPickedClass();
     });
 
+    window.addEventListener("site-team-ready", function () {
+      rebuildNameToId();
+      wireTeamMasterClicks();
+      renderList();
+    });
+
     function highlightTeam(masterId) {
       var lis = document.querySelectorAll("#meistrid .team-names li");
       for (var t = 0; t < lis.length; t++) {
         var li = lis[t];
-        var txt = li.textContent.trim().toLowerCase();
-        var id = nameToId[txt];
+        var id = li.getAttribute("data-master-id") || nameToId[li.textContent.trim().toLowerCase()];
         li.classList.toggle("is-master-picked", !!(masterId && id === masterId));
       }
     }
@@ -738,11 +846,12 @@
       masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    if (teamRoot) {
+    function wireTeamMasterClicks() {
+      if (!teamRoot) return;
       var teamLis = teamRoot.querySelectorAll(".team-names li");
       for (var tl = 0; tl < teamLis.length; tl++) {
         (function (li) {
-          var id = nameToId[li.textContent.trim().toLowerCase()];
+          var id = li.getAttribute("data-master-id") || nameToId[li.textContent.trim().toLowerCase()];
           if (!id) return;
           li.setAttribute("role", "button");
           li.tabIndex = 0;
@@ -763,6 +872,8 @@
       }
     }
 
+    wireTeamMasterClicks();
+
     if (masterSelect) {
       masterSelect.addEventListener("change", function () {
         var v = masterSelect.value;
@@ -772,7 +883,7 @@
         var lis2 = document.querySelectorAll("#meistrid .team-names li");
         for (var u = 0; u < lis2.length; u++) {
           var li2 = lis2[u];
-          var tid = nameToId[li2.textContent.trim().toLowerCase()];
+          var tid = li2.getAttribute("data-master-id") || nameToId[li2.textContent.trim().toLowerCase()];
           li2.setAttribute("aria-pressed", v && tid === v ? "true" : "false");
         }
       });
@@ -1283,11 +1394,29 @@
       });
     }
 
+    function publicStaffAsMasterOptions() {
+      var st = globalThis.__SALON_PUBLIC_STAFF__;
+      if (!st || !st.length) return null;
+      return st.map(function (s) {
+        return { id: String(s.id), name: s.name };
+      });
+    }
+
     function refillDemoMastersForCurrentService() {
+      var pub = publicStaffAsMasterOptions();
+      if (pub) {
+        setMasterOptions(pub);
+        return;
+      }
       setMasterOptions(demoMastersForCurrentService());
     }
 
     function setupDemoMasters() {
+      var pub = publicStaffAsMasterOptions();
+      if (pub) {
+        setMasterOptions(pub);
+        return;
+      }
       refillDemoMastersForCurrentService();
     }
 
@@ -1337,6 +1466,15 @@
     }
 
     startBookingWidget();
+
+    window.addEventListener("site-team-ready", function () {
+      var pub = publicStaffAsMasterOptions();
+      if (!pub) return;
+      setMasterOptions(pub);
+      invalidateMonthCache();
+      clearSelection();
+      renderCalendar();
+    });
 
     prevBtn.addEventListener("click", function () {
       if (prevBtn.disabled) return;
