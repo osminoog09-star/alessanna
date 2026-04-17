@@ -55,6 +55,13 @@ function cfg() {
   return { url, key };
 }
 
+function keyPreview(key) {
+  const raw = String(key || "").trim();
+  if (!raw) return "";
+  if (raw.length <= 10) return raw;
+  return raw.slice(0, 6) + "..." + raw.slice(-4);
+}
+
 function fmtPrice(p) {
   if (p == null || p === "") return "—";
   const n = Number(p);
@@ -295,6 +302,10 @@ async function fetchCategoryNames(client) {
 }
 
 async function fetchPriceList(client) {
+  function hasRows(res) {
+    return !res.error && Array.isArray(res.data) && res.data.length > 0;
+  }
+
   const listings = await client
     .from("service_listings")
     .select(
@@ -314,9 +325,9 @@ async function fetchPriceList(client) {
     error: listings.error,
   });
 
-  if (!listings.error) {
+  if (hasRows(listings)) {
     const rows = (listings.data || []).filter(function (r) {
-      return r.is_active !== false && r.active !== false;
+      return r.is_active !== false;
     });
     return { data: rows, error: null, source: "service_listings" };
   }
@@ -341,7 +352,7 @@ async function fetchPriceList(client) {
     error: listingsNoActive.error,
   });
 
-  if (!listingsNoActive.error) {
+  if (hasRows(listingsNoActive)) {
     return { data: listingsNoActive.data || [], error: null, source: "service_listings_no_active" };
   }
 
@@ -357,16 +368,32 @@ async function fetchPriceList(client) {
     error: listingsMinimal.error,
   });
 
-  if (!listingsMinimal.error) {
+  if (hasRows(listingsMinimal)) {
     return { data: listingsMinimal.data || [], error: null, source: "service_listings_minimal" };
   }
 
   warnLog("service_listings minimal query failed", listingsMinimal.error);
 
+  // Primary fallback: modern public.services schema (name/price/duration/category)
+  const servicesModern = await client
+    .from("services")
+    .select("id,name,price,duration,category,sort_order,created_at")
+    .order("sort_order", { ascending: true });
+
+  info("Supabase response: services (modern schema)", {
+    data: servicesModern.data,
+    error: servicesModern.error,
+  });
+
+  if (hasRows(servicesModern)) {
+    return { data: mapLegacyServiceRows(servicesModern.data), error: null, source: "services_modern" };
+  }
+
+  warnLog("services modern schema query failed", servicesModern.error);
+
   const legacy = await client
     .from("services")
     .select("id,name_et,price_cents,duration_min,active,sort_order,category,categories(name)")
-    .eq("active", true)
     .order("sort_order", { ascending: true });
 
   info("Supabase response: services (legacy with categories)", {
@@ -374,8 +401,11 @@ async function fetchPriceList(client) {
     error: legacy.error,
   });
 
-  if (!legacy.error) {
-    return { data: mapLegacyServiceRows(legacy.data), error: null, source: "legacy_services" };
+  if (hasRows(legacy)) {
+    const rows = (legacy.data || []).filter(function (r) {
+      return r.active !== false && r.is_active !== false;
+    });
+    return { data: mapLegacyServiceRows(rows), error: null, source: "legacy_services" };
   }
 
   warnLog("legacy services query with categories failed", legacy.error);
@@ -383,7 +413,6 @@ async function fetchPriceList(client) {
   const legacyNoJoin = await client
     .from("services")
     .select("id,name_et,price_cents,duration_min,active,sort_order,category")
-    .eq("active", true)
     .order("sort_order", { ascending: true });
 
   info("Supabase response: services (legacy no categories)", {
@@ -391,8 +420,11 @@ async function fetchPriceList(client) {
     error: legacyNoJoin.error,
   });
 
-  if (!legacyNoJoin.error) {
-    return { data: mapLegacyServiceRows(legacyNoJoin.data), error: null, source: "legacy_services_minimal" };
+  if (hasRows(legacyNoJoin)) {
+    const rows = (legacyNoJoin.data || []).filter(function (r) {
+      return r.active !== false && r.is_active !== false;
+    });
+    return { data: mapLegacyServiceRows(rows), error: null, source: "legacy_services_minimal" };
   }
 
   warnLog("legacy services query no-join failed", legacyNoJoin.error);
@@ -407,7 +439,7 @@ async function fetchPriceList(client) {
     error: legacyAlt.error,
   });
 
-  if (!legacyAlt.error) {
+  if (hasRows(legacyAlt)) {
     const rows = (legacyAlt.data || []).filter(function (r) {
       return r.active !== false && r.is_active !== false;
     });
@@ -426,7 +458,7 @@ async function fetchPriceList(client) {
     error: legacyAltNoJoin.error,
   });
 
-  if (!legacyAltNoJoin.error) {
+  if (hasRows(legacyAltNoJoin)) {
     const rows = (legacyAltNoJoin.data || []).filter(function (r) {
       return r.active !== false && r.is_active !== false;
     });
@@ -440,6 +472,7 @@ async function fetchPriceList(client) {
       legacyAlt.error ||
       legacyNoJoin.error ||
       legacy.error ||
+      servicesModern.error ||
       listingsMinimal.error ||
       listings.error,
     source: "none",
@@ -509,6 +542,7 @@ async function main() {
     hasUrl: Boolean(c.url),
     hasAnonKey: Boolean(c.key),
     urlHost: c.url ? c.url.replace(/^https?:\/\//, "") : "",
+    anonKeyPreview: keyPreview(c.key),
   });
 
   if (!c.url || !c.key) {
