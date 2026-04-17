@@ -239,7 +239,9 @@ a:hover {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  /* Выше .nav (z:101) и .nav-backdrop (z:90), чтобы «ЗАПИСАТЬСЯ» и «МЕНЮ»
+   * оставались видимыми и кликабельными, когда боковой дроуэр открыт. */
+  z-index: 120;
   padding: calc(0.55rem + env(safe-area-inset-top, 0px)) 0 0.55rem;
   background: linear-gradient(180deg, rgba(1, 2, 2, 0.94) 0%, rgba(1, 2, 2, 0.62) 72%, rgba(1, 2, 2, 0) 100%);
   transition: background 0.45s var(--ease-out), box-shadow 0.45s, border-color 0.45s;
