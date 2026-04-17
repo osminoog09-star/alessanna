@@ -92,6 +92,24 @@ function groupRows(rows) {
   });
 }
 
+function groupsFromCategoryNames(names) {
+  const uniq = Array.from(
+    new Set(
+      (names || [])
+        .map(function (n) {
+          return String(n || "").trim();
+        })
+        .filter(Boolean)
+    )
+  );
+  uniq.sort(function (a, b) {
+    return a.localeCompare(b, "et");
+  });
+  return uniq.map(function (name) {
+    return { id: "n:" + name, name, items: [] };
+  });
+}
+
 function render(groups) {
   const mount = mountEl();
   const warn = document.getElementById("teenused-config-warn");
@@ -154,16 +172,20 @@ function render(groups) {
       ' data-pick-category="' +
       esc(catKey) +
       '"><ul class="menu-list">';
-    for (let j = 0; j < gr.items.length; j++) {
-      const it = gr.items[j];
-      const dur = it.duration != null ? it.duration + " min" : "";
-      panelHtml +=
-        "<li><span>" +
-        esc(it.name) +
-        '</span><span class="price">' +
-        esc(fmtPrice(it.price)) +
-        (dur ? " · " + esc(dur) : "") +
-        "</span></li>";
+    if (!gr.items || gr.items.length === 0) {
+      panelHtml += '<li><span class="menu-footnote">Teenused lisatakse peagi.</span></li>';
+    } else {
+      for (let j = 0; j < gr.items.length; j++) {
+        const it = gr.items[j];
+        const dur = it.duration != null ? it.duration + " min" : "";
+        panelHtml +=
+          "<li><span>" +
+          esc(it.name) +
+          '</span><span class="price">' +
+          esc(fmtPrice(it.price)) +
+          (dur ? " · " + esc(dur) : "") +
+          "</span></li>";
+      }
     }
     panelHtml += "</ul></div>";
   }
@@ -248,6 +270,28 @@ async function fetchPublicApiFallback() {
     }
   }
   throw lastError || new Error("Public services API fallback failed");
+}
+
+async function fetchCategoryNames(client) {
+  const modern = await client.from("service_categories").select("name").order("name", { ascending: true });
+  if (!modern.error) {
+    return (modern.data || [])
+      .map(function (r) {
+        return String(r.name || "").trim();
+      })
+      .filter(Boolean);
+  }
+
+  const legacy = await client.from("categories").select("name").order("name", { ascending: true });
+  if (!legacy.error) {
+    return (legacy.data || [])
+      .map(function (r) {
+        return String(r.name || "").trim();
+      })
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 async function fetchPriceList(client) {
@@ -410,6 +454,16 @@ async function run(client) {
     if (rows.length > 0) {
       render(groupRows(rows));
       return true;
+    }
+    try {
+      const names = await fetchCategoryNames(client);
+      if (names.length > 0) {
+        info("Loaded categories without services (" + names.length + ")");
+        render(groupsFromCategoryNames(names));
+        return true;
+      }
+    } catch (catErr) {
+      warnLog("Failed to load categories for empty catalog fallback", catErr);
     }
     warnLog("Supabase returned zero services, trying /api/public/services fallback");
     try {
