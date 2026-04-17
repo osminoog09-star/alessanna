@@ -2507,49 +2507,58 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   opacity: 0.85;
 }
 
-.footer-credits {
-  margin: 1rem auto 0;
-  padding-top: 0.85rem;
-  max-width: 28rem;
-  display: inline-flex;
+.footer-baseline {
+  margin-top: 1.75rem;
+  padding: 0.9rem 1rem calc(0.9rem + var(--safe-bottom));
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
+  gap: 0.6rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text-muted);
-  opacity: 0.6;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  transition: opacity 0.2s ease;
+  opacity: 0.45;
+  transition: opacity 0.25s ease;
 }
 
-.footer-credits:hover {
-  opacity: 0.95;
+.footer-baseline:hover {
+  opacity: 0.9;
 }
 
-.footer-credits-label {
+.footer-baseline-text {
   color: var(--text-muted);
+  font-weight: 300;
 }
 
-.footer-credits-sep {
-  color: var(--gold-dim, rgba(197, 164, 104, 0.4));
-  opacity: 0.7;
+.footer-baseline-dot {
+  color: var(--gold-bright, #e2c185);
+  font-size: 0.55rem;
+  line-height: 1;
+  letter-spacing: 0;
+  opacity: 0.75;
 }
 
-.footer-credits-names {
+.footer-baseline-names {
   color: var(--gold-bright, #e2c185);
   letter-spacing: 0.08em;
-  font-weight: 500;
+  font-weight: 400;
   text-transform: none;
+  font-size: 0.72rem;
+  font-style: italic;
+  opacity: 0.9;
 }
 
 @media (max-width: 480px) {
-  .footer-credits {
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-    gap: 0.35rem;
+  .footer-baseline {
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    gap: 0.4rem;
+  }
+  .footer-baseline-names {
+    font-size: 0.66rem;
   }
 }
 
