@@ -937,15 +937,26 @@ export function ServicesPage() {
     void setStaffLinksForServiceAndReload(service, next);
   }
 
-  function toggleStaffOnSite(service: ServiceRow, staffId: string, visible: boolean) {
+  async function toggleStaffOnSite(service: ServiceRow, staffId: string, visible: boolean) {
     if (!canManage) return;
     const serviceId = String(service.id);
-    const prev = staffLinksForService(serviceId);
-    if (!prev.length) return;
+    let prev = staffLinksForService(serviceId);
+    /* Пустой staff_services = «все мастера»; без строк в БД нельзя менять show_on_site по мастеру — сначала материализуем привязки. */
+    if (!prev.length) {
+      const rows = staffListedAsMasters(staff).map((m) => ({
+        staff_id: String(m.id),
+        show_on_site: true,
+      }));
+      const ok = await replaceServiceStaffLinks(service, rows);
+      if (!ok) return;
+      await load();
+      prev = staffLinksForService(serviceId);
+      if (!prev.length) return;
+    }
     const next = prev.map((l) =>
       normId(l.staff_id) === normId(staffId) ? { ...l, show_on_site: visible } : l,
     );
-    void setStaffLinksForServiceAndReload(service, next);
+    await setStaffLinksForServiceAndReload(service, next);
   }
 
   async function createServiceFromQuickForm() {
@@ -1313,9 +1324,9 @@ export function ServicesPage() {
                                 <span className="whitespace-nowrap">На сайте</span>
                                 <ToggleSwitch
                                   size="sm"
-                                  disabled={!canManage || !link}
+                                  disabled={!canManage || (prev.length > 0 && !link)}
                                   checked={onSite}
-                                  onCheckedChange={(v) => toggleStaffOnSite(s, m.id, v)}
+                                  onCheckedChange={(v) => void toggleStaffOnSite(s, m.id, v)}
                                   aria-label={`${m.name}: на сайте`}
                                 />
                               </div>
