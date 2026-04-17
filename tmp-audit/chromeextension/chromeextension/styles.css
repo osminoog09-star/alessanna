@@ -1,0 +1,770 @@
+#spooni-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 340px;
+  max-height: 82vh;
+  overflow: auto;
+  background: #111827;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  border-radius: 14px;
+  z-index: 999999;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  font-family: "Aptos", "Segoe UI", Arial, sans-serif;
+}
+#spooni-panel .sp-header {
+  padding: 12px 14px;
+  font-weight: 700;
+  font-size: 18px;
+  border-bottom: 1px solid #374151;
+}
+#spooni-panel .sp-body {
+  padding: 12px 14px;
+}
+#spooni-panel .sp-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+#spooni-panel button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+#spooni-panel button:hover {
+  background: #1d4ed8;
+}
+#spooni-panel button.sp-secondary {
+  background: #374151;
+}
+#spooni-panel .sp-status {
+  margin-top: 10px;
+  margin-bottom: 0;
+  font-size: 13px;
+  color: #d1d5db;
+}
+#spooni-panel .sp-results {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.45;
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 10px;
+}
+#spooni-toggle-button {
+  position: fixed;
+  top: 46px;
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid #374151;
+  background: #111827;
+  color: #f9fafb;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 999999;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  display: none;
+  user-select: none;
+  align-items: center;
+  justify-content: center;
+}
+#spooni-toggle-button.sp-toggle-visible {
+  display: flex;
+}
+.sp-row-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.sp-checkbox-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+tr[data-spooni-injected="1"].sp-highlight-row {
+  outline: 2px solid #22c55e !important;
+  outline-offset: -2px !important;
+}
+.sp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+/* Кнопка свернуть */
+.sp-min {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: #2a2a2a;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.sp-min:hover {
+  background: #444;
+}
+/* ✅ Checkbox overlay: does NOT affect table layout */
+
+.sp-checkbox-wrap {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  margin: 0;
+  pointer-events: auto;
+}
+
+.sp-checkbox-wrap input {
+  margin: 0;
+}
+
+/* Ensure the cell can host absolute content */
+td[data-spooni-cell],
+th[data-spooni-cell] {
+  position: relative;
+  padding-left: 28px !important; /* visual offset only */
+}
+
+/* ===== FORCE compact dimension select (WIDE) ===== */
+#spooni-panel #sp-dimension-select {
+  width: 100% !important;          /* ✅ MAKE IT WIDE */
+  min-width: 100% !important;      /* ✅ ENSURE FULL WIDTH */
+
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+
+  padding: 0 6px !important;
+  line-height: 22px !important;
+
+  background: transparent !important;
+
+  border: 1px solid #374151 !important;
+  border-radius: 6px !important;
+
+  font-size: 12px !important;
+  font-weight: 600 !important;
+
+  box-sizing: border-box !important;
+
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* ✅ Force option text to be compact too */
+#sp-dimension-select option {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+
+#sp-dimension-select option {
+  background: #0b1220;
+  color: #f9fafb;
+}
+/* ===== Tabs (calculator switch) ===== */
+
+.sp-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.sp-tab {
+  background: #374151;
+  border: none;
+  color: #f9fafb;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.sp-tab.active {
+  background: #2563eb;
+}
+/* ===== Calculator tabs ===== */
+#spooni-panel .sp-tab {
+  background: #374151;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ✅ ACTIVE TAB */
+#spooni-panel .sp-tab.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.5);
+}
+
+/* Optional: hover feedback */
+.sp-calc-tab:hover {
+  background: #4b5563;
+}
+/* ===== Dimension checkbox dropdown ===== */
+#sp-dimension-toggle {
+  width: 100%;
+  height: 22px;
+  padding: 0 6px;
+  line-height: 22px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: transparent;
+  color: #f9fafb;              /* ✅ visible text */
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#sp-dimension-menu {
+  margin-top: 4px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: #0b1220;
+  padding: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  z-index: 999999;
+}
+
+/* ✅ FORCE WHITE TEXT FOR DIMENSIONS */
+.sp-dimension-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+  cursor: pointer;
+
+  color: #ffffff !important;   /* ✅ THIS FIXES YOUR ISSUE */
+}
+
+.sp-dimension-item span {
+  color: #ffffff !important;   /* ✅ ensure text is white */
+}
+
+/* Optional: slightly dim unchecked items */
+.sp-dimension-item input:not(:checked) + span {
+  opacity: 0.85;
+}
+
+.sp-dimension-item input:checked + span {
+  opacity: 1;
+  font-weight: 600;
+}
+
+/* Hover highlight */
+.sp-dimension-item:hover {
+  background: #1f2937;
+}
+
+/* Checkbox cursor */
+.sp-dimension-item input {
+  cursor: pointer;
+}
+/* ===== Panel base animation ===== */
+#spooni-panel {
+  transform-origin: top right;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    box-shadow 180ms ease;
+}
+
+#spooni-panel[style*="display: none"] {
+  transform: scale(0.96) translateY(-6px);
+  opacity: 0;
+}
+#spooni-toggle-button {
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+#spooni-toggle-button:hover {
+  transform: scale(1.06);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+}
+
+#spooni-toggle-button:active {
+  transform: scale(0.97);
+}
+/* ===== Calculator tabs (SaaS feel) ===== */
+#spooni-panel .sp-tab {
+  transition:
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease;
+}
+
+#spooni-panel .sp-tab:hover:not(.active) {
+  background: #4b5563;
+  transform: translateY(-1px);
+}
+
+#spooni-panel .sp-tab.active {
+  background: #2563eb;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+}
+
+#spooni-panel .sp-tab:active {
+  transform: translateY(0);
+}
+#sp-dimension-toggle {
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 100ms ease;
+}
+
+#sp-dimension-toggle:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: #4b5563;
+}
+
+#sp-dimension-toggle:active {
+  transform: scale(0.985);
+}
+#sp-dimension-menu {
+  transform-origin: top;
+  animation: dropdownIn 140ms ease;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+.sp-dimension-item {
+  transition:
+    background 120ms ease,
+    transform 100ms ease;
+}
+
+.sp-dimension-item:hover {
+  background: #1f2937;
+  transform: translateX(2px);
+}
+
+.sp-dimension-item input {
+  accent-color: #2563eb; /* modern checkbox color */
+}
+#spooni-panel button {
+  transition:
+    background 120ms ease,
+    transform 100ms ease,
+    box-shadow 120ms ease;
+}
+
+#spooni-panel button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+
+#spooni-panel button:active {
+  transform: translateY(0) scale(0.98);
+}
+#sp-results {
+  transition: background 150ms ease;
+}
+
+#sp-results:not(:empty) {
+  background: rgba(255, 255, 255, 0.03);
+}
+/* ===== 🔥 FIX SPACING + CLEAN RESULT UI ===== */
+
+#spooni-panel .sp-results {
+  white-space: normal !important;   /* 🔥 убираем причину бага */
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  padding: 10px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* расстояние между блоками */
+}
+
+/* карточка размера */
+#sp-results .sp-result-block {
+  padding: 10px 12px !important;
+  border: 1px solid #1f2937 !important;
+  border-radius: 10px !important;
+  background: #0b1220 !important;
+
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+/* заголовок */
+#sp-results .sp-result-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  margin: 0 0 8px 0 !important;
+  color: #ffffff !important;
+}
+
+/* строки */
+#sp-results .sp-result-row {
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  align-items: center !important;
+
+  padding: 3px 0 !important;
+  margin: 0 !important;
+
+  line-height: 1.25 !important;
+}
+
+/* текст слева */
+#sp-results .sp-result-row span {
+  color: #9ca3af !important;
+  font-size: 13px;
+}
+
+/* значения справа */
+#sp-results .sp-result-row strong {
+  justify-self: end;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* линия перед m³ */
+#sp-results .sp-result-row.total-line {
+  margin-top: 6px !important;
+  padding-top: 6px !important;
+  border-top: 1px dashed #374151 !important;
+}
+
+/* TOTAL блок */
+#sp-results .sp-result-block.total {
+  border-color: #2563eb !important;
+  background: #0a1225 !important;
+
+  box-shadow:
+    0 6px 20px rgba(37, 99, 235, 0.25),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* TOTAL заголовок */
+#sp-results .sp-result-block.total .sp-result-title {
+  color: #60a5fa !important;
+}
+
+/* hover (по желанию, выглядит 🔥) */
+#sp-results .sp-result-block:hover {
+  transform: translateY(-2px);
+  transition: 0.15s ease;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.04);
+}
+#sp-results .sp-result-row.total-line span,
+#sp-results .sp-result-row.total-line strong {
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+#sp-results .sp-result-row.total-line strong {
+  font-size: 15px;
+  color: #60a5fa !important; /* синий акцент */
+}
+/* ===== m³ BADGE ===== */
+
+#sp-results .sp-result-row.total-line {
+  border-top: none !important;
+  margin-top: 8px !important;
+  padding-top: 0 !important;
+}
+
+/* сам badge */
+#sp-results .sp-result-row.total-line strong {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff !important;
+
+  padding: 4px 10px;
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* текст m³ слева */
+#sp-results .sp-result-row.total-line span {
+  font-weight: 600;
+  color: #cbd5f5 !important;
+}
+/* ===== m³ BADGE ===== */
+
+#sp-results .sp-result-row.total-line {
+  border-top: none !important;
+  margin-top: 8px !important;
+  padding-top: 0 !important;
+}
+
+/* сам badge */
+#sp-results .sp-result-row.total-line strong {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff !important;
+
+  padding: 4px 10px;
+  border-radius: 999px;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* текст m³ слева */
+#sp-results .sp-result-row.total-line span {
+  font-weight: 600;
+  color: #cbd5f5 !important;
+}
+/* ===== SPOON Remaining qty BADGE ===== */
+
+#sp-results .sp-remaining-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 6px 8px;
+  margin-top: 6px;
+
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+}
+
+/* текст */
+#sp-results .sp-remaining-line span {
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* 🔥 badge */
+/* ===== SPOON Remaining qty (clean, no conflicts) ===== */
+
+/* summary line (Kokku vaja pakkides) */
+#sp-results .sp-remaining-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin-top: 6px;
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+}
+
+#sp-results .sp-remaining-line span {
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+#sp-results .sp-remaining-line strong {
+  background: linear-gradient(135deg, #22c55e, #4ade80);
+  color: #052e16 !important;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+}
+
+/* card */
+#sp-results .sp-remaining-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+}
+
+/* size title */
+#sp-results .sp-remaining-size {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin-bottom: 8px;
+}
+
+/* row */
+#sp-results .sp-remaining-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* left text */
+#sp-results .sp-remaining-row span {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* default badge (gray) */
+#sp-results .sp-remaining-card .sp-remaining-row strong {
+  background: #374151;
+  color: #e5e7eb !important;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* Allesolev kogus as subtitle (bold, no badge) */
+#sp-results .sp-remaining-row.sp-remaining-title {
+  justify-content: flex-start !important;
+}
+/* Allesolev kogus = стиль как у "Kokku vaja pakkides (+ praagi %)" */
+#sp-results .sp-remaining-row.sp-remaining-title span {
+  color: #9ca3af !important;   /* тот же цвет */
+  font-size: 13px !important;  /* тот же размер */
+  font-weight: 500 !important; /* та же жирность */
+  letter-spacing: 0 !important;
+}
+
+
+/* subrows (K2/K3/BB/EWG) indent */
+#sp-results .sp-remaining-row.sp-subrow span {
+  padding-left: 14px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+/* blue badges for K2/K3/BB/EWG only */
+#sp-results .sp-remaining-card .sp-remaining-row.sp-subrow strong.sp-blue-badge {
+  background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+  color: #e0f2fe !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* Allesolev kogus как подзаголовок, но НЕ белый */
+/* Только шрифт для заголовка Allesolev kogus */
+#sp-results .sp-remaining-row.sp-remaining-title span {
+  color: #9ca3af !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+/* обычные синие badges для K2/BB */
+#sp-results .sp-remaining-card .sp-remaining-row.sp-subrow strong.sp-blue-badge {
+  background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+  color: #e0f2fe !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* K3 и EWG — темнее */
+#sp-results .sp-remaining-card .sp-remaining-row.sp-subrow-dark strong.sp-blue-badge {
+  background: linear-gradient(135deg, #1e40af, #1d4ed8) !important;
+  color: #dbeafe !important;
+  box-shadow: 0 3px 10px rgba(29, 78, 216, 0.35) !important;
+}
+
+/* визуальный зазор перед Vaja spooni */
+#sp-results .sp-remaining-card .sp-remaining-row.sp-subrow-divider {
+  margin-bottom: 8px;
+}
+/* ===== Allesolev/K2/K3/BB/EWG visual rules ===== */
+
+/* одинаковый стиль текста Allesolev kogus на всех линиях */
+#sp-results .sp-remaining-row.sp-remaining-title span {
+  color: #9ca3af !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+/* скрывать badge только где явно указан sp-hide-badge */
+#sp-results .sp-remaining-row.sp-remaining-title.sp-hide-badge strong {
+  display: none !important;
+}
+
+/* подпункты правее */
+#sp-results .sp-remaining-row.sp-subrow span {
+  padding-left: 14px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+/* K3/EWG темнее + визуальный зазор до Vaja spooni */
+#sp-results .sp-remaining-row.sp-subrow-dark strong.sp-blue-badge {
+  background: linear-gradient(135deg, #1e40af, #1d4ed8) !important;
+  color: #dbeafe !important;
+  box-shadow: 0 3px 10px rgba(29, 78, 216, 0.35) !important;
+}
+#sp-results .sp-remaining-row.sp-subrow-divider {
+  margin-bottom: 8px;
+}
+
+/* синие badge (в том числе для vahespoon Allesolev kogus) */
+#sp-results .sp-remaining-row strong.sp-blue-badge {
+  background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+  color: #e0f2fe !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+/* ровная раскладка label + badge */
+#sp-results .sp-remaining-row {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  align-items: center !important;
+  column-gap: 10px !important;
+  min-height: 26px;
+}
+
+/* текст слева */
+#sp-results .sp-remaining-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* badge справа */
+#sp-results .sp-remaining-row strong {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+/* для подзаголовка Allesolev (без badge справа) */
+#sp-results .sp-remaining-row.sp-remaining-title.sp-hide-badge {
+  grid-template-columns: 1fr !important;
+}
