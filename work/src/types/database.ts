@@ -44,6 +44,8 @@ export type ServiceRow = {
   active: boolean;
   sort_order: number;
   created_at?: string;
+  /** Row hydrated from service_listings when `services` has no rows; edits persist to listings by id. */
+  catalogSource?: "listing";
 };
 
 export type AppointmentRow = {

@@ -12,6 +12,57 @@ const editableUi =
 const fieldBase =
   "mt-1 w-full rounded-lg bg-black px-3 py-2 text-sm text-white disabled:opacity-60";
 
+type ListingCatalogRow = {
+  id: string;
+  name?: string | null;
+  price?: number | null;
+  duration?: number | null;
+  category_id?: string | null;
+  buffer_after_min?: number | null;
+  is_active?: boolean | null;
+  service_categories?: { name?: string | null } | null;
+};
+
+/** When `services` is empty but the public catalog has rows, hydrate the CRM list from service_listings. */
+async function fetchServicesFromListingsCatalog(): Promise<ServiceRow[]> {
+  let res = await supabase
+    .from("service_listings")
+    .select("id,name,price,duration,category_id,buffer_after_min,is_active,service_categories(name)")
+    .order("name", { ascending: true });
+
+  if (res.error && String(res.error.message || "").includes("buffer_after_min")) {
+    res = await supabase
+      .from("service_listings")
+      .select("id,name,price,duration,category_id,is_active,service_categories(name)")
+      .order("name", { ascending: true });
+  }
+  if (res.error && String(res.error.message || "").includes("is_active")) {
+    res = await supabase
+      .from("service_listings")
+      .select("id,name,price,duration,category_id,service_categories(name)")
+      .order("name", { ascending: true });
+  }
+  if (res.error || !res.data?.length) return [];
+
+  return (res.data as ListingCatalogRow[]).map((r, idx) => {
+    const catName = String(r.service_categories?.name || "").trim();
+    return {
+      id: String(r.id),
+      slug: null,
+      name_et: String(r.name || ""),
+      name_en: null,
+      category: catName || null,
+      category_id: r.category_id != null ? String(r.category_id) : null,
+      duration_min: Number(r.duration || 0),
+      buffer_after_min: Number(r.buffer_after_min ?? 10),
+      price_cents: Math.round(Number(r.price || 0) * 100),
+      active: r.is_active !== false,
+      sort_order: idx,
+      catalogSource: "listing",
+    };
+  });
+}
+
 export function ServicesPage() {
   const { t } = useTranslation();
   const { canManage } = useEffectiveRole();
@@ -171,9 +222,8 @@ export function ServicesPage() {
 
     let loadedServices: ServiceRow[] = [];
     const sLegacy = await supabase.from("services").select("*").order("sort_order", { ascending: true });
-    if (!sLegacy.error && sLegacy.data) {
+    if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
       loadedServices = sLegacy.data as ServiceRow[];
-      setServices(loadedServices);
     } else {
       let sModern = await supabase
         .from("services")
@@ -185,11 +235,17 @@ export function ServicesPage() {
           .select("id,name,category,duration,price,created_at")
           .order("name", { ascending: true });
       }
-      if (sModern.data) {
+      if (sModern.data && sModern.data.length > 0) {
         loadedServices = mapModernServices(sModern.data as Array<Record<string, unknown>>);
-        setServices(loadedServices);
       }
     }
+
+    if (loadedServices.length === 0) {
+      const fromListings = await fetchServicesFromListingsCatalog();
+      if (fromListings.length) loadedServices = fromListings;
+    }
+
+    setServices(loadedServices);
 
     /* Главный сайт читает service_listings: подтягиваем отсутствующие строки из services (старые данные / ручной SQL). */
     const listingsProbe = await supabase.from("service_listings").select("name");
@@ -345,6 +401,49 @@ export function ServicesPage() {
   async function saveService(s: ServiceRow) {
     if (!canManage) return;
     const categoryName = categoryNameFromService(s) || null;
+
+    if (s.catalogSource === "listing") {
+      const publicCategoryId =
+        s.category_id != null && String(s.category_id).trim() !== "" ? String(s.category_id) : null;
+      const payload = {
+        name: String(s.name_et || "").trim(),
+        price: Number(s.price_cents || 0) / 100,
+        duration: Number(s.duration_min || 0),
+        buffer_after_min: Number(s.buffer_after_min || 10),
+        category_id: publicCategoryId,
+        is_active: s.active !== false,
+      };
+      const payloadNoBuffer = {
+        name: String(s.name_et || "").trim(),
+        price: Number(s.price_cents || 0) / 100,
+        duration: Number(s.duration_min || 0),
+        category_id: publicCategoryId,
+        is_active: s.active !== false,
+      };
+      const payloadMinimal = {
+        name: String(s.name_et || "").trim(),
+        price: Number(s.price_cents || 0) / 100,
+        duration: Number(s.duration_min || 0),
+        category_id: publicCategoryId,
+      };
+      let { error } = await supabase.from("service_listings").update(payload).eq("id", s.id);
+      if (error && String(error.message || "").includes("buffer_after_min")) {
+        const retry = await supabase.from("service_listings").update(payloadNoBuffer).eq("id", s.id);
+        error = retry.error || null;
+      }
+      if (error && String(error.message || "").includes("is_active")) {
+        const retry = await supabase.from("service_listings").update(payloadMinimal).eq("id", s.id);
+        error = retry.error || null;
+      }
+      if (error) {
+        console.error("[services] save listing failed", error);
+        return;
+      }
+      await refreshPublicStatus();
+      load();
+      return;
+    }
+
     const legacy = await supabase
       .from("services")
       .update({
@@ -392,6 +491,18 @@ export function ServicesPage() {
   async function deleteService(s: ServiceRow) {
     if (!canManage) return;
     if (!window.confirm(t("services.deleteConfirm", { name: s.name_et }))) return;
+
+    if (s.catalogSource === "listing") {
+      const { error } = await supabase.from("service_listings").delete().eq("id", s.id);
+      if (error) {
+        window.alert(t("services.deleteFailed"));
+        return;
+      }
+      await refreshPublicStatus();
+      load();
+      return;
+    }
+
     const { count, error: cErr } = await supabase
       .from("appointments")
       .select("id", { count: "exact", head: true })
