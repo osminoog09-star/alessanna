@@ -12,6 +12,8 @@ export type StaffMember = {
   /** Mirrors `staff.is_active` — bookable when true regardless of role. */
   active: boolean;
   roles: StaffRole[];
+  /** false = hidden from marketing site + public booking (CRM still sees the person). */
+  show_on_marketing_site?: boolean;
 };
 
 /** Raw `staff` row (Supabase). */
@@ -22,6 +24,7 @@ export type StaffTableRow = {
   role: Role;
   roles?: StaffRole[] | null;
   is_active: boolean;
+  show_on_marketing_site?: boolean;
   created_at?: string;
 };
 

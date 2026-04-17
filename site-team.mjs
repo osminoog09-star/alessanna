@@ -21,6 +21,11 @@ function esc(s) {
     .replace(/"/g, "&quot;");
 }
 
+/** CRM flag: hidden from marketing / public booking when false (shadow-test by turning on). */
+function staffRowIsPublicVisible(r) {
+  return r.show_on_marketing_site !== false;
+}
+
 function categoryNameRaw(r) {
   if (r?.service_listings?.service_categories?.name) return String(r.service_listings.service_categories.name);
   if (r?.service_listings?.category?.name) return String(r.service_listings.category.name);
@@ -109,8 +114,15 @@ async function main() {
     }
     const supabase = createClient(c.url, c.key);
 
-    const { data: staffRows } = await supabase.from("staff").select("id,name,is_active").eq("is_active", true).order("name");
-    const staff = (staffRows || []).map((r) => ({ id: r.id, name: String(r.name || "").trim() })).filter((r) => r.name);
+    const { data: staffRows } = await supabase
+      .from("staff")
+      .select("id,name,is_active,show_on_marketing_site")
+      .eq("is_active", true)
+      .order("name");
+    const staff = (staffRows || [])
+      .filter(staffRowIsPublicVisible)
+      .map((r) => ({ id: r.id, name: String(r.name || "").trim() }))
+      .filter((r) => r.name);
     if (!staff.length) {
       renderTeam([], []);
       return;

@@ -121,7 +121,7 @@ async function load() {
     if (ap.error) console.error("[public-book] appointments load failed", ap.error);
 
     state.services = (sv.data || []).filter((s) => s.active !== false && s.is_active !== false);
-    state.staff = st.data || [];
+    state.staff = (st.data || []).filter(staffRowIsPublicVisible);
     state.links = lk.data || [];
     state.schedules = sch.data || [];
     state.appointments = ap.data || [];
@@ -232,6 +232,10 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function staffRowIsPublicVisible(r) {
+  return r.show_on_marketing_site !== false;
 }
 
 form?.addEventListener("submit", async (e) => {

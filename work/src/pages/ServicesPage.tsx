@@ -6,6 +6,7 @@ import { useEffectiveRole } from "../context/EffectiveRoleContext";
 import { useServicesCatalogRealtime } from "../hooks/useSalonRealtime";
 import type { CategoryRow, ServiceRow, StaffMember } from "../types/database";
 import { eurFromCents } from "../lib/format";
+import { ToggleSwitch } from "../components/ToggleSwitch";
 
 const editableUi =
   "border border-sky-600/45 ring-1 ring-sky-500/25 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/40";
@@ -1102,28 +1103,31 @@ export function ServicesPage() {
                           return (
                             <div
                               key={m.id}
-                              className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded border border-zinc-800/80 px-2 py-1.5"
+                              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded border border-zinc-800/80 px-2 py-2"
                             >
-                              <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-zinc-300">
-                                <input
-                                  type="checkbox"
+                              <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-zinc-300">
+                                <ToggleSwitch
+                                  size="sm"
                                   disabled={!canManage}
                                   checked={performs}
-                                  onChange={(e) => toggleStaffPerforms(s, m.id, e.target.checked)}
+                                  onCheckedChange={(v) => toggleStaffPerforms(s, m.id, v)}
+                                  aria-label={`${m.name}: выполняет услугу`}
                                 />
-                                <span className="truncate">{m.name || m.id}</span>
-                              </label>
-                              <label
+                                <span className="truncate font-medium">{m.name || m.id}</span>
+                              </div>
+                              <div
                                 className={`flex items-center gap-2 text-[11px] ${link ? "text-zinc-400" : "text-zinc-600"}`}
+                                title={!link ? "Сначала включите «выполняет услугу»" : undefined}
                               >
-                                <input
-                                  type="checkbox"
+                                <span className="whitespace-nowrap">На сайте</span>
+                                <ToggleSwitch
+                                  size="sm"
                                   disabled={!canManage || !link}
                                   checked={onSite}
-                                  onChange={(e) => toggleStaffOnSite(s, m.id, e.target.checked)}
+                                  onCheckedChange={(v) => toggleStaffOnSite(s, m.id, v)}
+                                  aria-label={`${m.name}: на сайте`}
                                 />
-                                На сайте
-                              </label>
+                              </div>
                             </div>
                           );
                         })}
@@ -1132,19 +1136,23 @@ export function ServicesPage() {
                       )}
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-sm text-zinc-400 lg:col-span-5">
-                    <input
-                      type="checkbox"
-                      disabled={!canManage}
-                      checked={s.active}
-                      onChange={(e) => {
-                        const active = e.target.checked;
-                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, active } : x)));
-                        void saveService({ ...s, active });
-                      }}
-                    />
-                    {t("services.active")}
-                  </label>
+                  <div className="flex flex-col gap-1 lg:col-span-5">
+                    <div className="flex items-center gap-3 text-sm text-zinc-400">
+                      <ToggleSwitch
+                        disabled={!canManage}
+                        checked={s.active}
+                        onCheckedChange={(active) => {
+                          setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, active } : x)));
+                          void saveService({ ...s, active });
+                        }}
+                        aria-label={`${s.name_et}: услуга активна`}
+                      />
+                      <span>{t("services.active")}</span>
+                      <span className="text-xs text-zinc-600">
+                        {s.active ? "включена в CRM" : "выключена"}
+                      </span>
+                    </div>
+                  </div>
                   {canManage && (
                     <div className="lg:col-span-5">
                       <button
@@ -1225,30 +1233,32 @@ export function ServicesPage() {
                   className={`${fieldBase} border border-zinc-700`}
                 />
               </label>
-              <label className="flex items-center gap-2 text-xs text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={quickActive}
-                  onChange={(e) => setQuickActive(e.target.checked)}
-                />
-                Услуга активна
-              </label>
+              <div className="flex items-center gap-2 text-xs text-zinc-300">
+                <ToggleSwitch checked={quickActive} onCheckedChange={setQuickActive} aria-label="Услуга активна" />
+                <span>Услуга активна</span>
+              </div>
               <div className="rounded-lg border border-zinc-800 p-3">
                 <p className="text-xs text-zinc-400">Мастера, которые могут выполнять услугу</p>
                 <p className="mt-1 text-[11px] text-zinc-500">
                   Если не выбрать никого, услуга будет доступна всем активным мастерам.
                 </p>
                 <div className="mt-2 max-h-40 space-y-1 overflow-auto">
-                  {staff.filter((m) => m.active).map((m) => (
-                    <label key={m.id} className="flex items-center gap-2 text-xs text-zinc-300">
-                      <input
-                        type="checkbox"
-                        checked={quickStaffIds.includes(m.id)}
-                        onChange={() => toggleQuickStaff(m.id)}
-                      />
-                      {m.name || m.id}
-                    </label>
-                  ))}
+                  {staff.filter((m) => m.active).map((m) => {
+                    const on = quickStaffIds.includes(m.id);
+                    return (
+                      <div key={m.id} className="flex items-center gap-2 text-xs text-zinc-300">
+                        <ToggleSwitch
+                          size="sm"
+                          checked={on}
+                          onCheckedChange={(want) => {
+                            if (want !== on) toggleQuickStaff(m.id);
+                          }}
+                          aria-label={m.name || m.id}
+                        />
+                        <span>{m.name || m.id}</span>
+                      </div>
+                    );
+                  })}
                   {staff.filter((m) => m.active).length === 0 && (
                     <p className="text-xs text-zinc-500">Активные мастера не найдены.</p>
                   )}

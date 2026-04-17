@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { ToggleSwitch } from "../components/ToggleSwitch";
 import type { StaffScheduleRow, StaffTableRow } from "../types/database";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -134,15 +135,15 @@ export function AdminSchedulePage() {
           const k = String(r.day_of_week) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
           return (
             <div key={r.day_of_week} className="flex flex-wrap items-center gap-3 text-sm">
-              <label className="flex w-44 shrink-0 cursor-pointer items-center gap-2 text-zinc-300">
-                <input
-                  type="checkbox"
+              <div className="flex w-48 shrink-0 items-center gap-2 text-zinc-300">
+                <ToggleSwitch
+                  size="sm"
                   checked={r.working}
-                  onChange={(e) => setDayWorking(r.day_of_week, e.target.checked)}
-                  className="rounded border-zinc-600"
+                  onCheckedChange={(v) => setDayWorking(r.day_of_week, v)}
+                  aria-label={`${t(`weekday.${k}`)}: рабочий день`}
                 />
                 <span className="w-24 text-zinc-400">{t(`weekday.${k}`)}</span>
-              </label>
+              </div>
               <input
                 type="time"
                 value={r.start}

@@ -103,9 +103,34 @@ function migrate(db) {
       /* ignore */
     }
   }
+  let addedMarketingCol = false;
+  if (!empCols.some((c) => c.name === "show_on_marketing_site")) {
+    try {
+      db.exec("ALTER TABLE employees ADD COLUMN show_on_marketing_site INTEGER NOT NULL DEFAULT 1");
+      addedMarketingCol = true;
+    } catch (e) {
+      /* ignore */
+    }
+  }
   db.prepare(
     `UPDATE employees SET roles = '["employee"]' WHERE roles IS NULL OR trim(COALESCE(roles, '')) = ''`
   ).run();
+
+  if (addedMarketingCol) {
+    const rows = db.prepare("SELECT id, roles FROM employees").all();
+    for (const row of rows) {
+      if (!row.roles) continue;
+      try {
+        const arr = JSON.parse(row.roles);
+        if (!Array.isArray(arr)) continue;
+        if (arr.some((x) => String(x).toLowerCase() === "admin")) {
+          db.prepare("UPDATE employees SET show_on_marketing_site = 0 WHERE id = ?").run(row.id);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 
   try {
     db.exec("ALTER TABLE users ADD COLUMN telegram_id INTEGER UNIQUE");

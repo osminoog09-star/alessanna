@@ -54,6 +54,11 @@
   "adminStaff": {
     "subtitle": "Staff tabel: telefon, nimi, roll, aktiivsus, teenused.",
     "name": "Nimi",
+    "roleBrief": "Roll",
+    "expandRow": "Rohkem",
+    "collapseRow": "Peida",
+    "assignedNone": "Ilma sidemeteta",
+    "assignedCount": "{{count}} seotud teenust",
     "active": "Aktiivne",
     "yes": "jah",
     "no": "ei",

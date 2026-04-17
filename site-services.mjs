@@ -195,13 +195,12 @@ function render(groups) {
     } else {
       for (let j = 0; j < gr.items.length; j++) {
         const it = gr.items[j];
-        const dur = it.duration != null ? it.duration + " min" : "";
+        /* Длительность не показываем на сайте: она для CRM и слотов календаря. */
         panelHtml +=
           "<li><span>" +
           esc(it.name) +
           '</span><span class="price">' +
           esc(fmtPrice(it.price)) +
-          (dur ? " · " + esc(dur) : "") +
           "</span></li>";
       }
     }

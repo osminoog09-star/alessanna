@@ -54,6 +54,11 @@
   "adminStaff": {
     "subtitle": "Таблица staff: телефон, имя, роль, активность, услуги.",
     "name": "Имя",
+    "roleBrief": "Кто",
+    "expandRow": "Подробнее",
+    "collapseRow": "Свернуть",
+    "assignedNone": "Нет явных привязок",
+    "assignedCount": "{{count}} с привязкой",
     "active": "Активен",
     "yes": "да",
     "no": "нет",

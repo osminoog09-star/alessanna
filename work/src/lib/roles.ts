@@ -37,11 +37,13 @@ export function normalizeStaffMember(row: StaffMember | (Record<string, unknown>
   delete rest.role;
   delete rest.roles;
   const active = Boolean(r.active ?? r.is_active ?? true);
+  const show_on_marketing_site = r.show_on_marketing_site !== false;
   return {
-    ...(rest as Omit<StaffMember, "roles" | "active">),
+    ...(rest as Omit<StaffMember, "roles" | "active" | "show_on_marketing_site">),
     id: String(r.id),
     active,
     roles,
+    show_on_marketing_site,
   };
 }
 
@@ -51,6 +53,13 @@ export function hasStaffRole(
 ): boolean {
   if (!member?.roles?.length) return false;
   return normalizeRoles(member.roles).includes(role);
+}
+
+/** Marketing site + public booking: row hidden when explicitly false (DB flag). */
+export function isStaffShownOnPublicMarketing(
+  member: Pick<StaffMember, "show_on_marketing_site"> | null | undefined
+): boolean {
+  return member?.show_on_marketing_site !== false;
 }
 
 /** Line staff only: worker, not manager/admin (after normalization). */

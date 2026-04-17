@@ -99,7 +99,12 @@ app.get("/api/health", (_, res) => res.json({ ok: true }));
 
 /* ------------------------- Public API ------------------------- */
 function listPublicEmployees(serviceId) {
-  const rows = db.prepare("SELECT id, name, slug FROM employees WHERE active = 1 ORDER BY id").all();
+  const rows = db
+    .prepare(
+      "SELECT id, name, slug, roles, COALESCE(show_on_marketing_site, 1) AS show_on_marketing_site FROM employees WHERE active = 1 ORDER BY id"
+    )
+    .all()
+    .filter((e) => e.show_on_marketing_site !== 0);
   const sid = Number(serviceId);
   if (!sid || Number.isNaN(sid)) return rows;
   const forSvc = db.prepare("SELECT employee_id FROM employee_services WHERE service_id = ?").all(sid);

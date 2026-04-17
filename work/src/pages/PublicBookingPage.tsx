@@ -4,7 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { generateAvailableSlots, formatSlotRange } from "../lib/slots";
-import { applyPublicStaffVisibility, normalizeStaffMember, staffEligibleForService } from "../lib/roles";
+import {
+  applyPublicStaffVisibility,
+  isStaffShownOnPublicMarketing,
+  normalizeStaffMember,
+  staffEligibleForService,
+} from "../lib/roles";
 import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow } from "../types/database";
 
 type PublicService = {
@@ -71,7 +76,11 @@ export function PublicBookingPage() {
       );
     }
     if (st.data) {
-      setStaff((st.data as Record<string, unknown>[]).map((r) => normalizeStaffMember(r as StaffMember)));
+      setStaff(
+        (st.data as Record<string, unknown>[])
+          .map((r) => normalizeStaffMember(r as StaffMember))
+          .filter((m) => isStaffShownOnPublicMarketing(m))
+      );
     }
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
     if (sc.data) setSchedules(sc.data as StaffScheduleRow[]);
