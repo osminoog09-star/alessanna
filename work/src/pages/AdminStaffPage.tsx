@@ -417,34 +417,29 @@ export function AdminStaffPage() {
         );
         return;
       }
-      const rows: Array<{ staff_id: string; service_id: string; show_on_site: boolean }> = [];
-      for (const s of activeServices) {
-        if (String(s.id) === String(serviceId)) continue;
-        const lid = await resolveStaffLinkListingId(String(s.id), s.name);
-        if (!lid) {
-          setErr(
-            `Услуга «${s.name}» не найдена в service_listings (нужен UUID для staff_services). Синхронизируйте каталог на странице «Услуги».`,
-          );
-          return;
-        }
-        rows.push({ staff_id: staffId, service_id: lid, show_on_site: true });
-      }
       const { error: delErr } = await supabase.from("staff_services").delete().eq("staff_id", staffId);
       if (delErr) {
         setErr(delErr.message);
         return;
       }
-      if (rows.length) {
-        let { error: insErr } = await supabase.from("staff_services").insert(rows);
-        if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
-          insErr = (
-            await supabase.from("staff_services").insert(rows.map((r) => ({ staff_id: r.staff_id, service_id: r.service_id })))
-          ).error ?? null;
-        }
-        if (insErr) {
-          setErr(insErr.message);
-          return;
-        }
+      const failed: string[] = [];
+      let inserted = 0;
+      for (const s of others) {
+        const r = await insertStaffServiceRow(staffId, s);
+        if (r.ok) inserted++;
+        else failed.push(s.name);
+      }
+      if (inserted === 0) {
+        setErr(
+          `Не удалось сохранить ни одной привязки (${failed.length ? `проблемные услуги: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}` : "FK staff_services"}). Проверьте страницу «Услуги» — должны быть строки в service_listings.`,
+        );
+        void load();
+        return;
+      }
+      if (failed.length) {
+        setErr(
+          `Часть услуг не удалось привязать (${failed.length}): ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}. Остальные сохранены — проверьте каталог и повторите.`,
+        );
       }
       void load();
       return;
@@ -452,14 +447,12 @@ export function AdminStaffPage() {
 
     const listingId = await resolveStaffLinkListingId(rawId, name);
     const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, name);
-    /* FK staff_services → service_listings: сначала только UUID каталога, иначе legacy-цепочка */
-    const candidateIds = listingId
-      ? [listingId]
-      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+    /* FK staff_services «гуляет» между UUID (после 012) и legacy bigint — пробуем все варианты. */
+    const candidateIds = [...new Set([listingId, legacySvcId, rawId].filter((x): x is string => Boolean(x)))];
 
     if (candidateIds.length === 0) {
       setErr(
-        `Не удалось сопоставить «${name || rawId}» с service_listings. Проверьте имя услуги в каталоге (страница «Услуги»).`,
+        `Не удалось определить id услуги «${name || rawId}» для staff_services. Проверьте запись на странице «Услуги».`,
       );
       return;
     }
@@ -482,24 +475,41 @@ export function AdminStaffPage() {
           void load();
           return;
         }
-        if (error && isStaffServicesServiceFkError(error.message)) {
+        if (isStaffServicesServiceFkError(error.message) || em.includes("invalid input syntax") || em.includes("uuid")) {
           lastFkMsg = error.message;
           continue;
         }
-        if (error) {
-          setErr(error.message);
-          return;
-        }
+        setErr(error.message);
+        return;
       }
       setErr(lastFkMsg || "Не удалось сохранить привязку к услуге.");
       return;
     }
 
+    let deleted = false;
     for (const sid of candidateIds) {
-      const { error } = await supabase.from("staff_services").delete().eq("staff_id", staffId).eq("service_id", sid);
-      if (!error) {
-        void load();
-        return;
+      const { error, data } = await supabase
+        .from("staff_services")
+        .delete()
+        .eq("staff_id", staffId)
+        .eq("service_id", sid)
+        .select("staff_id");
+      if (!error && data && data.length > 0) {
+        deleted = true;
+        break;
+      }
+    }
+    if (!deleted) {
+      /* fallback: может попасться запись, id которой в linking‑таблице не совпал ни с одним из наших id */
+      const linkRow = links.find(
+        (l) =>
+          normId(l.staff_id) === normId(staffId) &&
+          (normId(l.service_id) === normId(rawId) ||
+            (listingId && normId(l.service_id) === normId(listingId)) ||
+            (legacySvcId && normId(l.service_id) === normId(legacySvcId))),
+      );
+      if (linkRow) {
+        await supabase.from("staff_services").delete().eq("staff_id", staffId).eq("service_id", linkRow.service_id);
       }
     }
     void load();
@@ -516,9 +526,7 @@ export function AdminStaffPage() {
     const rawId = String(serviceId);
     const listingId = await resolveStaffLinkListingId(rawId, name);
     const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, name);
-    const candidateIds = listingId
-      ? [listingId]
-      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+    const candidateIds = [...new Set([listingId, legacySvcId, rawId].filter((x): x is string => Boolean(x)))];
 
     if (candidateIds.length === 0) {
       setErr(
@@ -592,9 +600,7 @@ export function AdminStaffPage() {
     const rawId = String(s.id);
     const listingId = await resolveStaffLinkListingId(rawId, s.name);
     const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, s.name);
-    const candidateIds = listingId
-      ? [listingId]
-      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
+    const candidateIds = [...new Set([listingId, legacySvcId, rawId].filter((x): x is string => Boolean(x)))];
     for (const svcId of candidateIds) {
       const { error } = await supabase.from("staff_services").delete().eq("staff_id", staffId).eq("service_id", svcId);
       if (!error) return true;
@@ -609,10 +615,10 @@ export function AdminStaffPage() {
     const rawId = String(s.id);
     const listingId = await resolveStaffLinkListingId(rawId, s.name);
     const legacySvcId = await resolveLegacyServiceIdForStaffLink(rawId, s.name);
-    const candidateIds = listingId
-      ? [listingId]
-      : [...new Set([rawId, legacySvcId].filter((x): x is string => Boolean(x)))];
-    if (!candidateIds.length) return { ok: false, error: `«${s.name}»: нет UUID в service_listings` };
+    /* FK схемы гуляет: 012 мигрирует на UUID service_listings, а старые базы держат bigint services.
+     * Пробуем по очереди, на первой удачной — выходим. */
+    const candidateIds = [...new Set([listingId, legacySvcId, rawId].filter((x): x is string => Boolean(x)))];
+    if (!candidateIds.length) return { ok: false, error: `«${s.name}»: не удалось определить id для staff_services` };
     let lastFkMsg: string | null = null;
     for (const sid of candidateIds) {
       let { error } = await supabase
@@ -624,11 +630,11 @@ export function AdminStaffPage() {
       if (!error) return { ok: true };
       const em = String(error.message || "").toLowerCase();
       if (em.includes("duplicate key") || em.includes("unique constraint")) return { ok: true };
-      if (error && isStaffServicesServiceFkError(error.message)) {
+      if (isStaffServicesServiceFkError(error.message) || em.includes("invalid input syntax") || em.includes("uuid")) {
         lastFkMsg = error.message;
         continue;
       }
-      if (error) return { ok: false, error: error.message };
+      return { ok: false, error: error.message };
     }
     return { ok: false, error: lastFkMsg || "FK staff_services" };
   }
@@ -648,33 +654,29 @@ export function AdminStaffPage() {
           );
           return;
         }
-        const rows: Array<{ staff_id: string; service_id: string; show_on_site: boolean }> = [];
-        for (const s of others) {
-          const lid = await resolveStaffLinkListingId(String(s.id), s.name);
-          if (!lid) {
-            setErr(`Услуга «${s.name}» не найдена в service_listings. Синхронизируйте каталог на странице «Услуги».`);
-            return;
-          }
-          rows.push({ staff_id: staffId, service_id: lid, show_on_site: true });
-        }
         const { error: delErr } = await supabase.from("staff_services").delete().eq("staff_id", staffId);
         if (delErr) {
           setErr(delErr.message);
           return;
         }
-        if (rows.length) {
-          let { error: insErr } = await supabase.from("staff_services").insert(rows);
-          if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
-            insErr = (
-              await supabase
-                .from("staff_services")
-                .insert(rows.map((r) => ({ staff_id: r.staff_id, service_id: r.service_id })))
-            ).error ?? null;
-          }
-          if (insErr) {
-            setErr(insErr.message);
-            return;
-          }
+        const failed: string[] = [];
+        let inserted = 0;
+        for (const s of others) {
+          const r = await insertStaffServiceRow(staffId, s);
+          if (r.ok) inserted++;
+          else failed.push(s.name);
+        }
+        if (inserted === 0) {
+          setErr(
+            `Не удалось сохранить ни одной привязки (${failed.length ? `проблемные: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}` : "FK staff_services"}). Проверьте каталог на странице «Услуги».`,
+          );
+          void load();
+          return;
+        }
+        if (failed.length) {
+          setErr(
+            `Часть услуг не удалось привязать (${failed.length}): ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}. Остальные сохранены.`,
+          );
         }
         void load();
         return;
