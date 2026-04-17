@@ -75,24 +75,28 @@ function esc(s) {
   return d.innerHTML;
 }
 
-function uncategorizedGroupLabel() {
-  const lang = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
-  if (lang === "ru") return "Прочее";
-  if (lang === "en") return "Other";
-  if (lang === "fi") return "Muut";
-  return "Muu";
-}
-
+/**
+ * Публичный сайт: только услуги с привязкой к категории (как в CRM после выбора категории).
+ * Черновики без category / category_id не показываем — они остаются только в рабочем CRM.
+ */
 function groupRows(rows) {
   const map = new Map();
+  let dropped = 0;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const cat = r.category;
     const hasName = cat && cat.name != null && String(cat.name).trim() !== "";
-    const id = hasName ? "n:" + String(cat.name).trim() : "__none__";
-    const name = hasName ? String(cat.name).trim() : uncategorizedGroupLabel();
+    if (!hasName) {
+      dropped++;
+      continue;
+    }
+    const id = "n:" + String(cat.name).trim();
+    const name = String(cat.name).trim();
     if (!map.has(id)) map.set(id, { id, name, items: [] });
     map.get(id).items.push(r);
+  }
+  if (dropped > 0) {
+    info("Omitted services without category from public catalog", { count: dropped });
   }
   const groups = Array.from(map.values());
   for (const g of groups) {
@@ -101,8 +105,6 @@ function groupRows(rows) {
     });
   }
   return groups.sort(function (a, b) {
-    if (a.id === "__none__") return 1;
-    if (b.id === "__none__") return -1;
     return a.name.localeCompare(b.name, "et");
   });
 }
@@ -146,7 +148,7 @@ function render(groups) {
     for (let g = 0; g < groups.length; g++) {
       const gr = groups[g];
       const opt = document.createElement("option");
-      opt.value = gr.id === "__none__" ? "other" : gr.id;
+      opt.value = gr.id;
       opt.textContent = gr.name;
       serviceSelect.appendChild(opt);
     }
@@ -160,7 +162,7 @@ function render(groups) {
     const panelId = "panel-cat-" + t;
     const tabId = "tab-cat-" + t;
     const isFirst = t === 0;
-    const catKey = gr.id === "__none__" ? "other" : gr.id;
+    const catKey = gr.id;
     tabHtml +=
       '<button type="button" class="tab-btn' +
       (isFirst ? " is-active" : "") +
