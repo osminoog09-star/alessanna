@@ -33,7 +33,7 @@ export function AdminStaffPage() {
     setErr(null);
     const [st, sv, lk] = await Promise.all([
       supabase.from("staff").select("*").order("created_at", { ascending: false }),
-      supabase.from("service_listings").select("id,name,is_active").order("name", { ascending: true }),
+      supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true }),
       supabase.from("staff_services").select("*"),
     ]);
     if (st.error) {
@@ -44,10 +44,10 @@ export function AdminStaffPage() {
     setRows((st.data ?? []) as StaffTableRow[]);
     if (sv.data) {
       setServices(
-        (sv.data as Array<{ id: string; name: string; is_active?: boolean }>).map((s) => ({
+        (sv.data as Array<{ id: string; name?: string; active?: boolean; is_active?: boolean }>).map((s) => ({
           id: String(s.id),
           name: String(s.name || "").trim(),
-          is_active: s.is_active !== false,
+          is_active: s.is_active !== false && s.active !== false,
         }))
       );
     }
