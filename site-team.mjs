@@ -57,6 +57,7 @@ function buildGroups(links, staffMap) {
     out.push({
       key: slugKey(cat),
       title: cat,
+      nameKey: String(cat).trim().toLocaleLowerCase("ru"),
       names: Array.from(namesMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
     });
   }
@@ -91,6 +92,8 @@ function renderTeam(groups, staffList) {
       return (
         '<div class="team-group" data-category-key="' +
         esc(g.key || "") +
+        '" data-category-name="' +
+        esc(g.nameKey || "") +
         '">' +
         '<h3 class="team-group-title">' +
         esc(g.title) +
@@ -102,6 +105,8 @@ function renderTeam(groups, staffList) {
       );
     })
     .join("");
+
+  window.dispatchEvent(new CustomEvent("site-team-rendered"));
 }
 
 async function main() {

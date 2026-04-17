@@ -165,7 +165,68 @@
       panel.hidden = !show;
       panel.classList.toggle("is-active", show);
     });
+
+    applyTeamFilterForActiveTab();
   });
+
+  /**
+   * «Мастера» под секцией услуг должны показывать только карточку для выбранной категории
+   * услуг (на что смотрит клиент сверху — те мастера и появляются снизу).
+   * Fallback: если для категории нет мастеров с show_on_site, показываем все карточки.
+   */
+  function normalizeCategoryKey(value) {
+    var s = String(value || "").trim();
+    if (s.indexOf("n:") === 0) s = s.slice(2);
+    try {
+      return s.toLocaleLowerCase("ru");
+    } catch (err) {
+      return s.toLowerCase();
+    }
+  }
+
+  function applyTeamFilterForActiveTab() {
+    var teamRoot = document.querySelector("#meistrid .team-groups");
+    if (!teamRoot) return;
+    var groupsEls = teamRoot.querySelectorAll(".team-group");
+    if (!groupsEls.length) return;
+
+    var teenusedRoot = document.getElementById("teenused");
+    var priceOpen = !!(teenusedRoot && teenusedRoot.classList.contains("price-list-open"));
+
+    var activeBtn = document.querySelector("#teenused .tab-btn.is-active");
+    var targetPanel = null;
+    if (activeBtn) {
+      var targetId = activeBtn.getAttribute("aria-controls");
+      if (targetId) targetPanel = document.getElementById(targetId);
+    }
+    var wantedKey = normalizeCategoryKey(
+      targetPanel ? targetPanel.getAttribute("data-pick-category") : "",
+    );
+
+    if (priceOpen || !wantedKey) {
+      groupsEls.forEach(function (el) {
+        el.hidden = false;
+      });
+      return;
+    }
+
+    var matched = 0;
+    groupsEls.forEach(function (el) {
+      var key = String(el.getAttribute("data-category-name") || "").trim();
+      var on = key === wantedKey;
+      el.hidden = !on;
+      if (on) matched++;
+    });
+
+    if (matched === 0) {
+      groupsEls.forEach(function (el) {
+        el.hidden = false;
+      });
+    }
+  }
+
+  window.addEventListener("teenused-supabase-ready", applyTeamFilterForActiveTab);
+  window.addEventListener("site-team-rendered", applyTeamFilterForActiveTab);
 
   document.querySelectorAll("[data-price-list-toggle]").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -182,6 +243,8 @@
         panel.hidden = false;
         panel.classList.add("is-active");
       });
+
+      applyTeamFilterForActiveTab();
 
       var firstPriceBlock = teenused.querySelector(".price-panel-title");
       if (firstPriceBlock) {
