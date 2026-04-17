@@ -158,6 +158,12 @@ export function AdminStaffPage() {
   const [staffMarketingColumnMissing, setStaffMarketingColumnMissing] = useState(false);
   /** true = таблица service_listings пуста, каталог тянется из legacy `services` — FK staff_services ломается. */
   const [serviceListingsEmpty, setServiceListingsEmpty] = useState(false);
+  /** Категории для drag-and-drop (глобальный порядок из service_categories.sort_order). */
+  const [categoriesMeta, setCategoriesMeta] = useState<
+    { id: string; name: string; sort_order: number }[]
+  >([]);
+  /** Название категории, которую сейчас тащим (для drag-&-drop). */
+  const [draggedCatName, setDraggedCatName] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -202,6 +208,23 @@ export function AdminStaffPage() {
     setCatalogIdToListingId(map);
     setServices(catalog);
 
+    const cats = await supabase
+      .from("service_categories")
+      .select("id,name,sort_order")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+    if (!cats.error && cats.data) {
+      setCategoriesMeta(
+        (cats.data as Array<{ id: string; name: string | null; sort_order: number | null }>).map(
+          (c) => ({
+            id: String(c.id),
+            name: String(c.name ?? "").trim(),
+            sort_order: Number(c.sort_order ?? 0),
+          }),
+        ),
+      );
+    }
+
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
     setLoading(false);
   }, []);
@@ -215,6 +238,32 @@ export function AdminStaffPage() {
 
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
 
+  /**
+   * Глобальный порядок категорий по `service_categories.sort_order`.
+   * Категория «Без категории» — виртуальная (в БД её нет), поэтому всегда в конце.
+   */
+  const categoryOrderIndex = useMemo(() => {
+    const idx: Record<string, number> = {};
+    categoriesMeta
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ru"))
+      .forEach((c, i) => {
+        idx[c.name] = i;
+      });
+    return idx;
+  }, [categoriesMeta]);
+
+  function compareCategories(a: string, b: string): number {
+    if (a === "Без категории" && b !== "Без категории") return 1;
+    if (b === "Без категории" && a !== "Без категории") return -1;
+    const ai = categoryOrderIndex[a];
+    const bi = categoryOrderIndex[b];
+    if (ai != null && bi != null) return ai - bi;
+    if (ai != null) return -1;
+    if (bi != null) return 1;
+    return a.localeCompare(b, "ru");
+  }
+
   const activeServicesByCategory = useMemo(() => {
     const m = new Map<string, CatalogSkillService[]>();
     for (const s of activeServices) {
@@ -223,12 +272,13 @@ export function AdminStaffPage() {
       m.get(c)!.push(s);
     }
     return [...m.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, "ru"))
+      .sort(([a], [b]) => compareCategories(a, b))
       .map(([name, svcs]) => ({
         name,
         services: [...svcs].sort((x, y) => x.name.localeCompare(y.name, "ru")),
       }));
-  }, [activeServices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeServices, categoryOrderIndex]);
 
   function pickPrimaryRole(roles: UiRole[]): UiRole {
     if (roles.includes("admin")) return "admin";
@@ -813,7 +863,7 @@ export function AdminStaffPage() {
       m.get(key)!.push(a);
     }
     return [...m.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, "ru"))
+      .sort(([a], [b]) => compareCategories(a, b))
       .map(([name, items]) => ({
         name,
         items: [...items].sort((x, y) => x.name.localeCompare(y.name, "ru")),
@@ -826,6 +876,74 @@ export function AdminStaffPage() {
   function toggleAssignedCategoryPanel(staffId: string, catName: string) {
     const k = assignedCatPanelKey(staffId, catName);
     setSkillCategoryExpanded((prev) => ({ ...prev, [k]: !prev[k] }));
+  }
+
+  /**
+   * Перекладывает категорию `src` на место `target` (вставка «перед»). Пишет новый
+   * `sort_order` во все перечисленные в `service_categories` строки. «Без категории»
+   * в таблице не хранится, поэтому её перетащить нельзя — она всегда в конце.
+   */
+  async function reorderCategory(src: string, target: string) {
+    if (!src || !target || src === target) return;
+    if (src === "Без категории" || target === "Без категории") return;
+
+    const list = [...categoriesMeta].sort(
+      (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ru"),
+    );
+    const srcIdx = list.findIndex((c) => c.name === src);
+    if (srcIdx < 0) return;
+    const [moved] = list.splice(srcIdx, 1);
+    const newTgtIdx = list.findIndex((c) => c.name === target);
+    if (newTgtIdx < 0) {
+      list.push(moved);
+    } else {
+      list.splice(newTgtIdx, 0, moved);
+    }
+
+    const updates = list.map((c, i) => ({ ...c, sort_order: (i + 1) * 10 }));
+    setCategoriesMeta(updates);
+
+    setErr(null);
+    for (const u of updates) {
+      const { error } = await supabase
+        .from("service_categories")
+        .update({ sort_order: u.sort_order })
+        .eq("id", u.id);
+      if (error) {
+        setErr(`Не удалось сохранить порядок категорий: ${error.message}`);
+        break;
+      }
+    }
+    void load();
+  }
+
+  function onCategoryDragStart(e: React.DragEvent, name: string) {
+    if (name === "Без категории") {
+      e.preventDefault();
+      return;
+    }
+    setDraggedCatName(name);
+    try {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", name);
+    } catch {
+      /* ignore: Safari sometimes throws in dataTransfer.setData for non-text types */
+    }
+  }
+  function onCategoryDragOver(e: React.DragEvent) {
+    if (!draggedCatName) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+  function onCategoryDrop(e: React.DragEvent, targetName: string) {
+    e.preventDefault();
+    const src = draggedCatName || e.dataTransfer.getData("text/plain");
+    setDraggedCatName(null);
+    if (!src) return;
+    void reorderCategory(src, targetName);
+  }
+  function onCategoryDragEnd() {
+    setDraggedCatName(null);
   }
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
@@ -1137,15 +1255,24 @@ export function AdminStaffPage() {
                               );
                             })()}
                           </div>
-                          <div>
-                            <div className="mb-2 rounded border border-zinc-800/80 bg-black/20 px-2 py-2">
-                              <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                                Назначено явно
-                              </p>
+                          <div className="space-y-4">
+                            {/* ───────── Активные услуги мастера ───────── */}
+                            <section className="rounded border border-emerald-900/40 bg-emerald-950/10 px-2 py-2">
+                              <header className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-300/90">
+                                  Активные услуги
+                                  <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-emerald-400/50">
+                                    — что делает мастер ({assigned.length})
+                                  </span>
+                                </p>
+                                <span className="text-[10px] text-zinc-500">
+                                  перетащите категорию за <span className="font-mono">⋮⋮</span>, чтобы
+                                  изменить порядок
+                                </span>
+                              </header>
                               {assigned.length === 0 ? (
                                 <p className="mt-1 text-xs text-zinc-500">
-                                  Нет привязок к услугам. На услугах без своего списка мастеров этот мастер всё равно
-                                  может подставляться вместе со всеми активными.
+                                  Нет активных услуг. Включите тумблеры в блоке «Неактивные услуги» ниже.
                                 </p>
                               ) : (
                                 <div className="mt-1 space-y-1.5">
@@ -1153,28 +1280,58 @@ export function AdminStaffPage() {
                                     const expanded = !!skillCategoryExpanded[assignedCatPanelKey(r.id, catName)];
                                     const assignedCatPanelId = `staff-${r.id}-assigned-catpanel-${catIdx}`;
                                     const siteCount = items.filter((x) => x.show_on_site).length;
+                                    const draggable = catName !== "Без категории";
+                                    const isDragged = draggedCatName === catName;
                                     return (
                                       <div
                                         key={catName}
-                                        className="rounded border border-zinc-800/60 bg-black/25"
+                                        onDragOver={draggable ? onCategoryDragOver : undefined}
+                                        onDrop={draggable ? (e) => onCategoryDrop(e, catName) : undefined}
+                                        className={
+                                          "rounded border bg-black/25 transition " +
+                                          (isDragged
+                                            ? "border-sky-600/80 opacity-60"
+                                            : "border-zinc-800/60")
+                                        }
                                       >
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleAssignedCategoryPanel(r.id, catName)}
-                                          className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
-                                          aria-expanded={expanded}
-                                          aria-controls={assignedCatPanelId}
-                                        >
-                                          <span className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
-                                            {expanded ? "▼" : "▶"}
+                                        <div className="flex w-full items-center gap-1 px-2 py-1.5 text-left">
+                                          <span
+                                            draggable={draggable}
+                                            onDragStart={(e) => onCategoryDragStart(e, catName)}
+                                            onDragEnd={onCategoryDragEnd}
+                                            className={
+                                              "shrink-0 select-none px-1 font-mono text-[11px] leading-none text-zinc-500 " +
+                                              (draggable
+                                                ? "cursor-grab hover:text-zinc-300 active:cursor-grabbing"
+                                                : "cursor-not-allowed opacity-30")
+                                            }
+                                            title={
+                                              draggable
+                                                ? "Перетащите, чтобы изменить порядок категорий"
+                                                : "«Без категории» не перемещается"
+                                            }
+                                            aria-hidden="true"
+                                          >
+                                            ⋮⋮
                                           </span>
-                                          <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
-                                            {catName}
-                                          </span>
-                                          <span className="shrink-0 text-[10px] text-zinc-500">
-                                            {siteCount}/{items.length} на сайте
-                                          </span>
-                                        </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleAssignedCategoryPanel(r.id, catName)}
+                                            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                            aria-expanded={expanded}
+                                            aria-controls={assignedCatPanelId}
+                                          >
+                                            <span className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                                              {expanded ? "▼" : "▶"}
+                                            </span>
+                                            <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
+                                              {catName}
+                                            </span>
+                                            <span className="shrink-0 text-[10px] text-zinc-500">
+                                              {siteCount}/{items.length} на сайте
+                                            </span>
+                                          </button>
+                                        </div>
                                         {expanded && (
                                           <ul
                                             id={assignedCatPanelId}
@@ -1208,6 +1365,14 @@ export function AdminStaffPage() {
                                                   />
                                                   <span>сайт</span>
                                                 </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => void toggleService(r.id, a.serviceId, false)}
+                                                  className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-500 transition hover:border-red-800/60 hover:text-red-300"
+                                                  title="Убрать услугу у мастера"
+                                                >
+                                                  убрать
+                                                </button>
                                               </li>
                                             ))}
                                           </ul>
@@ -1217,72 +1382,147 @@ export function AdminStaffPage() {
                                   })}
                                 </div>
                               )}
-                            </div>
-                            <p className="mb-1 text-[11px] text-zinc-500">
-                              Сначала переключатель категории — все услуги в ней; раскройте категорию (▶), чтобы
-                              отметить услуги по отдельности.
-                            </p>
-                            <div className="max-h-[min(28rem,70vh)] space-y-2 overflow-y-auto rounded border border-zinc-800/60 p-2">
-                              {activeServicesByCategory.map(({ name: catName, services: catSvcs }, catIdx) => {
-                                const expanded = !!skillCategoryExpanded[skillCatPanelKey(r.id, catName)];
-                                const catAll = categoryAllLinkedForStaff(r.id, catSvcs);
-                                const catPanelId = `staff-${r.id}-catpanel-${catIdx}`;
-                                return (
-                                  <div key={catName} className="rounded border border-zinc-800/60 bg-black/25">
-                                    <div className="flex flex-wrap items-center gap-2 px-2 py-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleSkillCategoryPanel(r.id, catName)}
-                                        className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800"
-                                        aria-expanded={expanded}
-                                        aria-controls={catPanelId}
-                                        title={expanded ? "Свернуть список услуг" : "Показать услуги категории"}
-                                      >
-                                        {expanded ? "▼" : "▶"}
-                                      </button>
-                                      <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
-                                        {catName}
+                            </section>
+
+                            {/* ───────── Неактивные услуги ───────── */}
+                            {(() => {
+                              const inactiveByCat = activeServicesByCategory
+                                .map(({ name: catName, services: catSvcs }) => ({
+                                  name: catName,
+                                  services: catSvcs.filter((s) => !hasLink(r.id, s.id)),
+                                  total: catSvcs.length,
+                                }))
+                                .filter((c) => c.services.length > 0);
+                              const totalInactive = inactiveByCat.reduce(
+                                (sum, c) => sum + c.services.length,
+                                0,
+                              );
+                              return (
+                                <section className="rounded border border-zinc-800/80 bg-black/20 px-2 py-2">
+                                  <header className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                                      Неактивные услуги
+                                      <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-zinc-500">
+                                        — включите, чтобы добавить мастеру ({totalInactive})
                                       </span>
-                                      <span className="shrink-0 text-[10px] text-zinc-500">{catSvcs.length}</span>
-                                      <ToggleSwitch
-                                        size="sm"
-                                        checked={catAll}
-                                        onCheckedChange={(v) => void toggleCategoryForStaff(r.id, catSvcs, v)}
-                                        aria-label={`${r.name}: все услуги «${catName}»`}
-                                      />
-                                    </div>
-                                    {expanded && (
-                                      <div
-                                        id={catPanelId}
-                                        className="flex flex-wrap gap-x-3 gap-y-1 border-t border-zinc-800/50 px-2 py-2"
-                                      >
-                                        {catSvcs.map((s) => (
+                                    </p>
+                                    <span className="text-[10px] text-zinc-500">
+                                      drag <span className="font-mono">⋮⋮</span> — порядок категорий общий
+                                      для всего CRM
+                                    </span>
+                                  </header>
+                                  {activeServices.length === 0 ? (
+                                    <p className="text-xs text-zinc-500">
+                                      Каталог услуг пуст — добавьте услуги на странице «Услуги».
+                                    </p>
+                                  ) : inactiveByCat.length === 0 ? (
+                                    <p className="text-xs text-zinc-500">
+                                      Мастер уже закреплён за всеми услугами салона.
+                                    </p>
+                                  ) : (
+                                    <div className="max-h-[min(28rem,70vh)] space-y-1.5 overflow-y-auto">
+                                      {inactiveByCat.map(({ name: catName, services: catSvcs }, catIdx) => {
+                                        const expanded =
+                                          !!skillCategoryExpanded[skillCatPanelKey(r.id, catName)];
+                                        const catPanelId = `staff-${r.id}-catpanel-${catIdx}`;
+                                        const draggable = catName !== "Без категории";
+                                        const isDragged = draggedCatName === catName;
+                                        return (
                                           <div
-                                            key={s.id}
-                                            className="flex max-w-[11rem] items-center gap-1.5 text-xs text-zinc-400"
+                                            key={catName}
+                                            onDragOver={draggable ? onCategoryDragOver : undefined}
+                                            onDrop={
+                                              draggable ? (e) => onCategoryDrop(e, catName) : undefined
+                                            }
+                                            className={
+                                              "rounded border bg-black/25 transition " +
+                                              (isDragged
+                                                ? "border-sky-600/80 opacity-60"
+                                                : "border-zinc-800/60")
+                                            }
                                           >
-                                            <ToggleSwitch
-                                              size="sm"
-                                              checked={hasLink(r.id, s.id)}
-                                              onCheckedChange={(v) => void toggleService(r.id, s.id, v)}
-                                              aria-label={`${r.name}: ${s.name}`}
-                                            />
-                                            <span className="min-w-0 truncate" title={s.name}>
-                                              {s.name}
-                                            </span>
+                                            <div className="flex flex-wrap items-center gap-1 px-2 py-2">
+                                              <span
+                                                draggable={draggable}
+                                                onDragStart={(e) => onCategoryDragStart(e, catName)}
+                                                onDragEnd={onCategoryDragEnd}
+                                                className={
+                                                  "shrink-0 select-none px-1 font-mono text-[11px] leading-none text-zinc-500 " +
+                                                  (draggable
+                                                    ? "cursor-grab hover:text-zinc-300 active:cursor-grabbing"
+                                                    : "cursor-not-allowed opacity-30")
+                                                }
+                                                title={
+                                                  draggable
+                                                    ? "Перетащите, чтобы изменить порядок категорий"
+                                                    : "«Без категории» не перемещается"
+                                                }
+                                                aria-hidden="true"
+                                              >
+                                                ⋮⋮
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() => toggleSkillCategoryPanel(r.id, catName)}
+                                                className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800"
+                                                aria-expanded={expanded}
+                                                aria-controls={catPanelId}
+                                                title={
+                                                  expanded ? "Свернуть список услуг" : "Показать услуги категории"
+                                                }
+                                              >
+                                                {expanded ? "▼" : "▶"}
+                                              </button>
+                                              <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
+                                                {catName}
+                                              </span>
+                                              <span className="shrink-0 text-[10px] text-zinc-500">
+                                                {catSvcs.length} не включено
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  void toggleCategoryForStaff(r.id, catSvcs, true)
+                                                }
+                                                className="shrink-0 rounded border border-emerald-800/60 bg-emerald-900/20 px-1.5 py-0.5 text-[10px] text-emerald-200 transition hover:border-emerald-600/80 hover:bg-emerald-800/30"
+                                                title="Добавить все услуги категории мастеру"
+                                              >
+                                                добавить все
+                                              </button>
+                                            </div>
+                                            {expanded && (
+                                              <div
+                                                id={catPanelId}
+                                                className="flex flex-wrap gap-x-3 gap-y-1 border-t border-zinc-800/50 px-2 py-2"
+                                              >
+                                                {catSvcs.map((s) => (
+                                                  <div
+                                                    key={s.id}
+                                                    className="flex max-w-[11rem] items-center gap-1.5 text-xs text-zinc-400"
+                                                  >
+                                                    <ToggleSwitch
+                                                      size="sm"
+                                                      checked={false}
+                                                      onCheckedChange={(v) =>
+                                                        void toggleService(r.id, s.id, v)
+                                                      }
+                                                      aria-label={`${r.name}: ${s.name}`}
+                                                    />
+                                                    <span className="min-w-0 truncate" title={s.name}>
+                                                      {s.name}
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
                                           </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                              {activeServices.length === 0 && (
-                                <p className="text-xs text-zinc-500">
-                                  Каталог услуг пуст — добавьте услуги на странице «Услуги».
-                                </p>
-                              )}
-                            </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </section>
+                              );
+                            })()}
                           </div>
                         </div>
                       </td>
