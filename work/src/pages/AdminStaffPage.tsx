@@ -14,9 +14,16 @@ type CatalogSkillService = {
   is_active: boolean;
   /** Для группировки в блоке навыков мастера */
   category_name: string;
+  /** true = id взят из `service_listings` (UUID), false = legacy `services` (bigint). */
+  from_listings: boolean;
 };
 
-async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
+type StaffCatalogResult = {
+  services: CatalogSkillService[];
+  listingsEmpty: boolean;
+};
+
+async function loadStaffPageCatalog(): Promise<StaffCatalogResult> {
   const uncategorized = "Без категории";
   /* После миграции 012 `staff_services.service_id` → UUID `service_listings.id`.
    * Раньше сюда первым шёл legacy `services` (bigint id): переключатели не совпадали с БД и insert ломался по FK. */
@@ -34,7 +41,7 @@ async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
     sl = await supabase.from("service_listings").select("id,name").order("name", { ascending: true });
   }
   if (!sl.error && sl.data && sl.data.length > 0) {
-    return (
+    const services = (
       sl.data as Array<{
         id: string;
         name?: string;
@@ -47,8 +54,10 @@ async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
         name: String(s.name || "").trim(),
         is_active: s.is_active !== false,
         category_name: String(s.service_categories?.name || "").trim() || uncategorized,
+        from_listings: true,
       }))
       .filter((x) => x.name);
+    return { services, listingsEmpty: false };
   }
 
   let sLegacy = await supabase
@@ -59,14 +68,18 @@ async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
     sLegacy = await supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true });
   }
   if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
-    return (sLegacy.data as Array<{ id: unknown; name_et?: string; active?: boolean; category?: string | null }>)
+    const services = (
+      sLegacy.data as Array<{ id: unknown; name_et?: string; active?: boolean; category?: string | null }>
+    )
       .map((s) => ({
         id: String(s.id),
         name: String(s.name_et || "").trim(),
         is_active: s.active !== false,
         category_name: String(s.category || "").trim() || uncategorized,
+        from_listings: false,
       }))
       .filter((x) => x.name);
+    return { services, listingsEmpty: true };
   }
   let sModern = await supabase
     .from("services")
@@ -76,22 +89,26 @@ async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
     sModern = await supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true });
   }
   if (sModern.data && sModern.data.length > 0) {
-    return (sModern.data as Array<{
-      id: unknown;
-      name?: string;
-      active?: boolean;
-      is_active?: boolean;
-      category?: string | null;
-    }>)
+    const services = (
+      sModern.data as Array<{
+        id: unknown;
+        name?: string;
+        active?: boolean;
+        is_active?: boolean;
+        category?: string | null;
+      }>
+    )
       .map((s) => ({
         id: String(s.id),
         name: String(s.name || "").trim(),
         is_active: s.is_active !== false && s.active !== false,
         category_name: String(s.category || "").trim() || uncategorized,
+        from_listings: false,
       }))
       .filter((x) => x.name);
+    return { services, listingsEmpty: true };
   }
-  return [];
+  return { services: [], listingsEmpty: true };
 }
 
 function digitsOnly(phone: string): string {
@@ -138,6 +155,8 @@ export function AdminStaffPage() {
   const [skillCategoryExpanded, setSkillCategoryExpanded] = useState<Record<string, boolean>>({});
   /** false = колонка есть; true = в БД нет staff.show_on_marketing_site (нужна миграция 020). */
   const [staffMarketingColumnMissing, setStaffMarketingColumnMissing] = useState(false);
+  /** true = таблица service_listings пуста, каталог тянется из legacy `services` — FK staff_services ломается. */
+  const [serviceListingsEmpty, setServiceListingsEmpty] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -155,7 +174,9 @@ export function AdminStaffPage() {
 
     setRows((st.data ?? []) as StaffTableRow[]);
 
-    const catalog = await loadStaffPageCatalog();
+    const catalogResult = await loadStaffPageCatalog();
+    const catalog = catalogResult.services;
+    setServiceListingsEmpty(catalogResult.listingsEmpty);
     const listMeta = await supabase.from("service_listings").select("id,name");
     const map: Record<string, string> = {};
     if (!listMeta.error && listMeta.data?.length) {
@@ -482,7 +503,13 @@ export function AdminStaffPage() {
         setErr(error.message);
         return;
       }
-      setErr(lastFkMsg || "Не удалось сохранить привязку к услуге.");
+      setErr(
+        `Не удалось сохранить привязку «${name || rawId}» — все кандидаты id упёрлись в FK/UUID. ` +
+          (serviceListingsEmpty
+            ? "Миграция 012 не применена: таблица service_listings пустая."
+            : "В service_listings нет записи с таким UUID — синхронизируйте каталог на странице «Услуги».") +
+          (lastFkMsg ? ` (БД: ${lastFkMsg})` : ""),
+      );
       return;
     }
 
@@ -691,14 +718,19 @@ export function AdminStaffPage() {
     if (explicitForStaff.length === 0) {
       return;
     }
+    const failed: string[] = [];
     for (const s of catSvcs) {
       if (hasLink(staffId, s.id)) continue;
       const r = await insertStaffServiceRow(staffId, s);
-      if (!r.ok) {
-        setErr(r.error || "Не удалось добавить привязку");
-        void load();
-        return;
-      }
+      if (!r.ok) failed.push(s.name);
+    }
+    if (failed.length) {
+      setErr(
+        `Не удалось привязать ${failed.length} услуг${failed.length === 1 ? "у" : ""}: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? "…" : ""}. ` +
+          (serviceListingsEmpty
+            ? "Сначала примените миграцию 012 (service_listings)."
+            : "Проверьте запись в service_listings на странице «Услуги»."),
+      );
     }
     void load();
   }
@@ -737,6 +769,17 @@ export function AdminStaffPage() {
           переключатели «Сайт / запись» не могут сохраниться. Откройте Supabase → SQL Editor и выполните файл{" "}
           <code className="rounded bg-black/40 px-1">supabase/migrations/020_staff_show_on_marketing_site.sql</code>
           (или <code className="rounded bg-black/40 px-1">supabase db push</code>), затем обновите эту страницу.
+        </p>
+      )}
+
+      {serviceListingsEmpty && (
+        <p className="rounded border border-amber-800/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
+          Таблица <code className="rounded bg-black/40 px-1">service_listings</code> пустая — CRM показывает услуги из
+          старой таблицы <code className="rounded bg-black/40 px-1">services</code> с числовыми id, а{" "}
+          <code className="rounded bg-black/40 px-1">staff_services.service_id</code> ждёт UUID. Поэтому переключатели
+          услуг падают с ошибкой внешнего ключа. Запустите миграцию{" "}
+          <code className="rounded bg-black/40 px-1">supabase/migrations/012_service_listings_fk.sql</code> или добавьте
+          услуги в новой схеме на странице «Услуги», затем обновите эту страницу.
         </p>
       )}
 
