@@ -225,28 +225,29 @@ export function ServicesPage() {
     }
 
     let loadedServices: ServiceRow[] = [];
-    const sLegacy = await supabase.from("services").select("*").order("sort_order", { ascending: true });
-    if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
-      loadedServices = sLegacy.data as ServiceRow[];
+    /* Сначала service_listings: staff_services.service_id ссылается на их UUID (миграция 012). */
+    const fromListingsFirst = await fetchServicesFromListingsCatalog();
+    if (fromListingsFirst.length > 0) {
+      loadedServices = fromListingsFirst;
     } else {
-      let sModern = await supabase
-        .from("services")
-        .select("id,name,category,duration,buffer_after_min,price,created_at")
-        .order("name", { ascending: true });
-      if (sModern.error && String(sModern.error.message || "").includes("buffer_after_min")) {
-        sModern = await supabase
+      const sLegacy = await supabase.from("services").select("*").order("sort_order", { ascending: true });
+      if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
+        loadedServices = sLegacy.data as ServiceRow[];
+      } else {
+        let sModern = await supabase
           .from("services")
-          .select("id,name,category,duration,price,created_at")
+          .select("id,name,category,duration,buffer_after_min,price,created_at")
           .order("name", { ascending: true });
+        if (sModern.error && String(sModern.error.message || "").includes("buffer_after_min")) {
+          sModern = await supabase
+            .from("services")
+            .select("id,name,category,duration,price,created_at")
+            .order("name", { ascending: true });
+        }
+        if (sModern.data && sModern.data.length > 0) {
+          loadedServices = mapModernServices(sModern.data as Array<Record<string, unknown>>);
+        }
       }
-      if (sModern.data && sModern.data.length > 0) {
-        loadedServices = mapModernServices(sModern.data as Array<Record<string, unknown>>);
-      }
-    }
-
-    if (loadedServices.length === 0) {
-      const fromListings = await fetchServicesFromListingsCatalog();
-      if (fromListings.length) loadedServices = fromListings;
     }
 
     setServices(loadedServices);
@@ -685,18 +686,20 @@ export function ServicesPage() {
     setQuickStaffIds((prev) => (prev.includes(staffId) ? prev.filter((x) => x !== staffId) : [...prev, staffId]));
   }
 
+  /** @returns false если запись в БД не удалась */
   async function replaceServiceStaffLinks(
     serviceId: string,
     links: Array<{ staff_id: string; show_on_site: boolean }>,
-  ) {
+  ): Promise<boolean> {
     // If no links exist for service, backend treats it as "all staff can perform service".
     // We keep explicit links only when at least one staff member is selected.
     const { error: delErr } = await supabase.from("staff_services").delete().eq("service_id", serviceId);
     if (delErr) {
       console.error("[services] clear staff links failed", delErr);
-      return;
+      window.alert(`Не удалось обновить привязки мастеров: ${delErr.message || "ошибка"}.`);
+      return false;
     }
-    if (!links.length) return;
+    if (!links.length) return true;
     const rows = links.map((l) => ({
       staff_id: l.staff_id,
       service_id: serviceId,
@@ -707,7 +710,14 @@ export function ServicesPage() {
       const legacy = links.map((l) => ({ staff_id: l.staff_id, service_id: serviceId }));
       insErr = (await supabase.from("staff_services").insert(legacy)).error ?? null;
     }
-    if (insErr) console.error("[services] create staff links failed", insErr);
+    if (insErr) {
+      console.error("[services] create staff links failed", insErr);
+      window.alert(
+        `Не удалось сохранить привязки мастеров: ${insErr.message || "ошибка"}. Проверьте, что услуга в каталоге с тем же id, что в staff_services (обычно service_listings).`,
+      );
+      return false;
+    }
+    return true;
   }
 
   function staffLinksForService(serviceId: string) {
@@ -718,8 +728,8 @@ export function ServicesPage() {
     serviceId: string,
     next: Array<{ staff_id: string; show_on_site: boolean }>,
   ) {
-    await replaceServiceStaffLinks(serviceId, next);
-    await load();
+    const ok = await replaceServiceStaffLinks(serviceId, next);
+    if (ok) await load();
   }
 
   function toggleStaffPerforms(service: ServiceRow, staffId: string, checked: boolean) {
@@ -735,11 +745,13 @@ export function ServicesPage() {
         next = activeIds.filter((id) => id !== staffId).map((id) => ({ staff_id: id, show_on_site: true }));
       }
     } else if (checked) {
-      const byId = new Map<string, { staff_id: string; show_on_site: boolean }>(prev.map((l) => [l.staff_id, l]));
-      if (!byId.has(staffId)) byId.set(staffId, { staff_id: staffId, show_on_site: true });
+      const byId = new Map<string, { staff_id: string; show_on_site: boolean }>(
+        prev.map((l) => [String(l.staff_id), l]),
+      );
+      if (!byId.has(String(staffId))) byId.set(String(staffId), { staff_id: staffId, show_on_site: true });
       next = Array.from(byId.values());
     } else {
-      next = prev.filter((l) => l.staff_id !== staffId);
+      next = prev.filter((l) => String(l.staff_id) !== String(staffId));
     }
 
     void setStaffLinksForServiceAndReload(serviceId, next);
@@ -749,7 +761,9 @@ export function ServicesPage() {
     const serviceId = String(service.id);
     const prev = staffLinksForService(serviceId);
     if (!prev.length) return;
-    const next = prev.map((l) => (l.staff_id === staffId ? { ...l, show_on_site: visible } : l));
+    const next = prev.map((l) =>
+      String(l.staff_id) === String(staffId) ? { ...l, show_on_site: visible } : l,
+    );
     void setStaffLinksForServiceAndReload(serviceId, next);
   }
 
@@ -1097,7 +1111,7 @@ export function ServicesPage() {
                         .map((m) => {
                           const sid = String(s.id);
                           const prev = staffLinksForService(sid);
-                          const link = prev.find((l) => l.staff_id === m.id);
+                          const link = prev.find((l) => String(l.staff_id) === String(m.id));
                           const performs = prev.length > 0 && !!link;
                           const onSite = link ? link.show_on_site !== false : true;
                           return (

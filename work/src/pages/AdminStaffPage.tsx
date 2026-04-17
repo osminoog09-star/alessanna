@@ -15,6 +15,22 @@ type CatalogSkillService = {
 };
 
 async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
+  /* После миграции 012 `staff_services.service_id` → UUID `service_listings.id`.
+   * Раньше сюда первым шёл legacy `services` (bigint id): переключатели не совпадали с БД и insert ломался по FK. */
+  let sl = await supabase.from("service_listings").select("id,name,is_active").order("name", { ascending: true });
+  if (sl.error && String(sl.error.message || "").includes("is_active")) {
+    sl = await supabase.from("service_listings").select("id,name").order("name", { ascending: true });
+  }
+  if (!sl.error && sl.data && sl.data.length > 0) {
+    return (sl.data as Array<{ id: string; name?: string; is_active?: boolean }>)
+      .map((s) => ({
+        id: String(s.id),
+        name: String(s.name || "").trim(),
+        is_active: s.is_active !== false,
+      }))
+      .filter((x) => x.name);
+  }
+
   const sLegacy = await supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true });
   if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
     return (sLegacy.data as Array<{ id: unknown; name_et?: string; active?: boolean }>)
@@ -25,7 +41,7 @@ async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
       }))
       .filter((x) => x.name);
   }
-  let sModern = await supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true });
+  const sModern = await supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true });
   if (sModern.data && sModern.data.length > 0) {
     return (sModern.data as Array<{ id: unknown; name?: string; active?: boolean; is_active?: boolean }>)
       .map((s) => ({
@@ -34,17 +50,6 @@ async function loadStaffPageCatalog(): Promise<CatalogSkillService[]> {
         is_active: s.is_active !== false && s.active !== false,
       }))
       .filter((x) => x.name);
-  }
-  let sl = await supabase.from("service_listings").select("id,name,is_active").order("name", { ascending: true });
-  if (sl.error && String(sl.error.message || "").includes("is_active")) {
-    sl = await supabase.from("service_listings").select("id,name").order("name", { ascending: true });
-  }
-  if (!sl.error && sl.data && sl.data.length > 0) {
-    return (sl.data as Array<{ id: string; name?: string; is_active?: boolean }>).map((s) => ({
-      id: String(s.id),
-      name: String(s.name || "").trim(),
-      is_active: s.is_active !== false,
-    })).filter((x) => x.name);
   }
   return [];
 }
@@ -235,14 +240,20 @@ export function AdminStaffPage() {
       if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
         error = (await supabase.from("staff_services").insert({ staff_id: staffId, service_id: serviceId })).error;
       }
-      if (error) setErr(error.message);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
     } else {
       const { error } = await supabase
         .from("staff_services")
         .delete()
         .eq("staff_id", staffId)
         .eq("service_id", serviceId);
-      if (error) setErr(error.message);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
     }
     void load();
   }
@@ -254,18 +265,28 @@ export function AdminStaffPage() {
       .update({ show_on_site: show })
       .eq("staff_id", staffId)
       .eq("service_id", serviceId);
-    if (error && String(error.message || "").toLowerCase().includes("show_on_site")) return;
-    if (error) setErr(error.message);
+    if (error && String(error.message || "").toLowerCase().includes("show_on_site")) {
+      setErr(
+        "Нужна миграция БД: staff_services.show_on_site (файл supabase/migrations/019_staff_services_show_on_site.sql).",
+      );
+      return;
+    }
+    if (error) {
+      setErr(error.message);
+      return;
+    }
     void load();
   }
 
   function hasLink(staffId: string, serviceId: string) {
-    return links.some((l) => l.staff_id === staffId && String(l.service_id) === serviceId);
+    return links.some(
+      (l) => String(l.staff_id) === String(staffId) && String(l.service_id) === String(serviceId),
+    );
   }
 
   function assignedServicesForStaff(staffId: string) {
     return links
-      .filter((l) => l.staff_id === staffId)
+      .filter((l) => String(l.staff_id) === String(staffId))
       .map((l) => {
         const sid = l.service_id != null ? String(l.service_id) : "";
         const svc = services.find((s) => String(s.id) === sid);
