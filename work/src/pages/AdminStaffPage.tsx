@@ -108,6 +108,15 @@ function normId(id: string | number | null | undefined): string {
     .toLowerCase();
 }
 
+function isMissingStaffMarketingColumnError(err: { message?: string } | null | undefined): boolean {
+  const m = String(err?.message || "").toLowerCase();
+  return (
+    m.includes("show_on_marketing_site") ||
+    (m.includes("column") && (m.includes("does not exist") || m.includes("could not find"))) ||
+    m.includes("schema cache")
+  );
+}
+
 export function AdminStaffPage() {
   const { t } = useTranslation();
   const [rows, setRows] = useState<StaffTableRow[]>([]);
@@ -127,6 +136,8 @@ export function AdminStaffPage() {
   const [catalogIdToListingId, setCatalogIdToListingId] = useState<Record<string, string>>({});
   /** Раскрытые категории услуг в строке мастера: ключ `staffId::название категории`. */
   const [skillCategoryExpanded, setSkillCategoryExpanded] = useState<Record<string, boolean>>({});
+  /** false = колонка есть; true = в БД нет staff.show_on_marketing_site (нужна миграция 020). */
+  const [staffMarketingColumnMissing, setStaffMarketingColumnMissing] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -139,6 +150,9 @@ export function AdminStaffPage() {
       setLoading(false);
       return;
     }
+    const colProbe = await supabase.from("staff").select("id, show_on_marketing_site").limit(1);
+    setStaffMarketingColumnMissing(!!colProbe.error && isMissingStaffMarketingColumnError(colProbe.error));
+
     setRows((st.data ?? []) as StaffTableRow[]);
 
     const catalog = await loadStaffPageCatalog();
@@ -273,10 +287,14 @@ export function AdminStaffPage() {
   }
 
   async function updateStaffMarketingVisibility(id: string, show: boolean) {
+    if (staffMarketingColumnMissing) return;
     setErr(null);
-    let { error } = await supabase.from("staff").update({ show_on_marketing_site: show }).eq("id", id);
-    if (error && String(error.message || "").toLowerCase().includes("show_on_marketing_site")) {
-      setErr("Нужна миграция БД: staff.show_on_marketing_site (см. supabase/migrations/020_staff_show_on_marketing_site.sql).");
+    const { error } = await supabase.from("staff").update({ show_on_marketing_site: show }).eq("id", id);
+    if (error && isMissingStaffMarketingColumnError(error)) {
+      setStaffMarketingColumnMissing(true);
+      setErr(
+        "Нужна миграция БД: staff.show_on_marketing_site — выполните supabase/migrations/020_staff_show_on_marketing_site.sql в Supabase, затем обновите страницу.",
+      );
       return;
     }
     if (error) {
@@ -711,6 +729,15 @@ export function AdminStaffPage() {
         <p className="mt-1 text-sm text-zinc-500">{t("adminStaff.subtitle")}</p>
       </header>
 
+      {staffMarketingColumnMissing && (
+        <p className="rounded border border-amber-800/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
+          В проекте БД нет колонки <code className="rounded bg-black/40 px-1">staff.show_on_marketing_site</code> — поэтому
+          переключатели «Сайт / запись» не могут сохраниться. Откройте Supabase → SQL Editor и выполните файл{" "}
+          <code className="rounded bg-black/40 px-1">supabase/migrations/020_staff_show_on_marketing_site.sql</code>
+          (или <code className="rounded bg-black/40 px-1">supabase db push</code>), затем обновите эту страницу.
+        </p>
+      )}
+
       {err && (
         <p className="rounded border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">{err}</p>
       )}
@@ -811,6 +838,7 @@ export function AdminStaffPage() {
                     <td className="max-w-[8rem] px-3 py-2">
                       <div className="flex items-center gap-2 text-xs">
                         <ToggleSwitch
+                          disabled={staffMarketingColumnMissing}
                           checked={r.show_on_marketing_site !== false}
                           onCheckedChange={(v) => void updateStaffMarketingVisibility(r.id, v)}
                           aria-label={`${r.name}: на главном сайте и в публичной записи`}
@@ -911,6 +939,7 @@ export function AdminStaffPage() {
                               <span className="text-[11px] font-medium uppercase text-zinc-500">Сайт / запись</span>
                               <div className="flex items-center gap-2 text-xs">
                                 <ToggleSwitch
+                                  disabled={staffMarketingColumnMissing}
                                   checked={r.show_on_marketing_site !== false}
                                   onCheckedChange={(v) => void updateStaffMarketingVisibility(r.id, v)}
                                   aria-label={`${r.name}: на главном сайте и в публичной записи`}
