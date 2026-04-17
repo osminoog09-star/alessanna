@@ -144,7 +144,7 @@ function render(groups) {
     }
   }
 
-  let tabHtml = '<div class="tabs-bar reveal" role="tablist" aria-label="Teenuste kategooriad">';
+  let tabHtml = '<div class="tabs-bar" role="tablist" aria-label="Teenuste kategooriad">';
   let panelHtml = "";
   for (let t = 0; t < groups.length; t++) {
     const gr = groups[t];
@@ -170,7 +170,7 @@ function render(groups) {
     panelHtml +=
       '<div id="' +
       esc(panelId) +
-      '" class="tab-panel reveal' +
+      '" class="tab-panel' +
       (isFirst ? " is-active" : "") +
       '" role="tabpanel" aria-labelledby="' +
       esc(tabId) +
