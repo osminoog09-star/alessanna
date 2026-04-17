@@ -948,6 +948,14 @@ export function AdminStaffPage() {
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
+  const isAdminRow = (r: StaffTableRow): boolean => {
+    const pr = String(r.role || "").toLowerCase();
+    if (pr === "admin" || pr === "owner") return true;
+    return rowRoles(r).some((x) => x === "admin");
+  };
+  const salonRows = rows.filter((r) => !isAdminRow(r));
+  const adminRows = rows.filter(isAdminRow);
+
   return (
     <div className="max-w-5xl space-y-6 text-zinc-200">
       <header>
@@ -1097,7 +1105,17 @@ export function AdminStaffPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {salonRows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-3 py-6 text-center text-xs text-zinc-500"
+                >
+                  Пока нет мастеров и менеджеров. Добавьте первого через форму выше.
+                </td>
+              </tr>
+            )}
+            {salonRows.map((r) => {
               const assigned = assignedServicesForStaff(r.id);
               const expanded = !!expandedById[r.id];
               return (
@@ -1534,6 +1552,147 @@ export function AdminStaffPage() {
           </tbody>
         </table>
       </div>
+
+      <section
+        aria-label="Техническая команда, поддержка сайта"
+        className="mt-10 rounded-lg border border-amber-900/30 bg-gradient-to-br from-amber-950/20 via-zinc-950 to-black/60 p-4 shadow-inner shadow-black/40 sm:p-5"
+      >
+        <header className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <h2 className="text-sm font-semibold tracking-wide text-amber-100/90">
+              Техническая команда
+            </h2>
+            <span className="text-[11px] tracking-wide text-amber-200/50">
+              · поддержка сайта и CRM
+            </span>
+          </div>
+          <span className="text-[11px] text-zinc-500">
+            не участвует в расписании салона
+          </span>
+        </header>
+
+        {adminRows.length === 0 ? (
+          <p className="text-xs text-zinc-500">
+            Пока нет администраторов. Добавьте сотрудника с ролью «Админ» через форму выше — он
+            появится здесь, а не в таблице салона.
+          </p>
+        ) : (
+          <ul className="divide-y divide-amber-900/20">
+            {adminRows.map((r) => {
+              const isOwner = String(r.role || "").toLowerCase() === "owner";
+              const isEditing = editingId === r.id;
+              const initial = (r.name || "?").trim().slice(0, 1).toUpperCase();
+              return (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5 text-sm"
+                >
+                  <div className="flex min-w-[9rem] flex-1 items-center gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-800/40 bg-amber-900/25 text-[12px] font-semibold text-amber-200/85"
+                    >
+                      {initial}
+                    </span>
+                    <div className="min-w-0 leading-tight">
+                      {isEditing ? (
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-zinc-100"
+                          aria-label="Имя"
+                        />
+                      ) : (
+                        <span className="block truncate font-medium text-zinc-100">
+                          {r.name}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-800/40 bg-amber-900/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase tracking-wide text-amber-200/80">
+                        {isOwner ? "Owner" : "Админ"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="min-w-[7rem] text-xs">
+                    <span className="block text-[10px] uppercase tracking-wide text-zinc-600">
+                      {t("login.phone")}
+                    </span>
+                    {isEditing ? (
+                      <input
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        className="mt-0.5 w-full rounded border border-zinc-600 bg-black px-1 py-0.5 font-mono text-xs text-zinc-100"
+                        aria-label="Телефон"
+                      />
+                    ) : (
+                      <span className="mt-0.5 block font-mono text-zinc-400">
+                        {r.phone ?? "—"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs">
+                    <ToggleSwitch
+                      checked={r.is_active}
+                      onCheckedChange={(v) => void updateStaffActive(r, v)}
+                      aria-label={`${r.name}: активен в CRM`}
+                    />
+                    <span className="text-zinc-500">
+                      {r.is_active ? "активен" : "выключен"}
+                    </span>
+                  </div>
+
+                  <div className="ml-auto flex items-center gap-3 text-xs">
+                    {isEditing ? (
+                      <>
+                        <button
+                          type="button"
+                          className="text-sky-400 underline"
+                          onClick={() => void saveEdit()}
+                        >
+                          {t("common.save")}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-zinc-500 underline"
+                          onClick={() => setEditingId(null)}
+                        >
+                          {t("common.cancel")}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="text-sky-400 underline"
+                          onClick={() => startEdit(r)}
+                        >
+                          {t("adminStaff.edit")}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-red-400 underline disabled:cursor-not-allowed disabled:opacity-40"
+                          onClick={() => void remove(r)}
+                          disabled={isOwner}
+                          title={isOwner ? "Owner удалять нельзя" : undefined}
+                        >
+                          delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <p className="mt-3 border-t border-amber-900/20 pt-2 text-[10px] leading-snug text-zinc-500">
+          Администраторы всегда скрыты на публичном сайте и в онлайн-записи. Этот блок — техперсонал,
+          обслуживающий CRM и сайт салона. Чтобы добавить нового админа, используйте форму выше и
+          выберите роль «Админ» — сотрудник появится именно здесь.
+        </p>
+      </section>
     </div>
   );
 }
