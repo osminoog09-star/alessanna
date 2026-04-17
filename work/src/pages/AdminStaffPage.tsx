@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
 import type { StaffServiceRow, StaffTableRow } from "../types/database";
 import type { Role } from "../types/database";
 
@@ -24,7 +25,7 @@ export function AdminStaffPage() {
   const [err, setErr] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<UiRole>("worker");
+  const [newRoles, setNewRoles] = useState<UiRole[]>(["worker"]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -61,10 +62,32 @@ export function AdminStaffPage() {
 
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
 
-  function normalizeDbRole(r: string): UiRole {
-    if (r === "staff") return "worker";
-    if (r === "admin" || r === "manager" || r === "worker") return r;
+  function pickPrimaryRole(roles: UiRole[]): UiRole {
+    if (roles.includes("admin")) return "admin";
+    if (roles.includes("manager")) return "manager";
     return "worker";
+  }
+
+  function rowRoles(row: StaffTableRow): UiRole[] {
+    const normalized = normalizeRoles((row as StaffTableRow & { roles?: unknown }).roles ?? row.role);
+    return normalized as UiRole[];
+  }
+
+  function toggleRoleToken(current: UiRole[], roleToken: UiRole, on: boolean): UiRole[] {
+    const next = on ? [...new Set([...current, roleToken])] : current.filter((r) => r !== roleToken);
+    return (next.length ? next : ["worker"]) as UiRole[];
+  }
+
+  async function updateStaffRoles(id: string, currentDbRoles: UiRole[], nextUiRoles: UiRole[]) {
+    const nextRoles = sanitizeRolesForSave(nextUiRoles, true, currentDbRoles) as UiRole[];
+    const primaryRole = pickPrimaryRole(nextRoles);
+    setErr(null);
+    const { error } = await supabase.from("staff").update({ role: primaryRole, roles: nextRoles }).eq("id", id);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    void load();
   }
 
   function startEdit(r: StaffTableRow) {
@@ -91,16 +114,6 @@ export function AdminStaffPage() {
     void load();
   }
 
-  async function updateStaffRole(id: string, newRole: UiRole) {
-    setErr(null);
-    const { error } = await supabase.from("staff").update({ role: newRole }).eq("id", id);
-    if (error) {
-      setErr(error.message);
-      return;
-    }
-    void load();
-  }
-
   async function updateStaffActive(id: string, is_active: boolean) {
     setErr(null);
     const { error } = await supabase.from("staff").update({ is_active }).eq("id", id);
@@ -120,10 +133,13 @@ export function AdminStaffPage() {
       setErr("Phone and name are required.");
       return;
     }
+    const normalizedNewRoles = sanitizeRolesForSave(newRoles, true, newRoles) as UiRole[];
+    const primaryRole = pickPrimaryRole(normalizedNewRoles);
     const { error } = await supabase.from("staff").insert({
       phone: cleanPhone,
       name: n,
-      role,
+      role: primaryRole,
+      roles: normalizedNewRoles,
       is_active: true,
     });
     if (error) {
@@ -132,7 +148,7 @@ export function AdminStaffPage() {
     }
     setPhone("");
     setName("");
-    setRole("worker");
+    setNewRoles(["worker"]);
     void load();
   }
 
@@ -200,15 +216,18 @@ export function AdminStaffPage() {
         </div>
         <div>
           <label className="block text-xs text-zinc-500">{t("role.label")}</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as UiRole)}
-            className="mt-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm"
-          >
-            <option value="admin">{t("role.admin")}</option>
-            <option value="manager">{t("role.manager")}</option>
-            <option value="worker">{t("role.worker")}</option>
-          </select>
+          <div className="mt-1 flex flex-wrap gap-3 rounded border border-zinc-700 bg-black px-2 py-1 text-sm">
+            {(["admin", "manager", "worker"] as UiRole[]).map((r) => (
+              <label key={r} className="inline-flex items-center gap-1 text-xs text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={newRoles.includes(r)}
+                  onChange={(e) => setNewRoles((prev) => toggleRoleToken(prev, r, e.target.checked))}
+                />
+                {r === "admin" ? t("role.admin") : r === "manager" ? t("role.manager") : t("role.worker")}
+              </label>
+            ))}
+          </div>
         </div>
         <button type="submit" className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500">
           {t("common.add")}
@@ -253,15 +272,27 @@ export function AdminStaffPage() {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <select
-                    value={normalizeDbRole(r.role)}
-                    onChange={(e) => void updateStaffRole(r.id, e.target.value as UiRole)}
-                    className="max-w-[10rem] rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-white"
-                  >
-                    <option value="admin">{t("role.admin")}</option>
-                    <option value="manager">{t("role.manager")}</option>
-                    <option value="worker">{t("role.worker")}</option>
-                  </select>
+                  <div className="flex flex-wrap gap-2">
+                    {(["admin", "manager", "worker"] as UiRole[]).map((roleToken) => {
+                      const current = rowRoles(r);
+                      return (
+                        <label key={roleToken} className="inline-flex items-center gap-1 text-xs text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={current.includes(roleToken)}
+                            onChange={(e) =>
+                              void updateStaffRoles(r.id, current, toggleRoleToken(current, roleToken, e.target.checked))
+                            }
+                          />
+                          {roleToken === "admin"
+                            ? t("role.admin")
+                            : roleToken === "manager"
+                              ? t("role.manager")
+                              : t("role.worker")}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </td>
                 <td className="px-3 py-2">
                   <label className="inline-flex cursor-pointer items-center gap-2 text-xs">

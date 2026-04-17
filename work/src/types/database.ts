@@ -20,6 +20,7 @@ export type StaffTableRow = {
   phone: string | null;
   name: string;
   role: Role;
+  roles?: StaffRole[] | null;
   is_active: boolean;
   created_at?: string;
 };
