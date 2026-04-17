@@ -10,6 +10,7 @@ create extension if not exists pgcrypto;
 
 alter table public.service_listings add column if not exists buffer_after_min int not null default 10;
 alter table public.service_listings add column if not exists sort_order int not null default 0;
+alter table public.service_listings add column if not exists is_active boolean not null default true;
 
 alter table public.service_categories add column if not exists _migrated_from bigint;
 create unique index if not exists uq_service_categories_migrated_from

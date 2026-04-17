@@ -1,5 +1,5 @@
 -- =========================================================================
--- APPLY-ALL bundle: 012 + 019 + 020
+-- APPLY-ALL bundle: 012 + 018 + 019 + 020
 -- Run once in Supabase SQL Editor. All statements are idempotent, so it is
 -- safe to re-run on a partially applied database.
 -- =========================================================================
@@ -18,6 +18,7 @@ create extension if not exists pgcrypto;
 
 alter table public.service_listings add column if not exists buffer_after_min int not null default 10;
 alter table public.service_listings add column if not exists sort_order int not null default 0;
+alter table public.service_listings add column if not exists is_active boolean not null default true;
 
 alter table public.service_categories add column if not exists _migrated_from bigint;
 create unique index if not exists uq_service_categories_migrated_from
@@ -131,11 +132,68 @@ begin
   end if;
 end $$;
 
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.staff_services'::regclass
+      and conname = 'staff_services_service_id_fkey'
+      and confrelid <> 'public.service_listings'::regclass
+  ) then
+    alter table public.staff_services drop constraint staff_services_service_id_fkey;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.staff_services'::regclass
+      and conname = 'staff_services_service_id_fkey'
+  ) then
+    alter table public.staff_services
+      add constraint staff_services_service_id_fkey
+      foreign key (service_id) references public.service_listings (id) on delete cascade;
+  end if;
+
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.appointment_services'::regclass
+      and conname = 'appointment_services_service_id_fkey'
+      and confrelid <> 'public.service_listings'::regclass
+  ) then
+    alter table public.appointment_services drop constraint appointment_services_service_id_fkey;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.appointment_services'::regclass
+      and conname = 'appointment_services_service_id_fkey'
+  ) then
+    alter table public.appointment_services
+      add constraint appointment_services_service_id_fkey
+      foreign key (service_id) references public.service_listings (id) on delete restrict;
+  end if;
+end $$;
+
+delete from public.staff_services where service_id is null;
+
+alter table public.staff_services alter column service_id set not null;
+alter table public.staff_services alter column staff_id set not null;
+
 alter table public.service_categories drop column if exists _migrated_from;
 alter table public.service_listings drop column if exists _migrated_from;
 
 drop index if exists uq_service_categories_migrated_from;
 drop index if exists uq_service_listings_migrated_from;
+
+
+-- -------------------------------------------------------------------------
+-- 018_service_listings_is_active_if_missing.sql
+-- Older Supabase projects may lack is_active on service_listings;
+-- without it the CRM "Активна" toggle can never persist.
+-- -------------------------------------------------------------------------
+
+alter table public.service_listings
+  add column if not exists is_active boolean not null default true;
+
+comment on column public.service_listings.is_active is
+  'When false, listing is hidden from public catalog (CRM toggle).';
 
 
 -- -------------------------------------------------------------------------
@@ -174,8 +232,7 @@ where lower(coalesce(s.role, '')) in ('admin', 'owner')
 
 
 -- =========================================================================
--- Done. Expected result in the CRM (/admin/staff):
---   * no more amber "service_listings пустая" banner
---   * no more amber "staff.show_on_marketing_site отсутствует" banner
---   * service toggles save without FK errors
+-- Done. Expected result in the CRM:
+--   * /admin/staff: no amber banners; service toggles save without FK errors
+--   * /admin/services: "Активна" toggle persists on click (no more flicker)
 -- =========================================================================
