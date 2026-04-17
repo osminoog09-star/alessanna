@@ -745,13 +745,40 @@ export function AdminStaffPage() {
             normId(s.id) === normId(sid) ||
             normId(catalogIdToListingId[String(s.id)] ?? s.id) === normId(sid),
         );
+        const catName = String(svc?.category_name || "").trim() || "Без категории";
         return {
           serviceId: sid,
           name: svc?.name?.trim() || (sid ? `Услуга ${sid}` : "Неизвестная услуга"),
+          categoryName: catName,
           show_on_site: l.show_on_site !== false,
         };
       })
       .filter((x) => x.serviceId);
+  }
+
+  function groupAssignedByCategory(
+    assigned: ReturnType<typeof assignedServicesForStaff>,
+  ): { name: string; items: typeof assigned }[] {
+    const m = new Map<string, typeof assigned>();
+    for (const a of assigned) {
+      const key = a.categoryName || "Без категории";
+      if (!m.has(key)) m.set(key, [] as typeof assigned);
+      m.get(key)!.push(a);
+    }
+    return [...m.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, "ru"))
+      .map(([name, items]) => ({
+        name,
+        items: [...items].sort((x, y) => x.name.localeCompare(y.name, "ru")),
+      }));
+  }
+
+  function assignedCatPanelKey(staffId: string, catName: string) {
+    return `assigned::${staffId}::${catName}`;
+  }
+  function toggleAssignedCategoryPanel(staffId: string, catName: string) {
+    const k = assignedCatPanelKey(staffId, catName);
+    setSkillCategoryExpanded((prev) => ({ ...prev, [k]: !prev[k] }));
   }
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
@@ -1010,34 +1037,74 @@ export function AdminStaffPage() {
                                   может подставляться вместе со всеми активными.
                                 </p>
                               ) : (
-                                <ul className="mt-1 space-y-1.5 text-xs text-zinc-200">
-                                  {assigned.map((a) => (
-                                    <li
-                                      key={a.serviceId}
-                                      className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zinc-800/60 pb-1 last:border-0 last:pb-0"
-                                    >
-                                      <span className="min-w-0 flex-1 font-medium text-zinc-100">{a.name}</span>
-                                      <span
-                                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${
-                                          a.show_on_site
-                                            ? "border border-emerald-800/60 text-emerald-300"
-                                            : "border border-amber-800/60 text-amber-200"
-                                        }`}
+                                <div className="mt-1 space-y-1.5">
+                                  {groupAssignedByCategory(assigned).map(({ name: catName, items }, catIdx) => {
+                                    const expanded = !!skillCategoryExpanded[assignedCatPanelKey(r.id, catName)];
+                                    const assignedCatPanelId = `staff-${r.id}-assigned-catpanel-${catIdx}`;
+                                    const siteCount = items.filter((x) => x.show_on_site).length;
+                                    return (
+                                      <div
+                                        key={catName}
+                                        className="rounded border border-zinc-800/60 bg-black/25"
                                       >
-                                        {a.show_on_site ? "на сайте" : "только CRM"}
-                                      </span>
-                                      <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-zinc-400">
-                                        <ToggleSwitch
-                                          size="sm"
-                                          checked={a.show_on_site}
-                                          onCheckedChange={(v) => void toggleShowOnSiteForLink(r.id, a.serviceId, v)}
-                                          aria-label={`${a.name}: на сайте`}
-                                        />
-                                        <span>сайт</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleAssignedCategoryPanel(r.id, catName)}
+                                          className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+                                          aria-expanded={expanded}
+                                          aria-controls={assignedCatPanelId}
+                                        >
+                                          <span className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                                            {expanded ? "▼" : "▶"}
+                                          </span>
+                                          <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
+                                            {catName}
+                                          </span>
+                                          <span className="shrink-0 text-[10px] text-zinc-500">
+                                            {siteCount}/{items.length} на сайте
+                                          </span>
+                                        </button>
+                                        {expanded && (
+                                          <ul
+                                            id={assignedCatPanelId}
+                                            className="space-y-1.5 border-t border-zinc-800/50 px-2 py-2 text-xs text-zinc-200"
+                                          >
+                                            {items.map((a) => (
+                                              <li
+                                                key={a.serviceId}
+                                                className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zinc-800/60 pb-1 last:border-0 last:pb-0"
+                                              >
+                                                <span className="min-w-0 flex-1 font-medium text-zinc-100">
+                                                  {a.name}
+                                                </span>
+                                                <span
+                                                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${
+                                                    a.show_on_site
+                                                      ? "border border-emerald-800/60 text-emerald-300"
+                                                      : "border border-amber-800/60 text-amber-200"
+                                                  }`}
+                                                >
+                                                  {a.show_on_site ? "на сайте" : "только CRM"}
+                                                </span>
+                                                <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-zinc-400">
+                                                  <ToggleSwitch
+                                                    size="sm"
+                                                    checked={a.show_on_site}
+                                                    onCheckedChange={(v) =>
+                                                      void toggleShowOnSiteForLink(r.id, a.serviceId, v)
+                                                    }
+                                                    aria-label={`${a.name}: на сайте`}
+                                                  />
+                                                  <span>сайт</span>
+                                                </div>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        )}
                                       </div>
-                                    </li>
-                                  ))}
-                                </ul>
+                                    );
+                                  })}
+                                </div>
                               )}
                             </div>
                             <p className="mb-1 text-[11px] text-zinc-500">
