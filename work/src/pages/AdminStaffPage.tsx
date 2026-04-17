@@ -836,79 +836,91 @@ export function AdminStaffPage() {
           </span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_auto_auto] sm:items-end">
-          <div>
-            <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+        <div className="grid gap-x-3 gap-y-1 sm:grid-cols-[minmax(13rem,1.1fr)_minmax(12rem,1fr)_auto_auto] sm:items-end">
+          <div className="flex min-w-0 items-baseline justify-between gap-2">
+            <label
+              htmlFor="staff-new-phone"
+              className="text-[11px] font-medium uppercase tracking-wide text-zinc-500"
+            >
               {t("login.phone")}
             </label>
-            <input
-              value={noPhone ? "" : phone}
-              onChange={(e) => setPhone(e.target.value)}
-              disabled={noPhone}
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-black/80 px-2.5 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-sky-600/60 focus:ring-1 focus:ring-sky-600/40 disabled:cursor-not-allowed disabled:bg-zinc-950 disabled:text-zinc-500 disabled:opacity-70"
-              placeholder={noPhone ? "без номера" : "введите номер"}
-              inputMode="tel"
-              autoComplete="off"
-            />
-            <div className="mt-1.5 flex items-center gap-2">
-              <ToggleSwitch
-                size="sm"
-                checked={noPhone}
-                onCheckedChange={(v) => setNoPhone(v)}
-                aria-label="Без номера"
-              />
-              <span className="text-[11px] text-zinc-400 select-none">
-                Без номера{" "}
-                <span className="text-zinc-600">
-                  {noPhone ? "— не требуется для входа" : ""}
-                </span>
+            <button
+              type="button"
+              onClick={() => setNoPhone((v) => !v)}
+              aria-pressed={noPhone}
+              className={
+                "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide transition select-none " +
+                (noPhone
+                  ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
+                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200")
+              }
+              title="Добавить мастера без номера телефона"
+            >
+              <span
+                aria-hidden="true"
+                className={
+                  "flex h-3 w-3 items-center justify-center rounded-full border text-[9px] leading-none " +
+                  (noPhone ? "border-amber-300 bg-amber-300 text-black" : "border-zinc-500")
+                }
+              >
+                {noPhone ? "✓" : ""}
               </span>
-            </div>
+              без номера
+            </button>
           </div>
+          <label
+            htmlFor="staff-new-name"
+            className="text-[11px] font-medium uppercase tracking-wide text-zinc-500"
+          >
+            {t("adminStaff.name")}
+          </label>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            {t("role.label")}
+          </span>
+          <span aria-hidden="true" />
 
-          <div>
-            <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-              {t("adminStaff.name")}
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-black/80 px-2.5 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-sky-600/60 focus:ring-1 focus:ring-sky-600/40"
-              placeholder="имя мастера"
-            />
+          <input
+            id="staff-new-phone"
+            value={noPhone ? "" : phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={noPhone}
+            className="h-9 w-full rounded-md border border-zinc-700 bg-black/80 px-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-sky-600/60 focus:ring-1 focus:ring-sky-600/40 disabled:cursor-not-allowed disabled:border-dashed disabled:border-zinc-700 disabled:bg-zinc-950/50 disabled:text-zinc-500 disabled:opacity-80"
+            placeholder={noPhone ? "не требуется для входа" : "введите номер"}
+            inputMode="tel"
+            autoComplete="off"
+          />
+          <input
+            id="staff-new-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-9 w-full rounded-md border border-zinc-700 bg-black/80 px-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-sky-600/60 focus:ring-1 focus:ring-sky-600/40"
+            placeholder="имя мастера"
+          />
+          <div className="flex h-9 items-center gap-1">
+            {(["admin", "manager", "worker"] as UiRole[]).map((r) => {
+              const on = newRoles.includes(r);
+              const lbl =
+                r === "admin" ? t("role.admin") : r === "manager" ? t("role.manager") : t("role.worker");
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() =>
+                    setNewRoles((prev) => toggleRoleToken(prev, r, !prev.includes(r)))
+                  }
+                  aria-pressed={on}
+                  className={
+                    "h-8 rounded-full border px-3 text-xs transition select-none " +
+                    (on
+                      ? "border-sky-500/60 bg-sky-600/20 text-sky-100 shadow-sm shadow-sky-900/40"
+                      : "border-zinc-700 bg-zinc-900/40 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200")
+                  }
+                >
+                  {lbl}
+                </button>
+              );
+            })}
           </div>
-
-          <div>
-            <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-              {t("role.label")}
-            </label>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {(["admin", "manager", "worker"] as UiRole[]).map((r) => {
-                const on = newRoles.includes(r);
-                const lbl =
-                  r === "admin" ? t("role.admin") : r === "manager" ? t("role.manager") : t("role.worker");
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() =>
-                      setNewRoles((prev) => toggleRoleToken(prev, r, !prev.includes(r)))
-                    }
-                    aria-pressed={on}
-                    className={
-                      "rounded-full border px-2.5 py-1 text-xs transition select-none " +
-                      (on
-                        ? "border-sky-500/60 bg-sky-600/20 text-sky-100 shadow-sm shadow-sky-900/40"
-                        : "border-zinc-700 bg-zinc-900/40 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200")
-                    }
-                  >
-                    {lbl}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <button
             type="submit"
             className="inline-flex h-9 items-center justify-center rounded-md bg-sky-600 px-4 text-sm font-semibold text-white shadow-sm shadow-sky-950/40 transition hover:bg-sky-500 active:bg-sky-700"
