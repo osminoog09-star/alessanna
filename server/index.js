@@ -32,6 +32,17 @@ const { PUBLIC_LANGS, pickLocaleFromAcceptLanguage, renderPublicLandingHtml } = 
 app.use(cookieParser());
 app.use(express.json({ limit: "400kb" }));
 
+// Public read-only API is consumed by both same-origin pages and static mirrors on other origins.
+app.use((req, res, next) => {
+  if (req.path === "/api/health" || req.path.startsWith("/api/public/")) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+  }
+  next();
+});
+
 if (process.env.CRM_DEV_ORIGIN) {
   app.use((req, res, next) => {
     const o = process.env.CRM_DEV_ORIGIN;

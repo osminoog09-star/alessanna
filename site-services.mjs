@@ -219,12 +219,24 @@ function mapPublicApiRows(raw) {
 }
 
 async function fetchPublicApiFallback() {
-  const response = await fetch("/api/public/services", { headers: { Accept: "application/json" } });
-  if (!response.ok) {
-    throw new Error("Public services API failed with HTTP " + response.status);
+  const endpoints = ["/api/public/services", "https://work.alessannailu.com/api/public/services"];
+  let lastError = null;
+  for (let i = 0; i < endpoints.length; i++) {
+    const endpoint = endpoints[i];
+    try {
+      const response = await fetch(endpoint, { headers: { Accept: "application/json" } });
+      if (!response.ok) {
+        throw new Error("HTTP " + response.status + " at " + endpoint);
+      }
+      const json = await response.json();
+      info("Public API fallback succeeded via " + endpoint);
+      return mapPublicApiRows(json);
+    } catch (err) {
+      lastError = err;
+      warnLog("Public API fallback failed via " + endpoint, err);
+    }
   }
-  const json = await response.json();
-  return mapPublicApiRows(json);
+  throw lastError || new Error("Public services API fallback failed");
 }
 
 async function fetchPriceList(client) {
