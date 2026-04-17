@@ -13,6 +13,10 @@ const editableUi =
 const fieldBase =
   "mt-1 w-full rounded-lg bg-black px-3 py-2 text-sm text-white disabled:opacity-60";
 
+function normServiceName(n: string): string {
+  return String(n || "").trim().toLowerCase();
+}
+
 type ListingCatalogRow = {
   id: string;
   name?: string | null;
@@ -252,10 +256,18 @@ export function ServicesPage() {
 
     setServices(loadedServices);
 
-    const svcIds = loadedServices.map((x) => String(x.id));
     const linksByService: Record<string, Array<{ staff_id: string; show_on_site: boolean }>> = {};
-    if (svcIds.length > 0) {
-      const lk = await supabase.from("staff_services").select("staff_id, service_id, show_on_site").in("service_id", svcIds);
+    const svcIds = loadedServices.map((x) => String(x.id));
+    const listMeta = await supabase.from("service_listings").select("id,name");
+    const idsForStaffQuery = new Set<string>(svcIds);
+    if (!listMeta.error && listMeta.data?.length) {
+      for (const row of listMeta.data as Array<{ id: string }>) {
+        idsForStaffQuery.add(String(row.id));
+      }
+    }
+    const idList = [...idsForStaffQuery].filter(Boolean);
+    if (idList.length > 0) {
+      const lk = await supabase.from("staff_services").select("staff_id, service_id, show_on_site").in("service_id", idList);
       if (!lk.error && lk.data) {
         for (const row of lk.data as Array<{ staff_id: string; service_id: string; show_on_site?: boolean }>) {
           const sid = String(row.service_id);
@@ -267,6 +279,24 @@ export function ServicesPage() {
         }
       }
     }
+
+    /* Строка услуги в CRM может быть с legacy id — дублируем привязки под ключом id строки в UI. */
+    if (!listMeta.error && listMeta.data?.length && loadedServices.length) {
+      const listingIdByNormName = new Map<string, string>();
+      for (const row of listMeta.data as Array<{ id: string; name: string | null }>) {
+        const k = normServiceName(String(row.name || ""));
+        if (k) listingIdByNormName.set(k, String(row.id));
+      }
+      for (const svc of loadedServices) {
+        const key = String(svc.id);
+        if (linksByService[key]?.length) continue;
+        const lid = listingIdByNormName.get(normServiceName(String(svc.name_et || "")));
+        if (lid && linksByService[lid]?.length) {
+          linksByService[key] = linksByService[lid]!.map((x) => ({ ...x }));
+        }
+      }
+    }
+
     setServiceStaffLinksMap(linksByService);
 
     /* Главный сайт читает service_listings: подтягиваем отсутствующие строки из services (старые данные / ручной SQL). */
@@ -686,14 +716,52 @@ export function ServicesPage() {
     setQuickStaffIds((prev) => (prev.includes(staffId) ? prev.filter((x) => x !== staffId) : [...prev, staffId]));
   }
 
+  /**
+   * staff_services.service_id после миграции 012 — UUID из service_listings.
+   * В CRM у услуги может быть id из legacy `services`; ищем listing по id или по имени, при необходимости синкаем в публичный каталог.
+   */
+  async function resolveListingIdForStaffLinks(service: ServiceRow): Promise<string | null> {
+    const sid = String(service.id || "").trim();
+    const nameRaw = String(service.name_et || "").trim();
+    if (!nameRaw) return null;
+
+    if (service.catalogSource === "listing") {
+      const probe = await supabase.from("service_listings").select("id").eq("id", sid).maybeSingle();
+      if (!probe.error && probe.data?.id) return String(probe.data.id);
+    }
+
+    const byName = await supabase.from("service_listings").select("id").eq("name", nameRaw).maybeSingle();
+    if (!byName.error && byName.data?.id) return String(byName.data.id);
+
+    const byId = await supabase.from("service_listings").select("id").eq("id", sid).maybeSingle();
+    if (!byId.error && byId.data?.id) return String(byId.data.id);
+
+    if (service.catalogSource !== "listing") {
+      await syncServiceToPublicCatalog(service);
+      const again = await supabase.from("service_listings").select("id").eq("name", nameRaw).maybeSingle();
+      if (!again.error && again.data?.id) return String(again.data.id);
+    }
+
+    return null;
+  }
+
   /** @returns false если запись в БД не удалась */
   async function replaceServiceStaffLinks(
-    serviceId: string,
+    service: ServiceRow,
     links: Array<{ staff_id: string; show_on_site: boolean }>,
   ): Promise<boolean> {
+    const listingId = await resolveListingIdForStaffLinks(service);
+    if (!listingId) {
+      window.alert(
+        `Не найдена строка в service_listings для услуги «${String(service.name_et || "").trim() || service.id}». ` +
+          `Привязки мастеров пишутся только к публичному каталогу (проверьте название или выполните «Обновить всё на сайте»).`,
+      );
+      return false;
+    }
+
     // If no links exist for service, backend treats it as "all staff can perform service".
     // We keep explicit links only when at least one staff member is selected.
-    const { error: delErr } = await supabase.from("staff_services").delete().eq("service_id", serviceId);
+    const { error: delErr } = await supabase.from("staff_services").delete().eq("service_id", listingId);
     if (delErr) {
       console.error("[services] clear staff links failed", delErr);
       window.alert(`Не удалось обновить привязки мастеров: ${delErr.message || "ошибка"}.`);
@@ -702,19 +770,17 @@ export function ServicesPage() {
     if (!links.length) return true;
     const rows = links.map((l) => ({
       staff_id: l.staff_id,
-      service_id: serviceId,
+      service_id: listingId,
       show_on_site: l.show_on_site,
     }));
     let { error: insErr } = await supabase.from("staff_services").insert(rows);
     if (insErr && String(insErr.message || "").toLowerCase().includes("show_on_site")) {
-      const legacy = links.map((l) => ({ staff_id: l.staff_id, service_id: serviceId }));
+      const legacy = links.map((l) => ({ staff_id: l.staff_id, service_id: listingId }));
       insErr = (await supabase.from("staff_services").insert(legacy)).error ?? null;
     }
     if (insErr) {
       console.error("[services] create staff links failed", insErr);
-      window.alert(
-        `Не удалось сохранить привязки мастеров: ${insErr.message || "ошибка"}. Проверьте, что услуга в каталоге с тем же id, что в staff_services (обычно service_listings).`,
-      );
+      window.alert(`Не удалось сохранить привязки мастеров: ${insErr.message || "ошибка"}.`);
       return false;
     }
     return true;
@@ -725,10 +791,10 @@ export function ServicesPage() {
   }
 
   async function setStaffLinksForServiceAndReload(
-    serviceId: string,
+    service: ServiceRow,
     next: Array<{ staff_id: string; show_on_site: boolean }>,
   ) {
-    const ok = await replaceServiceStaffLinks(serviceId, next);
+    const ok = await replaceServiceStaffLinks(service, next);
     if (ok) await load();
   }
 
@@ -754,7 +820,7 @@ export function ServicesPage() {
       next = prev.filter((l) => String(l.staff_id) !== String(staffId));
     }
 
-    void setStaffLinksForServiceAndReload(serviceId, next);
+    void setStaffLinksForServiceAndReload(service, next);
   }
 
   function toggleStaffOnSite(service: ServiceRow, staffId: string, visible: boolean) {
@@ -764,7 +830,7 @@ export function ServicesPage() {
     const next = prev.map((l) =>
       String(l.staff_id) === String(staffId) ? { ...l, show_on_site: visible } : l,
     );
-    void setStaffLinksForServiceAndReload(serviceId, next);
+    void setStaffLinksForServiceAndReload(service, next);
   }
 
   async function createServiceFromQuickForm() {
@@ -849,10 +915,7 @@ export function ServicesPage() {
           ? ({ ...(insertRes.data as ServiceRow), active: quickActive } as ServiceRow)
           : ({ ...mapModernServices([row])[0], active: quickActive } as ServiceRow);
       await syncServiceToPublicCatalog(normalized);
-      await replaceServiceStaffLinks(
-        String(normalized.id),
-        quickStaffIds.map((id) => ({ staff_id: id, show_on_site: true })),
-      );
+      await replaceServiceStaffLinks(normalized, quickStaffIds.map((id) => ({ staff_id: id, show_on_site: true })));
     }
 
     closeQuickCreate();
