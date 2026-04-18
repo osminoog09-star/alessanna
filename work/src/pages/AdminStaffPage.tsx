@@ -297,6 +297,8 @@ export function AdminStaffPage() {
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  /** Зелёное всплывающее уведомление справа сверху: «✓ услуга добавлена», «✓ скопировано N услуг» и т.п. */
+  const [notice, setNotice] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [noPhone, setNoPhone] = useState(false);
@@ -391,6 +393,18 @@ export function AdminStaffPage() {
 
   useEmployeesDirectoryRealtime(load);
   useStaffAssignmentsCatalogRealtime(load);
+
+  /** Auto-hide success notice. */
+  useEffect(() => {
+    if (!notice) return;
+    const id = window.setTimeout(() => setNotice(null), 2400);
+    return () => window.clearTimeout(id);
+  }, [notice]);
+
+  function showNotice(msg: string) {
+    setErr(null);
+    setNotice(msg);
+  }
 
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
 
@@ -741,11 +755,13 @@ export function AdminStaffPage() {
           error = (await supabase.from("staff_services").insert({ staff_id: staffId, service_id: sid })).error ?? null;
         }
         if (!error) {
+          showNotice(`✓ «${name || rawId}» добавлена мастеру`);
           void load();
           return;
         }
         const em = String(error.message || "").toLowerCase();
         if (em.includes("duplicate key") || em.includes("unique constraint")) {
+          showNotice(`✓ «${name || rawId}» уже была у мастера`);
           void load();
           return;
         }
@@ -753,7 +769,7 @@ export function AdminStaffPage() {
           lastFkMsg = error.message;
           continue;
         }
-        setErr(error.message);
+        setErr(`Не удалось сохранить «${name || rawId}»: ${error.message}`);
         return;
       }
       setErr(
@@ -789,9 +805,15 @@ export function AdminStaffPage() {
             (legacySvcId && normId(l.service_id) === normId(legacySvcId))),
       );
       if (linkRow) {
-        await supabase.from("staff_services").delete().eq("staff_id", staffId).eq("service_id", linkRow.service_id);
+        const r = await supabase
+          .from("staff_services")
+          .delete()
+          .eq("staff_id", staffId)
+          .eq("service_id", linkRow.service_id);
+        if (!r.error) deleted = true;
       }
     }
+    if (deleted) showNotice(`✓ «${name || rawId}» убрана у мастера`);
     void load();
   }
 
@@ -833,6 +855,7 @@ export function AdminStaffPage() {
         return;
       }
       if (data && data.length > 0) {
+        showNotice(show ? `✓ «${name}» показывается на сайте` : `✓ «${name}» скрыта с сайта`);
         void load();
         return;
       }
@@ -935,6 +958,57 @@ export function AdminStaffPage() {
     return { ok: false, error: lastFkMsg || "FK staff_services" };
   }
 
+  /**
+   * Скопировать список услуг от другого мастера. Удобно для онбординга:
+   * один раз настроил Alesja → за 1 клик клонировал на Aljona, потом убрал лишнее.
+   */
+  async function copyServicesFromMaster(targetStaffId: string, sourceStaffId: string) {
+    setErr(null);
+    if (!sourceStaffId || sourceStaffId === targetStaffId) return;
+    const sourceLinks = links.filter((l) => String(l.staff_id) === String(sourceStaffId));
+    if (sourceLinks.length === 0) {
+      setErr("У выбранного мастера нет ни одной услуги — копировать нечего.");
+      return;
+    }
+    const existingTargetIds = new Set(
+      links
+        .filter((l) => String(l.staff_id) === String(targetStaffId))
+        .map((l) => String(l.service_id)),
+    );
+    const toCopy = sourceLinks.filter((l) => !existingTargetIds.has(String(l.service_id)));
+    if (toCopy.length === 0) {
+      showNotice("✓ У мастера уже есть все эти услуги");
+      return;
+    }
+    let inserted = 0;
+    let failed = 0;
+    for (const l of toCopy) {
+      const { error } = await supabase
+        .from("staff_services")
+        .insert({
+          staff_id: targetStaffId,
+          service_id: l.service_id,
+          show_on_site: l.show_on_site !== false,
+        });
+      if (error) {
+        const em = String(error.message || "").toLowerCase();
+        if (em.includes("duplicate key") || em.includes("unique constraint")) {
+          inserted++;
+        } else {
+          failed++;
+        }
+      } else {
+        inserted++;
+      }
+    }
+    if (failed > 0) {
+      setErr(`Скопировано: ${inserted}; не удалось: ${failed}. Проверьте каталог услуг.`);
+    } else {
+      showNotice(`✓ Скопировано услуг: ${inserted}`);
+    }
+    void load();
+  }
+
   async function toggleCategoryForStaff(staffId: string, catSvcs: CatalogSkillService[], turnOn: boolean) {
     setErr(null);
     if (!catSvcs.length) return;
@@ -988,10 +1062,12 @@ export function AdminStaffPage() {
      * Когда админ впервые явно включает категорию, переводим его в режим «явный список»,
      * добавляя переданные услуги. Остальные услуги перестают считаться доступными. */
     const failed: string[] = [];
+    let added = 0;
     for (const s of catSvcs) {
       if (explicitForStaff.length > 0 && hasLink(staffId, s.id)) continue;
       const r = await insertStaffServiceRow(staffId, s);
       if (!r.ok) failed.push(s.name);
+      else added++;
     }
     if (failed.length) {
       setErr(
@@ -1000,6 +1076,10 @@ export function AdminStaffPage() {
             ? "Сначала примените миграцию 012 (service_listings)."
             : "Проверьте запись в service_listings на странице «Услуги»."),
       );
+    } else if (added > 0) {
+      showNotice(`✓ Добавлено услуг: ${added}`);
+    } else {
+      showNotice(`✓ Все услуги уже привязаны`);
     }
     void load();
   }
@@ -1158,6 +1238,15 @@ export function AdminStaffPage() {
 
       {err && (
         <p className="rounded border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">{err}</p>
+      )}
+
+      {notice && (
+        <div
+          aria-live="polite"
+          className="pointer-events-none fixed right-4 top-4 z-50 max-w-[22rem] rounded-lg border border-emerald-700/60 bg-emerald-950/90 px-4 py-3 text-sm font-medium text-emerald-100 shadow-2xl shadow-emerald-900/40 backdrop-blur"
+        >
+          {notice}
+        </div>
       )}
 
       <form
@@ -1346,11 +1435,29 @@ export function AdminStaffPage() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-xs text-zinc-500">
-                          {assigned.length === 0
-                            ? t("adminStaff.assignedNone")
-                            : t("adminStaff.assignedCount", { count: assigned.length })}
-                        </span>
+                        {(() => {
+                          const pr = String(r.role || "").toLowerCase();
+                          const isAdmin =
+                            pr === "admin" || pr === "owner" || rowRoles(r).some((x) => x === "admin");
+                          if (assigned.length === 0 && !isAdmin && r.is_active) {
+                            return (
+                              <span
+                                title="У мастера нет ни одной активной услуги — клиенты не смогут к нему записаться через сайт. Раскройте строку и включите услуги."
+                                className="inline-flex w-fit items-center gap-1 rounded border border-amber-700/60 bg-amber-950/40 px-1.5 py-0.5 text-[11px] font-semibold text-amber-200"
+                              >
+                                <span aria-hidden="true">⚠</span>
+                                нет услуг — недоступен клиентам
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="text-xs text-zinc-500">
+                              {assigned.length === 0
+                                ? t("adminStaff.assignedNone")
+                                : t("adminStaff.assignedCount", { count: assigned.length })}
+                            </span>
+                          );
+                        })()}
                         <button
                           type="button"
                           className="w-fit rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-left text-xs text-zinc-200 hover:border-zinc-500 hover:text-white"
@@ -1457,6 +1564,63 @@ export function AdminStaffPage() {
                             })()}
                           </div>
                           <div className="space-y-4">
+                            {/* ───────── Быстрое копирование услуг от другого мастера ───────── */}
+                            {(() => {
+                              const otherMastersWithLinks = salonRows.filter(
+                                (m) =>
+                                  m.id !== r.id &&
+                                  links.some((l) => String(l.staff_id) === String(m.id)),
+                              );
+                              if (otherMastersWithLinks.length === 0) return null;
+                              return (
+                                <section className="rounded border border-sky-900/40 bg-sky-950/10 px-2 py-2">
+                                  <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-sky-300/90">
+                                    Быстрый старт
+                                    <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-sky-400/60">
+                                      — скопировать список услуг другого мастера
+                                    </span>
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <select
+                                      defaultValue=""
+                                      className="min-w-[10rem] flex-1 rounded border border-zinc-700 bg-black/60 px-2 py-1 text-xs text-zinc-200"
+                                      onChange={(e) => {
+                                        const sourceId = e.currentTarget.value;
+                                        if (!sourceId) return;
+                                        const sourceName =
+                                          salonRows.find((x) => x.id === sourceId)?.name || "";
+                                        if (
+                                          window.confirm(
+                                            `Скопировать все услуги мастера «${sourceName}» в «${r.name}»? Это добавит недостающие услуги, существующие останутся.`,
+                                          )
+                                        ) {
+                                          void copyServicesFromMaster(r.id, sourceId);
+                                        }
+                                        e.currentTarget.value = "";
+                                      }}
+                                    >
+                                      <option value="" disabled>
+                                        — выбрать мастера-источник —
+                                      </option>
+                                      {otherMastersWithLinks.map((m) => {
+                                        const cnt = links.filter(
+                                          (l) => String(l.staff_id) === String(m.id),
+                                        ).length;
+                                        return (
+                                          <option key={m.id} value={m.id}>
+                                            {m.name} ({cnt} услуг)
+                                          </option>
+                                        );
+                                      })}
+                                    </select>
+                                    <span className="text-[10px] leading-snug text-zinc-500">
+                                      Удобно, если у двух мастеров одинаковая специализация.
+                                    </span>
+                                  </div>
+                                </section>
+                              );
+                            })()}
+
                             {/* ───────── Активные услуги мастера ───────── */}
                             <section className="rounded border border-emerald-900/40 bg-emerald-950/10 px-2 py-2">
                               <header className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
