@@ -915,6 +915,51 @@
       }
     }
 
+    /* Определяет «лучшего» мастера для услуги, учитывая глобальный выбор формы.
+     *  1) если в форме уже выбран конкретный мастер и он в списке валидных
+     *     для этой услуги — берём его;
+     *  2) иначе если у услуги ровно один валидный мастер — берём его (90%
+     *     случаев салонов с узкой специализацией);
+     *  3) иначе оставляем как есть (или возвращаем "" для нового pick).
+     * Возвращает строку: id мастера, "any" или "". */
+    function resolveDefaultMasterFor(pick, currentValue) {
+      var allowed = mastersForSpecificPick(pick);
+      var allowedIds = {};
+      for (var ai = 0; ai < allowed.length; ai++) {
+        allowedIds[String(allowed[ai].id)] = true;
+      }
+      /* Глобальный мастер из формы. */
+      var formMaster = masterSelect ? String(masterSelect.value || "") : "";
+      if (formMaster && formMaster !== ANY_MASTER_ID && allowedIds[formMaster]) {
+        return formMaster;
+      }
+      /* Текущее значение pick (например, при propagate уже стояло "any"). */
+      if (currentValue === ANY_MASTER_ID) return ANY_MASTER_ID;
+      if (currentValue && allowedIds[String(currentValue)]) return String(currentValue);
+      /* Ровно один кандидат — выбираем автоматически. */
+      if (allowed.length === 1) return String(allowed[0].id);
+      return "";
+    }
+
+    /* Распространить глобальный выбор мастера на строки cart. Дёргается из
+     * change-обработчика masterSelect (то есть и из #meistrid, и из шапочных
+     * master-suggest-chip, и из самой формы). Не перетирает явное "any". */
+    function propagateGlobalMasterToPicks() {
+      if (!picked.length) return false;
+      var formMaster = masterSelect ? String(masterSelect.value || "") : "";
+      var changed = false;
+      for (var i = 0; i < picked.length; i++) {
+        var p = picked[i];
+        if (p.selectedMaster === ANY_MASTER_ID) continue;
+        var next = resolveDefaultMasterFor(p, formMaster || p.selectedMaster);
+        if (next && next !== p.selectedMaster) {
+          p.selectedMaster = next;
+          changed = true;
+        }
+      }
+      return changed;
+    }
+
     function anyMasterLabelForChip() {
       if (selRu) return "Не важно";
       if (selEn) return "No preference";
@@ -1081,7 +1126,7 @@
             })
             .filter(Boolean)
         : [];
-      return {
+      var pick = {
         key: key,
         label: label,
         price: price,
@@ -1096,6 +1141,12 @@
          *   "<uuid>" = конкретный мастер. */
         selectedMaster: "",
       };
+      /* Сразу подставляем «лучшего» мастера: глобальный выбор формы или
+       * единственного валидного — иначе клиенту приходится отдельно кликать
+       * чип внутри карточки, и план дня висит «мастер не выбран» при том,
+       * что выбор очевиден. */
+      pick.selectedMaster = resolveDefaultMasterFor(pick, "");
+      return pick;
     }
 
     function togglePick(li) {
@@ -1282,6 +1333,15 @@
           var li2 = lis2[u];
           var tid = li2.getAttribute("data-master-id") || nameToId[li2.textContent.trim().toLowerCase()];
           li2.setAttribute("aria-pressed", v && tid === v ? "true" : "false");
+        }
+        /* Главный фикс синхронизации: после смены глобального мастера
+         * (через форму, #meistrid или master-suggest-chip) подтягиваем выбор
+         * в строки cart. Иначе план дня и RPC submit видят пустой
+         * selectedMaster, хотя визуально мастер «выбран».
+         * renderList сам в конце дёргает updateBookingChainPreview, поэтому
+         * отдельный вызов не нужен. */
+        if (propagateGlobalMasterToPicks()) {
+          renderList();
         }
       });
     }

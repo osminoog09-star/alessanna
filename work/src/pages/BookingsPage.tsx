@@ -115,7 +115,14 @@ export function BookingsPage() {
                     <td className="px-4 py-3 text-zinc-300">
                       {when ? format(parseISO(when), "yyyy-MM-dd HH:mm") : t("common.dash")}
                     </td>
-                    <td className="px-4 py-3 text-white">{b.client_name}</td>
+                    <td className="px-4 py-3 text-white">
+                      <div>{b.client_name}</div>
+                      {b.note && (
+                        <div className="mt-0.5 text-xs italic text-zinc-500" title={b.note}>
+                          &laquo;{b.note.length > 80 ? b.note.slice(0, 80) + "…" : b.note}&raquo;
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-zinc-400">{em?.name ?? t("common.dash")}</td>
                     <td className="px-4 py-3 text-zinc-400">{sv?.name || t("common.dash")}</td>
                     <td className="px-4 py-3 capitalize text-zinc-400">{statusLabel(b.status)}</td>

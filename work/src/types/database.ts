@@ -72,7 +72,12 @@ export type AppointmentRow = {
   end_time: string;
   status: "pending" | "confirmed" | "cancelled";
   source: string;
-  notes: string | null;
+  /** Свободный комментарий клиента из формы записи; колонка appointments.note. */
+  note: string | null;
+  /** Backwards-compat: старое имя поля, использовалось до миграции 030.
+   *  Оставлено только чтобы не упасть, если где-то ещё читают `.notes`. */
+  notes?: string | null;
+  client_id?: string | null;
   created_at?: string;
 };
 
