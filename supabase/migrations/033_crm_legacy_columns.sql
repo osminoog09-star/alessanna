@@ -33,13 +33,28 @@ alter table public.services add column if not exists sort_order integer not null
 update public.services set name_et = name where name_et is null and name is not null;
 
 -- 3. Таблица categories (legacy alias для service_categories). 100+ 404 за сессию.
---    Делаем настоящую таблицу — иначе CRM на ServicesPage делает delete/insert
---    в неё и view с триггерами усложнит жизнь.
+--    ВАЖНО: схему ОБЯЗАТЕЛЬНО держим как в 002_salon_crm.sql — bigint identity,
+--    потому что 002 уже создал FK
+--      services.category_id bigint references categories(id)
+--    Если бы мы создавали тут UUID-таблицу, на свежей БД (без 002) FK в
+--    services.category_id отвалился бы по type-mismatch, а на старой БД (с 002)
+--    `create table if not exists` тихо пропускался — то есть UUID-намерение
+--    миграции никогда бы не реализовалось, а схема оставалась бы непредсказуемой.
+--    Поэтому здесь — bigint identity, и доводим on-disk таблицу до этой формы
+--    идемпотентно (если её кто-то ранее создал руками с другой колонкой/типом).
 create table if not exists public.categories (
-  id         uuid primary key default gen_random_uuid(),
+  id         bigint generated always as identity primary key,
   name       text not null,
-  created_at timestamp with time zone not null default now()
+  created_at timestamptz not null default now()
 );
+
+-- Догоняем существующую таблицу до ожидаемой формы (на старых проектах,
+-- где её ставили вручную, могут отсутствовать колонки — без них фронт ServicesPage
+-- падает на insert/update). Тип id не меняем — это сломало бы FK services.category_id.
+alter table public.categories add column if not exists name       text;
+alter table public.categories add column if not exists created_at timestamptz not null default now();
+update public.categories set name = '' where name is null;
+alter table public.categories alter column name set not null;
 
 -- 4. Подстраховка: даём anon обычные RLS-права (CRM ходит anon-ключом, как и
 --    остальные таблицы). Иначе выйдет либо 401, либо PostgREST скроет таблицу.
