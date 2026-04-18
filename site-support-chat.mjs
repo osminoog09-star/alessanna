@@ -286,9 +286,13 @@ function injectStyles() {
     radial-gradient(circle at 30% 25%, var(--ssc-gold-soft) 0%, var(--ssc-gold) 55%, var(--ssc-gold-deep) 100%);
   color: #1a1405;
   cursor: pointer;
+  /* Двойное «золотое кольцо-эхо» вокруг кнопки — заземляет лончер визуально,
+     иначе на чисто-чёрном бэкграунде кнопка плавала в пустоте. */
   box-shadow:
-    0 14px 36px rgba(217, 178, 106, 0.38),
-    0 0 0 3px rgba(217, 178, 106, 0.18),
+    0 16px 38px rgba(217, 178, 106, 0.42),
+    0 0 0 4px rgba(217, 178, 106, 0.22),
+    0 0 0 9px rgba(217, 178, 106, 0.08),
+    0 0 32px -4px rgba(217, 178, 106, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.28);
   display: grid; place-items: center;
   transition: transform .28s cubic-bezier(.34, 1.56, .64, 1), box-shadow .25s ease;
@@ -296,8 +300,10 @@ function injectStyles() {
 .ssc-launcher:hover {
   transform: translateY(-3px) scale(1.04);
   box-shadow:
-    0 20px 46px rgba(217, 178, 106, 0.5),
-    0 0 0 3px rgba(217, 178, 106, 0.32),
+    0 22px 48px rgba(217, 178, 106, 0.55),
+    0 0 0 4px rgba(217, 178, 106, 0.36),
+    0 0 0 10px rgba(217, 178, 106, 0.14),
+    0 0 40px -2px rgba(217, 178, 106, 0.5),
     inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 .ssc-launcher:active { transform: translateY(-1px) scale(1.01); }
@@ -417,31 +423,67 @@ function injectStyles() {
 }
 .ssc-nudge-close:hover { background: rgba(255, 255, 255, 0.06); color: var(--ssc-text); }
 
-/* ---------- Панель чата ---------- */
+/* ---------- Панель чата ----------
+   Раньше панель сливалась с тёмным фоном салона: основа #14141b почти равна
+   фоновой #0a0a0e, золотой кант alpha=0.22 не читался, а тёмная тень на чёрном
+   тоже невидима. Теперь:
+   • заметно более светлая многослойная база (видна на чёрном);
+   • backdrop-filter подсасывает фон → края панели «отталкиваются» от страницы;
+   • тёплый золотой glow вокруг (тёмная тень на чёрном работает плохо, а светлая —
+     наоборот, чётко обводит панель);
+   • верхняя декоративная золотая риска (фирменный акцент). */
 .ssc-panel {
   position: fixed;
   left: clamp(16px, 3vw, 28px);
   bottom: calc(clamp(16px, 3vw, 28px) + 82px + env(safe-area-inset-bottom, 0px));
   width: min(400px, calc(100vw - 32px));
   max-height: min(680px, calc(100vh - 140px));
-  background: var(--ssc-panel);
-  border: 1px solid var(--ssc-line);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(217, 178, 106, 0.10) 0%, transparent 55%),
+    linear-gradient(180deg, #221d2e 0%, #181421 45%, #131019 100%);
+  border: 1px solid rgba(217, 178, 106, 0.42);
   border-radius: 20px;
   box-shadow:
-    0 40px 80px -20px rgba(0, 0, 0, 0.75),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 0 60px -20px rgba(217, 178, 106, 0.18);
+    /* основная глубина — на любом фоне */
+    0 30px 70px -18px rgba(0, 0, 0, 0.85),
+    /* тёплый внешний halo — главное отличие от прошлого, на чёрном сайте именно
+       он отделяет панель от фона */
+    0 0 0 1px rgba(217, 178, 106, 0.18),
+    0 14px 50px -8px rgba(217, 178, 106, 0.32),
+    0 0 70px -10px rgba(217, 178, 106, 0.18),
+    /* нежный inset-highlight по верхнему краю — даёт «стеклянный» объём */
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
   display: none; flex-direction: column;
   overflow: hidden;
   z-index: 9999;
 }
+/* Декоративная золотая «риска» сверху — фирменный салон-акцент,
+   панель читается даже краем глаза. */
+.ssc-panel::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(217, 178, 106, 0.25) 12%,
+    var(--ssc-gold-soft) 50%,
+    rgba(217, 178, 106, 0.25) 88%,
+    transparent 100%);
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 1;
+}
 .ssc-panel.ssc-open {
   display: flex;
-  animation: ssc-slide-in .28s cubic-bezier(.34, 1.2, .64, 1);
+  animation: ssc-slide-in .32s cubic-bezier(.34, 1.2, .64, 1);
   transform-origin: bottom left;
 }
 @keyframes ssc-slide-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
@@ -449,18 +491,19 @@ function injectStyles() {
   position: relative;
   display: flex; align-items: center; gap: 12px;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--ssc-line);
+  border-bottom: 1px solid rgba(217, 178, 106, 0.28);
+  /* Чуть более выраженный тёплый sheen — иначе шапка ID-ши не несёт. */
   background:
-    linear-gradient(135deg, rgba(217, 178, 106, 0.14) 0%, rgba(217, 178, 106, 0.02) 50%, transparent 100%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+    linear-gradient(135deg, rgba(217, 178, 106, 0.22) 0%, rgba(217, 178, 106, 0.05) 55%, transparent 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 60%);
 }
 .ssc-header::after {
   content: '';
   position: absolute;
   left: 16px; right: 16px; bottom: -1px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--ssc-gold) 50%, transparent);
-  opacity: 0.5;
+  background: linear-gradient(90deg, transparent, var(--ssc-gold-soft) 50%, transparent);
+  opacity: 0.7;
 }
 .ssc-header-badge {
   position: relative;
@@ -781,6 +824,14 @@ function injectStyles() {
     bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     max-height: calc(100vh - 120px);
     border-radius: 18px;
+    /* На мобильных backdrop-blur дорогой и часто не работает (Safari iOS на
+       transform-родителе); вместо него — сильнее непрозрачный градиент,
+       чтобы панель оставалась чётко выделенной. */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(217, 178, 106, 0.12) 0%, transparent 55%),
+      linear-gradient(180deg, #25202f 0%, #1a1622 45%, #14111c 100%);
   }
   .ssc-nudge { max-width: calc(100vw - 48px); }
   /* На мобильном label держим свёрнутым — места мало, нудж и так привлекает. */
