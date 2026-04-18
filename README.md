@@ -2,6 +2,15 @@
 
 Premium salon stack: **public site** (static HTML at repo root), **REST API** (local Node server), **online booking**, and **CRM** as a **Vite + React** app in **`work/`** (deployed on **Vercel** at **work.alessannailu.com**). The legacy **`work-crm/`** folder is an optional Next.js prototype — **not** used for production CRM hosting.
 
+## Docs / Документация
+
+| File | RU | EN |
+|------|----|----|
+| [`FAQ.md`](./FAQ.md) | Частые вопросы | Frequently Asked Questions |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Патчноуты по релизам | Release patch notes |
+| [`ROADMAP.md`](./ROADMAP.md) | Что впереди | What is next |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Архитектура (high-level) | Architecture (high-level) |
+
 ## Production hosting (domains)
 
 | Host | What | How |
@@ -101,10 +110,8 @@ Without the server (static files only), behaviour falls back to **mailto**.
 
 ## Next steps (your roadmap)
 
-- Reschedule UI (API already supports PATCH with `date`, `time`, `employeeId`, `serviceId`).
-- User admin UI (create logins per employee; today via DB/API).
-- Google OAuth + Calendar push; Telegram/WhatsApp send on booking events.
-- Payments, analytics, loyalty (new modules + tables).
+Перенесено в [`ROADMAP.md`](./ROADMAP.md) — теперь с приоритетами и двуязычно.
+Moved to [`ROADMAP.md`](./ROADMAP.md) — now with priorities and bilingual.
 
 ## Security
 
