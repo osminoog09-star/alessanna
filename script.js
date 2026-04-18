@@ -1097,6 +1097,13 @@
       updateDock();
       syncTeamGroupsVisibility();
       syncTeamMasterEligibility();
+      /* После изменения корзины мастера пере-фильтруем по реальным
+       * staff_services из CRM (через filterMastersByFormCategory):
+       * не оставляем «лишних» сотрудников disabled, а полностью убираем
+       * их из dropdown — иначе клиент видит, например, всех 6 мастеров
+       * для категории «Маникюр», хотя у тебя в CRM маникюр делает только один.
+       * refillDemoMastersForCurrentService — это локальный пересчёт без сети. */
+      refillDemoMastersForCurrentService();
       syncMasterSelectEligibility();
       renderMasterChips();
       validateMasterForPicks();
@@ -1887,30 +1894,50 @@
       return String(opt.getAttribute("data-category-name") || "").trim().toLowerCase();
     }
 
-    /** Выбираем только мастеров, которые закреплены за услугами выбранной категории.
-     * Источник истины — отрисованные site-team.mjs .team-group[data-category-name] li[data-master-id].
-     * Если team-group ещё не готов или в нужной категории нет мастеров — fallback на всех публичных. */
+    /** Источник истины — связки CRM (`staff_services` через site-team.mjs DOM
+     *  и `data-service-masters` на каждом li услуги).
+     *  Возвращаем СТРОГО только тех мастеров, кому в CRM проставлен доступ:
+     *    1) если есть picked — пересечение по конкретным услугам;
+     *    2) иначе — по выбранной категории формы (#meistrid .team-group);
+     *    3) если категория формы не выбрана — все публичные.
+     *  Никаких «молчаливых fallback на всех» больше нет: если в CRM не
+     *  отметили ни одного мастера, dropdown остаётся пустым (только «Не важно»),
+     *  иначе клиент думает, что человек делает услугу, которую он не делает.
+     */
     function filterMastersByFormCategory(masters) {
-      if (!Array.isArray(masters) || !masters.length) return masters || [];
+      if (!Array.isArray(masters)) return [];
+
+      /* 1) Если что-то уже выбрано в корзине — берём пересечение по
+       *    data-service-masters (точная связка staff_services из CRM). */
+      if (typeof picked !== "undefined" && picked && picked.length) {
+        var allowedByPicks = mastersForPickedCategories();
+        if (!allowedByPicks || !allowedByPicks.length) return [];
+        var allowSet = {};
+        for (var p = 0; p < allowedByPicks.length; p++) allowSet[String(allowedByPicks[p])] = true;
+        return masters.filter(function (m) {
+          return allowSet[String(m.id)];
+        });
+      }
+
+      /* 2) Корзина пуста — фильтруем по категории формы записи. */
       var catName = currentFormCategoryName();
-      if (!catName) return masters;
+      if (!catName) return masters; // категория не выбрана — список не сужаем
       var teamRoot = document.querySelector("#meistrid .team-groups");
-      if (!teamRoot) return masters;
+      if (!teamRoot) return masters; // ещё не отрендерилось — не наказываем юзера
       var sel =
         '.team-group[data-category-name="' +
         cssEscapeAttrValue(catName) +
         '"] li[data-master-id]';
       var lis = teamRoot.querySelectorAll(sel);
-      if (!lis.length) return masters;
+      if (!lis.length) return []; // в CRM никому не дан доступ → пусто
       var allowed = {};
       for (var i = 0; i < lis.length; i++) {
         var mid = lis[i].getAttribute("data-master-id");
         if (mid) allowed[String(mid)] = true;
       }
-      var filtered = masters.filter(function (m) {
+      return masters.filter(function (m) {
         return allowed[String(m.id)];
       });
-      return filtered.length ? filtered : masters;
     }
 
     function refillDemoMastersForCurrentService() {

@@ -32,9 +32,22 @@ function esc(s) {
     .replace(/"/g, "&quot;");
 }
 
-/** CRM flag: hidden from marketing / public booking when false (shadow-test by turning on). */
+/** Совпадает с site-services.mjs: публично видим только активных, не-админов
+ * и тех, у кого show_on_marketing_site не выключен в CRM. Иначе админы-«технари»
+ * могут протекать в публичный dropdown «Мастер», даже если триггер
+ * staff_hide_admin_from_site по какой-то причине не сработал. */
 function staffRowIsPublicVisible(r) {
-  return r.show_on_marketing_site !== false;
+  if (!r) return false;
+  if (r.is_active === false) return false;
+  if (r.show_on_marketing_site === false) return false;
+  const role = String(r.role || "").toLowerCase();
+  if (role === "admin" || role === "owner") return false;
+  const roles = Array.isArray(r.roles) ? r.roles : [];
+  for (let i = 0; i < roles.length; i++) {
+    const rr = String(roles[i] || "").toLowerCase();
+    if (rr === "admin" || rr === "owner") return false;
+  }
+  return true;
 }
 
 function categoryNameRaw(r) {
@@ -132,7 +145,7 @@ async function main() {
 
     const { data: staffRows } = await supabase
       .from("staff")
-      .select("id,name,is_active,show_on_marketing_site")
+      .select("id,name,is_active,show_on_marketing_site,role,roles")
       .eq("is_active", true)
       .order("name");
     const staff = (staffRows || [])

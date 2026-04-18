@@ -225,6 +225,12 @@ function render(groups, serviceMasters) {
       const opt = document.createElement("option");
       opt.value = gr.id;
       opt.textContent = gr.name;
+      /* script.js (filterMastersByFormCategory) ищет совпадение
+       * option[data-category-name] === team-group[data-category-name].
+       * site-team.mjs кладёт туда String(name).trim().toLocaleLowerCase("ru"),
+       * поэтому нормализуем точно так же. */
+      const catKey = String(gr.name || "").trim().toLocaleLowerCase("ru");
+      if (catKey) opt.setAttribute("data-category-name", catKey);
       serviceSelect.appendChild(opt);
     }
   }

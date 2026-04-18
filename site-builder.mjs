@@ -215,14 +215,34 @@ async function main() {
   }
   if (!page?.id) return;
 
-  applyPageStyles(mount, page);
-  const { data: blocks } = await supabase
-    .from("site_blocks")
-    .select("id,type,content,styles,position")
-    .eq("page_id", page.id)
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
-  renderBlocks(blocks || [], page.styles);
+  /* site_blocks-запрос и финальный рендер тоже могут упасть:
+   *   - сеть / abort на мобилке;
+   *   - старая схема без колонок position/styles → PostgREST 400;
+   *   - DOM ошибка в renderBlocks (например, mount уже снят со страницы).
+   * Раньше это всё уходило в unhandled promise rejection, потому что
+   * `void main()` не ловит ошибку, а блок был ВНЕ try/catch. Молча падал
+   * рендер блоков на проде — никто не видел причину.
+   * Теперь логируем и обрабатываем error из ответа Supabase явно. */
+  try {
+    applyPageStyles(mount, page);
+    const { data: blocks, error: blocksError } = await supabase
+      .from("site_blocks")
+      .select("id,type,content,styles,position")
+      .eq("page_id", page.id)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (blocksError) {
+      console.warn("[site-builder] site_blocks fetch failed", blocksError);
+      return;
+    }
+    renderBlocks(blocks || [], page.styles);
+  } catch (e) {
+    console.warn("[site-builder] failed to render dynamic blocks", e);
+  }
 }
 
-void main();
+void main().catch((e) => {
+  /* Защита от unhandled rejection, если что-то пробьётся выше main()
+   * (например, getSb сломается в редком окружении). */
+  console.warn("[site-builder] main() threw", e);
+});
