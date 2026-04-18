@@ -832,7 +832,23 @@ function makeLauncher() {
   return wrap;
 }
 
+/** Сброс нижней панели: в режиме первого обращения показываем только форму,
+ *  без поля «ответ в чате» — иначе после сброса треда или при рассинхроне
+ *  localStorage остаётся старый thread-footer и кажется «два поля сообщения». */
+function clearThreadFooter(widget) {
+  if (!widget?.footer) return;
+  if (widget.typingTimer) {
+    clearTimeout(widget.typingTimer);
+    widget.typingTimer = null;
+  }
+  if (widget.state) widget.state.typing = false;
+  widget.footer.innerHTML = "";
+  delete widget.footer.dataset.mode;
+  widget.footer.hidden = true;
+}
+
 function renderForm(widget) {
+  clearThreadFooter(widget);
   const profile = getProfile() || {};
   const topic = profile.lastTopic || "salon";
   widget.body.innerHTML = `
@@ -931,6 +947,7 @@ function renderForm(widget) {
 }
 
 function renderThread(widget) {
+  widget.footer.hidden = false;
   widget.body.innerHTML = `<div class="ssc-thread" data-thread></div>`;
   renderMessages(widget);
   renderFooter(widget);
@@ -1051,6 +1068,7 @@ function renderMessages(widget) {
 }
 
 function renderFooter(widget) {
+  widget.footer.hidden = false;
   // Footer is rendered once per thread-mode session
   if (widget.footer.dataset.mode === "thread") return;
   widget.footer.innerHTML = `
