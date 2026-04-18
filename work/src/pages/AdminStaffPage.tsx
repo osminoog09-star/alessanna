@@ -134,6 +134,162 @@ function isMissingStaffMarketingColumnError(err: { message?: string } | null | u
   );
 }
 
+/** Базовая проверка e-mail — синхронизирована с CHECK-constraint миграции 025. */
+function isPlausibleEmail(raw: string): boolean {
+  const v = String(raw || "").trim();
+  if (!v) return true;
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
+}
+
+/**
+ * Инлайновое поле «календарь сотрудника»: сохраняется по blur/Enter.
+ * Пишем сразу в `staff.calendar_email`; миграция 025 добавляет колонку и
+ * CHECK-валидатор. Ошибка валидации показывается через `onError`.
+ */
+function StaffCalendarEmailField(props: {
+  row: StaffTableRow;
+  onSaved: () => void;
+  onError: (msg: string | null) => void;
+}) {
+  const initial = (props.row as StaffTableRow & { calendar_email?: string | null }).calendar_email ?? "";
+  const [value, setValue] = useState<string>(initial ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setValue(initial ?? "");
+  }, [initial]);
+
+  async function commit() {
+    const trimmed = value.trim();
+    if (trimmed === (initial ?? "").trim()) return;
+    if (!isPlausibleEmail(trimmed)) {
+      props.onError("Проверьте формат e-mail или очистите поле.");
+      return;
+    }
+    props.onError(null);
+    setSaving(true);
+    const { error } = await supabase
+      .from("staff")
+      .update({ calendar_email: trimmed === "" ? null : trimmed })
+      .eq("id", props.row.id);
+    setSaving(false);
+    if (error) {
+      props.onError(error.message);
+      return;
+    }
+    props.onSaved();
+  }
+
+  return (
+    <input
+      type="email"
+      autoComplete="email"
+      spellCheck={false}
+      disabled={saving}
+      placeholder="master@gmail.com"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          (e.currentTarget as HTMLInputElement).blur();
+        }
+      }}
+      className="w-full rounded border border-zinc-700 bg-black px-2 py-1 text-xs text-zinc-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 disabled:opacity-60"
+    />
+  );
+}
+
+/**
+ * Общий Google-календарь салона: храним в `salon_settings` под ключом
+ * `salon_calendar_email`. Этот адрес — целевой календарь, куда будущая
+ * интеграция будет записывать все брони салона.
+ */
+function SalonCalendarSettingsCard(props: { onError: (msg: string | null) => void }) {
+  const [value, setValue] = useState<string>("");
+  const [initial, setInitial] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("salon_settings")
+      .select("value")
+      .eq("key", "salon_calendar_email")
+      .maybeSingle();
+    if (error) {
+      props.onError(error.message);
+      setLoading(false);
+      return;
+    }
+    const v = (data?.value ?? "") as string;
+    setInitial(v);
+    setValue(v);
+    setLoading(false);
+  }, [props]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function save() {
+    const trimmed = value.trim();
+    if (!isPlausibleEmail(trimmed)) {
+      props.onError("Проверьте формат e-mail или очистите поле.");
+      return;
+    }
+    props.onError(null);
+    setSaving(true);
+    const { error } = await supabase
+      .from("salon_settings")
+      .upsert({ key: "salon_calendar_email", value: trimmed === "" ? null : trimmed }, { onConflict: "key" });
+    setSaving(false);
+    if (error) {
+      props.onError(error.message);
+      return;
+    }
+    setInitial(trimmed);
+  }
+
+  const dirty = value.trim() !== initial.trim();
+
+  return (
+    <section className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+      <header className="mb-1 flex items-baseline justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+          Общий Google-календарь салона
+        </p>
+        <span className="text-[10px] text-zinc-600">salon_settings.salon_calendar_email</span>
+      </header>
+      <p className="mb-2 text-[11px] leading-snug text-zinc-500">
+        Рабочая почта салона — в этот календарь попадут все записи (сейчас только хранится,
+        реальная синхронизация с Google Calendar будет подключена отдельным шагом).
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="email"
+          autoComplete="email"
+          spellCheck={false}
+          disabled={loading || saving}
+          placeholder="salon@gmail.com"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="flex-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm text-zinc-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={loading || saving || !dirty}
+          className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+        >
+          Сохранить
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function AdminStaffPage() {
   const { t } = useTranslation();
   const [rows, setRows] = useState<StaffTableRow[]>([]);
@@ -452,7 +608,7 @@ export function AdminStaffPage() {
 
   async function remove(row: StaffTableRow) {
     setErr(null);
-    if (!window.confirm(`Delete ${row.name} permanently?`)) return;
+    if (!window.confirm(t("adminStaff.deleteConfirm", { name: row.name, defaultValue: `Удалить ${row.name} без восстановления?` }))) return;
     const { error } = await supabase.from("staff").delete().eq("id", row.id);
     if (error) {
       setErr(error.message);
@@ -736,13 +892,6 @@ export function AdminStaffPage() {
     setSkillCategoryExpanded((prev) => ({ ...prev, [k]: !prev[k] }));
   }
 
-  function categoryAllLinkedForStaff(staffId: string, catSvcs: CatalogSkillService[]): boolean {
-    if (!catSvcs.length) return true;
-    const explicit = links.filter((l) => String(l.staff_id) === String(staffId));
-    if (explicit.length === 0) return true;
-    return catSvcs.every((s) => hasLink(staffId, s.id));
-  }
-
   async function deleteStaffServiceRow(staffId: string, s: CatalogSkillService): Promise<boolean> {
     const rawId = String(s.id);
     const listingId = await resolveStaffLinkListingId(rawId, s.name);
@@ -984,6 +1133,7 @@ export function AdminStaffPage() {
       <header>
         <h1 className="text-xl font-semibold text-white">{t("nav.adminStaff")}</h1>
         <p className="mt-1 text-sm text-zinc-500">{t("adminStaff.subtitle")}</p>
+        <SalonCalendarSettingsCard onError={setErr} />
       </header>
 
       {staffMarketingColumnMissing && (
@@ -1269,6 +1419,16 @@ export function AdminStaffPage() {
                           </div>
                           <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
                             <span className="text-[11px] font-medium uppercase text-zinc-500">
+                              Календарь сотрудника
+                            </span>
+                            <StaffCalendarEmailField row={r} onSaved={() => void load()} onError={setErr} />
+                            <span className="text-[10px] leading-snug text-zinc-600">
+                              Персональный e-mail для Google/Apple/Outlook календаря. На него будут
+                              приходить приглашения и ICS-файлы записей, когда подключим интеграцию.
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
+                            <span className="text-[11px] font-medium uppercase text-zinc-500">
                               {t("adminStaff.active")}
                             </span>
                             <div className="flex items-center gap-2 text-xs">
@@ -1307,8 +1467,7 @@ export function AdminStaffPage() {
                                   </span>
                                 </p>
                                 <span className="text-[10px] text-zinc-500">
-                                  перетащите категорию за <span className="font-mono">⋮⋮</span>, чтобы
-                                  изменить порядок
+                                  потяните любую карточку, чтобы изменить порядок
                                 </span>
                               </header>
                               {assigned.length === 0 ? (
@@ -1323,32 +1482,41 @@ export function AdminStaffPage() {
                                     const siteCount = items.filter((x) => x.show_on_site).length;
                                     const draggable = catName !== "Без категории";
                                     const isDragged = draggedCatName === catName;
+                                    const isDropTarget = draggable && draggedCatName && draggedCatName !== catName;
                                     return (
                                       <div
                                         key={catName}
+                                        /* Вся карточка категории — drag source и drop target.
+                                         * Интерактивные элементы внутри (кнопки/тогглы) не запускают drag,
+                                         * потому что их нативный pointer capture срабатывает раньше. */
+                                        draggable={draggable}
+                                        onDragStart={(e) => onCategoryDragStart(e, catName)}
+                                        onDragEnd={onCategoryDragEnd}
                                         onDragOver={draggable ? onCategoryDragOver : undefined}
                                         onDrop={draggable ? (e) => onCategoryDrop(e, catName) : undefined}
                                         className={
-                                          "rounded border bg-black/25 transition " +
+                                          "group relative rounded-md border bg-black/25 transition-all duration-150 " +
+                                          (draggable
+                                            ? "cursor-grab active:cursor-grabbing hover:border-emerald-800/80 hover:bg-emerald-950/20 "
+                                            : "") +
                                           (isDragged
-                                            ? "border-sky-600/80 opacity-60"
-                                            : "border-zinc-800/60")
+                                            ? "border-sky-500/80 bg-sky-950/20 opacity-60 shadow-lg shadow-sky-500/20 ring-1 ring-sky-500/40"
+                                            : isDropTarget
+                                              ? "border-dashed border-sky-700/70"
+                                              : "border-zinc-800/60")
                                         }
                                       >
-                                        <div className="flex w-full items-center gap-1 px-2 py-1.5 text-left">
+                                        <div className="flex w-full items-center gap-2 px-2 py-2 text-left">
                                           <span
-                                            draggable={draggable}
-                                            onDragStart={(e) => onCategoryDragStart(e, catName)}
-                                            onDragEnd={onCategoryDragEnd}
                                             className={
-                                              "shrink-0 select-none px-1 font-mono text-[11px] leading-none text-zinc-500 " +
+                                              "shrink-0 select-none font-mono text-[11px] leading-none transition-colors " +
                                               (draggable
-                                                ? "cursor-grab hover:text-zinc-300 active:cursor-grabbing"
-                                                : "cursor-not-allowed opacity-30")
+                                                ? "text-zinc-600 group-hover:text-emerald-400"
+                                                : "text-zinc-700 opacity-40")
                                             }
                                             title={
                                               draggable
-                                                ? "Перетащите, чтобы изменить порядок категорий"
+                                                ? "Потяните карточку в любом месте, чтобы изменить порядок"
                                                 : "«Без категории» не перемещается"
                                             }
                                             aria-hidden="true"
@@ -1361,8 +1529,9 @@ export function AdminStaffPage() {
                                             className="flex min-w-0 flex-1 items-center gap-2 text-left"
                                             aria-expanded={expanded}
                                             aria-controls={assignedCatPanelId}
+                                            draggable={false}
                                           >
-                                            <span className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                                            <span className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 transition group-hover:border-zinc-600">
                                               {expanded ? "▼" : "▶"}
                                             </span>
                                             <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
@@ -1448,8 +1617,7 @@ export function AdminStaffPage() {
                                       </span>
                                     </p>
                                     <span className="text-[10px] text-zinc-500">
-                                      drag <span className="font-mono">⋮⋮</span> — порядок категорий общий
-                                      для всего CRM
+                                      потяните карточку — порядок категорий общий для всего CRM
                                     </span>
                                   </header>
                                   {activeServices.length === 0 ? (
@@ -1468,34 +1636,41 @@ export function AdminStaffPage() {
                                         const catPanelId = `staff-${r.id}-catpanel-${catIdx}`;
                                         const draggable = catName !== "Без категории";
                                         const isDragged = draggedCatName === catName;
+                                        const isDropTarget =
+                                          draggable && draggedCatName && draggedCatName !== catName;
                                         return (
                                           <div
                                             key={catName}
+                                            draggable={draggable}
+                                            onDragStart={(e) => onCategoryDragStart(e, catName)}
+                                            onDragEnd={onCategoryDragEnd}
                                             onDragOver={draggable ? onCategoryDragOver : undefined}
                                             onDrop={
                                               draggable ? (e) => onCategoryDrop(e, catName) : undefined
                                             }
                                             className={
-                                              "rounded border bg-black/25 transition " +
+                                              "group relative rounded-md border bg-black/25 transition-all duration-150 " +
+                                              (draggable
+                                                ? "cursor-grab active:cursor-grabbing hover:border-sky-800/80 hover:bg-sky-950/15 "
+                                                : "") +
                                               (isDragged
-                                                ? "border-sky-600/80 opacity-60"
-                                                : "border-zinc-800/60")
+                                                ? "border-sky-500/80 bg-sky-950/20 opacity-60 shadow-lg shadow-sky-500/20 ring-1 ring-sky-500/40"
+                                                : isDropTarget
+                                                  ? "border-dashed border-sky-700/70"
+                                                  : "border-zinc-800/60")
                                             }
                                           >
-                                            <div className="flex flex-wrap items-center gap-1 px-2 py-2">
+                                            <div className="flex flex-wrap items-center gap-2 px-2 py-2">
                                               <span
-                                                draggable={draggable}
-                                                onDragStart={(e) => onCategoryDragStart(e, catName)}
-                                                onDragEnd={onCategoryDragEnd}
                                                 className={
-                                                  "shrink-0 select-none px-1 font-mono text-[11px] leading-none text-zinc-500 " +
+                                                  "shrink-0 select-none font-mono text-[11px] leading-none transition-colors " +
                                                   (draggable
-                                                    ? "cursor-grab hover:text-zinc-300 active:cursor-grabbing"
-                                                    : "cursor-not-allowed opacity-30")
+                                                    ? "text-zinc-600 group-hover:text-sky-400"
+                                                    : "text-zinc-700 opacity-40")
                                                 }
                                                 title={
                                                   draggable
-                                                    ? "Перетащите, чтобы изменить порядок категорий"
+                                                    ? "Потяните карточку в любом месте, чтобы изменить порядок"
                                                     : "«Без категории» не перемещается"
                                                 }
                                                 aria-hidden="true"
@@ -1505,19 +1680,20 @@ export function AdminStaffPage() {
                                               <button
                                                 type="button"
                                                 onClick={() => toggleSkillCategoryPanel(r.id, catName)}
-                                                className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800"
+                                                className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 transition hover:border-zinc-500 hover:bg-zinc-800"
                                                 aria-expanded={expanded}
                                                 aria-controls={catPanelId}
                                                 title={
                                                   expanded ? "Свернуть список услуг" : "Показать услуги категории"
                                                 }
+                                                draggable={false}
                                               >
                                                 {expanded ? "▼" : "▶"}
                                               </button>
                                               <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
                                                 {catName}
                                               </span>
-                                              <span className="shrink-0 text-[10px] text-zinc-500">
+                                              <span className="shrink-0 rounded-full bg-zinc-900/80 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
                                                 {catSvcs.length} не включено
                                               </span>
                                               <button
@@ -1525,8 +1701,9 @@ export function AdminStaffPage() {
                                                 onClick={() =>
                                                   void toggleCategoryForStaff(r.id, catSvcs, true)
                                                 }
-                                                className="shrink-0 rounded border border-emerald-800/60 bg-emerald-900/20 px-1.5 py-0.5 text-[10px] text-emerald-200 transition hover:border-emerald-600/80 hover:bg-emerald-800/30"
+                                                className="shrink-0 rounded border border-emerald-800/60 bg-emerald-900/20 px-2 py-0.5 text-[10px] font-medium text-emerald-200 transition hover:border-emerald-600/80 hover:bg-emerald-800/30"
                                                 title="Добавить все услуги категории мастеру"
+                                                draggable={false}
                                               >
                                                 добавить все
                                               </button>

@@ -26,6 +26,8 @@ type AuthState = {
   isAdmin: boolean;
   /** True when real (non-preview) role is worker-only. */
   isWorkerOnly: boolean;
+  /** True when the session is a shared salon reception (no staff logged in yet). Currently always false — reception mode is not implemented. Kept here so `AppTopBar`/`StaffLoginModal` can read a defined flag instead of `undefined`. */
+  isReceptionMode: boolean;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -41,13 +43,14 @@ function parseStored(): StaffMember | null {
 }
 
 function staffTableRowToMember(raw: Record<string, unknown>): StaffMember {
+  /* `normalizeStaffMember` заполнит `roles`/`active` из `role`/`is_active`. */
   return normalizeStaffMember({
     id: String(raw.id),
     name: String(raw.name ?? ""),
     phone: raw.phone != null ? String(raw.phone) : null,
     is_active: raw.is_active,
     role: raw.role ?? raw.roles,
-  } as StaffMember);
+  } as unknown as StaffMember);
 }
 
 /**
@@ -134,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canManage: hasStaffRole(staffMember, "admin") || hasStaffRole(staffMember, "manager"),
       isAdmin: hasStaffRole(staffMember, "admin"),
       isWorkerOnly: isWorkerOnlyView(staffMember?.roles),
+      isReceptionMode: false,
     }),
     [staffMember, loading, login, logout]
   );

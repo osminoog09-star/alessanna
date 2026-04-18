@@ -13,6 +13,7 @@ import { AdminStaffPage } from "./pages/AdminStaffPage";
 import { AdminSchedulePage } from "./pages/AdminSchedulePage";
 import { AdminTimeOffPage } from "./pages/AdminTimeOffPage";
 import { AdminSupportPage } from "./pages/AdminSupportPage";
+import { MyHelpPage } from "./pages/MyHelpPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 
 function RequireManage({ children }: { children: React.ReactNode }) {
@@ -99,6 +100,7 @@ export default function App() {
             </RequireManage>
           }
         />
+        <Route path="help" element={<MyHelpPage />} />
         <Route path="services" element={<Navigate to="/admin/services" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

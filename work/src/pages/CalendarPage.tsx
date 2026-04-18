@@ -19,7 +19,7 @@ import type {
   StaffServiceRow,
   StaffTimeOffRow,
 } from "../types/database";
-import { staffEligibleForService, hasStaffRole, normalizeStaffMember } from "../lib/roles";
+import { isStaffRowAdmin, staffEligibleForService, hasStaffRole, normalizeStaffMember } from "../lib/roles";
 import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
 import { BookingModal } from "../components/BookingModal";
 import { ProCalendar } from "../components/calendar/ProCalendar";
@@ -58,7 +58,12 @@ export function CalendarPage() {
       supabase.from("staff_services").select("*"),
     ]);
     if (st.data) {
-      setStaff((st.data as Record<string, unknown>[]).map((r) => normalizeStaffMember(r as StaffMember)));
+      /* Тех-поддержка (роль admin) не принимает клиентов — не занимает колонку в календаре. */
+      setStaff(
+        (st.data as Record<string, unknown>[])
+          .filter((row) => !isStaffRowAdmin(row))
+          .map((r) => normalizeStaffMember(r as StaffMember))
+      );
     }
     if (sch.data) setSchedules(sch.data as StaffScheduleRow[]);
     if (to.data) setTimeOff(to.data as StaffTimeOffRow[]);

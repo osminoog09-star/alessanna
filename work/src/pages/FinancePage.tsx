@@ -4,6 +4,7 @@ import { endOfMonth, format, parse, startOfMonth } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useFinanceRealtime } from "../hooks/useSalonRealtime";
 import { eurFromCents } from "../lib/format";
+import { isStaffRowAdmin } from "../lib/roles";
 import { listingPriceCents } from "../lib/serviceListing";
 import type { ServiceListingRow, StaffTableRow, StaffWorkType } from "../types/database";
 
@@ -48,7 +49,10 @@ export function FinancePage() {
         .eq("is_working", true),
       supabase.from("service_listings").select("*"),
     ]);
-    if (st.data) setStaff(st.data as StaffTableRow[]);
+    if (st.data) {
+      /* Админы (техподдержка) не участвуют в выплатах/финансах салона. */
+      setStaff((st.data as StaffTableRow[]).filter((row) => !isStaffRowAdmin(row)));
+    }
     if (ln.data) setLines(ln.data as LineRow[]);
     if (wd.data) setWorkDays(wd.data as Array<{ staff_id: string; date: string }>);
     if (sv.data) setListings(sv.data as ServiceListingRow[]);

@@ -55,6 +55,15 @@ export function hasStaffRole(
   return normalizeRoles(member.roles).includes(role);
 }
 
+/** Admins (site tech support) are not salon workers and must NOT appear in schedule
+ *  pickers, calendar columns, analytics, payouts, public team blocks, booking staff
+ *  selects, etc. Accepts a raw staff row (roles|role fields) or a normalized member. */
+export function isStaffRowAdmin(row: unknown): boolean {
+  if (!row || typeof row !== "object") return false;
+  const r = row as { roles?: unknown; role?: unknown };
+  return normalizeRoles(r.roles ?? r.role).includes("admin");
+}
+
 /** Marketing site + public booking: row hidden when explicitly false (DB flag). */
 export function isStaffShownOnPublicMarketing(
   member: Pick<StaffMember, "show_on_marketing_site"> | null | undefined
@@ -76,8 +85,11 @@ export function sanitizeRolesForSave(
   const norm = normalizeRoles(edited);
   const storedNorm = normalizeRoles(storedRoles);
   if (editorIsAdmin) return attachWorkerForManagers(norm.length ? norm : ["worker"]);
-  let out = norm.filter((r) => r !== "admin");
-  if (storedNorm.includes("admin")) out = [...new Set([...out, "admin"])];
+  /* Non-admin editors never promote to admin; but if DB already has admin we keep it. */
+  let out: StaffRole[] = norm.filter((r): r is StaffRole => r !== "admin");
+  if (storedNorm.includes("admin")) {
+    out = [...new Set<StaffRole>([...out, "admin"])];
+  }
   return attachWorkerForManagers(out.length ? out : ["worker"]);
 }
 

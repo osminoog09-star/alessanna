@@ -45,6 +45,21 @@ export function useAnalyticsRealtime(onChange: () => void) {
   useEffect(() => subscribeTables("crm-analytics", ["appointments", "services", "staff"], onChangeRef), []);
 }
 
+/** Finance page: payouts/percents depend on staff settings + appointments + services catalog. */
+export function useFinanceRealtime(onChange: () => void) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(
+    () =>
+      subscribeTables(
+        "crm-finance",
+        ["appointments", "appointment_services", "services", "service_listings", "staff"],
+        onChangeRef,
+      ),
+    [],
+  );
+}
+
 export function useServicesCatalogRealtime(onChange: () => void) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;

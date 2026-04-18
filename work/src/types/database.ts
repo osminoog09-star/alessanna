@@ -16,6 +16,9 @@ export type StaffMember = {
   show_on_marketing_site?: boolean;
 };
 
+/** How the salon pays an employee (finance / payouts). */
+export type StaffWorkType = "percentage" | "rent" | "salary";
+
 /** Raw `staff` row (Supabase). */
 export type StaffTableRow = {
   id: string;
@@ -26,6 +29,14 @@ export type StaffTableRow = {
   is_active: boolean;
   show_on_marketing_site?: boolean;
   created_at?: string;
+  /** Optional finance settings. */
+  work_type?: StaffWorkType | null;
+  /** Percentage (0-100) paid to the employee when `work_type === "percentage"`. */
+  percent_rate?: number | null;
+  /** Daily rent in cents paid by the employee when `work_type === "rent"`. */
+  rent_per_day?: number | null;
+  /** Personal Google/Apple calendar e-mail for a future sync job. */
+  calendar_email?: string | null;
 };
 
 export type CategoryRow = {
@@ -73,12 +84,27 @@ export type StaffScheduleRow = {
   end_time: string;
 };
 
+/** Why the employee is off: vacation, sick leave, ad-hoc block, etc.
+ *  Covers both historical (`manual_block`, `sick_leave`, `day_off`) and new values
+ *  (`vacation`, `sick`, `personal`, `block`, `other`) so migration rows from either
+ *  era type-check. */
+export type TimeOffType =
+  | "vacation"
+  | "sick"
+  | "sick_leave"
+  | "day_off"
+  | "personal"
+  | "block"
+  | "manual_block"
+  | "other";
+
 export type StaffTimeOffRow = {
   id: string;
   staff_id: string;
   start_time: string;
   end_time: string;
   reason: string | null;
+  time_off_type?: TimeOffType | null;
 };
 
 export type StaffServiceRow = {
@@ -86,6 +112,61 @@ export type StaffServiceRow = {
   service_id: string | number;
   /** false = CRM only; hidden from public team + public booking */
   show_on_site?: boolean;
+};
+
+/** Public catalog row (`service_listings`) — new UUID-based source of truth. */
+export type ServiceListingRow = {
+  id: string;
+  name: string;
+  category_id: string | null;
+  duration: number | null;
+  buffer_after_min: number | null;
+  price: number | null;
+  is_active: boolean;
+  created_at?: string;
+};
+
+/** CRM client/visit rows. */
+export type ClientRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  created_at?: string;
+};
+
+/** Public site builder blocks stored in `site_blocks`. */
+export type SiteBlockType =
+  | "hero"
+  | "text"
+  | "image"
+  | "gallery"
+  | "video"
+  | "cta"
+  | "team"
+  | "services"
+  | "reviews"
+  | "contacts"
+  | "custom";
+
+export type SiteBlockRow = {
+  id: string;
+  page_id: string | null;
+  type: SiteBlockType;
+  position: number;
+  content: Record<string, unknown> | null;
+  styles: Record<string, unknown> | null;
+  is_active: boolean;
+  created_at?: string;
+};
+
+export type SitePageRow = {
+  id: string;
+  slug: string;
+  title: string | null;
+  is_published: boolean;
+  created_at?: string;
 };
 
 export type Database = {

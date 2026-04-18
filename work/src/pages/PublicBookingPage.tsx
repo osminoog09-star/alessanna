@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { generateAvailableSlots, formatSlotRange } from "../lib/slots";
 import {
   applyPublicStaffVisibility,
+  isStaffRowAdmin,
   isStaffShownOnPublicMarketing,
   normalizeStaffMember,
   staffEligibleForService,
@@ -78,6 +79,7 @@ export function PublicBookingPage() {
     if (st.data) {
       setStaff(
         (st.data as Record<string, unknown>[])
+          .filter((row) => !isStaffRowAdmin(row))
           .map((r) => normalizeStaffMember(r as StaffMember))
           .filter((m) => isStaffShownOnPublicMarketing(m))
       );

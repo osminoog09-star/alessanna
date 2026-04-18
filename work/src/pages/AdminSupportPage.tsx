@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { hasStaffRole } from "../lib/roles";
 
-type Topic = "salon" | "site";
+type Topic = "salon" | "site" | "staff";
 type Status = "open" | "pending" | "closed";
 type SenderType = "visitor" | "staff" | "system";
 
@@ -21,6 +21,8 @@ type ThreadSummary = {
   last_sender_type: SenderType | null;
   unread_for_staff: boolean;
   assigned_staff_id: string | null;
+  staff_author_id?: string | null;
+  staff_author_name?: string | null;
 };
 
 type ThreadDetail = ThreadSummary & {
@@ -80,7 +82,9 @@ function isImage(mime: string | null | undefined): boolean {
 }
 
 function topicLabel(t: (k: string) => string, topic: Topic): string {
-  return topic === "site" ? t("support.topicSite") : t("support.topicSalon");
+  if (topic === "site") return t("support.topicSite");
+  if (topic === "staff") return t("support.topicStaff");
+  return t("support.topicSalon");
 }
 
 function statusLabel(t: (k: string) => string, status: Status): string {
@@ -96,9 +100,9 @@ function statusTone(status: Status): string {
 }
 
 function topicTone(topic: Topic): string {
-  return topic === "site"
-    ? "border-violet-600/50 bg-violet-900/30 text-violet-200"
-    : "border-sky-600/50 bg-sky-900/30 text-sky-200";
+  if (topic === "site") return "border-violet-600/50 bg-violet-900/30 text-violet-200";
+  if (topic === "staff") return "border-orange-600/50 bg-orange-900/30 text-orange-200";
+  return "border-sky-600/50 bg-sky-900/30 text-sky-200";
 }
 
 export function AdminSupportPage() {
@@ -357,7 +361,7 @@ export function AdminSupportPage() {
           </div>
           {isAdmin && (
             <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-black/30 p-1">
-              {(["", "salon", "site"] as const).map((tp) => (
+              {(["", "salon", "site", "staff"] as const).map((tp) => (
                 <button
                   key={tp || "all"}
                   type="button"
@@ -418,7 +422,16 @@ export function AdminSupportPage() {
                               className="h-1.5 w-1.5 rounded-full bg-emerald-400"
                             />
                           )}
-                          <span className="truncate">{th.visitor_name || "—"}</span>
+                          <span className="truncate">
+                            {th.topic === "staff"
+                              ? th.staff_author_name || th.visitor_name || "—"
+                              : th.visitor_name || "—"}
+                            {th.topic === "staff" && (
+                              <span className="ml-1 text-[10px] text-orange-300/80">
+                                · {t("support.staffMember")}
+                              </span>
+                            )}
+                          </span>
                         </span>
                         <span className="shrink-0 text-[10px] text-zinc-500">
                           {formatTime(th.last_message_at || th.updated_at)}
@@ -473,7 +486,9 @@ export function AdminSupportPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="truncate text-sm font-semibold text-zinc-100">
-                          {detail.visitor_name}
+                          {detail.topic === "staff"
+                            ? detail.staff_author_name || detail.visitor_name
+                            : detail.visitor_name}
                         </h2>
                         <span
                           className={
@@ -513,7 +528,7 @@ export function AdminSupportPage() {
                         ) : null}
                       </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       {detail.assigned_staff_id !== staffMember?.id && (
                         <button
                           type="button"
@@ -523,22 +538,81 @@ export function AdminSupportPage() {
                           {t("support.assignMe")}
                         </button>
                       )}
-                      {(["open", "pending", "closed"] as const).map((s) => (
+
+                      {/* Сегментированный селектор «Статус: …» — явный лейбл, чтобы
+                          отличался от status-badge (та же визуальная пилюля
+                          вводила в заблуждение: пользователь не понимал, что
+                          это кликабельные кнопки). */}
+                      <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-black/40 px-1.5 py-1">
+                        <span className="px-1 text-[10px] uppercase tracking-wider text-zinc-500">
+                          {t("support.statusLabel")}:
+                        </span>
+                        {(["open", "pending"] as const).map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => void changeStatus(s)}
+                            disabled={detail.status === s}
+                            className={
+                              "rounded-md px-2 py-0.5 text-[11px] font-medium transition " +
+                              (detail.status === s
+                                ? "bg-zinc-200 text-black cursor-default"
+                                : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100")
+                            }
+                          >
+                            {statusLabel(t, s)}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Главная действующая кнопка: «Закрыть обращение».
+                          Явная иконка-крестик + жёлтый/зинковый акцент,
+                          чтобы её невозможно было пропустить. */}
+                      {detail.status !== "closed" ? (
                         <button
-                          key={s}
                           type="button"
-                          onClick={() => void changeStatus(s)}
-                          disabled={detail.status === s}
-                          className={
-                            "rounded-md border px-2.5 py-1 text-[11px] transition " +
-                            (detail.status === s
-                              ? statusTone(s) + " cursor-default"
-                              : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800")
-                          }
+                          onClick={() => void changeStatus("closed")}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-600 bg-zinc-100 px-3 py-1.5 text-[11px] font-semibold text-zinc-900 shadow-sm transition hover:bg-white"
+                          title={t("support.closeThreadHint")}
                         >
-                          {statusLabel(t, s)}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3.5 w-3.5"
+                            aria-hidden="true"
+                          >
+                            <path d="M5 13l4 4L19 7" />
+                          </svg>
+                          {t("support.closeThread")}
                         </button>
-                      ))}
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void changeStatus("open")}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-emerald-700/60 bg-emerald-900/30 px-3 py-1.5 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-900/60"
+                          title={t("support.reopenThreadHint")}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3.5 w-3.5"
+                            aria-hidden="true"
+                          >
+                            <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+                          </svg>
+                          {t("support.reopenThread")}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : null}

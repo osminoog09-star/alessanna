@@ -30,7 +30,7 @@ export function LoginPage() {
             : t(r.errorKey)
         );
       } else {
-        setError("Доступ запрещён");
+        setError(t("auth.error.accessDenied", { defaultValue: "Доступ запрещён" }));
       }
     }
   }

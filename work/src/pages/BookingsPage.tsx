@@ -5,9 +5,10 @@ import { supabase } from "../lib/supabase";
 import { useBookingsRealtime } from "../hooks/useSalonRealtime";
 import { useAuth } from "../context/AuthContext";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
-import type { AppointmentRow, ServiceRow } from "../types/database";
+import type { AppointmentRow } from "../types/database";
 
 type StaffName = { id: string; name: string };
+type ServiceName = { id: string; name: string };
 
 export function BookingsPage() {
   const { t } = useTranslation();
@@ -15,7 +16,7 @@ export function BookingsPage() {
   const { canManage, isWorkerOnlyEffective } = useEffectiveRole();
   const [rows, setRows] = useState<AppointmentRow[]>([]);
   const [staffNames, setStaffNames] = useState<StaffName[]>([]);
-  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [services, setServices] = useState<ServiceName[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -23,14 +24,29 @@ export function BookingsPage() {
     if (isWorkerOnlyEffective && staffMember) {
       q = q.eq("staff_id", staffMember.id);
     }
-    const [b, e, s] = await Promise.all([
+    /* `appointments.service_id` мог быть записан из двух каталогов: legacy `services`
+     * (bigint) и актуальный `service_listings` (uuid). Грузим оба источника и мёржим
+     * по стринговому id — иначе в колонке «Услуга» у новых записей всегда прочерк. */
+    const [b, e, legacySvc, listingSvc] = await Promise.all([
       q,
       supabase.from("staff").select("id,name"),
       supabase.from("services").select("id,name_et"),
+      supabase.from("service_listings").select("id,name"),
     ]);
     if (b.data) setRows(b.data as AppointmentRow[]);
     if (e.data) setStaffNames(e.data as StaffName[]);
-    if (s.data) setServices(s.data as ServiceRow[]);
+    const merged: ServiceName[] = [];
+    if (legacySvc.data) {
+      for (const r of legacySvc.data as Array<{ id: unknown; name_et: string | null }>) {
+        merged.push({ id: String(r.id), name: r.name_et ?? "" });
+      }
+    }
+    if (listingSvc.data) {
+      for (const r of listingSvc.data as Array<{ id: unknown; name: string | null }>) {
+        merged.push({ id: String(r.id), name: r.name ?? "" });
+      }
+    }
+    setServices(merged);
     setLoading(false);
   }, [isWorkerOnlyEffective, staffMember]);
 
@@ -93,7 +109,7 @@ export function BookingsPage() {
               {visible.map((b) => {
                 const when = b.start_time;
                 const em = staffNames.find((x) => x.id === b.staff_id);
-                const sv = services.find((x) => x.id === b.service_id);
+                const sv = services.find((x) => x.id === String(b.service_id));
                 return (
                   <tr key={b.id} className="bg-zinc-950/80">
                     <td className="px-4 py-3 text-zinc-300">
@@ -101,7 +117,7 @@ export function BookingsPage() {
                     </td>
                     <td className="px-4 py-3 text-white">{b.client_name}</td>
                     <td className="px-4 py-3 text-zinc-400">{em?.name ?? t("common.dash")}</td>
-                    <td className="px-4 py-3 text-zinc-400">{sv?.name_et ?? t("common.dash")}</td>
+                    <td className="px-4 py-3 text-zinc-400">{sv?.name || t("common.dash")}</td>
                     <td className="px-4 py-3 capitalize text-zinc-400">{statusLabel(b.status)}</td>
                     {(canManage || (isWorkerOnlyEffective && staffMember)) && (
                       <td className="px-4 py-3">

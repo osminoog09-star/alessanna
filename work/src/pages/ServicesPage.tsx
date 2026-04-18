@@ -101,6 +101,7 @@ export function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
   const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
+  const [serviceSearch, setServiceSearch] = useState("");
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [quickCreateCategory, setQuickCreateCategory] = useState<string | null>(null);
   const [quickName, setQuickName] = useState("");
@@ -359,7 +360,9 @@ export function ServicesPage() {
           name: String(r.name || ""),
           phone: r.phone != null ? String(r.phone) : null,
           active: r.is_active !== false,
-          roles: [],
+          /* Нормализуем роли, чтобы `isStaffSalonAdmin` корректно скрывал админов
+           * (техподдержка сайта) из списка мастеров услуги. */
+          roles: normalizeRoles(r.roles ?? r.role),
         }))
       );
     }
@@ -682,67 +685,6 @@ export function ServicesPage() {
     load();
   }
 
-  async function addServiceToCategory(categoryName: string) {
-    if (!canManage) return;
-    const found = categories.find((c) => String(c.name || "").trim() === categoryName);
-    const categoryId = found ? String(found.id) : null;
-
-    let insertRes = await supabase
-      .from("services")
-      .insert({
-        name_et: i18n.t("services.newServiceDefault"),
-        duration_min: 60,
-        buffer_after_min: 10,
-        price_cents: 3000,
-        active: true,
-        sort_order: services.length,
-        category_id: categoryId,
-        category: categoryName || null,
-      })
-      .select("*")
-      .single();
-
-    if (insertRes.error) {
-      insertRes = await supabase
-        .from("services")
-        .insert({
-          name: i18n.t("services.newServiceDefault"),
-          duration: 60,
-          buffer_after_min: 10,
-          price: 30,
-          category: categoryName || null,
-        })
-        .select("*")
-        .single();
-      if (insertRes.error && String(insertRes.error.message || "").includes("buffer_after_min")) {
-        insertRes = await supabase
-          .from("services")
-          .insert({
-            name: i18n.t("services.newServiceDefault"),
-            duration: 60,
-            price: 30,
-            category: categoryName || null,
-          })
-          .select("*")
-          .single();
-      }
-    }
-
-    if (insertRes.error) {
-      console.error("[services] add service in category failed", insertRes.error);
-      return;
-    }
-
-    if (insertRes.data) {
-      const row = insertRes.data as Record<string, unknown>;
-      const normalized = row.name_et != null ? (insertRes.data as ServiceRow) : mapModernServices([row])[0];
-      await syncServiceToPublicCatalog(normalized);
-    }
-
-    await refreshPublicStatus();
-    load();
-  }
-
   function openQuickCreate(categoryName: string) {
     setQuickCreateCategory(categoryName || "");
     setQuickName(i18n.t("services.newServiceDefault"));
@@ -993,246 +935,461 @@ export function ServicesPage() {
   }
 
   const groupedServices = useMemo(() => {
+    const q = serviceSearch.trim().toLowerCase();
+    const pool = q
+      ? services.filter((s) => String(s.name_et || "").toLowerCase().includes(q))
+      : services;
+
     const map = new Map<string, ServiceRow[]>();
-    for (const service of services) {
+    for (const service of pool) {
       const categoryName = categoryNameFromService(service) || "Без категории";
       if (!map.has(categoryName)) map.set(categoryName, []);
       map.get(categoryName)?.push(service);
     }
-    // Show empty category sections too, so user can add first service directly into category.
-    for (const c of categories) {
-      const name = String(c.name || "").trim();
-      if (name && !map.has(name)) map.set(name, []);
+    /* Show empty category sections too when no search is active, so user can add first service directly into category. */
+    if (!q) {
+      for (const c of categories) {
+        const name = String(c.name || "").trim();
+        if (name && !map.has(name)) map.set(name, []);
+      }
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "ru"));
-  }, [services, categories]);
+  }, [services, categories, serviceSearch]);
+
+  /** Quick top-of-page stats: active/total services + masters coverage. */
+  const servicesStats = useMemo(() => {
+    const total = services.length;
+    const active = services.filter((s) => s.active).length;
+    const onSite = publicListingNames.size;
+    return { total, active, onSite };
+  }, [services, publicListingNames]);
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">{t("services.title")}</h1>
-          <p className="text-sm text-zinc-500">{t("services.subtitle")}</p>
-          <p className="mt-1 text-xs text-zinc-500">
-            На главной сейчас видно услуг: {publicListingNames.size}
-            {publicCheckLoading ? " (проверка...)" : ""}
-          </p>
+      {/* ───── Page header ───── */}
+      <header className="rounded-2xl border border-zinc-800/80 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-black/70 p-5 shadow-sm shadow-black/30">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-sky-700/40 bg-sky-950/40 text-sky-300"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z M3.3 7 12 12m0 0 8.7-5M12 12v10" />
+                </svg>
+              </span>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-white">{t("services.title")}</h1>
+                <p className="text-sm text-zinc-500">{t("services.subtitle")}</p>
+              </div>
+            </div>
+
+            {/* Stat chips */}
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-700/40 bg-sky-950/30 px-2.5 py-1 text-sky-200">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                Всего услуг: <strong className="font-semibold">{servicesStats.total}</strong>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-700/40 bg-emerald-950/30 px-2.5 py-1 text-emerald-200">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Активных: <strong className="font-semibold">{servicesStats.active}</strong>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-700/40 bg-amber-950/30 px-2.5 py-1 text-amber-200">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                На главной: <strong className="font-semibold">{servicesStats.onSite}</strong>
+                {publicCheckLoading && <span className="ml-1 opacity-70">(проверка…)</span>}
+              </span>
+            </div>
+          </div>
+
+          {canManage && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void refreshPublicStatus()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900"
+                title="Сверить CRM со списком услуг, который видит сайт"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" /></svg>
+                Проверить главную
+              </button>
+              <button
+                type="button"
+                onClick={() => void syncAllServicesToPublicSite()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-700/60 bg-amber-950/40 px-3 py-2 text-sm font-medium text-amber-100 transition hover:border-amber-500/80 hover:bg-amber-950/70"
+                title="Записывает все активные услуги из CRM в таблицу для главного сайта (service_listings)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12m-4-4 4 4 4-4M4 21h16" /></svg>
+                Обновить всё на сайте
+              </button>
+              <button
+                type="button"
+                onClick={() => void addService()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-sky-500/20 transition hover:bg-sky-500"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
+                {t("services.addService")}
+              </button>
+            </div>
+          )}
         </div>
-        {canManage && (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void refreshPublicStatus()}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-900"
-            >
-              Проверить главную
-            </button>
-            <button
-              type="button"
-              onClick={() => void syncAllServicesToPublicSite()}
-              className="rounded-lg border border-amber-700/60 bg-amber-950/40 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-950/70"
-              title="Записывает все активные услуги из CRM в таблицу для главного сайта (service_listings)"
-            >
-              Обновить всё на сайте
-            </button>
-            <button
-              type="button"
-              onClick={() => void addService()}
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
-            >
-              {t("services.addService")}
-            </button>
+
+        {/* Search — full width below header */}
+        {services.length > 4 && (
+          <div className="mt-4 flex items-center gap-2">
+            <div className="relative min-w-0 flex-1 max-w-md">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+              <input
+                type="search"
+                value={serviceSearch}
+                onChange={(e) => setServiceSearch(e.target.value)}
+                placeholder="Поиск по названию услуги…"
+                className="w-full rounded-lg border border-zinc-700 bg-black pl-8 pr-8 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              />
+              {serviceSearch && (
+                <button
+                  type="button"
+                  onClick={() => setServiceSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                  aria-label="Очистить поиск"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                </button>
+              )}
+            </div>
+            {serviceSearch && (
+              <span className="text-xs text-zinc-500">
+                {groupedServices.reduce((n, [, list]) => n + list.length, 0)} найдено
+              </span>
+            )}
           </div>
         )}
       </header>
 
+      {/* ───── Categories manager ───── */}
       {canManage && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-          <h2 className="text-sm font-semibold text-white">{t("services.categories")}</h2>
-          <p className="mt-1 text-xs text-zinc-500">Это категории услуг. В каждую категорию можно добавить услуги.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input
-              value={newCat}
-              onChange={(e) => setNewCat(e.target.value)}
-              placeholder={t("services.categoryPlaceholder")}
-              className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
-            />
-            <button
-              type="button"
-              onClick={() => void addCategory()}
-              className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-white hover:bg-zinc-700"
-            >
-              {t("common.add")}
-            </button>
-          </div>
-          <ul className="mt-3 flex flex-wrap gap-2 text-sm text-zinc-400">
-            {categories.map((c) => (
-              <li key={c.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-2">
-                <input
-                  value={categoryDrafts[String(c.id)] ?? c.name}
-                  onChange={(e) =>
-                    setCategoryDrafts((prev) => ({
-                      ...prev,
-                      [String(c.id)]: e.target.value,
-                    }))
+        <section className="rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-200">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-sky-300"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
+                {t("services.categories")}
+              </h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Это категории услуг. В каждую категорию можно добавить услуги.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addCategory();
                   }
-                  onBlur={() => void renameCategory(c)}
-                  className="w-44 rounded border border-zinc-700 bg-black px-2 py-1 text-xs text-white"
-                />
-                <button
-                  type="button"
-                  onClick={() => void renameCategory(c)}
-                  className="text-xs text-sky-400 hover:text-sky-300"
-                >
-                  Сохранить
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openQuickCreate(String(c.name || "").trim())}
-                  className="text-xs text-emerald-400 hover:text-emerald-300"
-                >
-                  + Услуга
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void deleteCategory(c)}
-                  className="text-xs text-red-400 hover:text-red-300"
-                >
-                  Удалить
-                </button>
-              </li>
-            ))}
-          </ul>
+                }}
+                placeholder={t("services.categoryPlaceholder")}
+                className="w-48 rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              />
+              <button
+                type="button"
+                onClick={() => void addCategory()}
+                disabled={!newCat.trim()}
+                className="inline-flex items-center gap-1 rounded-lg bg-zinc-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
+                {t("common.add")}
+              </button>
+            </div>
+          </div>
+
+          {categories.length === 0 ? (
+            <p className="mt-4 rounded-lg border border-dashed border-zinc-800 bg-black/20 px-3 py-4 text-center text-xs text-zinc-500">
+              Пока нет категорий. Добавьте первую — например, «Стрижка» или «Маникюр».
+            </p>
+          ) : (
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {categories.map((c) => {
+                const draft = categoryDrafts[String(c.id)];
+                const changed = draft !== undefined && draft !== c.name;
+                const servicesInCat = services.filter(
+                  (s) => categoryNameFromService(s) === c.name,
+                ).length;
+                return (
+                  <li
+                    key={c.id}
+                    className="group flex items-center gap-1.5 rounded-xl border border-zinc-800/80 bg-black/30 px-2 py-1.5 transition hover:border-zinc-700 hover:bg-black/50"
+                  >
+                    <input
+                      value={draft ?? c.name}
+                      onChange={(e) =>
+                        setCategoryDrafts((prev) => ({
+                          ...prev,
+                          [String(c.id)]: e.target.value,
+                        }))
+                      }
+                      onBlur={() => {
+                        if (changed) void renameCategory(c);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          (e.currentTarget as HTMLInputElement).blur();
+                        }
+                      }}
+                      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-zinc-100 transition hover:border-zinc-700 focus:border-sky-500 focus:bg-black focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                    />
+                    <span className="shrink-0 rounded-full bg-zinc-800/60 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400" title={`Услуг в категории: ${servicesInCat}`}>
+                      {servicesInCat}
+                    </span>
+                    {changed && (
+                      <button
+                        type="button"
+                        onClick={() => void renameCategory(c)}
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-700/50 bg-sky-950/40 text-sky-300 transition hover:border-sky-500 hover:bg-sky-900/60"
+                        title="Сохранить новое название"
+                        aria-label="Сохранить"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="m5 13 4 4L19 7" /></svg>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openQuickCreate(String(c.name || "").trim())}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-emerald-950/40 hover:text-emerald-300"
+                      title="Добавить услугу в эту категорию"
+                      aria-label="Добавить услугу"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteCategory(c)}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-600 opacity-0 transition group-hover:opacity-100 hover:bg-red-950/40 hover:text-red-300"
+                      title="Удалить категорию"
+                      aria-label="Удалить"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
       )}
 
       <div className="space-y-6">
-        {groupedServices.map(([categoryName, list]) => (
-          <section key={categoryName} className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-zinc-200">{categoryName}</h3>
+        {groupedServices.map(([categoryName, list]) => {
+          const activeCount = list.filter((s) => s.active).length;
+          return (
+          <section
+            key={categoryName}
+            className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/60"
+          >
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 bg-gradient-to-r from-zinc-900/60 to-transparent px-5 py-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400 shadow-sm shadow-emerald-500/30"
+                />
+                <h3 className="truncate text-sm font-semibold text-zinc-100">{categoryName}</h3>
+                <span className="shrink-0 rounded-full bg-zinc-800/70 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                  {list.length}
+                </span>
+                {activeCount < list.length && (
+                  <span className="shrink-0 rounded-full border border-amber-700/40 bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-300" title="Часть услуг выключена">
+                    {activeCount}/{list.length} активно
+                  </span>
+                )}
+              </div>
               {canManage && (
                 <button
                   type="button"
                   onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
-                  className="rounded-md border border-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-900"
+                  className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-black/30 px-2.5 py-1 text-xs text-zinc-200 transition hover:border-emerald-700/60 hover:bg-emerald-950/30 hover:text-emerald-200"
                 >
-                  + Добавить услугу в категорию
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M12 5v14M5 12h14" /></svg>
+                  Добавить услугу
                 </button>
               )}
-            </div>
+            </header>
 
-            <div className="space-y-4">
-              {list.map((s) => (
-                <div
+            <div className="space-y-3 p-4">
+              {list.map((s) => {
+                const existsOnMain = publicListingNames.has(String(s.name_et || "").trim().toLowerCase());
+                return (
+                <article
                   key={s.id}
-                  className="grid gap-4 rounded-xl border border-zinc-800 bg-black/30 p-4 md:grid-cols-2 lg:grid-cols-5"
+                  className={
+                    "group relative overflow-hidden rounded-xl border bg-black/30 p-4 shadow-sm transition hover:border-zinc-700/80 " +
+                    (s.active
+                      ? "border-zinc-800/80 shadow-black/30"
+                      : "border-zinc-800/60 bg-zinc-950/40 opacity-80")
+                  }
                 >
-                  <div className="lg:col-span-5">
-                    {(() => {
-                      const existsOnMain = publicListingNames.has(String(s.name_et || "").trim().toLowerCase());
-                      return (
-                        <span
-                          className={`inline-flex rounded-md px-2 py-1 text-xs ${
-                            existsOnMain
-                              ? "border border-emerald-700/60 text-emerald-300"
-                              : "border border-amber-700/60 text-amber-300"
-                          }`}
-                        >
-                          На главной: {existsOnMain ? "отображается" : "не отображается"}
-                        </span>
-                      );
-                    })()}
+                  {/* Vertical accent strip on left, colored by service state */}
+                  <span
+                    aria-hidden="true"
+                    className={
+                      "absolute inset-y-0 left-0 w-0.5 " +
+                      (s.active
+                        ? "bg-gradient-to-b from-emerald-500 to-sky-500"
+                        : "bg-zinc-700")
+                    }
+                  />
+
+                  {/* Top row: status badges + active toggle */}
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                          existsOnMain
+                            ? "border-emerald-700/60 bg-emerald-950/40 text-emerald-300"
+                            : "border-amber-700/60 bg-amber-950/30 text-amber-300"
+                        }`}
+                        title={existsOnMain ? "Услуга видна на главной странице сайта" : "Услуга не опубликована — нажмите «Обновить всё на сайте»"}
+                      >
+                        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${existsOnMain ? "bg-emerald-400" : "bg-amber-400"}`} />
+                        На главной: {existsOnMain ? "да" : "нет"}
+                      </span>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                          s.active
+                            ? "border-zinc-700/80 bg-zinc-900/50 text-zinc-300"
+                            : "border-zinc-700 bg-zinc-900/40 text-zinc-500"
+                        }`}
+                      >
+                        {s.active ? "активна" : "выключена"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                      <ToggleSwitch
+                        disabled={!canManage}
+                        checked={s.active}
+                        onCheckedChange={(active) => {
+                          const updated = { ...s, active };
+                          setServices((prev) =>
+                            prev.map((x) => (String(x.id) === String(s.id) ? updated : x)),
+                          );
+                          void saveService(updated);
+                        }}
+                        aria-label={`${s.name_et}: услуга активна`}
+                      />
+                      <span>{t("services.active")}</span>
+                    </div>
                   </div>
-                  <label className="block text-xs text-zinc-500">
-                    {t("services.name")}
-                    <input
-                      disabled={!canManage}
-                      value={s.name_et}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name_et: v } : x)));
-                      }}
-                      onBlur={() => void saveService(s)}
-                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-                    />
-                  </label>
-                  <label className="block text-xs text-zinc-500">
-                    {t("services.priceCents")}
-                    <input
-                      type="number"
-                      disabled={!canManage}
-                      value={s.price_cents}
-                      onChange={(e) => {
-                        const price_cents = Number(e.target.value);
-                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
-                      }}
-                      onBlur={() => void saveService(s)}
-                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-                    />
-                    <span className="mt-1 block text-zinc-600">{eurFromCents(s.price_cents)}</span>
-                  </label>
-                  <label className="block text-xs text-zinc-500">
-                    {t("services.duration")}
-                    <input
-                      type="number"
-                      min={5}
-                      step={5}
-                      disabled={!canManage}
-                      value={s.duration_min}
-                      onChange={(e) => {
-                        const duration_min = Number(e.target.value);
-                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
-                      }}
-                      onBlur={() => void saveService(s)}
-                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-                    />
-                    <span className="mt-1 block text-zinc-600">Минуты работы</span>
-                  </label>
-                  <label className="block text-xs text-zinc-500">
-                    Пауза после (мин)
-                    <input
-                      type="number"
-                      min={0}
-                      step={5}
-                      disabled={!canManage}
-                      value={s.buffer_after_min}
-                      onChange={(e) => {
-                        const buffer_after_min = Number(e.target.value);
-                        setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, buffer_after_min } : x)));
-                      }}
-                      onBlur={() => void saveService(s)}
-                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-                    />
-                    <span className="mt-1 block text-zinc-600">Тоже блокирует слот</span>
-                  </label>
-                  <label className="block text-xs text-zinc-500">
-                    {t("services.category")}
-                    <select
-                      disabled={!canManage}
-                      value={String(s.category_id ?? s.category ?? "")}
-                      onChange={(e) => {
-                        const category_id = e.target.value || null;
-                        const selectedCategory = categories.find((c) => String(c.id) === String(category_id));
-                        const next = { ...s, category_id, category: selectedCategory?.name ?? null };
-                        setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
-                        void saveService(next);
-                      }}
-                      className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
-                    >
-                      <option value="">{t("common.dash")}</option>
-                      {categories.map((c) => (
-                        <option key={String(c.id)} value={String(c.id)}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="rounded-lg border border-zinc-800 bg-black/20 p-3 lg:col-span-5">
+
+                  {/* Form grid — name takes 2 cols on lg for visibility */}
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500 lg:col-span-2">
+                      {t("services.name")}
+                      <input
+                        disabled={!canManage}
+                        value={s.name_et}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name_et: v } : x)));
+                        }}
+                        onBlur={() => void saveService(s)}
+                        className={`${fieldBase} text-sm font-medium ${canManage ? editableUi : "border border-zinc-700"}`}
+                      />
+                    </label>
+                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                      {t("services.priceCents")}
+                      <div className="relative mt-1">
+                        <input
+                          type="number"
+                          disabled={!canManage}
+                          value={s.price_cents}
+                          onChange={(e) => {
+                            const price_cents = Number(e.target.value);
+                            setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
+                          }}
+                          onBlur={() => void saveService(s)}
+                          className={`w-full rounded-lg bg-black px-3 py-2 pr-12 text-sm text-white disabled:opacity-60 ${canManage ? editableUi : "border border-zinc-700"}`}
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">
+                          {eurFromCents(s.price_cents)}
+                        </span>
+                      </div>
+                    </label>
+                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                      {t("services.duration")}
+                      <div className="relative mt-1">
+                        <input
+                          type="number"
+                          min={5}
+                          step={5}
+                          disabled={!canManage}
+                          value={s.duration_min}
+                          onChange={(e) => {
+                            const duration_min = Number(e.target.value);
+                            setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
+                          }}
+                          onBlur={() => void saveService(s)}
+                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-white disabled:opacity-60 ${canManage ? editableUi : "border border-zinc-700"}`}
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-500">
+                          мин
+                        </span>
+                      </div>
+                    </label>
+                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500" title="Пауза после услуги блокирует следующий слот у мастера (уборка, отдых).">
+                      Пауза после
+                      <div className="relative mt-1">
+                        <input
+                          type="number"
+                          min={0}
+                          step={5}
+                          disabled={!canManage}
+                          value={s.buffer_after_min}
+                          onChange={(e) => {
+                            const buffer_after_min = Number(e.target.value);
+                            setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, buffer_after_min } : x)));
+                          }}
+                          onBlur={() => void saveService(s)}
+                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-white disabled:opacity-60 ${canManage ? editableUi : "border border-zinc-700"}`}
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-500">
+                          мин
+                        </span>
+                      </div>
+                    </label>
+                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500 md:col-span-2 lg:col-span-5">
+                      {t("services.category")}
+                      <select
+                        disabled={!canManage}
+                        value={String(s.category_id ?? s.category ?? "")}
+                        onChange={(e) => {
+                          const category_id = e.target.value || null;
+                          const selectedCategory = categories.find((c) => String(c.id) === String(category_id));
+                          const next = { ...s, category_id, category: selectedCategory?.name ?? null };
+                          setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
+                          void saveService(next);
+                        }}
+                        className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
+                      >
+                        <option value="">{t("common.dash")}</option>
+                        {categories.map((c) => (
+                          <option key={String(c.id)} value={String(c.id)}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {/* Masters block */}
+                  <div className="mt-3 rounded-lg border border-zinc-800/80 bg-black/20 p-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-xs text-zinc-400">Мастера</p>
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-zinc-500"><path d="M16 21v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-1a4 4 0 0 0-3-3.87M17 3.13a4 4 0 0 1 0 7.74" /></svg>
+                        Мастера
+                      </p>
                       <p className="text-[10px] text-zinc-500">
                         назначения меняются на{" "}
                         <span className="font-mono text-zinc-400">/admin/staff</span>
@@ -1264,7 +1421,7 @@ export function ServicesPage() {
                             ? "Назначен на услугу — доступен на сайте и в онлайн-записи"
                             : "Явных назначений нет — услугу выполняют все активные мастера"
                           : !s.active
-                            ? "Услуга выключена (снят тумблер «Активна» ниже)"
+                            ? "Услуга выключена (снят тумблер «Активна» выше)"
                             : "Мастер выключен в /admin/staff";
                         return {
                           id: String(m.id),
@@ -1316,54 +1473,41 @@ export function ServicesPage() {
                       );
                     })()}
                   </div>
-                  <div className="flex flex-col gap-1 lg:col-span-5">
-                    <div className="flex items-center gap-3 text-sm text-zinc-400">
-                      <ToggleSwitch
-                        disabled={!canManage}
-                        checked={s.active}
-                        onCheckedChange={(active) => {
-                          const updated = { ...s, active };
-                          setServices((prev) =>
-                            prev.map((x) => (String(x.id) === String(s.id) ? updated : x)),
-                          );
-                          void saveService(updated);
-                        }}
-                        aria-label={`${s.name_et}: услуга активна`}
-                      />
-                      <span>{t("services.active")}</span>
-                      <span className="text-xs text-zinc-600">
-                        {s.active ? "включена в CRM" : "выключена"}
-                      </span>
-                    </div>
-                  </div>
+
+                  {/* Bottom row: delete action right-aligned */}
                   {canManage && (
-                    <div className="lg:col-span-5">
+                    <div className="mt-3 flex items-center justify-end">
                       <button
                         type="button"
                         onClick={() => void deleteService(s)}
-                        className="text-xs font-medium text-red-400 hover:text-red-300"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-500 opacity-0 transition group-hover:opacity-100 hover:bg-red-950/40 hover:text-red-300 focus:opacity-100"
+                        title={t("services.deletePermanent")}
                       >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
                         {t("services.deletePermanent")}
                       </button>
                     </div>
                   )}
-                </div>
-              ))}
+                </article>
+                );
+              })}
               {list.length === 0 && canManage && (
-                <div className="rounded-lg border border-dashed border-zinc-700 bg-black/20 p-4">
+                <div className="rounded-lg border border-dashed border-zinc-700 bg-black/20 p-4 text-center">
                   <p className="text-sm text-zinc-400">В этой категории пока нет услуг.</p>
                   <button
                     type="button"
                     onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
-                    className="mt-3 rounded-md border border-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-900"
+                    className="mt-3 inline-flex items-center gap-1 rounded-md border border-emerald-700/50 bg-emerald-950/30 px-3 py-1.5 text-xs font-medium text-emerald-200 transition hover:border-emerald-500 hover:bg-emerald-900/40"
                   >
-                    + Добавить первую услугу
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M12 5v14M5 12h14" /></svg>
+                    Добавить первую услугу
                   </button>
                 </div>
               )}
             </div>
           </section>
-        ))}
+          );
+        })}
       </div>
 
       {quickCreateCategory !== null && canManage && (

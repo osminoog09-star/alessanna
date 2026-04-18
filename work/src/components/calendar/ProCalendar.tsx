@@ -94,7 +94,6 @@ type ProCalendarProps = {
 const DroppableHourCell = memo(function DroppableHourCell({
   staffId,
   hour,
-  day,
   hasBooking,
   isMobile,
   children,
@@ -106,7 +105,6 @@ const DroppableHourCell = memo(function DroppableHourCell({
 }: {
   staffId: string;
   hour: number;
-  day: Date;
   hasBooking: boolean;
   isMobile: boolean;
   children: ReactNode;
@@ -509,7 +507,6 @@ export function ProCalendar({
                         key={h}
                         staffId={emp.id}
                         hour={h}
-                        day={day}
                         hasBooking={!!b}
                         isMobile={isMobile}
                         canCreate={canCreate}

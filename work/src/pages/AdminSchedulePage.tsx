@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { ToggleSwitch } from "../components/ToggleSwitch";
+import { isStaffRowAdmin } from "../lib/roles";
 import type { StaffScheduleRow, StaffTableRow } from "../types/database";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -31,7 +32,9 @@ export function AdminSchedulePage() {
       setLoading(false);
       return;
     }
-    const list = (data ?? []) as StaffTableRow[];
+    /* Админы (техподдержка сайта) не являются сотрудниками салона и не должны
+     * появляться в графиках/назначениях/публичных списках — фильтруем по ролям. */
+    const list = ((data ?? []) as StaffTableRow[]).filter((row) => !isStaffRowAdmin(row));
     setStaffList(list);
     setStaffId((prev) => {
       if (list.length === 0) return "";

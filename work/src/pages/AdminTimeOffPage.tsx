@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { isStaffRowAdmin } from "../lib/roles";
 import type { StaffTimeOffRow, StaffTableRow } from "../types/database";
 
 export function AdminTimeOffPage() {
@@ -17,8 +18,10 @@ export function AdminTimeOffPage() {
 
   const loadStaff = useCallback(async () => {
     const { data } = await supabase.from("staff").select("*").eq("is_active", true).order("name");
-    setStaffList((data ?? []) as StaffTableRow[]);
-    setStaffId((prev) => prev || ((data?.[0] as StaffTableRow | undefined)?.id ?? ""));
+    /* Тех-поддержка сайта (admin) не работает с клиентами и не берёт отгулы. */
+    const list = ((data ?? []) as StaffTableRow[]).filter((row) => !isStaffRowAdmin(row));
+    setStaffList(list);
+    setStaffId((prev) => prev || (list[0]?.id ?? ""));
     setLoading(false);
   }, []);
 

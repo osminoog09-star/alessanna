@@ -4,26 +4,63 @@ import { isBefore, parseISO, startOfDay, subDays } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useAnalyticsRealtime } from "../hooks/useSalonRealtime";
 import { eurFromCents } from "../lib/format";
-import type { AppointmentRow, ServiceRow } from "../types/database";
+import { isStaffRowAdmin } from "../lib/roles";
+import type { AppointmentRow } from "../types/database";
 
 type StaffRow = { id: string; name: string };
+type ServiceMeta = { id: string; name: string; priceCents: number; totalMinutes: number };
 
 export function AnalyticsPage() {
   const { t } = useTranslation();
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [staffList, setStaffList] = useState<StaffRow[]>([]);
-  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [services, setServices] = useState<ServiceMeta[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [b, e, s] = await Promise.all([
+    /* Мёржим legacy `services` и актуальный `service_listings` — иначе метрики
+     * по записям с uuid service_id (новый каталог) нулевые. */
+    const [b, e, legacySvc, listingSvc] = await Promise.all([
       supabase.from("appointments").select("*").neq("status", "cancelled"),
-      supabase.from("staff").select("id,name").order("name"),
-      supabase.from("services").select("*"),
+      supabase.from("staff").select("id,name,role,roles").order("name"),
+      supabase.from("services").select("id,name_et,price_cents,duration_min,buffer_after_min"),
+      supabase.from("service_listings").select("id,name,price,duration,buffer_after_min"),
     ]);
     if (b.data) setAppointments(b.data as AppointmentRow[]);
-    if (e.data) setStaffList(e.data as StaffRow[]);
-    if (s.data) setServices(s.data as ServiceRow[]);
+    if (e.data) {
+      /* Админы не работают с клиентами — не фигурируют в выручке/нагрузке. */
+      setStaffList((e.data as Array<StaffRow & { role?: unknown; roles?: unknown }>).filter((row) => !isStaffRowAdmin(row)));
+    }
+    const merged: ServiceMeta[] = [];
+    if (legacySvc.data) {
+      for (const r of legacySvc.data as Array<{
+        id: unknown; name_et: string | null; price_cents: number | null;
+        duration_min: number | null; buffer_after_min: number | null;
+      }>) {
+        merged.push({
+          id: String(r.id),
+          name: r.name_et ?? "",
+          priceCents: Number(r.price_cents ?? 0),
+          totalMinutes: Number(r.duration_min ?? 0) + Number(r.buffer_after_min ?? 0),
+        });
+      }
+    }
+    if (listingSvc.data) {
+      for (const r of listingSvc.data as Array<{
+        id: unknown; name: string | null; price: number | null;
+        duration: number | null; buffer_after_min: number | null;
+      }>) {
+        /* `service_listings.price` хранится в евро (numeric), приводим к центам. */
+        const euros = Number(r.price ?? 0);
+        merged.push({
+          id: String(r.id),
+          name: r.name ?? "",
+          priceCents: Math.round(euros * 100),
+          totalMinutes: Number(r.duration ?? 0) + Number(r.buffer_after_min ?? 0),
+        });
+      }
+    }
+    setServices(merged);
     setLoading(false);
   }, []);
 
@@ -33,12 +70,18 @@ export function AnalyticsPage() {
 
   useAnalyticsRealtime(load);
 
+  const serviceById = useMemo(() => {
+    const m = new Map<string, ServiceMeta>();
+    for (const s of services) m.set(s.id, s);
+    return m;
+  }, [services]);
+
   const byStaff = useMemo(() => {
     const map = new Map<string, { count: number; revenueCents: number }>();
     for (const b of appointments) {
       if (b.status === "cancelled") continue;
-      const svc = services.find((x) => x.id === b.service_id);
-      const cents = svc?.price_cents ?? 0;
+      const svc = serviceById.get(String(b.service_id));
+      const cents = svc?.priceCents ?? 0;
       const cur = map.get(b.staff_id) ?? { count: 0, revenueCents: 0 };
       cur.count += 1;
       if (b.status === "confirmed") {
@@ -47,13 +90,14 @@ export function AnalyticsPage() {
       map.set(b.staff_id, cur);
     }
     return map;
-  }, [appointments, services]);
+  }, [appointments, serviceById]);
 
   const popularServices = useMemo(() => {
-    const map = new Map<number, number>();
+    const map = new Map<string, number>();
     for (const b of appointments) {
       if (b.status === "cancelled") continue;
-      map.set(b.service_id, (map.get(b.service_id) ?? 0) + 1);
+      const key = String(b.service_id);
+      map.set(key, (map.get(key) ?? 0) + 1);
     }
     return [...map.entries()]
       .sort((a, b) => b[1] - a[1])
@@ -71,12 +115,12 @@ export function AnalyticsPage() {
       } catch {
         continue;
       }
-      const svc = services.find((x) => x.id === b.service_id);
-      const mins = (svc?.duration_min ?? 0) + (svc?.buffer_after_min ?? 0);
+      const svc = serviceById.get(String(b.service_id));
+      const mins = svc?.totalMinutes ?? 0;
       map.set(b.staff_id, (map.get(b.staff_id) ?? 0) + mins);
     }
     return map;
-  }, [appointments, services]);
+  }, [appointments, serviceById]);
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
@@ -146,10 +190,10 @@ export function AnalyticsPage() {
         <ul className="mt-3 space-y-2 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
           {popularServices.length === 0 && <li className="text-sm text-zinc-500">{t("analytics.noData")}</li>}
           {popularServices.map(([id, count]) => {
-            const sv = services.find((s) => s.id === id);
+            const sv = serviceById.get(id);
             return (
               <li key={id} className="flex justify-between text-sm text-zinc-300">
-                <span>{sv?.name_et ?? t("analytics.unknownService", { id })}</span>
+                <span>{sv?.name || t("analytics.unknownService", { id })}</span>
                 <span className="text-zinc-500">{t("analytics.bookingsCount", { count })}</span>
               </li>
             );
