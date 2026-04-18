@@ -46,8 +46,12 @@ function detectLang() {
 const I18N = {
   ru: {
     launcherLabel: "Написать в поддержку",
+    launcherTeaser: "Чат · онлайн",
+    nudgeTitle: "Здравствуйте!",
+    nudgeText: "Можем помочь с записью или ответить на вопрос — напишите нам.",
+    nudgeClose: "Скрыть",
     headerTitle: "AlesSanna · поддержка",
-    headerSub: "напишите нам · обычно отвечаем в течение часа",
+    headerSub: "онлайн · отвечаем в течение часа",
     close: "Закрыть",
     back: "← Назад",
     welcome: "Здравствуйте! Как к вам обращаться?",
@@ -77,6 +81,7 @@ const I18N = {
     you: "Вы",
     salon: "Салон",
     support: "Поддержка",
+    typing: "поддержка печатает",
     emptyThread: "Начните переписку.",
     hintEnter: "Enter — отправить · Shift+Enter — перенос",
     resetThread: "Начать новый диалог",
@@ -86,8 +91,12 @@ const I18N = {
   },
   et: {
     launcherLabel: "Kirjuta tugiteenusele",
+    launcherTeaser: "Vestlus · võrgus",
+    nudgeTitle: "Tere!",
+    nudgeText: "Aitame broneeringuga või vastame küsimusele — kirjuta meile.",
+    nudgeClose: "Peida",
     headerTitle: "AlesSanna · tugi",
-    headerSub: "kirjuta meile · vastame tavaliselt tunni jooksul",
+    headerSub: "võrgus · vastame tunni jooksul",
     close: "Sulge",
     back: "← Tagasi",
     welcome: "Tere! Kuidas teie poole pöörduda?",
@@ -117,6 +126,7 @@ const I18N = {
     you: "Teie",
     salon: "Salong",
     support: "Tugi",
+    typing: "tugi kirjutab",
     emptyThread: "Alusta vestlust.",
     hintEnter: "Enter — saada · Shift+Enter — reavahetus",
     resetThread: "Alusta uut vestlust",
@@ -227,99 +237,286 @@ function injectStyles() {
   style.id = "site-support-chat-styles";
   style.textContent = `
 .ssc-root {
-  --ssc-gold: #c6a75a;
-  --ssc-gold-soft: #d8bc74;
-  --ssc-bg: #0b0b0e;
-  --ssc-panel: #121217;
-  --ssc-line: rgba(198, 167, 90, 0.18);
-  --ssc-text: #e9e5db;
-  --ssc-muted: #8d8a83;
-  --ssc-accent: #c6a75a;
-  position: fixed; inset: auto 0 0 auto; z-index: 9998;
+  /* Дизайн-токены: выразительное золото + тёплый тёмный, с достаточной WCAG-контрастностью.
+     Палитра мягче и ярче, чтобы лончер не сливался с тёмным фоном салона. */
+  --ssc-gold:        #d9b26a;
+  --ssc-gold-soft:   #f3d98a;
+  --ssc-gold-strong: #e9c57a;
+  --ssc-gold-deep:   #8a6a2a;
+  --ssc-bg:          #0b0b0e;
+  --ssc-panel:       #14141b;
+  --ssc-panel-2:     #1c1c25;
+  --ssc-line:        rgba(217, 178, 106, 0.22);
+  --ssc-text:        #f4efe3;
+  --ssc-muted:       #98938a;
+  --ssc-green:       #52d89a;
+  position: fixed; inset: auto auto 0 0; z-index: 9998;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--ssc-text);
+  pointer-events: none;
+}
+.ssc-root > * { pointer-events: auto; }
+
+/* ---------- Лончер: выносим в обёртку, чтобы рядом жили label и nudge ---------- */
+.ssc-launcher-wrap {
+  position: fixed;
+  left: clamp(16px, 3vw, 28px);
+  bottom: calc(clamp(16px, 3vw, 28px) + env(safe-area-inset-bottom, 0px));
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .ssc-launcher {
-  position: fixed;
-  right: clamp(14px, 3vw, 28px);
-  bottom: clamp(14px, 3vw, 28px);
-  width: 58px; height: 58px; border-radius: 50%;
-  border: 1px solid rgba(198, 167, 90, 0.55);
-  background: radial-gradient(circle at 30% 30%, #1a1a22 0%, #0b0b0e 70%);
-  color: var(--ssc-gold);
+  position: relative;
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 0;
+  /* Яркий золотой градиент — контрастно на тёмной/фото/светлой подложке. */
+  background:
+    radial-gradient(circle at 30% 25%, var(--ssc-gold-soft) 0%, var(--ssc-gold) 55%, var(--ssc-gold-deep) 100%);
+  color: #1a1405;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(198,167,90,0.15) inset;
-  display: flex; align-items: center; justify-content: center;
-  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-  z-index: 9998;
+  box-shadow:
+    0 14px 36px rgba(217, 178, 106, 0.38),
+    0 0 0 3px rgba(217, 178, 106, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  display: grid; place-items: center;
+  transition: transform .28s cubic-bezier(.34, 1.56, .64, 1), box-shadow .25s ease;
 }
-.ssc-launcher:hover { transform: translateY(-2px); border-color: var(--ssc-gold); }
-.ssc-launcher svg { width: 26px; height: 26px; }
+.ssc-launcher:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow:
+    0 20px 46px rgba(217, 178, 106, 0.5),
+    0 0 0 3px rgba(217, 178, 106, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.ssc-launcher:active { transform: translateY(-1px) scale(1.01); }
+.ssc-launcher svg {
+  width: 28px; height: 28px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.25));
+}
+.ssc-launcher-ring {
+  position: absolute; inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(217, 178, 106, 0.55);
+  pointer-events: none;
+  animation: ssc-halo 2.4s ease-out infinite;
+}
+@keyframes ssc-halo {
+  0%   { transform: scale(0.98); opacity: 0.8; }
+  70%  { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
 .ssc-launcher-dot {
-  position: absolute; top: 6px; right: 6px;
+  position: absolute; top: 2px; right: 2px;
   width: 14px; height: 14px; border-radius: 50%;
-  background: #e14a4a; border: 2px solid var(--ssc-bg);
-  animation: ssc-pulse 1.6s ease-in-out infinite;
+  background: #e14a4a;
+  border: 2px solid var(--ssc-bg);
+  animation: ssc-pulse 1.4s ease-in-out infinite;
 }
 @keyframes ssc-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.75; }
+  50%      { transform: scale(1.18); opacity: 0.78; }
 }
+/* Плавающий ярлык возле кнопки — не торчит, а раскрывается при hover. */
+.ssc-launcher-label {
+  max-width: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ssc-panel-2), var(--ssc-panel));
+  color: var(--ssc-gold-strong);
+  border: 1px solid var(--ssc-line);
+  border-radius: 999px;
+  padding: 0;
+  font-size: 13px; font-weight: 500; letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: max-width .35s ease, padding .35s ease, opacity .25s ease;
+  opacity: 0;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+.ssc-launcher-label::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  margin-right: 8px; vertical-align: middle;
+  border-radius: 50%;
+  background: var(--ssc-green);
+  box-shadow: 0 0 8px var(--ssc-green);
+}
+.ssc-launcher-wrap:hover .ssc-launcher-label,
+.ssc-launcher-wrap.ssc-expanded .ssc-launcher-label {
+  max-width: 240px;
+  padding: 9px 16px 9px 14px;
+  opacity: 1;
+}
+
+/* ---------- Проактивный нудж: всплывает над лончером через несколько секунд ---------- */
+.ssc-nudge {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 14px);
+  min-width: 240px;
+  max-width: 300px;
+  background: linear-gradient(180deg, var(--ssc-panel-2), var(--ssc-panel));
+  border: 1px solid var(--ssc-line);
+  border-radius: 16px;
+  padding: 12px 34px 12px 14px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), 0 0 40px -16px rgba(217, 178, 106, 0.2);
+  transform: translateY(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .3s ease, opacity .3s ease;
+}
+.ssc-nudge.ssc-nudge-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.ssc-nudge::after {
+  content: '';
+  position: absolute;
+  left: 24px; bottom: -6px;
+  width: 10px; height: 10px;
+  background: var(--ssc-panel);
+  border-right: 1px solid var(--ssc-line);
+  border-bottom: 1px solid var(--ssc-line);
+  transform: rotate(45deg);
+}
+.ssc-nudge-title {
+  margin: 0 0 4px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 17px; font-weight: 500; font-style: italic;
+  color: var(--ssc-gold-soft);
+  letter-spacing: 0.01em;
+}
+.ssc-nudge-text {
+  margin: 0;
+  font-size: 12.5px; line-height: 1.5;
+  color: var(--ssc-text);
+}
+.ssc-nudge-close {
+  position: absolute;
+  top: 6px; right: 6px;
+  appearance: none;
+  background: transparent; border: 0;
+  color: var(--ssc-muted);
+  cursor: pointer;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  font-size: 16px; line-height: 1;
+  transition: background .15s ease, color .15s ease;
+}
+.ssc-nudge-close:hover { background: rgba(255, 255, 255, 0.06); color: var(--ssc-text); }
+
+/* ---------- Панель чата ---------- */
 .ssc-panel {
   position: fixed;
-  right: clamp(14px, 3vw, 28px);
-  bottom: calc(clamp(14px, 3vw, 28px) + 72px);
-  width: min(380px, calc(100vw - 28px));
-  max-height: min(640px, calc(100vh - 120px));
+  left: clamp(16px, 3vw, 28px);
+  bottom: calc(clamp(16px, 3vw, 28px) + 82px + env(safe-area-inset-bottom, 0px));
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(680px, calc(100vh - 140px));
   background: var(--ssc-panel);
   border: 1px solid var(--ssc-line);
-  border-radius: 18px;
-  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.02) inset;
+  border-radius: 20px;
+  box-shadow:
+    0 40px 80px -20px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 0 60px -20px rgba(217, 178, 106, 0.18);
   display: none; flex-direction: column;
   overflow: hidden;
   z-index: 9999;
 }
-.ssc-panel.ssc-open { display: flex; animation: ssc-fade-in .18s ease-out; }
-@keyframes ssc-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+.ssc-panel.ssc-open {
+  display: flex;
+  animation: ssc-slide-in .28s cubic-bezier(.34, 1.2, .64, 1);
+  transform-origin: bottom left;
 }
+@keyframes ssc-slide-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
 .ssc-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--ssc-line);
-  background: linear-gradient(180deg, rgba(198,167,90,0.06), transparent);
+  background:
+    linear-gradient(135deg, rgba(217, 178, 106, 0.14) 0%, rgba(217, 178, 106, 0.02) 50%, transparent 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+}
+.ssc-header::after {
+  content: '';
+  position: absolute;
+  left: 16px; right: 16px; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ssc-gold) 50%, transparent);
+  opacity: 0.5;
 }
 .ssc-header-badge {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #2a2219 0%, #0b0b0e 70%);
-  border: 1px solid rgba(198,167,90,0.4);
+  position: relative;
+  width: 40px; height: 40px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, var(--ssc-gold-soft) 0%, var(--ssc-gold) 55%, var(--ssc-gold-deep) 100%);
+  color: #1a1405;
   display: grid; place-items: center;
-  color: var(--ssc-gold);
-  font-size: 14px; letter-spacing: 0.04em;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 18px; font-weight: 600; letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 4px 14px rgba(217, 178, 106, 0.35);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+/* Inline SVG-монограмм AlesSanna (italic-A с фирменным росчерком). Лежит
+   внутри золотой шайбы, использует currentColor → точная заливка как у
+   текста, который был тут раньше. */
+.ssc-header-mono {
+  width: 100%; height: 100%;
+  display: block;
+  color: #1a1405;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.18));
+}
+.ssc-online-dot {
+  position: absolute; right: -1px; bottom: -1px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--ssc-green);
+  border: 2px solid var(--ssc-panel);
+  box-shadow: 0 0 0 2px rgba(82, 216, 154, 0.28);
 }
 .ssc-header-text { min-width: 0; flex: 1; }
 .ssc-header-title {
   font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: 17px; font-weight: 500; letter-spacing: 0.02em;
+  font-size: 18px; font-weight: 500; letter-spacing: 0.02em;
   color: var(--ssc-gold-soft);
   margin: 0;
 }
 .ssc-header-sub {
-  font-size: 10.5px; letter-spacing: 0.02em;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; letter-spacing: 0.06em;
   color: var(--ssc-muted);
   margin: 2px 0 0;
   text-transform: uppercase;
 }
-.ssc-close {
-  appearance: none; background: transparent; border: none;
-  color: var(--ssc-muted); cursor: pointer;
-  width: 30px; height: 30px; border-radius: 50%;
-  display: grid; place-items: center;
-  font-size: 18px;
-  transition: background .15s ease, color .15s ease;
+.ssc-header-sub::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ssc-green);
+  box-shadow: 0 0 8px var(--ssc-green);
 }
-.ssc-close:hover { background: rgba(255,255,255,0.05); color: var(--ssc-text); }
+.ssc-close {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ssc-muted);
+  cursor: pointer;
+  width: 32px; height: 32px; border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 20px; line-height: 1;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.ssc-close:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ssc-text);
+  border-color: rgba(255, 255, 255, 0.1);
+}
 .ssc-body {
   flex: 1; overflow-y: auto;
   padding: 14px;
@@ -432,6 +629,44 @@ function injectStyles() {
   margin-top: 3px;
   opacity: 0.75;
 }
+/* «Печатает…» — лёгкий «staff»-пузырёк с тремя точками. Появляется после
+   отправки сообщения посетителем и пропадает, когда приходит ответ
+   сотрудника или истекает таймаут (см. showTyping/hideTyping в JS). */
+.ssc-typing {
+  display: flex; justify-content: flex-start;
+  margin-top: -4px;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity .22s ease, transform .22s ease;
+  pointer-events: none;
+}
+.ssc-typing.is-on { opacity: 1; transform: translateY(0); }
+.ssc-typing-bubble {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  padding: 9px 12px 8px;
+}
+.ssc-typing-dots { display: inline-flex; gap: 4px; align-items: center; }
+.ssc-typing-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ssc-gold-soft);
+  opacity: 0.42;
+  animation: ssc-typing-bounce 1.25s ease-in-out infinite;
+}
+.ssc-typing-dot:nth-child(2) { animation-delay: .16s; }
+.ssc-typing-dot:nth-child(3) { animation-delay: .32s; }
+@keyframes ssc-typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.42; }
+  40%           { transform: translateY(-3px); opacity: 1; }
+}
+.ssc-typing-label {
+  font-size: 10.5px; letter-spacing: 0.04em;
+  color: var(--ssc-muted);
+  text-transform: lowercase;
+}
 .ssc-attach-preview {
   margin-top: 6px;
   display: flex; align-items: center; gap: 6px;
@@ -527,28 +762,74 @@ function injectStyles() {
 .ssc-status-pill.closed { color: #ef8a8a; border-color: rgba(239,138,138,0.3); background: rgba(239,138,138,0.06); }
 
 @media (max-width: 480px) {
-  .ssc-panel {
-    right: 8px; left: 8px; width: auto;
-    bottom: 80px;
-    max-height: calc(100vh - 100px);
+  .ssc-launcher-wrap {
+    left: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
+  .ssc-panel {
+    left: 8px; right: 8px; width: auto;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(100vh - 120px);
+    border-radius: 18px;
+  }
+  .ssc-nudge { max-width: calc(100vw - 48px); }
+  /* На мобильном label держим свёрнутым — места мало, нудж и так привлекает. */
+  .ssc-launcher-wrap:hover .ssc-launcher-label { max-width: 0; padding: 0; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssc-launcher-ring,
+  .ssc-launcher-dot,
+  .ssc-typing-dot { animation: none; }
+  .ssc-panel.ssc-open { animation: none; }
+  .ssc-launcher,
+  .ssc-launcher-label,
+  .ssc-nudge,
+  .ssc-typing { transition: none; }
 }
 `;
   document.head.appendChild(style);
 }
 
+/** Собираем обёртку с кнопкой, раскрывающимся лейблом и скрытым проактивным нуджем.
+ *  Экспортируем ссылки на ключевые элементы в `dataset` через querySelector — чтобы
+ *  initSupportChat() мог цепляться без лишней возни. */
 function makeLauncher() {
+  const wrap = document.createElement("div");
+  wrap.className = "ssc-launcher-wrap";
+
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "ssc-launcher";
   btn.setAttribute("aria-label", L.launcherLabel);
   btn.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12c0 4.418-4.03 8-9 8-1.2 0-2.35-.21-3.4-.59L3 21l1.74-4.55C3.64 15.17 3 13.64 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+    <span class="ssc-launcher-ring" aria-hidden="true"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 11.5c0 4.142-4.03 7.5-9 7.5-1.05 0-2.06-.155-3-.44L4.5 20l.9-3.5C4.53 15.3 4 13.46 4 11.5 4 7.358 8.03 4 13 4s8 3.358 8 7.5z"/>
+      <path d="M9 11h.01M13 11h.01M17 11h.01" stroke-width="2.2"/>
     </svg>
-    <span class="ssc-launcher-dot" style="display:none"></span>
+    <span class="ssc-launcher-dot" aria-hidden="true" style="display:none"></span>
   `;
-  return btn;
+
+  const label = document.createElement("span");
+  label.className = "ssc-launcher-label";
+  label.textContent = L.launcherTeaser;
+  label.setAttribute("aria-hidden", "true");
+
+  const nudge = document.createElement("div");
+  nudge.className = "ssc-nudge";
+  nudge.setAttribute("role", "status");
+  nudge.setAttribute("aria-live", "polite");
+  nudge.innerHTML = `
+    <button type="button" class="ssc-nudge-close" aria-label="${escapeHtml(L.nudgeClose)}">×</button>
+    <p class="ssc-nudge-title">${escapeHtml(L.nudgeTitle)}</p>
+    <p class="ssc-nudge-text">${escapeHtml(L.nudgeText)}</p>
+  `;
+
+  wrap.appendChild(btn);
+  wrap.appendChild(label);
+  wrap.appendChild(nudge);
+  return wrap;
 }
 
 function renderForm(widget) {
@@ -656,6 +937,35 @@ function renderThread(widget) {
   scrollToBottom(widget);
 }
 
+/* «Поддержка печатает…» — честный, но мягкий индикатор: показываем после
+ * того как посетитель отправил сообщение, и скрываем как только пришёл
+ * новый ответ от сотрудника или истёк MAX_TYPING_MS (страховка, чтобы
+ * не висел вечно, если админа нет на месте). */
+const MAX_TYPING_MS = 8000;
+function showTyping(widget) {
+  if (!widget) return;
+  if (widget.typingTimer) {
+    clearTimeout(widget.typingTimer);
+    widget.typingTimer = null;
+  }
+  widget.state.typing = true;
+  renderMessages(widget);
+  scrollToBottom(widget);
+  widget.typingTimer = setTimeout(() => {
+    hideTyping(widget);
+  }, MAX_TYPING_MS);
+}
+function hideTyping(widget) {
+  if (!widget) return;
+  if (widget.typingTimer) {
+    clearTimeout(widget.typingTimer);
+    widget.typingTimer = null;
+  }
+  if (!widget.state.typing) return;
+  widget.state.typing = false;
+  renderMessages(widget);
+}
+
 function renderMessages(widget) {
   const holder = widget.body.querySelector("[data-thread]");
   if (!holder) return;
@@ -705,6 +1015,22 @@ function renderMessages(widget) {
       </div>
     `;
   }
+  /* Индикатор «поддержка печатает…». Не рендерим, если тред закрыт —
+   * там нет смысла ждать ответа. */
+  if (widget.state.typing && thread && thread.status !== "closed") {
+    html += `
+      <div class="ssc-typing is-on" data-typing>
+        <div class="ssc-typing-bubble">
+          <span class="ssc-typing-dots" aria-hidden="true">
+            <span class="ssc-typing-dot"></span>
+            <span class="ssc-typing-dot"></span>
+            <span class="ssc-typing-dot"></span>
+          </span>
+          <span class="ssc-typing-label">${escapeHtml(L.typing || "")}</span>
+        </div>
+      </div>
+    `;
+  }
   holder.innerHTML = html;
   const resetBtn = holder.querySelector("[data-reset]");
   if (resetBtn) {
@@ -714,7 +1040,11 @@ function renderMessages(widget) {
       writeLS(STORAGE_SESSION, null);
       widget.sessionToken = getOrCreateSessionToken();
       savePersistedState({ hasThread: false });
-      widget.state = { thread: null, messages: [], lastFetchAt: null };
+      if (widget.typingTimer) {
+        clearTimeout(widget.typingTimer);
+        widget.typingTimer = null;
+      }
+      widget.state = { thread: null, messages: [], lastFetchAt: null, typing: false };
       renderForm(widget);
     });
   }
@@ -807,6 +1137,10 @@ function renderFooter(widget) {
       await refreshThread(widget);
       renderMessages(widget);
       scrollToBottom(widget);
+      /* Покажем «печатает…» — это даёт ощущение «нас услышали и сейчас
+       * ответят». Если придёт реальный ответ от сотрудника, refreshThread
+       * сам погасит индикатор; иначе спрячется через MAX_TYPING_MS. */
+      showTyping(widget);
     } catch (err) {
       log("send error", err);
       alert(L.err);
@@ -853,10 +1187,12 @@ async function refreshThread(widget) {
     if (error) throw error;
     const payload = data || { thread: null, messages: [] };
     const prevCount = widget.state.messages ? widget.state.messages.length : 0;
+    const prevTyping = !!(widget.state && widget.state.typing);
     widget.state = {
       thread: payload.thread || null,
       messages: Array.isArray(payload.messages) ? payload.messages : [],
       lastFetchAt: new Date().toISOString(),
+      typing: prevTyping,
     };
     const hasNewStaff =
       widget.state.messages.length > prevCount &&
@@ -864,6 +1200,8 @@ async function refreshThread(widget) {
     if (hasNewStaff && !widget.isOpen) {
       widget.showDot(true);
     }
+    /* Реальный ответ — гасим «печатает…» немедленно, не дожидаясь таймаута. */
+    if (hasNewStaff) hideTyping(widget);
     return hasNewStaff;
   } catch (err) {
     log("fetch error", err);
@@ -936,8 +1274,11 @@ export function initSupportChat() {
   root.className = "ssc-root";
   root.setAttribute("lang", detectLang());
 
-  const launcher = makeLauncher();
-  const dotEl = launcher.querySelector(".ssc-launcher-dot");
+  const launcherWrap = makeLauncher();
+  const launcherBtn = launcherWrap.querySelector(".ssc-launcher");
+  const dotEl = launcherWrap.querySelector(".ssc-launcher-dot");
+  const nudgeEl = launcherWrap.querySelector(".ssc-nudge");
+  const nudgeCloseEl = launcherWrap.querySelector(".ssc-nudge-close");
 
   const panel = document.createElement("div");
   panel.className = "ssc-panel";
@@ -945,7 +1286,20 @@ export function initSupportChat() {
   panel.setAttribute("aria-label", L.headerTitle);
   panel.innerHTML = `
     <header class="ssc-header">
-      <div class="ssc-header-badge" aria-hidden="true">A</div>
+      <div class="ssc-header-badge" aria-hidden="true">
+        <svg class="ssc-header-mono" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <text x="20" y="29"
+            text-anchor="middle"
+            font-family="'Cormorant Garamond','Playfair Display',Georgia,serif"
+            font-size="26" font-style="italic" font-weight="500"
+            fill="currentColor">A</text>
+          <path d="M9 33.5 Q20 36.5 31 33.5"
+            fill="none" stroke="currentColor"
+            stroke-width="0.85" stroke-linecap="round"
+            opacity="0.55"/>
+        </svg>
+        <span class="ssc-online-dot" aria-hidden="true"></span>
+      </div>
       <div class="ssc-header-text">
         <p class="ssc-header-title">${L.headerTitle}</p>
         <p class="ssc-header-sub">${L.headerSub}</p>
@@ -960,12 +1314,14 @@ export function initSupportChat() {
     sb,
     sessionToken: getOrCreateSessionToken(),
     panel,
-    launcher,
+    launcher: launcherBtn,
+    launcherWrap,
     body: panel.querySelector("[data-body]"),
     footer: panel.querySelector("[data-footer]"),
-    state: { thread: null, messages: [], lastFetchAt: null },
+    state: { thread: null, messages: [], lastFetchAt: null, typing: false },
     isOpen: false,
     pollTimer: null,
+    typingTimer: null,
     pendingFile: null,
     showDot(on) {
       if (!dotEl) return;
@@ -973,13 +1329,42 @@ export function initSupportChat() {
     },
   };
 
-  launcher.addEventListener("click", () => {
+  /* Проактивный нудж: показываем один раз в сессию через 7 секунд, если посетитель
+   * ещё не открыл чат и у него нет незакрытого диалога. Скрываем при любом клике
+   * по кнопке закрытия, клике по лончеру или открытии панели. */
+  const NUDGE_KEY = "ssc_nudge_shown_v1";
+  let nudgeTimer = null;
+  function hideNudge() {
+    if (nudgeEl) nudgeEl.classList.remove("ssc-nudge-visible");
+    if (nudgeTimer) { clearTimeout(nudgeTimer); nudgeTimer = null; }
+  }
+  function scheduleNudge() {
+    try {
+      if (sessionStorage.getItem(NUDGE_KEY) === "1") return;
+    } catch (_) { /* ignore */ }
+    nudgeTimer = setTimeout(() => {
+      if (widget.isOpen) return;
+      if (!nudgeEl) return;
+      nudgeEl.classList.add("ssc-nudge-visible");
+      try { sessionStorage.setItem(NUDGE_KEY, "1"); } catch (_) { /* ignore */ }
+    }, 7000);
+  }
+
+  launcherBtn.addEventListener("click", () => {
+    hideNudge();
     if (widget.isOpen) closePanel(widget);
     else openPanel(widget);
   });
+  if (nudgeCloseEl) {
+    nudgeCloseEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hideNudge();
+      try { sessionStorage.setItem(NUDGE_KEY, "1"); } catch (_) { /* ignore */ }
+    });
+  }
   panel.querySelector(".ssc-close").addEventListener("click", () => closePanel(widget));
 
-  document.body.appendChild(launcher);
+  document.body.appendChild(launcherWrap);
   document.body.appendChild(panel);
   document.body.appendChild(root);
 
@@ -992,6 +1377,8 @@ export function initSupportChat() {
       if (t && t.unread_for_visitor) widget.showDot(true);
       setupPolling(widget);
     });
+  } else {
+    scheduleNudge();
   }
 }
 

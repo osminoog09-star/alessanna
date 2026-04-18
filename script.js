@@ -1189,6 +1189,37 @@
       masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
+    /**
+     * Перед applyMaster синхронизируем категорию формы с категорией кликнутой
+     * группы. Иначе master-select заполнен мастерами текущей формальной
+     * категории, кликнутый id отсутствует в опциях и `value` остаётся пустым —
+     * визуально клик «не сработал». См. issue: «выбираю мастера, ничего не
+     * происходит». Категория группы хранится в `team-group[data-category-name]`
+     * (lowercase RU), а форма содержит option с тем же `data-category-name`.
+     */
+    function syncFormCategoryToMasterGroup(li) {
+      var group = li.closest && li.closest(".team-group");
+      if (!group) return false;
+      var catName = String(group.getAttribute("data-category-name") || "").trim().toLowerCase();
+      if (!catName) return false;
+      var sel = document.querySelector('#booking-form select[name="service"]');
+      if (!sel) return false;
+      var match = null;
+      for (var oi = 0; oi < sel.options.length; oi++) {
+        var optName = String(sel.options[oi].getAttribute("data-category-name") || "")
+          .trim()
+          .toLowerCase();
+        if (optName && optName === catName) {
+          match = sel.options[oi];
+          break;
+        }
+      }
+      if (!match || sel.value === match.value) return false;
+      sel.value = match.value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+
     function wireTeamMasterClicks() {
       if (!teamRoot) return;
       var teamLis = teamRoot.querySelectorAll(".team-names li");
@@ -1201,8 +1232,31 @@
           li.setAttribute("aria-pressed", "false");
           li.addEventListener("click", function () {
             if (li.classList.contains("is-master-ineligible")) return;
-            if (masterSelect && masterSelect.value === id) applyMaster("");
-            else applyMaster(id);
+            /* Сначала переключаем категорию формы — если поменялась,
+             * master-select перезаполнится; затем ждём, пока в нём
+             * появится наш id (в api-режиме перезаполнение асинхронное
+             * через fetch /api/public/employees), и только тогда
+             * ставим мастера. */
+            var changed = syncFormCategoryToMasterGroup(li);
+            var attempts = 0;
+            var tryApply = function () {
+              if (!masterSelect) return;
+              var found = false;
+              for (var k = 0; k < masterSelect.options.length; k++) {
+                if (masterSelect.options[k].value === id) {
+                  found = true;
+                  break;
+                }
+              }
+              if (found) {
+                if (masterSelect.value === id) applyMaster("");
+                else applyMaster(id);
+                return;
+              }
+              if (attempts++ < 20) setTimeout(tryApply, 50);
+            };
+            if (changed) setTimeout(tryApply, 0);
+            else tryApply();
           });
           li.addEventListener("keydown", function (e) {
             if (e.key === "Enter" || e.key === " ") {
@@ -1246,6 +1300,32 @@
         updateBookingChainPreview();
       });
     }
+
+    /* Публичный API, читается из второго IIFE (submit-handler календаря).
+     * Даём копию picked[], чтобы submit-handler не зависел от внутренней
+     * структуры этого блока и не мог сломать её мутацией. */
+    globalThis.__SITE_BOOKING_CHAIN__ = {
+      getItems: function () {
+        return picked.map(function (p) {
+          return {
+            key: p.key,
+            label: p.label,
+            serviceId: p.serviceId,
+            duration: Number(p.duration) || 0,
+            buffer: Number(p.buffer) || 0,
+            selectedMaster: p.selectedMaster || "",
+          };
+        });
+      },
+      count: function () {
+        return picked.length;
+      },
+      clear: function () {
+        picked = [];
+        syncFormCategory();
+        renderList();
+      },
+    };
 
     renderList();
   })();
@@ -1902,6 +1982,230 @@
       }
     });
 
+    function getSalonSupabaseCfg() {
+      var sc = globalThis.SUPABASE_CONFIG || {};
+      var url = String(sc.url || globalThis.SALON_SUPABASE_URL || "").trim().replace(/\/+$/, "");
+      var key = String(sc.anonKey || globalThis.SALON_SUPABASE_ANON_KEY || "").trim();
+      return { url: url, key: key };
+    }
+
+    /** Собираем строку "YYYY-MM-DDTHH:MM:00" → Date (в локальной TZ пользователя),
+     *  потом toISOString(). Postgres timestamptz корректно воспримет Zulu-формат. */
+    function buildChainStartIso(dateKey, timeHm) {
+      var dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ""));
+      var tm = /^(\d{1,2}):(\d{2})$/.exec(String(timeHm || ""));
+      if (!dm || !tm) return null;
+      var d = new Date(
+        Number(dm[1]),
+        Number(dm[2]) - 1,
+        Number(dm[3]),
+        Number(tm[1]),
+        Number(tm[2]),
+        0,
+        0
+      );
+      if (Number.isNaN(d.getTime())) return null;
+      return d.toISOString();
+    }
+
+    function chainBookingPayload(items, startIso, nameVal, phoneVal, noteVal) {
+      return {
+        p_client_name: nameVal || "",
+        p_client_phone: phoneVal || "",
+        p_client_note: noteVal || "",
+        p_start_at: startIso,
+        p_items: items.map(function (it) {
+          return {
+            service_id: it.serviceId,
+            staff_id: it.selectedMaster || "any",
+          };
+        }),
+      };
+    }
+
+    function chainHumanErrorMessage(code, fallback) {
+      var map = isRu
+        ? {
+            staff_busy: "Мастер занят в это время. Выберите другое время или другого мастера.",
+            no_free_master: "Нет свободного мастера в это время. Выберите другое время.",
+            staff_not_service: "Этот мастер не делает выбранную услугу.",
+            staff_unavailable: "Мастер недоступен. Выберите другого.",
+            service_inactive: "Услуга сейчас недоступна.",
+            service_not_found: "Услуга не найдена.",
+            service_no_duration: "Для услуги не задана длительность — обратитесь в салон.",
+            missing_name: "Укажите имя.",
+            missing_start: "Выберите день и время.",
+            empty_items: "Выберите хотя бы одну услугу в прайсе.",
+            too_many_items: "Слишком много услуг за один визит.",
+          }
+        : {
+            staff_busy: "Master is busy at that time.",
+            no_free_master: "No free master at that time.",
+            staff_not_service: "This master does not do this service.",
+            staff_unavailable: "Master is unavailable.",
+            service_inactive: "Service is not bookable right now.",
+            service_not_found: "Service not found.",
+            service_no_duration: "Service duration is missing.",
+            missing_name: "Please enter your name.",
+            missing_start: "Pick a day and time.",
+            empty_items: "Pick at least one service from the price list.",
+            too_many_items: "Too many services for one visit.",
+          };
+      return (code && map[code]) || fallback;
+    }
+
+    /** Если корзина пуста, но в форме выбрана категория + мастер — подбираем
+     *  представительную услугу из прайса этой категории.
+     *  Источник истины — те же `li[data-service-id]`, которые рендерит site-services.mjs.
+     *  Предпочитаем услугу, которую выбранный мастер реально делает (data-service-masters),
+     *  иначе берём первую в категории. Если прайс не успел загрузиться — возвращаем null. */
+    function resolveFallbackItemFromForm() {
+      if (!serviceSelectEl) return null;
+      var opt = serviceSelectEl.options[serviceSelectEl.selectedIndex];
+      if (!opt) return null;
+      var catName = String(opt.getAttribute("data-category-name") || "").trim().toLowerCase();
+      var catLabel = String(opt.textContent || "").trim().toLowerCase();
+      if (!catName && !catLabel) return null;
+
+      /* Ищем нужную панель прайса: сверяем и data-pick-category (uuid-id), и заголовок таба
+       * (tabs-bar .tab-btn — аналогичный текст категории). */
+      var panels = document.querySelectorAll(".tab-panel[data-pick-category]");
+      var chosenLis = [];
+      for (var p = 0; p < panels.length; p++) {
+        var labelBtn = document.querySelector(
+          '.tab-btn[aria-controls="' + cssEscapeAttrValue(panels[p].id) + '"]'
+        );
+        var panelLabel = labelBtn ? String(labelBtn.textContent || "").trim().toLowerCase() : "";
+        if (catName && panelLabel === catName) {
+          chosenLis = Array.from(panels[p].querySelectorAll("li[data-service-id]"));
+          break;
+        }
+        if (catLabel && panelLabel === catLabel) {
+          chosenLis = Array.from(panels[p].querySelectorAll("li[data-service-id]"));
+          break;
+        }
+      }
+      if (!chosenLis.length) return null;
+
+      var wantMaster = masterSelect && masterSelect.value && masterSelect.value !== ANY_MASTER_ID
+        ? String(masterSelect.value)
+        : "";
+
+      var pickedLi = null;
+      if (wantMaster) {
+        for (var li = 0; li < chosenLis.length; li++) {
+          var raw = String(chosenLis[li].getAttribute("data-service-masters") || "").trim();
+          if (!raw) {
+            pickedLi = chosenLis[li];
+            break;
+          }
+          var ids = raw.split(/\s*,\s*/).filter(Boolean);
+          if (ids.indexOf(wantMaster) !== -1) {
+            pickedLi = chosenLis[li];
+            break;
+          }
+        }
+      }
+      if (!pickedLi) pickedLi = chosenLis[0];
+
+      var serviceId = String(pickedLi.getAttribute("data-service-id") || "");
+      if (!serviceId) return null;
+      return {
+        serviceId: serviceId,
+        selectedMaster: wantMaster,
+      };
+    }
+
+    /** Цепочка услуг (picked[] в dock) + Supabase RPC. Возвращает Promise, который резолвится
+     *  в { handled: true, ok: true/false }. Если конфиг Supabase недоступен и запасной
+     *  путь тоже провалился — резолвится в { handled: false } и caller идёт в mailto. */
+    function trySubmitViaBookChain(nameVal, phoneVal, noteVal) {
+      var chainApi = globalThis.__SITE_BOOKING_CHAIN__;
+      var items = chainApi && typeof chainApi.getItems === "function" ? chainApi.getItems() : [];
+
+      /* Fallback: корзина пуста → пробуем подобрать услугу из формы. */
+      if (!items.length) {
+        var fb = resolveFallbackItemFromForm();
+        if (fb && fb.serviceId) items = [fb];
+      }
+
+      if (!items.length) {
+        /* Прайс ещё не загружен, или пользователь не выбрал категорию: мягкий блок, без mailto. */
+        window.alert(
+          isRu
+            ? "Выберите услугу в прайсе выше, чтобы мы знали цену и длительность."
+            : isEn
+              ? "Please pick a service from the price list so we know price and duration."
+              : isFi
+                ? "Valitse palvelu hinnastosta, jotta tiedämme hinnan ja keston."
+                : "Palun valige teenus hinnakirjast (hind ja kestus)."
+        );
+        return Promise.resolve({ handled: true, ok: false });
+      }
+
+      for (var i = 0; i < items.length; i++) {
+        if (!items[i].serviceId) return Promise.resolve({ handled: false });
+      }
+
+      var cfg = getSalonSupabaseCfg();
+      if (!cfg.url || !cfg.key) return Promise.resolve({ handled: false });
+
+      var startIso = buildChainStartIso(selectedKey, timeSelect.value);
+      if (!startIso) return Promise.resolve({ handled: false });
+
+      var payload = chainBookingPayload(items, startIso, nameVal, phoneVal, noteVal);
+
+      return fetch(cfg.url + "/rest/v1/rpc/public_book_chain", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: cfg.key,
+          Authorization: "Bearer " + cfg.key,
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          return r.json().then(
+            function (j) {
+              return { status: r.status, json: j };
+            },
+            function () {
+              return { status: r.status, json: null };
+            }
+          );
+        })
+        .then(function (res) {
+          var j = res.json || {};
+          if (j && j.ok === true) {
+            var okMsg = isRu
+              ? "Запись подтверждена. Ждём вас в салоне."
+              : isEn
+                ? "Booking confirmed. See you at the salon."
+                : isFi
+                  ? "Varaus vahvistettu. Nähdään salongilla."
+                  : "Broneering kinnitatud. Täname!";
+            window.alert(okMsg);
+            bookingForm.reset();
+            if (chainApi && chainApi.clear) chainApi.clear();
+            invalidateMonthCache();
+            clearSelection();
+            renderCalendar();
+            return { handled: true, ok: true };
+          }
+          /* Supabase вернула ошибку схемы (RLS/FK/функция не найдена) — отмечаем как «не
+           * обработано», чтобы сработал fallback mailto и заявка всё равно дошла. */
+          if (!j || typeof j.ok === "undefined") return { handled: false };
+          var fb = isRu
+            ? "Не удалось забронировать. Выберите другое время или напишите нам."
+            : "Booking failed. Please pick another time or contact us.";
+          window.alert(chainHumanErrorMessage(j.error, (j.message || fb)));
+          return { handled: true, ok: false };
+        })
+        .catch(function () {
+          return { handled: false };
+        });
+    }
+
     /* Сервер: POST /api/public/bookings; иначе mailto (статический сайт) */
     bookingForm.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -1913,6 +2217,24 @@
         timeSelect.focus();
         return;
       }
+
+      var nameVal = (bookingForm.querySelector('[name="name"]') || { value: "" }).value.trim();
+      var phoneVal = (bookingForm.querySelector('[name="phone"]') || { value: "" }).value.trim();
+      var noteVal = (bookingForm.querySelector("[data-field-services-detail]") || { value: "" }).value.trim();
+      if (!nameVal) {
+        var nameFieldEl = bookingForm.querySelector('[name="name"]');
+        if (nameFieldEl) nameFieldEl.focus();
+        return;
+      }
+
+      /* Супабейс RPC для мульти-сервис записи из корзины. Fallback на apiBooking/mailto,
+       * если RPC недоступна или picked[] пуст. */
+      trySubmitViaBookChain(nameVal, phoneVal, noteVal).then(function (res) {
+        if (res && res.handled) return;
+        continueLegacySubmit();
+      });
+
+      function continueLegacySubmit() {
       if (apiBooking) {
         var slug = serviceSelectEl.value;
         var svcId = serviceIdBySlug[slug];
@@ -1997,6 +2319,7 @@
             : encodeURIComponent("Broneering AlesSanna");
       var body = encodeURIComponent(lines.join("\n"));
       window.location.href = "mailto:alessanna.ilusalong@gmail.com?subject=" + subject + "&body=" + body;
+      } /* end continueLegacySubmit */
     });
   }
 
