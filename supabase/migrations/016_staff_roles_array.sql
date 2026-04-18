@@ -1,3 +1,6 @@
+-- NOTE: Второй файл с префиксом «016_»; применяется после
+-- 016_public_catalog_read_policies.sql (см. сортировку имён в папке).
+
 -- Staff multi-role support for admin UI.
 -- Additive: keeps legacy `role` column for compatibility.
 

@@ -1,3 +1,8 @@
+-- NOTE: В репозитории два файла с префиксом «016_». Порядок применения
+-- задаётся лексикографической сортировкой имён: сначала этот файл,
+-- затем 016_staff_roles_array.sql. Номер не меняем — иначе сломается
+-- история уже применённых миграций на проде.
+
 -- Ensure public landing can read service catalog via anon key.
 -- Symptom: CRM sees services, but site-services.mjs gets empty arrays from anon queries.
 
