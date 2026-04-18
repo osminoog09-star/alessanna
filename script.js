@@ -1939,10 +1939,23 @@
     }
 
     function startBookingWidget() {
-      fetch("/api/health")
-        .then(function (r) {
-          return r.ok;
-        })
+      // На статическом хостинге (alessannailu.com на GitHub Pages) /api/health
+      // никогда не существует, поэтому раньше каждая загрузка страницы давала
+      // лишний 404 в DevTools Network. Пробуем сервер только если есть явный
+      // флаг или мы на dev-машине.
+      var host = (typeof location !== "undefined" && location.hostname) || "";
+      var hasLocalApi =
+        globalThis.SALON_HAS_LOCAL_API === true ||
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "0.0.0.0";
+      var pingApi = hasLocalApi
+        ? fetch("/api/health").then(function (r) {
+            return r.ok;
+          })
+        : Promise.resolve(false);
+
+      pingApi
         .then(function (ok) {
           if (!ok) throw new Error("no-api");
           return fetch("/api/public/services").then(function (r) {

@@ -1,5 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+/**
+ * Singleton Supabase client for the public landing.
+ * Несколько .mjs модулей (site-builder, site-services, site-team, site-support-chat)
+ * раньше каждый создавали свой createClient — браузер ругался
+ * "Multiple GoTrueClient instances detected". Теперь все берут один и тот же
+ * экземпляр из globalThis.__alessannaPublicSb.
+ */
+function getSb(url, key) {
+  const slot = "__alessannaPublicSb";
+  const cached = globalThis[slot];
+  if (cached && cached.__url === url && cached.__key === key) return cached.client;
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  globalThis[slot] = { client, __url: url, __key: key };
+  return client;
+}
+
 function cfg() {
   const sc = globalThis.SUPABASE_CONFIG;
   let url = sc && String(sc.url || "").trim() ? String(sc.url).trim() : "";
@@ -170,26 +186,32 @@ async function main() {
   if (!mount) return;
   const c = cfg();
   if (!c.url || !c.key) return;
-  const supabase = createClient(c.url, c.key);
+  const supabase = getSb(c.url, c.key);
   const slug = pageSlug();
 
-  const pub = await supabase
-    .from("site_pages")
-    .select("id,styles,status")
-    .eq("slug", slug)
-    .eq("status", "published")
-    .maybeSingle();
-
-  let page = pub.data;
-  if (!page?.id) {
-    const leg = await supabase
+  // Защитный try/catch: если у site_pages нет колонок styles/status (старая схема),
+  // выкидывать 400 в консоль не нужно — просто молча пропускаем рендер блоков.
+  let page = null;
+  try {
+    const pub = await supabase
       .from("site_pages")
-      .select("id,styles")
+      .select("id,styles,status")
       .eq("slug", slug)
-      .order("created_at", { ascending: true })
-      .limit(1)
+      .eq("status", "published")
       .maybeSingle();
-    page = leg.data;
+    page = pub.data;
+    if (!page?.id) {
+      const leg = await supabase
+        .from("site_pages")
+        .select("id,styles")
+        .eq("slug", slug)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      page = leg.data;
+    }
+  } catch (_) {
+    return;
   }
   if (!page?.id) return;
 

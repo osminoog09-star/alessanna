@@ -17,6 +17,16 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+/** См. site-builder.mjs — общий singleton, чтобы не плодить GoTrueClient. */
+function getSb(url, key) {
+  const slot = "__alessannaPublicSb";
+  const cached = globalThis[slot];
+  if (cached && cached.__url === url && cached.__key === key) return cached.client;
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  globalThis[slot] = { client, __url: url, __key: key };
+  return client;
+}
+
 const LOG_PREFIX = "[site-support-chat]";
 const STORAGE_SESSION = "site_support_session_v1";
 const STORAGE_PROFILE = "site_support_profile_v1";
@@ -1283,9 +1293,7 @@ export function initSupportChat() {
   }
   injectStyles();
 
-  const sb = createClient(cfg.url, cfg.anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const sb = getSb(cfg.url, cfg.anonKey);
 
   const root = document.createElement("div");
   root.id = "ssc-root";

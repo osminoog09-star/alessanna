@@ -4,6 +4,16 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+/** См. site-builder.mjs — общий singleton, чтобы не плодить GoTrueClient. */
+function getSb(url, key) {
+  const slot = "__alessannaPublicSb";
+  const cached = globalThis[slot];
+  if (cached && cached.__url === url && cached.__key === key) return cached.client;
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  globalThis[slot] = { client, __url: url, __key: key };
+  return client;
+}
+
 const POLL_FALLBACK_MS = 60000;
 const LOG_PREFIX = "[site-services]";
 
@@ -675,7 +685,7 @@ async function main() {
     }
   }
 
-  const client = createClient(c.url, c.key);
+  const client = getSb(c.url, c.key);
   const refresh = () => void run(client);
 
   await run(client);

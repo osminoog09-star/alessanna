@@ -1,4 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+/** См. site-builder.mjs — общий singleton, чтобы не плодить GoTrueClient. */
+function getSb(url, key) {
+  const slot = "__alessannaPublicSb";
+  const cached = globalThis[slot];
+  if (cached && cached.__url === url && cached.__key === key) return cached.client;
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  globalThis[slot] = { client, __url: url, __key: key };
+  return client;
+}
+
 const READY_EVENT = "site-team-ready";
 
 function cfg() {
@@ -117,7 +128,7 @@ async function main() {
       renderTeam([], []);
       return;
     }
-    const supabase = createClient(c.url, c.key);
+    const supabase = getSb(c.url, c.key);
 
     const { data: staffRows } = await supabase
       .from("staff")
