@@ -29,3 +29,10 @@ work-crm/out/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+
+# Локальные дампы / отладочные снимки
+deployed-index.html
+deployed-*.html
+
+# Supabase CLI temp (создаётся `supabase` CLI локально)
+supabase/.temp/
