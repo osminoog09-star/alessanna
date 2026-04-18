@@ -282,7 +282,8 @@ export function ProCalendar({
   );
 
   const serviceName = useCallback(
-    (serviceId: number) => services.find((s) => s.id === serviceId)?.name_et ?? t("common.service"),
+    (serviceId: string | number) =>
+      services.find((s) => String(s.id) === String(serviceId))?.name_et ?? t("common.service"),
     [services, t]
   );
 

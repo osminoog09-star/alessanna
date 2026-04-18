@@ -52,17 +52,28 @@ export function PublicBookingPage() {
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
     ]);
+    /* Fallback по `select(...)`: каждая ветка возвращает свой shape, поэтому
+     * для TS ниже всегда `as typeof sv`. На рантайме всё равно нормализуем. */
     let sv = await supabase
       .from("service_listings")
       .select("id,name,duration,buffer_after_min,is_active")
       .order("name");
     if (sv.error) {
-      sv = await supabase.from("service_listings").select("id,name,duration,is_active").order("name");
+      sv = (await supabase
+        .from("service_listings")
+        .select("id,name,duration,is_active")
+        .order("name")) as typeof sv;
       if (sv.error) {
-        sv = await supabase.from("service_listings").select("id,name,duration,buffer_after_min").order("name");
+        sv = (await supabase
+          .from("service_listings")
+          .select("id,name,duration,buffer_after_min")
+          .order("name")) as typeof sv;
       }
       if (sv.error) {
-        sv = await supabase.from("service_listings").select("id,name,duration").order("name");
+        sv = (await supabase
+          .from("service_listings")
+          .select("id,name,duration")
+          .order("name")) as typeof sv;
       }
     }
     if (sv.data) {

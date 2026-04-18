@@ -141,19 +141,13 @@ export type ClientRow = {
   created_at?: string;
 };
 
-/** Public site builder blocks stored in `site_blocks`. */
-export type SiteBlockType =
-  | "hero"
-  | "text"
-  | "image"
-  | "gallery"
-  | "video"
-  | "cta"
-  | "team"
-  | "services"
-  | "reviews"
-  | "contacts"
-  | "custom";
+/** Public site builder blocks stored in `site_blocks`.
+ *  Source of truth: миграция 017_site_builder_real_mvp.sql
+ *    check (type in ('button', 'text', 'section', 'image', 'spacer'))
+ *  Старые «маркетинговые» типы (hero/cta/…) пока не реализованы — намеренно
+ *  выкинуты из юниона, чтобы редактор и preview не отрисовывали то, чего
+ *  в БД быть не может. */
+export type SiteBlockType = "button" | "text" | "section" | "image" | "spacer";
 
 export type SiteBlockRow = {
   id: string;
@@ -162,16 +156,33 @@ export type SiteBlockRow = {
   position: number;
   content: Record<string, unknown> | null;
   styles: Record<string, unknown> | null;
-  is_active: boolean;
+  /** В 017_site_builder_real_mvp.sql колонки `is_active` нет; оставляем
+   *  опциональной — это не ломает редактор и не сломает старые таблицы,
+   *  если кто-то вручную её добавил. */
+  is_active?: boolean;
   created_at?: string;
+  updated_at?: string;
 };
 
+/** Source of truth: 015_site_builder_mvp.sql + 017 + 032.
+ *  Поля name/slug/status/styles реально присутствуют в БД, без них
+ *  и SiteBuilderPage, и публикация страниц упадут. */
 export type SitePageRow = {
   id: string;
+  name: string;
   slug: string;
-  title: string | null;
-  is_published: boolean;
+  /** 'draft' | 'published' (см. site_pages_status_check в миграции 017) */
+  status: "draft" | "published";
+  /** JSON со шрифтами/maxWidth страницы; миграция 017 добавляет default '{}'. */
+  styles: Record<string, unknown> | null;
+  /** Опциональные тайм-стампы из миграций 017/032. */
   created_at?: string;
+  updated_at?: string;
+  published_at?: string | null;
+  /** Backwards-compat: миграция 015 не имела поля title; держим опционально,
+   *  чтобы не сломать чужие интеграции, если они его читают. */
+  title?: string | null;
+  is_published?: boolean;
 };
 
 export type Database = {

@@ -36,7 +36,9 @@ export function BookingModal({
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [staffId, setStaffId] = useState(initialStaffId);
-  const [serviceId, setServiceId] = useState(0);
+  /* `services.id` приходит и как UUID (service_listings), и как bigint (services).
+   * Поэтому serviceId — `string | number`, чтобы fallback-цепочки не ломались. */
+  const [serviceId, setServiceId] = useState<string | number>(0);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -167,7 +169,12 @@ export function BookingModal({
             <label className="text-xs text-zinc-500">{t("modal.service")}</label>
             <select
               value={serviceId || ""}
-              onChange={(e) => setServiceId(Number(e.target.value))}
+              onChange={(e) => {
+                /* UUID-id (service_listings) → строкой; bigint-id (services) → числом. */
+                const v = e.target.value;
+                const n = Number(v);
+                setServiceId(Number.isFinite(n) && String(n) === v ? n : v);
+              }}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
             >
               {eligibleServices.map((s) => (

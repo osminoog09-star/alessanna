@@ -55,22 +55,25 @@ type ListingCatalogRow = {
 
 /** When `services` is empty but the public catalog has rows, hydrate the CRM list from service_listings. */
 async function fetchServicesFromListingsCatalog(): Promise<ServiceRow[]> {
+  /* Fallback по schema-drift (старые проекты без buffer_after_min/is_active).
+   * `as typeof res` — потому что разные .select() дают разные generic-аргументы
+   * у PostgrestSingleResponse, а TS отказывается их объединять. */
   let res = await supabase
     .from("service_listings")
     .select("id,name,price,duration,category_id,buffer_after_min,is_active,service_categories(name)")
     .order("name", { ascending: true });
 
   if (res.error && String(res.error.message || "").includes("buffer_after_min")) {
-    res = await supabase
+    res = (await supabase
       .from("service_listings")
       .select("id,name,price,duration,category_id,is_active,service_categories(name)")
-      .order("name", { ascending: true });
+      .order("name", { ascending: true })) as typeof res;
   }
   if (res.error && String(res.error.message || "").includes("is_active")) {
-    res = await supabase
+    res = (await supabase
       .from("service_listings")
       .select("id,name,price,duration,category_id,service_categories(name)")
-      .order("name", { ascending: true });
+      .order("name", { ascending: true })) as typeof res;
   }
   if (res.error || !res.data?.length) return [];
 
@@ -269,10 +272,10 @@ export function ServicesPage() {
           .select("id,name,category,duration,buffer_after_min,price,created_at")
           .order("name", { ascending: true });
         if (sModern.error && String(sModern.error.message || "").includes("buffer_after_min")) {
-          sModern = await supabase
+          sModern = (await supabase
             .from("services")
             .select("id,name,category,duration,price,created_at")
-            .order("name", { ascending: true });
+            .order("name", { ascending: true })) as typeof sModern;
         }
         if (sModern.data && sModern.data.length > 0) {
           loadedServices = mapModernServices(sModern.data as Array<Record<string, unknown>>);

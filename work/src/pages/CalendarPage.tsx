@@ -39,7 +39,9 @@ export function CalendarPage() {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
-  const [calendarServiceId, setCalendarServiceId] = useState<number | null>(null);
+  /* `ServiceRow.id` — `string | number` (UUID или bigint), поэтому держим
+   *  оба варианта; раньше был `number | null` и падал на UUID-ID. */
+  const [calendarServiceId, setCalendarServiceId] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ start: Date; staffId: string } | null>(null);
   const [durationMin, setDurationMin] = useState(60);
@@ -241,7 +243,11 @@ export function CalendarPage() {
             {t("calendar.bookingService")}
             <select
               value={calendarServiceId ?? ""}
-              onChange={(e) => setCalendarServiceId(Number(e.target.value))}
+              onChange={(e) => {
+                const v = e.target.value;
+                const n = Number(v);
+                setCalendarServiceId(Number.isFinite(n) && String(n) === v ? n : v);
+              }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
             >
               {services.map((s) => (

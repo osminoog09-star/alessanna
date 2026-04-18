@@ -27,18 +27,31 @@ async function loadStaffPageCatalog(): Promise<StaffCatalogResult> {
   const uncategorized = "Без категории";
   /* После миграции 012 `staff_services.service_id` → UUID `service_listings.id`.
    * Раньше сюда первым шёл legacy `services` (bigint id): переключатели не совпадали с БД и insert ломался по FK. */
+  /* fallback-цепочки по `select(...)` дают разные shape-ы; для TS поэтому
+   * в let-binding всегда кастуем последующие awaits в `typeof sl`, иначе
+   * supabase-js v2 ругается на PostgrestSingleResponse<разный набор полей>.
+   * Узкий runtime-тип всё равно затем нормализуется ниже через `as Array<...>`. */
   let sl = await supabase
     .from("service_listings")
     .select("id,name,is_active,category_id,service_categories(name)")
     .order("name", { ascending: true });
   if (sl.error) {
-    sl = await supabase.from("service_listings").select("id,name,is_active,category_id").order("name", { ascending: true });
+    sl = (await supabase
+      .from("service_listings")
+      .select("id,name,is_active,category_id")
+      .order("name", { ascending: true })) as typeof sl;
   }
   if (sl.error) {
-    sl = await supabase.from("service_listings").select("id,name,is_active").order("name", { ascending: true });
+    sl = (await supabase
+      .from("service_listings")
+      .select("id,name,is_active")
+      .order("name", { ascending: true })) as typeof sl;
   }
   if (sl.error) {
-    sl = await supabase.from("service_listings").select("id,name").order("name", { ascending: true });
+    sl = (await supabase
+      .from("service_listings")
+      .select("id,name")
+      .order("name", { ascending: true })) as typeof sl;
   }
   if (!sl.error && sl.data && sl.data.length > 0) {
     const services = (
@@ -65,7 +78,10 @@ async function loadStaffPageCatalog(): Promise<StaffCatalogResult> {
     .select("id,name_et,active,category")
     .order("sort_order", { ascending: true });
   if (sLegacy.error) {
-    sLegacy = await supabase.from("services").select("id,name_et,active").order("sort_order", { ascending: true });
+    sLegacy = (await supabase
+      .from("services")
+      .select("id,name_et,active")
+      .order("sort_order", { ascending: true })) as typeof sLegacy;
   }
   if (!sLegacy.error && sLegacy.data && sLegacy.data.length > 0) {
     const services = (
@@ -86,7 +102,10 @@ async function loadStaffPageCatalog(): Promise<StaffCatalogResult> {
     .select("id,name,active,is_active,category")
     .order("name", { ascending: true });
   if (sModern.error) {
-    sModern = await supabase.from("services").select("id,name,active,is_active").order("name", { ascending: true });
+    sModern = (await supabase
+      .from("services")
+      .select("id,name,active,is_active")
+      .order("name", { ascending: true })) as typeof sModern;
   }
   if (sModern.data && sModern.data.length > 0) {
     const services = (
@@ -320,6 +339,19 @@ export function AdminStaffPage() {
   >([]);
   /** Название категории, которую сейчас тащим (для drag-&-drop). */
   const [draggedCatName, setDraggedCatName] = useState<string | null>(null);
+  /** Контекст drag для секций «Активные / Неактивные услуги мастера».
+   *  Тут несём id мастера, направление (откуда тащим) и весь набор услуг
+   *  категории — чтобы при drop в противоположную секцию выполнить
+   *  toggleCategoryForStaff (полный аналог кнопок «добавить все» / «убрать»).
+   *  Без этого пользователь тащит карточку из «Неактивные» в «Активные»,
+   *  и единственное, что происходит — глобальный reorder сортировки категорий,
+   *  а услуги мастеру не добавляются. */
+  const [skillDrag, setSkillDrag] = useState<{
+    staffId: string;
+    catName: string;
+    from: "assigned" | "inactive";
+    services: CatalogSkillService[];
+  } | null>(null);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -1089,32 +1121,70 @@ export function AdminStaffPage() {
     void load();
   }
 
-  function onCategoryDragStart(e: React.DragEvent, name: string) {
-    if (name === "Без категории") {
+  /* ───────── Drag-and-drop для блоков «Активные / Неактивные услуги мастера» ─────────
+   * Семантика:
+   *   • Drag внутри той же секции у того же мастера → reorderCategory (как было).
+   *   • Drag из «Неактивные» в «Активные»          → toggleCategoryForStaff(..., true)
+   *     (равно нажатию кнопки «добавить все»).
+   *   • Drag из «Активные» в «Неактивные»          → toggleCategoryForStaff(..., false)
+   *     (равно нажатию «убрать категорию»). Удобно, если мастер больше не делает услугу.
+   * Защита:
+   *   • «Без категории» по-прежнему не таскаем (она и в reorder заблокирована).
+   *   • Drag между разными мастерами игнорируется (нет UX-смысла).               */
+  function onSkillCardDragStart(
+    e: React.DragEvent,
+    ctx: {
+      staffId: string;
+      catName: string;
+      from: "assigned" | "inactive";
+      services: CatalogSkillService[];
+    },
+  ) {
+    if (ctx.catName === "Без категории") {
       e.preventDefault();
       return;
     }
-    setDraggedCatName(name);
+    setSkillDrag(ctx);
+    setDraggedCatName(ctx.catName);
     try {
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", name);
+      e.dataTransfer.setData("text/plain", ctx.catName);
     } catch {
-      /* ignore: Safari sometimes throws in dataTransfer.setData for non-text types */
+      /* Safari иногда бросает на dataTransfer.setData с не-text типами */
     }
   }
-  function onCategoryDragOver(e: React.DragEvent) {
-    if (!draggedCatName) return;
+
+  function onSkillCardDragOver(e: React.DragEvent) {
+    if (!skillDrag) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   }
-  function onCategoryDrop(e: React.DragEvent, targetName: string) {
+
+  /** Drop на секцию (assigned/inactive) или конкретную карточку.
+   * targetCatName === null → drop в «пустоту» секции, тогда reorder невозможен,
+   * но cross-section move сработает. */
+  function onSkillCardDrop(
+    e: React.DragEvent,
+    target: { staffId: string; section: "assigned" | "inactive"; catName: string | null },
+  ) {
     e.preventDefault();
-    const src = draggedCatName || e.dataTransfer.getData("text/plain");
+    e.stopPropagation();
+    const src = skillDrag;
+    setSkillDrag(null);
     setDraggedCatName(null);
     if (!src) return;
-    void reorderCategory(src, targetName);
+    if (src.staffId !== target.staffId) return; // нельзя перетащить услуги одного мастера к другому
+
+    if (src.from !== target.section) {
+      void toggleCategoryForStaff(src.staffId, src.services, target.section === "assigned");
+      return;
+    }
+    if (!target.catName || target.catName === src.catName) return;
+    void reorderCategory(src.catName, target.catName);
   }
-  function onCategoryDragEnd() {
+
+  function onSkillCardDragEnd() {
+    setSkillDrag(null);
     setDraggedCatName(null);
   }
 
@@ -1458,7 +1528,24 @@ export function AdminStaffPage() {
                           </div>
                           <div className="space-y-4">
                             {/* ───────── Активные услуги мастера ───────── */}
-                            <section className="rounded border border-emerald-900/40 bg-emerald-950/10 px-2 py-2">
+                            <section
+                              className={
+                                "rounded border bg-emerald-950/10 px-2 py-2 transition-colors " +
+                                (skillDrag &&
+                                skillDrag.staffId === r.id &&
+                                skillDrag.from === "inactive"
+                                  ? "border-emerald-500/70 bg-emerald-900/20 ring-1 ring-emerald-400/40"
+                                  : "border-emerald-900/40")
+                              }
+                              onDragOver={onSkillCardDragOver}
+                              onDrop={(e) =>
+                                onSkillCardDrop(e, {
+                                  staffId: r.id,
+                                  section: "assigned",
+                                  catName: null,
+                                })
+                              }
+                            >
                               <header className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
                                 <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-300/90">
                                   Активные услуги
@@ -1467,7 +1554,7 @@ export function AdminStaffPage() {
                                   </span>
                                 </p>
                                 <span className="text-[10px] text-zinc-500">
-                                  потяните любую карточку, чтобы изменить порядок
+                                  тащите карточку: вверх/вниз — порядок, в «Неактивные» — убрать категорию
                                 </span>
                               </header>
                               {assigned.length === 0 ? (
@@ -1483,6 +1570,10 @@ export function AdminStaffPage() {
                                     const draggable = catName !== "Без категории";
                                     const isDragged = draggedCatName === catName;
                                     const isDropTarget = draggable && draggedCatName && draggedCatName !== catName;
+                                    /* Полный набор услуг этой категории из каталога —
+                                     * нужен для cross-section move (toggleCategoryForStaff). */
+                                    const fullCatSvcs =
+                                      activeServicesByCategory.find((c) => c.name === catName)?.services || [];
                                     return (
                                       <div
                                         key={catName}
@@ -1490,10 +1581,26 @@ export function AdminStaffPage() {
                                          * Интерактивные элементы внутри (кнопки/тогглы) не запускают drag,
                                          * потому что их нативный pointer capture срабатывает раньше. */
                                         draggable={draggable}
-                                        onDragStart={(e) => onCategoryDragStart(e, catName)}
-                                        onDragEnd={onCategoryDragEnd}
-                                        onDragOver={draggable ? onCategoryDragOver : undefined}
-                                        onDrop={draggable ? (e) => onCategoryDrop(e, catName) : undefined}
+                                        onDragStart={(e) =>
+                                          onSkillCardDragStart(e, {
+                                            staffId: r.id,
+                                            catName,
+                                            from: "assigned",
+                                            services: fullCatSvcs,
+                                          })
+                                        }
+                                        onDragEnd={onSkillCardDragEnd}
+                                        onDragOver={draggable ? onSkillCardDragOver : undefined}
+                                        onDrop={
+                                          draggable
+                                            ? (e) =>
+                                                onSkillCardDrop(e, {
+                                                  staffId: r.id,
+                                                  section: "assigned",
+                                                  catName,
+                                                })
+                                            : undefined
+                                        }
                                         className={
                                           "group relative rounded-md border bg-black/25 transition-all duration-150 " +
                                           (draggable
@@ -1608,7 +1715,24 @@ export function AdminStaffPage() {
                                 0,
                               );
                               return (
-                                <section className="rounded border border-zinc-800/80 bg-black/20 px-2 py-2">
+                                <section
+                                  className={
+                                    "rounded border bg-black/20 px-2 py-2 transition-colors " +
+                                    (skillDrag &&
+                                    skillDrag.staffId === r.id &&
+                                    skillDrag.from === "assigned"
+                                      ? "border-amber-500/70 bg-amber-950/15 ring-1 ring-amber-400/30"
+                                      : "border-zinc-800/80")
+                                  }
+                                  onDragOver={onSkillCardDragOver}
+                                  onDrop={(e) =>
+                                    onSkillCardDrop(e, {
+                                      staffId: r.id,
+                                      section: "inactive",
+                                      catName: null,
+                                    })
+                                  }
+                                >
                                   <header className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
                                     <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
                                       Неактивные услуги
@@ -1617,7 +1741,7 @@ export function AdminStaffPage() {
                                       </span>
                                     </p>
                                     <span className="text-[10px] text-zinc-500">
-                                      потяните карточку — порядок категорий общий для всего CRM
+                                      тащите в «Активные», чтобы добавить категорию мастеру
                                     </span>
                                   </header>
                                   {activeServices.length === 0 ? (
@@ -1638,15 +1762,33 @@ export function AdminStaffPage() {
                                         const isDragged = draggedCatName === catName;
                                         const isDropTarget =
                                           draggable && draggedCatName && draggedCatName !== catName;
+                                        /* В «Неактивные» уже передаётся отфильтрованный catSvcs
+                                         * (только то, что НЕ привязано к мастеру). Для добавления
+                                         * категории целиком этого достаточно — всё что и так привязано,
+                                         * trigger в toggleCategoryForStaff пропустит. */
                                         return (
                                           <div
                                             key={catName}
                                             draggable={draggable}
-                                            onDragStart={(e) => onCategoryDragStart(e, catName)}
-                                            onDragEnd={onCategoryDragEnd}
-                                            onDragOver={draggable ? onCategoryDragOver : undefined}
+                                            onDragStart={(e) =>
+                                              onSkillCardDragStart(e, {
+                                                staffId: r.id,
+                                                catName,
+                                                from: "inactive",
+                                                services: catSvcs,
+                                              })
+                                            }
+                                            onDragEnd={onSkillCardDragEnd}
+                                            onDragOver={draggable ? onSkillCardDragOver : undefined}
                                             onDrop={
-                                              draggable ? (e) => onCategoryDrop(e, catName) : undefined
+                                              draggable
+                                                ? (e) =>
+                                                    onSkillCardDrop(e, {
+                                                      staffId: r.id,
+                                                      section: "inactive",
+                                                      catName,
+                                                    })
+                                                : undefined
                                             }
                                             className={
                                               "group relative rounded-md border bg-black/25 transition-all duration-150 " +

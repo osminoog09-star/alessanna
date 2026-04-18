@@ -71,7 +71,34 @@ export function ClientsPage() {
     const { data, error } = await q;
     if (!error && data) {
       const seen = new Set<string>();
-      const unique = (data as VisitRow[]).filter((row) => {
+      /* PostgREST для FK-вложений всегда возвращает массив; локальный VisitRow
+       * описывает их как `{ name } | null` (так удобнее для рендера).
+       * Явно нормализуем массивы → первый элемент / null, чтобы не врать TS. */
+      const normalized: VisitRow[] = (data as Array<Record<string, unknown>>).map((row) => {
+        const services = Array.isArray(row.appointment_services)
+          ? (row.appointment_services as Array<Record<string, unknown>>).map((svc) => {
+              const staffArr = Array.isArray(svc.staff) ? (svc.staff as Array<{ name?: string }>) : [];
+              const slArr = Array.isArray(svc.service_listings)
+                ? (svc.service_listings as Array<{ name?: string }>)
+                : [];
+              return {
+                id: String(svc.id ?? ""),
+                start_time: String(svc.start_time ?? ""),
+                end_time: String(svc.end_time ?? ""),
+                staff: staffArr.length ? { name: String(staffArr[0]?.name ?? "") } : null,
+                service_listings: slArr.length ? { name: String(slArr[0]?.name ?? "") } : null,
+              };
+            })
+          : null;
+        return {
+          id: String(row.id ?? ""),
+          created_at: row.created_at == null ? null : String(row.created_at),
+          status: String(row.status ?? ""),
+          client_name: String(row.client_name ?? ""),
+          appointment_services: services,
+        };
+      });
+      const unique = normalized.filter((row) => {
         if (seen.has(row.id)) return false;
         seen.add(row.id);
         return true;

@@ -53,7 +53,23 @@ export function FinancePage() {
       /* Админы (техподдержка) не участвуют в выплатах/финансах салона. */
       setStaff((st.data as StaffTableRow[]).filter((row) => !isStaffRowAdmin(row)));
     }
-    if (ln.data) setLines(ln.data as LineRow[]);
+    if (ln.data) {
+      /* PostgREST вкладывает FK как массив, но нам нужен максимум один
+       * appointment на запись — берём первую (или null). Иначе TS падает на
+       * `appointments[]` vs `appointments | null`. */
+      const normalized: LineRow[] = (ln.data as Array<Record<string, unknown>>).map((row) => {
+        const apps = Array.isArray(row.appointments)
+          ? (row.appointments as Array<{ status?: string }>)
+          : [];
+        return {
+          staff_id: String(row.staff_id ?? ""),
+          service_id: String(row.service_id ?? ""),
+          start_time: String(row.start_time ?? ""),
+          appointments: apps.length ? { status: String(apps[0]?.status ?? "") } : null,
+        };
+      });
+      setLines(normalized);
+    }
     if (wd.data) setWorkDays(wd.data as Array<{ staff_id: string; date: string }>);
     if (sv.data) setListings(sv.data as ServiceListingRow[]);
     setLoading(false);
