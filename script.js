@@ -741,6 +741,113 @@
       serviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
+    /**
+     * Единый sync: корзина picked[] → все 3 поля формы записи.
+     *
+     * Зачем: пользователь может ткнуть услугу в прайс-листе, кликнуть
+     * мастера в #meistrid, или выбрать в форме — а после этого все три
+     * места ДОЛЖНЫ показывать одно и то же. Раньше в форму прокидывалась
+     * только категория (через syncFormCategory), а «Услуга» и «Мастер»
+     * оставались с placeholder'ами «Выберите услугу / мастера» — клиент
+     * видел рассинхрон.
+     *
+     * Что делаем:
+     *   - Берём «активный» pick (последний добавленный в корзину).
+     *   - Ставим категорию (через relayoutServiceItemSelect, без второго change-event).
+     *   - Ставим конкретную услугу (option.value === serviceId).
+     *   - Ставим мастера, если pick.selectedMaster уже выбран и есть в options.
+     *
+     * Никаких change-event'ов сами не диспатчим — иначе addPickFromServiceOption
+     * сработает на нашу же установку value и зациклит логику.
+     *
+     * Если корзина пустая — сбрасываем все три поля в placeholder'ы.
+     */
+    var syncingFormFromCart = false;
+    function syncFormFromCart() {
+      if (syncingFormFromCart) return;
+      syncingFormFromCart = true;
+      try {
+        if (!picked.length) {
+          if (serviceSelect && serviceSelect.value !== "") {
+            serviceSelect.value = "";
+          }
+          relayoutServiceItemSelect("");
+          if (masterSelect && masterSelect.value !== "") {
+            masterSelect.value = "";
+            setMasterDisplayText(UI.masterNone);
+            highlightTeam("");
+          }
+          return;
+        }
+        var p = picked[picked.length - 1];
+
+        /* 1) Категория — программно, без change-event, чтобы не дёргать
+         *    цепочку дважды. relayoutServiceItemSelect ниже сам пересчитает
+         *    список услуг под нужную категорию. */
+        if (serviceSelect && p.category && serviceSelect.value !== p.category) {
+          var hasCat = false;
+          for (var ci = 0; ci < serviceSelect.options.length; ci++) {
+            if (serviceSelect.options[ci].value === p.category) { hasCat = true; break; }
+          }
+          if (hasCat) serviceSelect.value = p.category;
+        }
+
+        /* 2) Перерисовываем service-item select под актуальную категорию,
+         *    затем выставляем конкретную услугу. */
+        relayoutServiceItemSelect(serviceSelect ? String(serviceSelect.value || "") : "");
+        if (serviceItemSelect && p.serviceId) {
+          var targetVal = String(p.serviceId);
+          var foundOpt = null;
+          for (var oi = 0; oi < serviceItemSelect.options.length; oi++) {
+            if (serviceItemSelect.options[oi].value === targetVal) {
+              foundOpt = serviceItemSelect.options[oi];
+              break;
+            }
+          }
+          if (foundOpt) {
+            /* Снимаем «selected» с placeholder'a, чтобы наш option стал
+             * активным, и убираем у него hidden/disabled (relayout мог их
+             * проставить, если категория ещё пуста). */
+            var ph = serviceItemSelect.querySelector('option[data-form-placeholder="1"]');
+            if (ph) ph.selected = false;
+            foundOpt.hidden = false;
+            foundOpt.disabled = false;
+            serviceItemSelect.disabled = false;
+            serviceItemSelect.value = targetVal;
+          }
+        }
+
+        /* 3) Мастер — только если у pick есть конкретный selectedMaster,
+         *    он есть в options master-select и отличается от текущего
+         *    значения. ANY_MASTER_ID тоже валиден — это «Не важно». */
+        if (masterSelect && p.selectedMaster) {
+          var mid = String(p.selectedMaster);
+          var has = false;
+          for (var mi = 0; mi < masterSelect.options.length; mi++) {
+            if (masterSelect.options[mi].value === mid) { has = true; break; }
+          }
+          if (has && masterSelect.value !== mid) {
+            masterSelect.value = mid;
+            setMasterDisplayText(
+              mid === ANY_MASTER_ID ? anyMasterLabelForChip() : masterNameById(mid)
+            );
+            highlightTeam(mid === ANY_MASTER_ID ? "" : mid);
+            /* aria-pressed на #meistrid li — обычно его обновляет
+             * change-handler masterSelect, но мы его специально не
+             * диспатчим. Делаем минимальный sync вручную. */
+            var lisP = document.querySelectorAll("#meistrid .team-names li");
+            for (var lp = 0; lp < lisP.length; lp++) {
+              var liP = lisP[lp];
+              var tidP = liP.getAttribute("data-master-id") || nameToId[liP.textContent.trim().toLowerCase()];
+              liP.setAttribute("aria-pressed", mid && tidP === mid ? "true" : "false");
+            }
+          }
+        }
+      } finally {
+        syncingFormFromCart = false;
+      }
+    }
+
     function scrollToMastersBlock() {
       requestAnimationFrame(function () {
         scrollToSectionTitle("meistrid");
@@ -1136,6 +1243,13 @@
       syncMasterSelectEligibility();
       renderMasterChips();
       validateMasterForPicks();
+      /* Главная точка двунаправленной синхронизации: после ЛЮБОГО
+       * изменения корзины (toggle услуги в прайсе, добавление через форму,
+       * клик мастера в #meistrid, удаление по крестику) форма записи
+       * целиком отражает состояние корзины — категория, услуга и мастер.
+       * Запускаем уже после того, как master-select заполнен мастерами,
+       * иначе мы не нашли бы option для p.selectedMaster. */
+      syncFormFromCart();
       updateBookingChainPreview();
     }
 
