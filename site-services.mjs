@@ -291,12 +291,116 @@ function buildCatalogHtml(groups, svcMasters, prefix) {
   return tabHtml + panelHtml;
 }
 
+function fmtDurationLabel(min) {
+  const m = Math.max(0, Math.round(Number(min) || 0));
+  if (!m) return "";
+  if (m < 60) return m + " мин";
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? h + " ч " + r + " мин" : h + " ч";
+}
+
+/**
+ * Заполняет два связанных <select> в форме записи:
+ *   select[data-form-category]      — список категорий (option.value = group.id)
+ *   select[data-form-service-item]  — список ВСЕХ услуг сразу, у каждой option:
+ *       value="<service id>", data-category-id="<group.id>",
+ *       data-service-masters / -duration / -buffer / -name
+ *   script.js при смене категории скрывает option'ы с чужим data-category-id,
+ *   а при выборе услуги добавляет её в общую корзину picked[].
+ */
+function renderFormSelects(groups, svcMasters) {
+  const form = document.getElementById("booking-form");
+  if (!form) return;
+  const catSel = form.querySelector('select[data-form-category]');
+  const itemSel = form.querySelector('select[data-form-service-item]');
+  if (!catSel || !itemSel) return;
+
+  /* Сохранить текущий выбор, чтобы realtime-перерисовка не сбрасывала
+   * пользователя обратно к «Сначала выберите категорию». */
+  const prevCat = String(catSel.value || "");
+  const prevItem = String(itemSel.value || "");
+
+  catSel.innerHTML = "";
+  const catPlaceholder = document.createElement("option");
+  catPlaceholder.value = "";
+  catPlaceholder.textContent = "Выберите категорию";
+  catSel.appendChild(catPlaceholder);
+
+  itemSel.innerHTML = "";
+
+  let restoredCat = "";
+  for (let g = 0; g < groups.length; g++) {
+    const gr = groups[g];
+    const catOpt = document.createElement("option");
+    catOpt.value = gr.id;
+    catOpt.textContent = gr.name;
+    /* lowercase RU — по этому атрибуту script.js находит team-group для
+     * фильтрации блока «Мастера». */
+    const catKey = String(gr.name || "").trim().toLocaleLowerCase("ru");
+    if (catKey) catOpt.setAttribute("data-category-name", catKey);
+    catSel.appendChild(catOpt);
+    if (gr.id === prevCat) restoredCat = gr.id;
+
+    const items = Array.isArray(gr.items) ? gr.items : [];
+    for (let j = 0; j < items.length; j++) {
+      const it = items[j];
+      const sid = String(it.id || "");
+      if (!sid) continue;
+      const masters = svcMasters.get(sid) || [];
+      const durNum = Number(it.duration);
+      const durAttr = Number.isFinite(durNum) && durNum > 0 ? String(durNum) : "";
+      const bufNum = Number(it.buffer_after_min);
+      const bufAttr = Number.isFinite(bufNum) && bufNum > 0 ? String(bufNum) : "";
+
+      const itemOpt = document.createElement("option");
+      itemOpt.value = sid;
+      const priceTxt = fmtPrice(it.price);
+      const durTxt = fmtDurationLabel(durNum);
+      itemOpt.textContent =
+        String(it.name || "Teenus") +
+        " — " +
+        priceTxt +
+        (durTxt ? " · " + durTxt : "");
+      itemOpt.setAttribute("data-category-id", gr.id);
+      itemOpt.setAttribute("data-service-id", sid);
+      itemOpt.setAttribute("data-service-name", String(it.name || ""));
+      itemOpt.setAttribute("data-service-price", priceTxt);
+      itemOpt.setAttribute("data-service-masters", masters.join(","));
+      itemOpt.setAttribute("data-service-duration", durAttr);
+      itemOpt.setAttribute("data-service-buffer", bufAttr);
+      itemSel.appendChild(itemOpt);
+    }
+  }
+
+  /* Восстановить категорию (если такой id всё ещё существует), иначе оставить
+   * placeholder и заблокировать service-select — script.js обработчик change
+   * сам разберётся, какие option показать. */
+  catSel.value = restoredCat;
+  if (restoredCat) {
+    /* Дать script.js пере-фильтровать service-select под текущую категорию. */
+    catSel.dispatchEvent(new Event("change", { bubbles: true }));
+    /* После рефильтра попробуем восстановить услугу. */
+    if (prevItem) {
+      const stillExists = itemSel.querySelector('option[value="' + prevItem.replace(/"/g, '\\"') + '"]');
+      if (stillExists) {
+        itemSel.value = prevItem;
+        itemSel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  } else {
+    itemSel.disabled = true;
+    itemSel.innerHTML = "";
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = "Сначала выберите категорию";
+    itemSel.appendChild(ph);
+  }
+}
+
 function render(groups, serviceMasters) {
   const mount = mountEl();
-  const formMount = document.getElementById("form-services-mount");
   const warn = document.getElementById("teenused-config-warn");
-  const form = document.getElementById("booking-form");
-  const serviceSelect = form ? form.querySelector('select[name="service"]') : null;
   const svcMasters = serviceMasters instanceof Map ? serviceMasters : new Map();
 
   if (!mount) return;
@@ -304,33 +408,15 @@ function render(groups, serviceMasters) {
   if (!groups || groups.length === 0) {
     const empty = '<p class="menu-footnote">Teenuseid ei leitud. Kontrolli, et teenused oleksid andmebaasis aktiivsed.</p>';
     mount.innerHTML = empty;
-    if (formMount) formMount.innerHTML = empty;
+    /* В форме тоже сбросить, чтобы не висели старые option'ы. */
+    renderFormSelects([], svcMasters);
     if (warn) warn.hidden = true;
     window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
     return;
   }
 
-  if (serviceSelect) {
-    /* Скрытый mirror-select: фронт формы больше не показывает его юзеру,
-     * но script.js (filterMastersByFormCategory / syncFormCategory) ещё
-     * читает его как fallback категории, когда корзина пуста. Поэтому
-     * держим здесь полный синхронизированный набор опций. */
-    serviceSelect.innerHTML = "";
-    for (let g = 0; g < groups.length; g++) {
-      const gr = groups[g];
-      const opt = document.createElement("option");
-      opt.value = gr.id;
-      opt.textContent = gr.name;
-      const catKey = String(gr.name || "").trim().toLocaleLowerCase("ru");
-      if (catKey) opt.setAttribute("data-category-name", catKey);
-      serviceSelect.appendChild(opt);
-    }
-  }
-
   mount.innerHTML = buildCatalogHtml(groups, svcMasters, "");
-  if (formMount) {
-    formMount.innerHTML = buildCatalogHtml(groups, svcMasters, "f-");
-  }
+  renderFormSelects(groups, svcMasters);
 
   if (warn) warn.hidden = true;
   window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));

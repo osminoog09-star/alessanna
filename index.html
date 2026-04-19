@@ -319,22 +319,28 @@
                 <span>Телефон</span>
                 <input type="tel" name="phone" autocomplete="tel" placeholder="+372 439 8384" />
               </label>
-              <div class="form-services-block">
-                <span class="form-services-label">Услуги</span>
-                <p class="form-services-hint">Выберите категорию и услугу — список совпадает с прайсом выше и подгружается из CRM.</p>
-                <!-- Сюда site-services.mjs кладёт ту же чипсовую UI, что и в #teenused-supabase-mount:
-                     .tabs-bar (категории) + .tab-panel > .menu-list (услуги).
-                     Клик по строке услуги работает через ту же делегацию из script.js, что и в прайсе,
-                     поэтому picked[] у формы и у блока «Услуги» — один источник истины. -->
-                <div id="form-services-mount" class="form-services-mount" aria-live="polite">
-                  <p class="menu-footnote">Услуги загружаются…</p>
-                </div>
-                <!-- Скрытый «зеркальный» select: site-services.mjs пишет в него имена категорий,
-                     а script.js (filterMastersByFormCategory / syncFormCategory) использует
-                     его для фоллбека «корзина пуста, но категория уже выбрана чипом». Не трогаем
-                     UI, поле всегда hidden. -->
-                <select name="service" data-form-category-mirror hidden tabindex="-1" aria-hidden="true"></select>
-              </div>
+              <label>
+                <span>Категория услуги</span>
+                <!-- Категории подгружаются из CRM (service_categories / categories).
+                     site-services.mjs пишет сюда option[data-category-name="<lowercase ru>"] —
+                     по этому атрибуту script.js (filterMastersByFormCategory) находит блок
+                     «Мастера» нужной категории и сужает dropdown «Мастер». -->
+                <select name="service" data-form-category aria-controls="form-service-item">
+                  <option value="">Сначала выберите категорию</option>
+                </select>
+              </label>
+              <label>
+                <span>Услуга</span>
+                <!-- Услуги той же категории. site-services.mjs кладёт сюда ВСЕ услуги
+                     с атрибутом data-category-id="<тот же id, что value у category>",
+                     а script.js скрывает чужие option-ы при смене категории. На каждой
+                     option висят data-service-id / data-service-masters / data-service-duration /
+                     data-service-buffer — те же, что в прайсе сверху. При выборе услуги
+                     script.js добавляет её в общую корзину picked[]. -->
+                <select id="form-service-item" name="service_item" data-form-service-item disabled>
+                  <option value="">Сначала выберите категорию</option>
+                </select>
+              </label>
               <label>
                 <span>Мастер</span>
                 <select name="master" data-master-select required>

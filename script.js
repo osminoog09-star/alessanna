@@ -141,26 +141,19 @@
     });
   });
 
-  /* Tabs delegation: работает и для прайса (#teenused), и для копии каталога
-   * внутри формы записи (#form-services-mount). Скоуп переключения берём
-   * как ближайший контейнер каталога — иначе клик в форме переключал бы
-   * панели в прайсе и наоборот. */
+  /* Tabs delegation для прайса (#teenused). Внутри формы записи каталог
+   * теперь — два связанных <select>, не tabs+menu-list, поэтому здесь
+   * #form-services-mount не упоминается. */
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest(".tab-btn");
+    var btn = e.target.closest("#teenused .tab-btn");
     if (!btn || e.button !== 0) return;
-    var teenused = document.getElementById("teenused");
-    var inTeenused = !!(teenused && teenused.contains(btn));
-    var formMount = document.getElementById("form-services-mount");
-    var inFormMount = !!(formMount && formMount.contains(btn));
-    if (!inTeenused && !inFormMount) return;
-
     var targetId = btn.getAttribute("aria-controls");
     if (!targetId) return;
-    if (inTeenused && teenused) teenused.classList.remove("price-list-open");
+    var teenused = document.getElementById("teenused");
+    if (teenused) teenused.classList.remove("price-list-open");
 
-    var scope = inFormMount
-      ? formMount
-      : btn.closest("#teenused-supabase-mount") || teenused;
+    var mount = btn.closest("#teenused-supabase-mount");
+    var scope = mount || teenused;
     if (!scope) return;
     scope.querySelectorAll(".tab-btn").forEach(function (b) {
       b.classList.remove("is-active");
@@ -174,20 +167,6 @@
       panel.hidden = !show;
       panel.classList.toggle("is-active", show);
     });
-
-    /* Если кликнули чип категории внутри формы — заодно синхронизируем
-     * скрытый <select name="service">, чтобы filterMastersByFormCategory
-     * сузил dropdown «Мастер» уже на этом шаге, до клика по самой услуге. */
-    if (inFormMount) {
-      var activePanel = document.getElementById(targetId);
-      var catKey = activePanel ? String(activePanel.getAttribute("data-pick-category") || "") : "";
-      var bookingForm = document.getElementById("booking-form");
-      var sel = bookingForm ? bookingForm.querySelector('select[name="service"]') : null;
-      if (sel && catKey && sel.value !== catKey) {
-        sel.value = catKey;
-        sel.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-    }
 
     applyTeamFilterForActiveTab();
   });
@@ -216,12 +195,7 @@
     var teenusedRoot = document.getElementById("teenused");
     var priceOpen = !!(teenusedRoot && teenusedRoot.classList.contains("price-list-open"));
 
-    /* Считываем активную категорию ИЗ ОБОИХ источников: чипы в прайсе и
-     * чипы внутри формы записи. Если юзер последним кликнул в форме —
-     * фильтр блока «Мастера» подстраивается под этот выбор. */
-    var activeBtn =
-      document.querySelector("#form-services-mount .tab-btn.is-active") ||
-      document.querySelector("#teenused .tab-btn.is-active");
+    var activeBtn = document.querySelector("#teenused .tab-btn.is-active");
     var targetPanel = null;
     if (activeBtn) {
       var targetId = activeBtn.getAttribute("aria-controls");
@@ -574,15 +548,9 @@
      */
     function serviceMastersFromDom(pick) {
       if (!pick || !pick.key) return null;
-      /* Ищем li сначала в прайсе, потом в форме (#form-services-mount) —
-       * site-services.mjs рендерит каталог в обоих местах. */
-      var sel = '.menu-list li[data-pick-key="' + escapeCssAttrKey(pick.key) + '"]';
-      var li =
-        (teenused ? teenused.querySelector(sel) : null) ||
-        (function () {
-          var fm = document.getElementById("form-services-mount");
-          return fm ? fm.querySelector(sel) : null;
-        })();
+      var li = teenused
+        ? teenused.querySelector('.menu-list li[data-pick-key="' + escapeCssAttrKey(pick.key) + '"]')
+        : null;
       if (!li || !li.hasAttribute("data-service-masters")) return null;
       var raw = String(li.getAttribute("data-service-masters") || "").trim();
       if (!raw) return [];
@@ -918,21 +886,13 @@
     function syncMenuRowsPickedClass() {
       var keys = {};
       for (var i = 0; i < picked.length; i++) keys[picked[i].key] = true;
-      /* Подсветка «выбрано» нужна и в прайсе, и в копии каталога внутри
-       * формы записи — иначе пользователь видит выбор в одном месте, а в
-       * другом услуга кажется доступной к добавлению. */
-      var roots = [teenused, document.getElementById("form-services-mount")];
-      for (var ri = 0; ri < roots.length; ri++) {
-        var root = roots[ri];
-        if (!root) continue;
-        var rows = root.querySelectorAll(".menu-list li.menu-pick-row");
-        for (var r = 0; r < rows.length; r++) {
-          var li = rows[r];
-          var k = li.getAttribute("data-pick-key");
-          var on = !!(k && keys[k]);
-          li.classList.toggle("is-picked", on);
-          li.setAttribute("aria-pressed", on ? "true" : "false");
-        }
+      var rows = teenused.querySelectorAll(".menu-list li.menu-pick-row");
+      for (var r = 0; r < rows.length; r++) {
+        var li = rows[r];
+        var k = li.getAttribute("data-pick-key");
+        var on = !!(k && keys[k]);
+        li.classList.toggle("is-picked", on);
+        li.setAttribute("aria-pressed", on ? "true" : "false");
       }
     }
 
@@ -1189,7 +1149,7 @@
 
     function readPickFromLi(li, panel, label, price) {
       var category = serviceCategoryFromPanel(panel);
-      var key = pickKey(panel.id, label);
+      var key = pickKey(panel, label);
       var svcId = String(li.getAttribute("data-service-id") || "").trim();
       var dur = Number(li.getAttribute("data-service-duration"));
       var buf = Number(li.getAttribute("data-service-buffer"));
@@ -1235,7 +1195,7 @@
       if (!nameSpan || !priceEl) return;
       var label = nameSpan.textContent.trim();
       var price = priceEl.textContent.trim();
-      var key = pickKey(panel.id, label);
+      var key = pickKey(panel, label);
       var idx = -1;
       for (var i = 0; i < picked.length; i++) {
         if (picked[i].key === key) {
@@ -1250,53 +1210,158 @@
       }
       syncFormCategory();
       renderList();
-      /* Авто-скролл к блоку «Мастера» делаем только когда пользователь
-       * выбирает услугу в прайсе (#teenused). Если он уже внутри формы
-       * записи и кликает услугу там — скролл наверх раздражает и теряет
-       * контекст. */
-      var fromFormMount = !!li.closest("#form-services-mount");
-      if (picked.length && !fromFormMount) scrollToMastersBlock();
+      if (picked.length) scrollToMastersBlock();
     }
 
     function wireMenuPickRows() {
-      /* Подключаем клик-в-корзину и для прайса (#teenused), и для копии
-       * каталога внутри формы записи (#form-services-mount). data-pick-wired
-       * защищает от двойной подвязки при realtime-ре-рендере. */
-      var roots = [teenused, document.getElementById("form-services-mount")];
-      for (var ri = 0; ri < roots.length; ri++) {
-        var root = roots[ri];
-        if (!root) continue;
-        root.querySelectorAll(".menu-list li").forEach(function (li) {
-          if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
-          var nameSpan = li.querySelector("span:not(.price)");
-          var priceEl = li.querySelector(".price");
-          if (!nameSpan || !priceEl) return;
-          var panel = li.closest(".tab-panel");
-          if (!panel) return;
-          if (!serviceCategoryFromPanel(panel)) return;
-          if (li.getAttribute("data-pick-wired") === "1") return;
-          li.classList.add("menu-pick-row");
-          li.setAttribute("role", "button");
-          li.tabIndex = 0;
-          li.setAttribute("data-pick-key", pickKey(panel.id, nameSpan.textContent.trim()));
-          li.setAttribute("data-pick-wired", "1");
-          li.addEventListener("click", function () {
-            togglePick(li);
-          });
-          li.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              togglePick(li);
-            }
-          });
+      teenused.querySelectorAll(".menu-list li").forEach(function (li) {
+        if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
+        var nameSpan = li.querySelector("span:not(.price)");
+        var priceEl = li.querySelector(".price");
+        if (!nameSpan || !priceEl) return;
+        var panel = li.closest(".tab-panel");
+        if (!panel) return;
+        if (!serviceCategoryFromPanel(panel)) return;
+        if (li.getAttribute("data-pick-wired") === "1") return;
+        li.classList.add("menu-pick-row");
+        li.setAttribute("role", "button");
+        li.tabIndex = 0;
+        li.setAttribute("data-pick-key", pickKey(panel, nameSpan.textContent.trim()));
+        li.setAttribute("data-pick-wired", "1");
+        li.addEventListener("click", function () {
+          togglePick(li);
         });
-      }
+        li.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            togglePick(li);
+          }
+        });
+      });
     }
 
     wireMenuPickRows();
+
+    /**
+     * Связка двух dropdown'ов в форме записи:
+     *   select[data-form-category]      — выбор категории
+     *   select[data-form-service-item]  — выбор конкретной услуги (опции
+     *       заранее залиты site-services.mjs со всеми услугами + data-category-id;
+     *       при смене категории мы скрываем чужие option'ы, при выборе услуги
+     *       добавляем её в общую корзину picked[]).
+     */
+    var serviceItemSelect = bookingForm.querySelector('select[data-form-service-item]');
+
+    function relayoutServiceItemSelect(catId) {
+      if (!serviceItemSelect) return;
+      var opts = serviceItemSelect.querySelectorAll("option");
+      var matched = 0;
+      var firstMatchValue = "";
+      for (var i = 0; i < opts.length; i++) {
+        var opt = opts[i];
+        if (!opt.value) {
+          /* placeholder — управляем им сами */
+          opt.hidden = true;
+          continue;
+        }
+        var oc = String(opt.getAttribute("data-category-id") || "");
+        var on = !!catId && oc === catId;
+        opt.hidden = !on;
+        opt.disabled = !on;
+        if (on) {
+          matched++;
+          if (!firstMatchValue) firstMatchValue = opt.value;
+        }
+      }
+      /* Перерисовываем placeholder (всегда первый, всегда видимый,
+       * disabled, чтобы не выбирался). */
+      var existingPh = serviceItemSelect.querySelector('option[data-form-placeholder="1"]');
+      if (existingPh) existingPh.remove();
+      var ph = document.createElement("option");
+      ph.value = "";
+      ph.disabled = true;
+      ph.selected = true;
+      ph.setAttribute("data-form-placeholder", "1");
+      ph.textContent = !catId
+        ? "Сначала выберите категорию"
+        : matched === 0
+          ? "В категории нет услуг"
+          : "Выберите услугу";
+      serviceItemSelect.insertBefore(ph, serviceItemSelect.firstChild);
+      serviceItemSelect.disabled = !catId || matched === 0;
+      serviceItemSelect.value = "";
+    }
+
+    function addPickFromServiceOption(opt) {
+      if (!opt || !opt.value) return;
+      var catSel = serviceSelect;
+      var catOpt = catSel ? catSel.options[catSel.selectedIndex] : null;
+      var category = catOpt ? String(catOpt.value || "") : "";
+      var label = String(opt.getAttribute("data-service-name") || opt.textContent || "").trim();
+      /* Цена в pick хранится как строка («18 €») — берём то, что мы
+       * клали в data-service-price из site-services.mjs (fmtPrice). */
+      var price = String(opt.getAttribute("data-service-price") || "—");
+      var dur = Number(opt.getAttribute("data-service-duration"));
+      var buf = Number(opt.getAttribute("data-service-buffer"));
+      var mastersRaw = String(opt.getAttribute("data-service-masters") || "").trim();
+      var masters = mastersRaw
+        ? mastersRaw.split(",").map(function (s) { return String(s || "").trim(); }).filter(Boolean)
+        : [];
+      var svcId = String(opt.getAttribute("data-service-id") || opt.value || "").trim();
+      /* pickKey должен совпадать с тем, что генерируется в прайсе.
+       * pickKey() умеет работать со строкой category id или с DOM-панелью —
+       * передаём category id (это data-pick-category в прайсе). */
+      var key = pickKey(category, label);
+      for (var i = 0; i < picked.length; i++) {
+        if (picked[i].key === key) {
+          /* Уже в корзине — оставляем как есть, просто сбросим select. */
+          if (serviceItemSelect) serviceItemSelect.value = "";
+          return;
+        }
+      }
+      var pick = {
+        key: key,
+        label: label,
+        price: price,
+        category: category,
+        serviceId: svcId,
+        duration: Number.isFinite(dur) && dur > 0 ? dur : 0,
+        buffer: Number.isFinite(buf) && buf > 0 ? buf : 0,
+        masters: masters,
+        selectedMaster: "",
+      };
+      pick.selectedMaster = resolveDefaultMasterFor(pick, "");
+      picked.push(pick);
+      syncFormCategory();
+      renderList();
+      /* После добавления услуги сбрасываем service-select обратно к
+       * placeholder, чтобы пользователь мог сразу добавить ещё одну
+       * услугу из этой же или другой категории. */
+      if (serviceItemSelect) serviceItemSelect.value = "";
+    }
+
+    if (serviceSelect) {
+      serviceSelect.addEventListener("change", function () {
+        var catId = String(serviceSelect.value || "");
+        relayoutServiceItemSelect(catId);
+      });
+    }
+    if (serviceItemSelect) {
+      serviceItemSelect.addEventListener("change", function () {
+        var v = String(serviceItemSelect.value || "");
+        if (!v) return;
+        var opt = serviceItemSelect.options[serviceItemSelect.selectedIndex];
+        addPickFromServiceOption(opt);
+      });
+    }
+
     window.addEventListener("teenused-supabase-ready", function () {
       wireMenuPickRows();
       syncMenuRowsPickedClass();
+      /* Каталог в форме перерисовывается site-services.mjs'ом отдельно
+       * (renderFormSelects), но layout service-select зависит от текущей
+       * категории — пересчитаем под актуальные опции. */
+      relayoutServiceItemSelect(serviceSelect ? String(serviceSelect.value || "") : "");
       /* После ре-рендера каталога (в т.ч. при realtime-изменениях staff_services)
        * обновляем и «Мастера по выбранным услугам» в корзине — иначе там
        * останутся мастера по старой карте. */
