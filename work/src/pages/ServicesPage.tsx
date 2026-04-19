@@ -119,6 +119,110 @@ export function ServicesPage() {
   const [publicListingNames, setPublicListingNames] = useState<Set<string>>(new Set());
   const [publicCheckLoading, setPublicCheckLoading] = useState(false);
 
+  /* === Compact mode + persistent UI prefs ====================================
+   * Большие салоны держат 30+ услуг — раскрытая «портянка» полей делает страницу
+   * нечитабельной. Поэтому по дефолту услуга показывается одной строкой-сводкой,
+   * а полный редактор открывается по клику (аккордеон). Категории тоже можно
+   * сворачивать. Все предпочтения хранятся в localStorage, чтобы возврат
+   * на страницу не «забывал» свёрнутое состояние. */
+  const SERVICES_PREFS_KEY = "admin/services/v1";
+  type ActiveFilter = "all" | "active" | "inactive";
+  type SortBy = "name" | "price-asc" | "price-desc" | "duration-asc" | "duration-desc" | "masters-desc";
+  type ServicesPrefs = {
+    expandedServiceIds: string[];
+    collapsedCategories: string[];
+    filterActive: ActiveFilter;
+    filterNoMasters: boolean;
+    filterNotOnMain: boolean;
+    filterCategoryIds: string[];
+    sortBy: SortBy;
+    showToolbar: boolean;
+  };
+  const DEFAULT_PREFS: ServicesPrefs = {
+    expandedServiceIds: [],
+    collapsedCategories: [],
+    filterActive: "all",
+    filterNoMasters: false,
+    filterNotOnMain: false,
+    filterCategoryIds: [],
+    sortBy: "name",
+    showToolbar: false,
+  };
+  const loadPrefs = (): ServicesPrefs => {
+    if (typeof window === "undefined") return DEFAULT_PREFS;
+    try {
+      const raw = window.localStorage.getItem(SERVICES_PREFS_KEY);
+      if (!raw) return DEFAULT_PREFS;
+      const parsed = JSON.parse(raw) as Partial<ServicesPrefs>;
+      return {
+        ...DEFAULT_PREFS,
+        ...parsed,
+        expandedServiceIds: Array.isArray(parsed.expandedServiceIds) ? parsed.expandedServiceIds.map(String) : [],
+        collapsedCategories: Array.isArray(parsed.collapsedCategories) ? parsed.collapsedCategories.map(String) : [],
+        filterCategoryIds: Array.isArray(parsed.filterCategoryIds) ? parsed.filterCategoryIds.map(String) : [],
+      };
+    } catch {
+      return DEFAULT_PREFS;
+    }
+  };
+  const initialPrefs = useMemo(loadPrefs, []);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(initialPrefs.expandedServiceIds));
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(() => new Set(initialPrefs.collapsedCategories));
+  const [filterActive, setFilterActive] = useState<ActiveFilter>(initialPrefs.filterActive);
+  const [filterNoMasters, setFilterNoMasters] = useState<boolean>(initialPrefs.filterNoMasters);
+  const [filterNotOnMain, setFilterNotOnMain] = useState<boolean>(initialPrefs.filterNotOnMain);
+  const [filterCategoryIds, setFilterCategoryIds] = useState<Set<string>>(() => new Set(initialPrefs.filterCategoryIds));
+  const [sortBy, setSortBy] = useState<SortBy>(initialPrefs.sortBy);
+  const [showToolbar, setShowToolbar] = useState<boolean>(initialPrefs.showToolbar);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload: ServicesPrefs = {
+      expandedServiceIds: Array.from(expandedIds),
+      collapsedCategories: Array.from(collapsedCats),
+      filterActive,
+      filterNoMasters,
+      filterNotOnMain,
+      filterCategoryIds: Array.from(filterCategoryIds),
+      sortBy,
+      showToolbar,
+    };
+    try {
+      window.localStorage.setItem(SERVICES_PREFS_KEY, JSON.stringify(payload));
+    } catch { /* quota / private mode — silently ignore */ }
+  }, [expandedIds, collapsedCats, filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds, sortBy, showToolbar]);
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function toggleCategoryCollapsed(name: string) {
+    setCollapsedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  }
+  function toggleCategoryFilter(id: string) {
+    setFilterCategoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  const filtersActive =
+    filterActive !== "all" || filterNoMasters || filterNotOnMain || filterCategoryIds.size > 0 || sortBy !== "name";
+  function resetFilters() {
+    setFilterActive("all");
+    setFilterNoMasters(false);
+    setFilterNotOnMain(false);
+    setFilterCategoryIds(new Set());
+    setSortBy("name");
+  }
+
   function categoryNameFromService(service: ServiceRow, catList: CategoryRow[] = categories): string {
     const direct = String(service.category || "").trim();
     if (direct) return direct;
@@ -939,9 +1043,41 @@ export function ServicesPage() {
 
   const groupedServices = useMemo(() => {
     const q = serviceSearch.trim().toLowerCase();
-    const pool = q
-      ? services.filter((s) => String(s.name_et || "").toLowerCase().includes(q))
-      : services;
+    const allowedCategoryNames = filterCategoryIds.size > 0
+      ? new Set(
+          categories
+            .filter((c) => filterCategoryIds.has(String(c.id)))
+            .map((c) => String(c.name || "").trim()),
+        )
+      : null;
+
+    let pool = services;
+    if (q) pool = pool.filter((s) => String(s.name_et || "").toLowerCase().includes(q));
+    if (filterActive === "active") pool = pool.filter((s) => s.active !== false);
+    if (filterActive === "inactive") pool = pool.filter((s) => s.active === false);
+    if (filterNoMasters) {
+      pool = pool.filter((s) => staffLinksForService(String(s.id)).length === 0);
+    }
+    if (filterNotOnMain) {
+      pool = pool.filter((s) => !publicListingNames.has(String(s.name_et || "").trim().toLowerCase()));
+    }
+    if (allowedCategoryNames) {
+      pool = pool.filter((s) => allowedCategoryNames.has(categoryNameFromService(s) || ""));
+    }
+
+    const compare = (a: ServiceRow, b: ServiceRow): number => {
+      switch (sortBy) {
+        case "price-asc": return Number(a.price_cents || 0) - Number(b.price_cents || 0);
+        case "price-desc": return Number(b.price_cents || 0) - Number(a.price_cents || 0);
+        case "duration-asc": return Number(a.duration_min || 0) - Number(b.duration_min || 0);
+        case "duration-desc": return Number(b.duration_min || 0) - Number(a.duration_min || 0);
+        case "masters-desc":
+          return staffLinksForService(String(b.id)).length - staffLinksForService(String(a.id)).length;
+        case "name":
+        default:
+          return String(a.name_et || "").localeCompare(String(b.name_et || ""), "ru");
+      }
+    };
 
     const map = new Map<string, ServiceRow[]>();
     for (const service of pool) {
@@ -949,15 +1085,39 @@ export function ServicesPage() {
       if (!map.has(categoryName)) map.set(categoryName, []);
       map.get(categoryName)?.push(service);
     }
-    /* Show empty category sections too when no search is active, so user can add first service directly into category. */
-    if (!q) {
+    /* Show empty category sections too when no search/filter is active. */
+    const noFilters = !q && filterActive === "all" && !filterNoMasters && !filterNotOnMain && filterCategoryIds.size === 0;
+    if (noFilters) {
       for (const c of categories) {
         const name = String(c.name || "").trim();
         if (name && !map.has(name)) map.set(name, []);
       }
     }
+    for (const list of map.values()) list.sort(compare);
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "ru"));
-  }, [services, categories, serviceSearch]);
+  }, [
+    services, categories, serviceSearch,
+    filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds,
+    sortBy, publicListingNames, serviceStaffLinksMap,
+  ]);
+
+  /** Все id услуг, прошедшие текущие фильтры (для «Развернуть всё»). */
+  const visibleServiceIds = useMemo(() => {
+    const out: string[] = [];
+    for (const [, list] of groupedServices) for (const s of list) out.push(String(s.id));
+    return out;
+  }, [groupedServices]);
+
+  function expandAllVisible() {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of visibleServiceIds) next.add(id);
+      return next;
+    });
+  }
+  function collapseAll() {
+    setExpandedIds(new Set());
+  }
 
   /** Quick top-of-page stats: active/total services + masters coverage. */
   const servicesStats = useMemo(() => {
@@ -1040,33 +1200,199 @@ export function ServicesPage() {
           )}
         </div>
 
-        {/* Search — full width below header */}
+        {/* Search + filters toolbar */}
         {services.length > 4 && (
-          <div className="mt-4 flex items-center gap-2">
-            <div className="relative min-w-0 flex-1 max-w-md">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-              <input
-                type="search"
-                value={serviceSearch}
-                onChange={(e) => setServiceSearch(e.target.value)}
-                placeholder="Поиск по названию услуги…"
-                className="w-full rounded-lg border border-zinc-700 bg-black pl-8 pr-8 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-              />
-              {serviceSearch && (
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-0 flex-1 max-w-md">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input
+                  type="search"
+                  value={serviceSearch}
+                  onChange={(e) => setServiceSearch(e.target.value)}
+                  placeholder="Поиск по названию услуги…"
+                  className="w-full rounded-lg border border-zinc-700 bg-black pl-8 pr-8 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                />
+                {serviceSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setServiceSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                    aria-label="Очистить поиск"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowToolbar((v) => !v)}
+                className={
+                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition " +
+                  (filtersActive
+                    ? "border-sky-600/60 bg-sky-950/40 text-sky-200 hover:border-sky-500"
+                    : "border-zinc-700 bg-black/30 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-900")
+                }
+                aria-expanded={showToolbar}
+                title="Фильтры и сортировка"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M6 12h12M10 18h4" /></svg>
+                Фильтры
+                {filtersActive && (
+                  <span className="rounded-full bg-sky-500/20 px-1.5 text-[10px] font-semibold text-sky-200">
+                    {[
+                      filterActive !== "all" ? 1 : 0,
+                      filterNoMasters ? 1 : 0,
+                      filterNotOnMain ? 1 : 0,
+                      filterCategoryIds.size,
+                      sortBy !== "name" ? 1 : 0,
+                    ].reduce((a, b) => a + b, 0)}
+                  </span>
+                )}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 transition ${showToolbar ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+              </button>
+
+              <div className="ml-auto flex items-center gap-2 text-xs text-zinc-500">
+                {(serviceSearch || filtersActive) && (
+                  <span>{visibleServiceIds.length} из {services.length} найдено</span>
+                )}
                 <button
                   type="button"
-                  onClick={() => setServiceSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
-                  aria-label="Очистить поиск"
+                  onClick={expandAllVisible}
+                  className="rounded-md border border-zinc-700 bg-black/30 px-2 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+                  title="Раскрыть полные карточки всех видимых услуг"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  Развернуть всё
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={collapseAll}
+                  className="rounded-md border border-zinc-700 bg-black/30 px-2 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+                  title="Свернуть все карточки"
+                >
+                  Свернуть всё
+                </button>
+              </div>
             </div>
-            {serviceSearch && (
-              <span className="text-xs text-zinc-500">
-                {groupedServices.reduce((n, [, list]) => n + list.length, 0)} найдено
-              </span>
+
+            {showToolbar && (
+              <div className="rounded-xl border border-zinc-800/80 bg-black/40 p-3 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] uppercase tracking-wide text-zinc-500">Статус:</span>
+                  {([
+                    { id: "all", label: "Все" },
+                    { id: "active", label: "Только активные" },
+                    { id: "inactive", label: "Только выключенные" },
+                  ] as Array<{ id: ActiveFilter; label: string }>).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setFilterActive(opt.id)}
+                      className={
+                        "rounded-full border px-3 py-1 text-xs font-medium transition " +
+                        (filterActive === opt.id
+                          ? "border-sky-500/70 bg-sky-900/40 text-sky-100"
+                          : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-zinc-500 hover:text-white")
+                      }
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] uppercase tracking-wide text-zinc-500">Проблемы:</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterNoMasters((v) => !v)}
+                    className={
+                      "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
+                      (filterNoMasters
+                        ? "border-amber-500/70 bg-amber-950/40 text-amber-100"
+                        : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-amber-700/50 hover:text-amber-200")
+                    }
+                    title="Услуги, которые никто не выполняет"
+                  >
+                    <span aria-hidden="true">⚠</span> Без мастеров
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterNotOnMain((v) => !v)}
+                    className={
+                      "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
+                      (filterNotOnMain
+                        ? "border-amber-500/70 bg-amber-950/40 text-amber-100"
+                        : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-amber-700/50 hover:text-amber-200")
+                    }
+                    title="Услуги, которых ещё нет на сайте"
+                  >
+                    Не на главной
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] uppercase tracking-wide text-zinc-500">Сортировка:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortBy)}
+                    className="rounded-lg border border-zinc-700 bg-black px-2.5 py-1 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                  >
+                    <option value="name">по названию (А → Я)</option>
+                    <option value="price-asc">цена ↑</option>
+                    <option value="price-desc">цена ↓</option>
+                    <option value="duration-asc">длительность ↑</option>
+                    <option value="duration-desc">длительность ↓</option>
+                    <option value="masters-desc">больше мастеров — выше</option>
+                  </select>
+                </div>
+
+                {categories.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] uppercase tracking-wide text-zinc-500">Категории:</span>
+                    {categories.map((c) => {
+                      const id = String(c.id);
+                      const checked = filterCategoryIds.has(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => toggleCategoryFilter(id)}
+                          className={
+                            "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition " +
+                            (checked
+                              ? "border-sky-500/70 bg-sky-900/40 text-sky-100"
+                              : "border-zinc-700 bg-zinc-900/40 text-zinc-400 hover:border-zinc-500 hover:text-white")
+                          }
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                    {filterCategoryIds.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterCategoryIds(new Set())}
+                        className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                      >
+                        очистить
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {filtersActive && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="text-[11px] text-zinc-400 underline-offset-2 hover:text-white hover:underline"
+                    >
+                      Сбросить все фильтры
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -1189,13 +1515,31 @@ export function ServicesPage() {
       <div className="space-y-6">
         {groupedServices.map(([categoryName, list]) => {
           const activeCount = list.filter((s) => s.active).length;
+          const isCatCollapsed = collapsedCats.has(categoryName);
           return (
           <section
             key={categoryName}
             className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/60"
           >
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 bg-gradient-to-r from-zinc-900/60 to-transparent px-5 py-3">
-              <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => toggleCategoryCollapsed(categoryName)}
+                className="group flex items-center gap-2 min-w-0 flex-1 text-left rounded-md px-1 -mx-1 hover:bg-white/[0.02] focus:outline-none focus:bg-white/[0.04]"
+                aria-expanded={!isCatCollapsed}
+                title={isCatCollapsed ? "Развернуть категорию" : "Свернуть категорию"}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition group-hover:text-zinc-300 ${isCatCollapsed ? "-rotate-90" : ""}`}
+                  aria-hidden="true"
+                ><path d="m6 9 6 6 6-6" /></svg>
                 <span
                   aria-hidden="true"
                   className="h-2 w-2 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400 shadow-sm shadow-emerald-500/30"
@@ -1209,7 +1553,7 @@ export function ServicesPage() {
                     {activeCount}/{list.length} активно
                   </span>
                 )}
-              </div>
+              </button>
               {canManage && (
                 <button
                   type="button"
@@ -1222,7 +1566,8 @@ export function ServicesPage() {
               )}
             </header>
 
-            <div className="space-y-3 p-4">
+            {!isCatCollapsed && (
+            <div className="space-y-2 p-3">
               {list.map((s) => {
                 const existsOnMain = publicListingNames.has(String(s.name_et || "").trim().toLowerCase());
                 /* «Никто не делает» = в staff_services нет ни одной строки для услуги.
@@ -1230,11 +1575,12 @@ export function ServicesPage() {
                  * в общем списке — иначе они теряются среди корректно настроенных. */
                 const masterLinksCount = staffLinksForService(String(s.id)).length;
                 const noMasters = s.active && masterLinksCount === 0;
+                const isExpanded = expandedIds.has(String(s.id));
                 return (
                 <article
                   key={s.id}
                   className={
-                    "group relative overflow-hidden rounded-xl border bg-black/30 p-4 shadow-sm transition hover:border-zinc-700/80 " +
+                    "group relative overflow-hidden rounded-xl border bg-black/30 shadow-sm transition hover:border-zinc-700/80 " +
                     (!s.active
                       ? "border-zinc-800/60 bg-zinc-950/40 opacity-80"
                       : noMasters
@@ -1255,31 +1601,74 @@ export function ServicesPage() {
                     }
                   />
 
-                  {/* Top row: status badges + active toggle */}
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                  {/* === Compact summary row (always visible) === */}
+                  <div className="flex items-center gap-2 px-3 py-2 pl-4">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(String(s.id))}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left transition hover:bg-white/[0.02] focus:outline-none focus:bg-white/[0.04]"
+                      aria-expanded={isExpanded}
+                      title={isExpanded ? "Свернуть карточку" : "Раскрыть карточку для редактирования"}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition ${isExpanded ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      ><path d="m6 9 6 6 6-6" /></svg>
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                          existsOnMain
-                            ? "border-emerald-700/60 bg-emerald-950/40 text-emerald-300"
-                            : "border-amber-700/60 bg-amber-950/30 text-amber-300"
-                        }`}
-                        title={existsOnMain ? "Услуга видна на главной странице сайта" : "Услуга не опубликована — нажмите «Обновить всё на сайте»"}
-                      >
-                        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${existsOnMain ? "bg-emerald-400" : "bg-amber-400"}`} />
-                        На главной: {existsOnMain ? "да" : "нет"}
+                        aria-hidden="true"
+                        className={
+                          "h-2 w-2 shrink-0 rounded-full " +
+                          (!s.active
+                            ? "bg-zinc-600"
+                            : noMasters
+                              ? "bg-amber-400"
+                              : existsOnMain
+                                ? "bg-emerald-400"
+                                : "bg-sky-400")
+                        }
+                      />
+                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-zinc-100" : "text-zinc-400"}`}>
+                        {String(s.name_et || "").trim() || <span className="italic text-zinc-500">без названия</span>}
                       </span>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                          s.active
-                            ? "border-zinc-700/80 bg-zinc-900/50 text-zinc-300"
-                            : "border-zinc-700 bg-zinc-900/40 text-zinc-500"
-                        }`}
-                      >
-                        {s.active ? "активна" : "выключена"}
+                      <span className="hidden sm:inline-flex shrink-0 items-center gap-2 text-[11px] text-zinc-400 tabular-nums">
+                        <span className="rounded-md border border-zinc-800 bg-zinc-900/50 px-1.5 py-0.5 font-medium text-zinc-200">
+                          {eurFromCents(s.price_cents)}
+                        </span>
+                        <span title="Длительность">
+                          {Number(s.duration_min || 0)} мин
+                        </span>
+                        {Number(s.buffer_after_min || 0) > 0 && (
+                          <span className="text-zinc-500" title="Пауза после услуги">
+                            +{Number(s.buffer_after_min || 0)}
+                          </span>
+                        )}
+                        {noMasters ? (
+                          <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-700/60 bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-200" title="Услугу никто не выполняет">
+                            ⚠ без мастеров
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 rounded-full border border-zinc-800 bg-zinc-900/40 px-1.5 py-0.5 text-[10px] text-zinc-300" title={`Назначено мастеров: ${masterLinksCount}`}>
+                            👤 {masterLinksCount}
+                          </span>
+                        )}
+                        {!existsOnMain && s.active && (
+                          <span className="rounded-full border border-amber-700/60 bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-300" title="Услуга не опубликована на сайте">
+                            не на сайте
+                          </span>
+                        )}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-zinc-400">
+                    </button>
+                    <div
+                      className="flex shrink-0 items-center gap-1.5 text-[10px] text-zinc-500"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <ToggleSwitch
                         disabled={!canManage}
                         checked={s.active}
@@ -1292,10 +1681,28 @@ export function ServicesPage() {
                         }}
                         aria-label={`${s.name_et}: услуга активна`}
                       />
-                      <span>{t("services.active")}</span>
                     </div>
                   </div>
 
+                  {/* === Mobile-only chips line (sm:hidden) === */}
+                  <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2 sm:hidden text-[11px] text-zinc-400 tabular-nums">
+                    <span className="rounded-md border border-zinc-800 bg-zinc-900/50 px-1.5 py-0.5 font-medium text-zinc-200">
+                      {eurFromCents(s.price_cents)}
+                    </span>
+                    <span>{Number(s.duration_min || 0)} мин</span>
+                    {Number(s.buffer_after_min || 0) > 0 && (
+                      <span className="text-zinc-500">+{Number(s.buffer_after_min || 0)}</span>
+                    )}
+                    {noMasters ? (
+                      <span className="rounded-full border border-amber-700/60 bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-200">⚠ без мастеров</span>
+                    ) : (
+                      <span className="rounded-full border border-zinc-800 bg-zinc-900/40 px-1.5 py-0.5 text-[10px] text-zinc-300">👤 {masterLinksCount}</span>
+                    )}
+                  </div>
+
+                  {/* === Expanded full editor === */}
+                  {isExpanded && (
+                  <div className="border-t border-zinc-800/60 p-4 pt-3">
                   {/* Form grid — name takes 2 cols on lg for visibility */}
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
                     <label className="block text-[11px] uppercase tracking-wide text-zinc-500 lg:col-span-2">
@@ -1500,13 +1907,15 @@ export function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => void deleteService(s)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-500 opacity-0 transition group-hover:opacity-100 hover:bg-red-950/40 hover:text-red-300 focus:opacity-100"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-500 transition hover:bg-red-950/40 hover:text-red-300 focus:opacity-100"
                         title={t("services.deletePermanent")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
                         {t("services.deletePermanent")}
                       </button>
                     </div>
+                  )}
+                  </div>
                   )}
                 </article>
                 );
@@ -1525,6 +1934,7 @@ export function ServicesPage() {
                 </div>
               )}
             </div>
+            )}
           </section>
           );
         })}

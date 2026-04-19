@@ -18,6 +18,69 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (поздно ночью) — «`/admin/services`: аккордеон + фильтры + сортировка»
+
+### Russian
+
+**Изменено (`/admin/services`)**
+
+- Карточка услуги теперь по умолчанию **свёрнутая**: одна строка-сводка
+  `[●] Название · 18.00€ · 30 мин · +10 · 👤 N · ⚠/не на сайте · [тумблер]`.
+  Клик по строке (или по галочке слева) раскрывает полный редактор —
+  тот же, что был раньше (название/цена/длительность/пауза/категория/мастера/удалить).
+  Это решает «портянку из 30 одновременно открытых форм» и оставляет всю мощность редактирования.
+- Заголовок секции категории теперь **сворачивается кликом** — стрелка ⌄/›
+  рядом с названием. Свёрнутая категория не рендерит свои услуги (быстрый scroll).
+- Новая полоса **«Фильтры»** под поиском (раскрывается отдельной кнопкой):
+  - Статус: «Все / Только активные / Только выключенные».
+  - Проблемы: «⚠ Без мастеров», «Не на главной».
+  - Категории: чипы-мульти-фильтр.
+  - Сортировка: по названию (А→Я), цена ↑/↓, длительность ↑/↓, «больше мастеров — выше».
+  - Бейдж со счётчиком активных фильтров на самой кнопке + кнопка «Сбросить».
+- Над списком — счётчик `N из M найдено` + кнопки **«Развернуть всё»** и
+  **«Свернуть всё»** (управляют видимыми услугами, удобно для аудита).
+- Все предпочтения (раскрытые услуги, свёрнутые категории, фильтры, сортировка,
+  показан ли тулбар) сохраняются в `localStorage` под ключом `admin/services/v1` —
+  при возврате на страницу всё восстанавливается.
+
+**Что НЕ меняли (намеренно):**
+
+- Структура БД и RPC — без изменений. Это чисто UI/UX.
+- Логика сохранения (`saveService`, `replaceServiceStaffLinks`, `addService`,
+  `deleteService`, `quickCreate`-модал) — без изменений.
+- Шапка страницы (статы «Всего/Активных/На главной», кнопки
+  «Проверить главную / Обновить всё на сайте / Добавить услугу»),
+  блок «Категории» (CRUD категорий) и поиск по названию — без изменений.
+
+**Smoke**
+
+- `npx tsc --noEmit` — clean.
+- `npm run build` — clean (806 KB JS, +11 KB к 795 KB).
+- Live UI на проде — за владельцем (нужен PIN).
+
+**Файлы**
+
+- `work/src/pages/ServicesPage.tsx` — основные правки.
+- `RELEASES.md`, `CHANGELOG.md` — обновлены.
+
+### English
+
+**Changed (`/admin/services`)**
+
+- Service card now collapses by default into a single summary row
+  `[●] Name · 18.00€ · 30 min · +10 · 👤 N · ⚠/not-on-site · [toggle]`.
+  Click expands the full editor (name/price/duration/buffer/category/masters/delete).
+- Category headers are now collapsible (chevron + click).
+- New filter bar under the search (toggleable):
+  status (all/active/inactive), problems (⚠ no masters / not on main),
+  category multi-chip filter, sort by name/price/duration/master-count.
+- "Expand all / Collapse all" buttons + "N of M found" counter.
+- All UI prefs persist in `localStorage` (`admin/services/v1`).
+
+No DB/RPC changes. tsc + build green. Live prod smoke pending.
+
+---
+
 ## 2026-04-19 (ночь) — «Support: assignment + display IDs + IP/abuse signals + stats»
 
 ### Russian
