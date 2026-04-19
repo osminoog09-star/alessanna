@@ -703,6 +703,52 @@
       return outDom;
     }
 
+    /** Объединение мастеров: кто умеет хотя бы ОДНУ услугу из корзины.
+     * Нужно для form-master select: даже если общего мастера на всю
+     * цепочку нет, клиент должен видеть и иметь возможность ткнуть
+     * конкретного мастера — а система сама расставит его per-service
+     * там, где он умеет. */
+    function mastersUnionForPicked() {
+      if (!picked.length) return [];
+      if (!teamRoot || !teamRoot.querySelector(".team-names li[data-master-id]")) return [];
+      var seen = Object.create(null);
+      var out = [];
+      for (var i = 0; i < picked.length; i++) {
+        var ids = staffIdsForPick(teamRoot, picked[i]);
+        for (var j = 0; j < ids.length; j++) {
+          if (!seen[ids[j]]) {
+            seen[ids[j]] = true;
+            out.push(ids[j]);
+          }
+        }
+      }
+      out.sort(function (a, b) {
+        return masterNameById(a).localeCompare(masterNameById(b), undefined, { sensitivity: "base" });
+      });
+      return out;
+    }
+
+    /** Для каждой услуги в корзине: если мастер умеет — поставить его,
+     * иначе оставить ANY_MASTER_ID. Это вызывается, когда из form-master
+     * select выбрали мастера, не покрывающего всю цепочку. */
+    function applyMasterToCoveredPicks(mid) {
+      if (!mid || !picked.length || !teamRoot) return false;
+      var changed = false;
+      for (var i = 0; i < picked.length; i++) {
+        var ids = staffIdsForPick(teamRoot, picked[i]);
+        var canDo = ids.indexOf(String(mid)) !== -1;
+        var next = canDo ? String(mid) : ANY_MASTER_ID;
+        if (picked[i].selectedMaster !== next) {
+          picked[i].selectedMaster = next;
+          changed = true;
+        }
+      }
+      if (changed) {
+        renderList();
+      }
+      return changed;
+    }
+
     function validateMasterForPicks() {
       if (!masterSelect || !picked.length) return;
       var allowed = mastersForPickedCategories();
@@ -724,6 +770,15 @@
         var opt = masterSelect.options[k];
         var val = opt.value;
         if (!val || val === ANY_MASTER_ID) {
+          opt.disabled = false;
+          continue;
+        }
+        /* Опции, помеченные data-master-partial="1" (мастер делает
+         * хотя бы одну услугу из корзины, но не всю цепочку) — оставляем
+         * enabled. При выборе такой опции masterSelect change-handler
+         * сам разнесёт мастера per-service и поставит «Не важно» там,
+         * где этот мастер не работает. См. setMasterOptions. */
+        if (opt.getAttribute("data-master-partial") === "1") {
           opt.disabled = false;
           continue;
         }
@@ -1782,6 +1837,30 @@
         if (!picked.length) return [];
         return mastersForPickedCategories().slice();
       },
+      /** Все мастера, способные выполнить хотя бы одну услугу в корзине. */
+      getUnionMasters: function () {
+        if (!picked.length) return [];
+        return mastersUnionForPicked().slice();
+      },
+      /** Мастера, способные выполнить конкретный pick (по serviceId). */
+      mastersForServiceId: function (serviceId) {
+        if (!picked.length || !teamRoot) return [];
+        var pick = null;
+        for (var i = 0; i < picked.length; i++) {
+          if (String(picked[i].serviceId) === String(serviceId)) {
+            pick = picked[i];
+            break;
+          }
+        }
+        if (!pick) return [];
+        return staffIdsForPick(teamRoot, pick).slice();
+      },
+      /** Применить мастера на все услуги в корзине, где он умеет.
+       * На услугах, где не умеет — оставит ANY_MASTER_ID (= «не важно»).
+       * Возвращает true, если хоть одна услуга поменялась. */
+      applyMasterToCovered: function (mid) {
+        return applyMasterToCoveredPicks(mid);
+      },
       clear: function () {
         picked = [];
         syncFormCategory();
@@ -2296,37 +2375,61 @@
       while (masterSelect.children.length > 1) {
         masterSelect.removeChild(masterSelect.lastChild);
       }
-      /* Сколько услуг в корзине (если общий API из первого IIFE доступен).
-       * При >=1 — даже если общих мастеров на цепочку нет, всё равно даём
-       * «Не важно», чтобы клиент мог явно выбрать «мы подберём» как fallback
-       * на цепочку. Иначе select схлопывается до одной строки «Выберите
-       * мастера» и кажется, что «не даёт выбрать». */
       var chainApi = (typeof globalThis !== "undefined") ? globalThis.__SITE_BOOKING_CHAIN__ : null;
       var pickedCount =
         chainApi && typeof chainApi.count === "function" ? chainApi.count() : 0;
-      /* HARD-RAIL: если корзина непустая — окончательно сводим список к
-       * пересечению мастеров, способных выполнить ВСЕ услуги (через единый
-       * API getCommonMasters). Это страхует от случаев, когда в setMasterOptions
-       * приходит «широкий» список (например, прямо из API /api/public/employees
-       * по последней услуге, или из старого demo fallback), и ломает интуицию
-       * клиента: «вижу мастера в dropdown, но он disabled, потому что не
-       * делает другую услугу из корзины». Лучше совсем не показывать. */
-      if (
-        pickedCount > 0 &&
-        chainApi &&
-        typeof chainApi.getCommonMasters === "function"
-      ) {
-        var common = chainApi.getCommonMasters();
-        if (!common.length) {
-          list = [];
-        } else {
-          var allowSet = {};
-          for (var ci = 0; ci < common.length; ci++)
-            allowSet[String(common[ci])] = true;
-          list = list.filter(function (m) {
-            return allowSet[String(m.id)];
+      /* Корзина непустая → строим dropdown из CRM-данных (chain API),
+       * не из переданного «широкого» list (он мог прийти из старого
+       * demo-fallback или /api/public/employees по одной услуге).
+       * Раньше при пустом пересечении мы сводили list к [] — клиент
+       * видел «только Не важно» и думал, что выбора мастера нет вовсе.
+       * Сейчас:
+       *   - common = мастера, делающие ВСЮ цепочку → enabled, без пометки;
+       *   - extra  = мастера, делающие хотя бы одну услугу из цепочки,
+       *              но НЕ всю → enabled, с суффиксом «(не на все услуги)»;
+       *              при выборе автоматом расставляются per-service. */
+      var commonCount = list.length;
+      var hasPartial = false;
+      if (pickedCount > 0 && chainApi) {
+        var common = (typeof chainApi.getCommonMasters === "function")
+          ? chainApi.getCommonMasters() : [];
+        var union = (typeof chainApi.getUnionMasters === "function")
+          ? chainApi.getUnionMasters() : [];
+        var commonSet = {};
+        for (var ci = 0; ci < common.length; ci++) commonSet[String(common[ci])] = true;
+        var nameLookup = {};
+        for (var li = 0; li < list.length; li++) {
+          if (list[li] && list[li].id != null) {
+            nameLookup[String(list[li].id)] = list[li].name || String(list[li].id);
+          }
+        }
+        var pubStaff = (typeof globalThis !== "undefined" && globalThis.__SALON_PUBLIC_STAFF__) || [];
+        for (var ps = 0; ps < pubStaff.length; ps++) {
+          var psid = pubStaff[ps] && pubStaff[ps].id != null ? String(pubStaff[ps].id) : "";
+          if (psid && !nameLookup[psid]) nameLookup[psid] = pubStaff[ps].name || psid;
+        }
+        var teamRootEl = document.querySelector("#meistrid .team-groups");
+        if (teamRootEl) {
+          var teamLis = teamRootEl.querySelectorAll("li[data-master-id]");
+          for (var tli = 0; tli < teamLis.length; tli++) {
+            var tlid = teamLis[tli].getAttribute("data-master-id");
+            if (tlid && !nameLookup[tlid]) {
+              nameLookup[tlid] = (teamLis[tli].textContent || tlid).trim();
+            }
+          }
+        }
+        var rebuilt = [];
+        for (var ui = 0; ui < union.length; ui++) {
+          var uid = String(union[ui]);
+          rebuilt.push({
+            id: uid,
+            name: nameLookup[uid] || uid,
+            covers: !!commonSet[uid],
           });
         }
+        commonCount = common.length;
+        hasPartial = rebuilt.some(function (m) { return !m.covers; });
+        list = rebuilt;
       }
       if (list.length || pickedCount > 0) {
         var anyOpt = document.createElement("option");
@@ -2334,10 +2437,20 @@
         anyOpt.textContent = anyMasterLabel();
         masterSelect.appendChild(anyOpt);
       }
+      var partialSuffixLang = String(
+        (document.documentElement && document.documentElement.getAttribute("lang")) || "et"
+      ).toLowerCase().slice(0, 2);
+      var partialSuffix =
+        partialSuffixLang === "ru" ? " — не на все услуги"
+        : partialSuffixLang === "en" ? " — not all services"
+        : partialSuffixLang === "fi" ? " — ei kaikkiin palveluihin"
+        : " — mitte kõikidele teenustele";
       list.forEach(function (m) {
         var opt = document.createElement("option");
         opt.value = String(m.id);
-        opt.textContent = m.name;
+        var partial = pickedCount > 1 && m.covers === false;
+        opt.textContent = partial ? (m.name + partialSuffix) : m.name;
+        if (partial) opt.setAttribute("data-master-partial", "1");
         masterSelect.appendChild(opt);
       });
       var stillValid = false;
@@ -2353,9 +2466,9 @@
         masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
       }
       /* Подсказка под селектом и required-логика — после того, как опции
-       * пересобраны. commonMasterCount = реальное число конкретных мастеров
-       * (без учёта «Не важно») в текущем dropdown. */
-      updateMasterHint(pickedCount, list.length);
+       * пересобраны. commonMasterCount считаем именно по «общим» мастерам
+       * (тем, кто делает всю цепочку), чтобы текст hint был корректен. */
+      updateMasterHint(pickedCount, commonCount, hasPartial);
     }
 
     /** Текст подсказки под select[data-master-select] и логика required.
@@ -2367,7 +2480,7 @@
      *  required снимается при picked>=1, потому что мастер уже задаётся
      *  per-service в карточках корзины (chips). Серверный RPC принимает
      *  staff_id="any" и сам подбирает свободного. */
-    function updateMasterHint(pickedCount, commonMasterCount) {
+    function updateMasterHint(pickedCount, commonMasterCount, hasPartialMasters) {
       var hintEl = bookingForm
         ? bookingForm.querySelector("[data-master-hint]")
         : document.querySelector("[data-master-hint]");
@@ -2407,6 +2520,14 @@
             : lang === "fi"
               ? "Yksi stylisti koko ketjuun (valinnainen). Tai valitse yksi per palvelu yllä."
               : "Üks meister kogu ahelale (valikuline). Või vali igale teenusele eraldi ülal.";
+      } else if (hasPartialMasters) {
+        msg = lang === "ru"
+          ? "Общего мастера на всю цепочку нет. Выберите конкретного — мы поставим его на услуги, которые он делает, остальные — на «Не важно». Или назначьте мастеров по одному в карточках выше."
+          : lang === "en"
+            ? "No single stylist covers all services. Pick one — we’ll assign them to the services they do; others stay on “No preference”. Or pick per service in the cards above."
+            : lang === "fi"
+              ? "Yksi stylisti ei kata kaikkia palveluita. Valitse yksi — laitamme hänet niihin, jotka hän tekee; muille jää “Ei väliä”. Tai valitse erikseen yllä."
+              : "Üks meister ei kata kõiki teenuseid. Vali üks — paneme ta talle sobivatele teenustele; ülejäänud jäävad “Pole vahet”. Või vali kaardis ülal eraldi.";
       } else {
         msg = lang === "ru"
           ? "Эти услуги делают разные мастера — выберите по одному в карточках выше."
@@ -2596,13 +2717,21 @@
       var pickedCount =
         chainApi && typeof chainApi.count === "function" ? chainApi.count() : 0;
       var realMasters = 0;
+      var partial = false;
       if (masterSelect) {
         for (var i = 0; i < masterSelect.options.length; i++) {
-          var v = masterSelect.options[i].value;
-          if (v && v !== ANY_MASTER_ID) realMasters++;
+          var optEl = masterSelect.options[i];
+          var v = optEl.value;
+          if (v && v !== ANY_MASTER_ID) {
+            if (optEl.getAttribute("data-master-partial") === "1") {
+              partial = true;
+            } else {
+              realMasters++;
+            }
+          }
         }
       }
-      updateMasterHint(pickedCount, realMasters);
+      updateMasterHint(pickedCount, realMasters, partial);
     });
 
     prevBtn.addEventListener("click", function () {
@@ -2630,6 +2759,25 @@
     });
 
     masterSelect.addEventListener("change", function () {
+      /* Если выбрали мастера из «частичного» списка (он не делает всю
+       * цепочку) — расставим его per-service в корзине: на услугах,
+       * где умеет, поставим именно его; на остальных — «Не важно».
+       * Это убирает прежнюю мёртвую зону «нет общего → выбор пустой». */
+      var selVal = masterSelect.value;
+      var chainApi = (typeof globalThis !== "undefined") ? globalThis.__SITE_BOOKING_CHAIN__ : null;
+      if (
+        selVal &&
+        selVal !== ANY_MASTER_ID &&
+        chainApi &&
+        typeof chainApi.count === "function" &&
+        chainApi.count() > 1 &&
+        typeof chainApi.applyMasterToCovered === "function"
+      ) {
+        var selOpt = masterSelect.options[masterSelect.selectedIndex];
+        if (selOpt && selOpt.getAttribute("data-master-partial") === "1") {
+          chainApi.applyMasterToCovered(selVal);
+        }
+      }
       invalidateMonthCache();
       clearSelection();
       renderCalendar();
