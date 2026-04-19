@@ -1225,14 +1225,21 @@ export function ServicesPage() {
             <div className="space-y-3 p-4">
               {list.map((s) => {
                 const existsOnMain = publicListingNames.has(String(s.name_et || "").trim().toLowerCase());
+                /* «Никто не делает» = в staff_services нет ни одной строки для услуги.
+                 * Подсветим карточку жёлтым, чтобы такие услуги бросались в глаза
+                 * в общем списке — иначе они теряются среди корректно настроенных. */
+                const masterLinksCount = staffLinksForService(String(s.id)).length;
+                const noMasters = s.active && masterLinksCount === 0;
                 return (
                 <article
                   key={s.id}
                   className={
                     "group relative overflow-hidden rounded-xl border bg-black/30 p-4 shadow-sm transition hover:border-zinc-700/80 " +
-                    (s.active
-                      ? "border-zinc-800/80 shadow-black/30"
-                      : "border-zinc-800/60 bg-zinc-950/40 opacity-80")
+                    (!s.active
+                      ? "border-zinc-800/60 bg-zinc-950/40 opacity-80"
+                      : noMasters
+                        ? "border-amber-700/60 shadow-amber-950/20"
+                        : "border-zinc-800/80 shadow-black/30")
                   }
                 >
                   {/* Vertical accent strip on left, colored by service state */}
@@ -1240,9 +1247,11 @@ export function ServicesPage() {
                     aria-hidden="true"
                     className={
                       "absolute inset-y-0 left-0 w-0.5 " +
-                      (s.active
-                        ? "bg-gradient-to-b from-emerald-500 to-sky-500"
-                        : "bg-zinc-700")
+                      (!s.active
+                        ? "bg-zinc-700"
+                        : noMasters
+                          ? "bg-gradient-to-b from-amber-500 to-amber-700"
+                          : "bg-gradient-to-b from-emerald-500 to-sky-500")
                     }
                   />
 
@@ -1409,70 +1418,78 @@ export function ServicesPage() {
                           </p>
                         );
                       }
-                      const hasExplicit = links.length > 0;
+                      /* Источник истины — staff_services. Если у услуги нет ни одной
+                       * привязки, она недоступна никому: ни на сайте, ни в онлайн-
+                       * записи. Раньше тут показывались все активные мастера — это
+                       * вводило в заблуждение (клиент видел «делает Anna», но Anna
+                       * на самом деле эту услугу не выбирала). */
+                      if (links.length === 0) {
+                        return (
+                          <div className="mt-2 rounded-md border border-amber-700/50 bg-amber-950/30 p-2.5 text-xs text-amber-200">
+                            <p className="font-medium">Услугу никто не выполняет.</p>
+                            <p className="mt-0.5 text-amber-200/80">
+                              Услуга скрыта на публичном сайте и недоступна в онлайн-записи, пока хотя бы один мастер не возьмёт её. Откройте{" "}
+                              <span className="font-mono text-amber-100">/admin/staff</span>, выберите мастера и включите услугу в блоке «Неактивные услуги».
+                            </p>
+                          </div>
+                        );
+                      }
                       const assignedIds = new Set(
                         links.map((l) => normId(l.staff_id)),
                       );
-                      const chips = (
-                        hasExplicit
-                          ? allMasters.filter((m) => assignedIds.has(normId(m.id)))
-                          : allMasters
-                      ).map((m) => {
-                        const available = m.active && s.active;
-                        const reason = available
-                          ? hasExplicit
+                      const chips = allMasters
+                        .filter((m) => assignedIds.has(normId(m.id)))
+                        .map((m) => {
+                          const available = m.active && s.active;
+                          const reason = available
                             ? "Назначен на услугу — доступен на сайте и в онлайн-записи"
-                            : "Явных назначений нет — услугу выполняют все активные мастера"
-                          : !s.active
-                            ? "Услуга выключена (снят тумблер «Активна» выше)"
-                            : "Мастер выключен в /admin/staff";
-                        return {
-                          id: String(m.id),
-                          name: m.name || String(m.id),
-                          available,
-                          reason,
-                        };
-                      });
+                            : !s.active
+                              ? "Услуга выключена (снят тумблер «Активна» выше)"
+                              : "Мастер выключен в /admin/staff";
+                          return {
+                            id: String(m.id),
+                            name: m.name || String(m.id),
+                            available,
+                            reason,
+                          };
+                        });
                       if (chips.length === 0) {
+                        /* В staff_services есть строки, но ни один из этих мастеров
+                         * сейчас не «mастер» (мог уволиться, потерять роль и т.п.). */
                         return (
-                          <p className="mt-2 text-xs text-zinc-500">
-                            Никому не назначена. Откройте{" "}
-                            <span className="font-mono text-zinc-400">/admin/staff</span> и
-                            включите услугу у нужного мастера в блоке «Неактивные услуги».
-                          </p>
+                          <div className="mt-2 rounded-md border border-amber-700/50 bg-amber-950/30 p-2.5 text-xs text-amber-200">
+                            <p className="font-medium">Назначения «висят» на неактивных мастерах.</p>
+                            <p className="mt-0.5 text-amber-200/80">
+                              В staff_services есть привязки, но у этих сотрудников сейчас нет активной роли «Мастер». Откройте{" "}
+                              <span className="font-mono text-amber-100">/admin/staff</span> и переназначьте услугу действующему мастеру.
+                            </p>
+                          </div>
                         );
                       }
                       return (
-                        <>
-                          {!hasExplicit && (
-                            <p className="mt-1 text-[11px] text-zinc-500">
-                              Явных назначений нет — услугу выполняют все активные мастера:
-                            </p>
-                          )}
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {chips.map((c) => (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {chips.map((c) => (
+                            <span
+                              key={c.id}
+                              title={c.reason}
+                              className={
+                                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition " +
+                                (c.available
+                                  ? "border-emerald-600/60 bg-emerald-900/30 text-emerald-200"
+                                  : "border-zinc-700 bg-zinc-900/40 text-zinc-500")
+                              }
+                            >
                               <span
-                                key={c.id}
-                                title={c.reason}
+                                aria-hidden="true"
                                 className={
-                                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition " +
-                                  (c.available
-                                    ? "border-emerald-600/60 bg-emerald-900/30 text-emerald-200"
-                                    : "border-zinc-700 bg-zinc-900/40 text-zinc-500")
+                                  "h-1.5 w-1.5 rounded-full " +
+                                  (c.available ? "bg-emerald-400" : "bg-zinc-600")
                                 }
-                              >
-                                <span
-                                  aria-hidden="true"
-                                  className={
-                                    "h-1.5 w-1.5 rounded-full " +
-                                    (c.available ? "bg-emerald-400" : "bg-zinc-600")
-                                  }
-                                />
-                                {c.name}
-                              </span>
-                            ))}
-                          </div>
-                        </>
+                              />
+                              {c.name}
+                            </span>
+                          ))}
+                        </div>
                       );
                     })()}
                   </div>

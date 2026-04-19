@@ -619,14 +619,59 @@ async function fetchPriceList(client) {
   };
 }
 
+/**
+ * Услугу показываем публично только если в `staff_services` есть хотя бы
+ * один visible-мастер (см. fetchServiceMasters → svcMasters).
+ * Раньше пустой staff_services трактовался как «делают все активные»,
+ * но на практике это враньё клиенту: если в CRM ни у кого галка не стоит —
+ * никто реально не делает, и админу проще увидеть пустую категорию,
+ * чем ловить недовольных клиентов «записался к мастеру, который этого
+ * не делает».
+ */
+function filterRowsByMasterAssignments(rows, svcMasters) {
+  const list = Array.isArray(rows) ? rows : [];
+  const map = svcMasters instanceof Map ? svcMasters : null;
+  if (!map || map.size === 0) {
+    /* svcMasters пуст вообще (нет staff_services / нет прав): не «убиваем»
+     * каталог целиком, иначе сайт просто пустеет. Это деградировавшее
+     * состояние сервера, а не правильная конфигурация — пусть видно. */
+    return { rows: list, dropped: 0, degraded: true };
+  }
+  const out = [];
+  let dropped = 0;
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i];
+    const sid = String(r && r.id != null ? r.id : "");
+    const masters = sid ? map.get(sid) : null;
+    if (Array.isArray(masters) && masters.length > 0) {
+      out.push(r);
+    } else {
+      dropped++;
+    }
+  }
+  return { rows: out, dropped, degraded: false };
+}
+
 async function run(client) {
   const [result, svcMasters] = await Promise.all([fetchPriceList(client), fetchServiceMasters(client)]);
   if (!result.error) {
-    const rows = result.data || [];
-    info("Loaded services from " + result.source + " (" + rows.length + ")");
+    const allRows = result.data || [];
+    info("Loaded services from " + result.source + " (" + allRows.length + ")");
     info("Loaded service→masters map (" + svcMasters.size + " services with explicit staff)");
+    const filtered = filterRowsByMasterAssignments(allRows, svcMasters);
+    if (filtered.dropped > 0) {
+      warnLog(
+        "Hidden " + filtered.dropped + " service(s) without any visible master in staff_services — assign masters in CRM /admin/staff to publish them"
+      );
+    }
+    const rows = filtered.rows;
     if (rows.length > 0) {
       render(groupRows(rows), svcMasters);
+      if (filtered.dropped > 0 && !filtered.degraded) {
+        showCatalogWarn(
+          "Часть услуг скрыта на сайте: ни одному мастеру не назначена услуга. Откройте /admin/staff и проставьте галки в блоке «Услуги» нужным мастерам."
+        );
+      }
       return true;
     }
     try {

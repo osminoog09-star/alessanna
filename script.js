@@ -567,15 +567,22 @@
      * site-services.mjs кладёт list мастеров в data-service-masters на каждую
      * строку .menu-list li (через запятую). Возвращаем:
      *   - null    — нет data-атрибута / строку не нашли → откат на категорию
-     *   - []      — услуга в БД, но явных мастеров нет (пустой staff_services) →
-     *               откат на категорию (все активные мастера)
+     *               (так бывает только при старом / неполном рендере прайса)
+     *   - []      — атрибут есть, но пуст: услуга в БД явно не привязана ни
+     *               к одному мастеру → НИКТО её не делает (никаких fallback'ов).
      *   - [ids]   — явный список: показываем только этих
      */
     function serviceMastersFromDom(pick) {
       if (!pick || !pick.key) return null;
-      var li = teenused
-        ? teenused.querySelector('.menu-list li[data-pick-key="' + escapeCssAttrKey(pick.key) + '"]')
-        : null;
+      /* Ищем li сначала в прайсе, потом в форме (#form-services-mount) —
+       * site-services.mjs рендерит каталог в обоих местах. */
+      var sel = '.menu-list li[data-pick-key="' + escapeCssAttrKey(pick.key) + '"]';
+      var li =
+        (teenused ? teenused.querySelector(sel) : null) ||
+        (function () {
+          var fm = document.getElementById("form-services-mount");
+          return fm ? fm.querySelector(sel) : null;
+        })();
       if (!li || !li.hasAttribute("data-service-masters")) return null;
       var raw = String(li.getAttribute("data-service-masters") || "").trim();
       if (!raw) return [];
@@ -593,7 +600,11 @@
 
       /* 1) Точный список мастеров под конкретную услугу (data-service-masters). */
       var bySvc = serviceMastersFromDom(pick);
-      if (bySvc && bySvc.length) {
+      if (Array.isArray(bySvc)) {
+        if (bySvc.length === 0) {
+          /* Атрибут есть и пуст → CRM явно говорит «никто не делает». */
+          return [];
+        }
         var allowed = {};
         for (var a = 0; a < all.length; a++) allowed[all[a]] = true;
         var filtered = [];
@@ -607,8 +618,8 @@
         return filtered;
       }
 
-      /* 2) Fallback — старая логика по категории (услуга без явных мастеров =
-       *    «все активные мастера из категории»). */
+      /* 2) Fallback — только если атрибута data-service-masters в DOM
+       *    вообще нет (старый рендер прайса). Тогда фильтруем по категории. */
       var ck = teamCategoryKeyFromPickCategory(pick.category);
       if (ck === null) return all.slice();
       var scoped = staffIdsInTeamGroup(teamRootEl, ck);
@@ -935,8 +946,15 @@
     }
 
     function mastersForSpecificPick(pick) {
-      /* Если у услуги явно заданы мастера (data-service-masters) — используем их;
-       * иначе берём всех публичных мастеров. */
+      /* Если у услуги нет ни одной явной привязки в CRM (staff_services), мы
+       * НЕ возвращаем «всех публичных» — раньше это был молчаливый fallback,
+       * из-за которого клиент видел всех мастеров под услугой, которую
+       * никто реально не делает. Теперь:
+       *   pick.masters есть → пересечение с публичными мастерами;
+       *   pick.masters пусто → пустой список (master select останется
+       *                         только с «Не важно» / без вариантов, и
+       *                         клиент сразу видит «никто не делает»).
+       */
       var pub = globalThis.__SALON_PUBLIC_STAFF__;
       if (!Array.isArray(pub) || !pub.length) return [];
       if (pick && pick.masters && pick.masters.length) {
@@ -946,7 +964,7 @@
           return allow[String(s.id)];
         });
       }
-      return pub.slice();
+      return [];
     }
 
     function applyPickMaster(pickKeyStr, staffIdOrAny) {
