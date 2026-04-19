@@ -245,5 +245,25 @@
     "reviewMessagePlaceholder": "Kirjoita muutama lause…",
     "reviewSubmit": "Lähetä meille",
     "reviewMailHint": "Sähköpostiohjelmasi avautuu; lähetä viesti salongin osoitteeseen."
+  },
+  "adminStaff": {
+    "payModel": "Palkkamalli",
+    "payRent": "Vuokra",
+    "payPercentage": "Prosentti",
+    "paySalary": "Palkka"
+  },
+  "adminSchedule": {
+    "invalidInterval": "Aloitusajan on oltava ennen lopetusaikaa. Tarkista päivät."
+  },
+  "finance": {
+    "title": "Talous",
+    "subtitle": "Kuukausikatsaus: tulot, työntekijöiden osuudet, vuokra ja työpäivät.",
+    "month": "Kuukausi",
+    "revenue": "Tulot",
+    "staffShare": "Työntekijän osuus",
+    "ownerShare": "Salongin osuus",
+    "workDays": "Työpäiviä",
+    "rentTotal": "Vuokra (yhteensä)",
+    "hint": "Lasketaan vain vahvistetut varaukset. Hinnat aktiivisesta palvelukatalogista."
   }
 }

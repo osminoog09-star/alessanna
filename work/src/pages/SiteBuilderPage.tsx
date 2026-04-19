@@ -131,6 +131,8 @@ export function SiteBuilderPage() {
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState<string | null>(null);
 
   const [newPageName, setNewPageName] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
@@ -306,7 +308,11 @@ export function SiteBuilderPage() {
 
   async function publishPage() {
     if (!currentPage) return;
+    /* Публикация — это разрушительная операция: затирает то, что сейчас
+     * показывается посетителям сайта. Просим явное подтверждение. */
+    if (!window.confirm("Опубликовать черновик? Текущая опубликованная версия будет заменена.")) return;
     setErr(null);
+    setPublishing(true);
     const { data: existingPublished } = await supabase
       .from("site_pages")
       .select("id")
@@ -325,8 +331,13 @@ export function SiteBuilderPage() {
     };
 
     if (!publishedId) {
-      const { data: inserted, error: insertErr } = await supabase.from("site_pages").insert(pagePayload).select("id").single();
+      const { data: inserted, error: insertErr } = await supabase
+        .from("site_pages")
+        .insert(pagePayload)
+        .select("id")
+        .single();
       if (insertErr) {
+        setPublishing(false);
         setErr(insertErr.message);
         return;
       }
@@ -334,14 +345,46 @@ export function SiteBuilderPage() {
     } else {
       const { error: updateErr } = await supabase.from("site_pages").update(pagePayload).eq("id", publishedId);
       if (updateErr) {
+        setPublishing(false);
         setErr(updateErr.message);
         return;
       }
+      /* Бэкап опубликованных блоков ПЕРЕД delete: если новый insert упадёт,
+       * восстановим их и страница на проде не останется пустой. PostgREST
+       * не даёт нам транзакции, поэтому защищаемся на уровне приложения. */
+      const { data: oldBlocks } = await supabase
+        .from("site_blocks")
+        .select("type, content, styles, position")
+        .eq("page_id", publishedId);
       const { error: delErr } = await supabase.from("site_blocks").delete().eq("page_id", publishedId);
       if (delErr) {
+        setPublishing(false);
         setErr(delErr.message);
         return;
       }
+
+      const inserts = blocks.map((b) => ({
+        page_id: publishedId,
+        type: b.type,
+        content: b.content,
+        styles: b.styles ?? {},
+        position: b.position,
+      }));
+      if (inserts.length) {
+        const { error: blocksErr } = await supabase.from("site_blocks").insert(inserts);
+        if (blocksErr) {
+          if (oldBlocks && oldBlocks.length) {
+            const restore = oldBlocks.map((b) => ({ ...b, page_id: publishedId }));
+            await supabase.from("site_blocks").insert(restore);
+          }
+          setPublishing(false);
+          setErr(`Publish failed, previous version restored: ${blocksErr.message}`);
+          return;
+        }
+      }
+      setPublishing(false);
+      setPublishMsg(`Опубликовано: ${currentPage.slug}`);
+      return;
     }
 
     const inserts = blocks.map((b) => ({
@@ -354,11 +397,13 @@ export function SiteBuilderPage() {
     if (inserts.length) {
       const { error: blocksErr } = await supabase.from("site_blocks").insert(inserts);
       if (blocksErr) {
+        setPublishing(false);
         setErr(blocksErr.message);
         return;
       }
     }
-    setErr(null);
+    setPublishing(false);
+    setPublishMsg(`Опубликовано: ${currentPage.slug}`);
   }
 
   if (loading) return <p className="text-zinc-500">Loading…</p>;
@@ -419,10 +464,16 @@ export function SiteBuilderPage() {
               <p className="text-sm text-zinc-400">
                 Draft: <span className="text-zinc-200">{currentPage.slug}</span>
               </p>
-              <button type="button" onClick={() => void publishPage()} className="rounded bg-emerald-600 px-2 py-1 text-xs text-white">
-                Publish
+              <button
+                type="button"
+                disabled={publishing}
+                onClick={() => void publishPage()}
+                className="rounded bg-emerald-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+              >
+                {publishing ? "Publishing…" : "Publish"}
               </button>
             </div>
+            {publishMsg && <p className="text-xs text-emerald-400">{publishMsg}</p>}
 
             <div className="rounded border border-zinc-800 bg-black/40 p-2">
               <p className="mb-2 text-xs text-zinc-500">Page fonts</p>

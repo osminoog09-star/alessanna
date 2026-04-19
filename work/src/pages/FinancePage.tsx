@@ -23,6 +23,7 @@ export function FinancePage() {
   const [workDays, setWorkDays] = useState<Array<{ staff_id: string; date: string }>>([]);
   const [listings, setListings] = useState<ServiceListingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   const range = useMemo(() => {
     const m = parse(monthStr, "yyyy-MM", new Date());
@@ -32,6 +33,7 @@ export function FinancePage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setErr(null);
     const isoStart = range.start.toISOString();
     const isoEnd = range.end.toISOString();
     const [st, ln, wd, sv] = await Promise.all([
@@ -49,6 +51,11 @@ export function FinancePage() {
         .eq("is_working", true),
       supabase.from("service_listings").select("*"),
     ]);
+    /* Раньше любая ошибка любого из 4 запросов молча игнорировалась —
+     * пользователь видел частично пустую таблицу и думал что у мастеров
+     * 0 €. Теперь явно показываем первую найденную ошибку. */
+    const firstErr = st.error || ln.error || wd.error || sv.error;
+    if (firstErr) setErr(firstErr.message);
     if (st.data) {
       /* Админы (техподдержка) не участвуют в выплатах/финансах салона. */
       setStaff((st.data as StaffTableRow[]).filter((row) => !isStaffRowAdmin(row)));
@@ -108,6 +115,13 @@ export function FinancePage() {
         rentCents = Math.round(rentDay * 100) * days;
         ownerShareCents = revCents;
         staffShareCents = 0;
+      } else if (wt === "salary") {
+        /* Зарплатник: выручка целиком идёт салону, доля мастера в этом
+         * отчёте не показывается (она фиксированная и считается отдельно
+         * вне CRM). Раньше код проваливался в else и трактовал salary как
+         * процент с percent_rate, что давало неверные числа. */
+        staffShareCents = 0;
+        ownerShareCents = revCents;
       } else {
         staffShareCents = Math.round((revCents * pct) / 100);
         ownerShareCents = revCents - staffShareCents;
@@ -145,6 +159,10 @@ export function FinancePage() {
         </label>
       </header>
 
+      {err && (
+        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{err}</p>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-zinc-800">
         <table className="w-full border-collapse text-left text-sm text-zinc-200">
           <thead className="bg-zinc-900 text-xs uppercase text-zinc-500">
@@ -163,7 +181,11 @@ export function FinancePage() {
               <tr key={r.id} className="border-t border-zinc-800">
                 <td className="px-3 py-2 font-medium text-white">{r.name}</td>
                 <td className="px-3 py-2 text-zinc-400">
-                  {r.workType === "rent" ? t("adminStaff.payRent") : t("adminStaff.payPercentage")}
+                  {r.workType === "rent"
+                    ? t("adminStaff.payRent")
+                    : r.workType === "salary"
+                      ? t("adminStaff.paySalary")
+                      : t("adminStaff.payPercentage")}
                 </td>
                 <td className="px-3 py-2">{eurFromCents(r.revenueCents)}</td>
                 <td className="px-3 py-2">{r.workType === "percentage" ? eurFromCents(r.staffShareCents) : "—"}</td>

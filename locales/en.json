@@ -261,5 +261,25 @@
     "reviewMessagePlaceholder": "Write a few sentences…",
     "reviewSubmit": "Send to us",
     "reviewMailHint": "Your mail app will open; send the message to the salon address."
+  },
+  "adminStaff": {
+    "payModel": "Pay model",
+    "payRent": "Rent",
+    "payPercentage": "Percentage",
+    "paySalary": "Salary"
+  },
+  "adminSchedule": {
+    "invalidInterval": "Start time must be before end time. Check the days."
+  },
+  "finance": {
+    "title": "Finance",
+    "subtitle": "Monthly summary: revenue, staff shares, rent and worked days.",
+    "month": "Month",
+    "revenue": "Revenue",
+    "staffShare": "Staff share",
+    "ownerShare": "Salon share",
+    "workDays": "Work days",
+    "rentTotal": "Rent (total)",
+    "hint": "Only confirmed bookings are counted. Prices come from the active services catalog."
   }
 }

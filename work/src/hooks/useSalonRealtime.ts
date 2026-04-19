@@ -53,7 +53,10 @@ export function useFinanceRealtime(onChange: () => void) {
     () =>
       subscribeTables(
         "crm-finance",
-        ["appointments", "appointment_services", "services", "service_listings", "staff"],
+        /* `staff_work_days` влияет на rent-расчёт (sum × rent_per_day): без
+         * подписки финансы не пересчитывались если день закрыли в другой
+         * вкладке. */
+        ["appointments", "appointment_services", "services", "service_listings", "staff", "staff_work_days"],
         onChangeRef,
       ),
     [],

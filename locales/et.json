@@ -193,14 +193,30 @@
     "yes": "jah",
     "no": "ei",
     "services": "Teenused",
-    "edit": "Muuda"
+    "edit": "Muuda",
+    "payModel": "Tasumudel",
+    "payRent": "Rent",
+    "payPercentage": "Protsent",
+    "paySalary": "Palk"
   },
   "adminSchedule": {
     "subtitle": "Nädala graafik (staff_schedule).",
     "allStaff": "Kõik töötajad",
     "allStaffHint": "Praegune nädalaplaan salvestatakse iga aktiivse töötaja jaoks — individuaalsed graafikud asendatakse.",
     "saveAllConfirm": "Asendada kõigi aktiivsete töötajate nädala graafik alloleva plaaniga? Ühe nupuga tagasi ei pöörata.",
-    "saveForAll": "Salvesta kõigile"
+    "saveForAll": "Salvesta kõigile",
+    "invalidInterval": "Algusaeg peab olema lõpuajast varasem. Kontrolli päevi."
+  },
+  "finance": {
+    "title": "Rahandus",
+    "subtitle": "Kuu kokkuvõte: tulud, töötajate osad, rent ja töötatud päevad.",
+    "month": "Kuu",
+    "revenue": "Tulu",
+    "staffShare": "Töötaja osa",
+    "ownerShare": "Salongi osa",
+    "workDays": "Tööpäevi",
+    "rentTotal": "Rent kokku",
+    "hint": "Arvestatakse kinnitatud broneeringud. Hinnad aktiivsest teenuste kataloogist."
   },
   "adminTimeOff": {
     "subtitle": "Kättesaamatuse blokid (staff_time_off).",

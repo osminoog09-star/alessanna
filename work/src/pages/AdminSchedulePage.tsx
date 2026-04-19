@@ -81,7 +81,14 @@ export function AdminSchedulePage() {
   }, [loadStaff]);
 
   useEffect(() => {
-    if (staffId && staffId !== ALL_STAFF_VALUE) void loadSchedule(staffId);
+    if (staffId === ALL_STAFF_VALUE) {
+      /* Чтобы пользователь не сохранил случайно последний загруженный шаблон
+       * одного мастера ДЛЯ ВСЕХ. При переключении на «ко всем» начинаем с
+       * чистого недельного шаблона 09:00–17:00. */
+      setRows(emptyWeek());
+      return;
+    }
+    if (staffId) void loadSchedule(staffId);
   }, [staffId, loadSchedule]);
 
   function setDayField(day: number, field: "start" | "end", value: string) {
@@ -138,14 +145,31 @@ export function AdminSchedulePage() {
       return;
     }
 
-    await supabase.from("staff_schedule").delete().eq("staff_id", staffId);
-    const inserts = buildInsertsForStaff(staffId);
-    const { error } = await supabase.from("staff_schedule").insert(inserts);
-    setSaving(false);
-    if (error) {
-      setErr(error.message);
+    /* Валидация интервалов: start < end. Без неё в БД попадают мусорные
+     * записи и в календаре день рисуется пустым без понятной ошибки. */
+    const bad = rows.find((r) => r.working && r.start >= r.end);
+    if (bad) {
+      setSaving(false);
+      setErr(t("adminSchedule.invalidInterval"));
       return;
     }
+
+    const { error: delErr } = await supabase.from("staff_schedule").delete().eq("staff_id", staffId);
+    if (delErr) {
+      setErr(delErr.message);
+      setSaving(false);
+      return;
+    }
+    const inserts = buildInsertsForStaff(staffId);
+    if (inserts.length > 0) {
+      const { error } = await supabase.from("staff_schedule").insert(inserts);
+      if (error) {
+        setSaving(false);
+        setErr(error.message);
+        return;
+      }
+    }
+    setSaving(false);
     void loadSchedule(staffId);
   }
 

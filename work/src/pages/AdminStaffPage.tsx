@@ -364,6 +364,15 @@ export function AdminStaffPage() {
       setLoading(false);
       return;
     }
+    /* lk.error раньше игнорировался: при сбое загрузки `staff_services`
+     * UI оставался с пустыми/устаревшими привязками, и пользователь не
+     * понимал почему «навыки» исчезли. Теперь явно показываем ошибку и
+     * выходим, чтобы не отрисовывать неконсистентное состояние. */
+    if (lk.error) {
+      setErr(lk.error.message);
+      setLoading(false);
+      return;
+    }
     const colProbe = await supabase.from("staff").select("id, show_on_marketing_site").limit(1);
     setStaffMarketingColumnMissing(!!colProbe.error && isMissingStaffMarketingColumnError(colProbe.error));
 
