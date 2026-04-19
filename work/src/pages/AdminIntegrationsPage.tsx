@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 
 /**
@@ -164,6 +165,23 @@ function modeBadge(m: DeliveryMode): { label: string; className: string; hint: s
   }
 }
 
+/* Извлекаем `<ref>` из URL Supabase (`https://<ref>.supabase.co`), чтобы
+ * подставить его в redirect URI Google OAuth. Если по какой-то причине
+ * не получилось — отдаём строку-плейсхолдер, чтобы оператор увидел и
+ * скопировал её вручную из Supabase Dashboard. */
+function getSupabaseProjectRef(): string {
+  try {
+    const url = (import.meta.env.VITE_SUPABASE_URL ?? "").toString();
+    if (url) {
+      const sub = new URL(url).hostname.split(".")[0];
+      if (sub) return sub;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "<your-project-ref>";
+}
+
 /* Превращаем target_scope из БД ('salon' / 'staff:<uuid>') в человеко-читаемое
  * имя. Для 'staff:<uuid>' пытаемся подставить имя из staffById (карта),
  * иначе показываем «Мастер · короткий-id». */
@@ -175,6 +193,360 @@ function scopeLabel(scope: string, staffById: Map<string, string>): string {
     return name ? `Мастер · ${name}` : `Мастер · ${id.slice(0, 8)}`;
   }
   return scope;
+}
+
+/* ============================================================
+ * OAuth Setup Checklist — пошаговая памятка для подключения
+ * Google Calendar OAuth позже. Прогресс хранится в localStorage,
+ * чтобы оператор мог пройтись по списку в несколько подходов.
+ * ============================================================ */
+
+const OAUTH_CHECKLIST_STORAGE_KEY = "alessanna.crm.oauth-setup-progress.v1";
+
+function CopyButton({ value, label }: { value: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          void navigator.clipboard.writeText(value).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1200);
+          });
+        } catch {
+          /* ignore */
+        }
+      }}
+      className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300 transition hover:border-emerald-700 hover:text-emerald-200"
+      title={`Скопировать «${value}»`}
+    >
+      {copied ? "✓" : (label ?? "copy")}
+    </button>
+  );
+}
+
+function OAuthValue({ value, multiline = false }: { value: string; multiline?: boolean }) {
+  return (
+    <span
+      className={`inline-flex max-w-full items-center gap-1.5 rounded border border-zinc-800 bg-black/40 px-1.5 py-0.5 align-middle ${
+        multiline ? "" : "whitespace-nowrap"
+      }`}
+    >
+      <code className="break-all text-[11px] text-emerald-300">{value}</code>
+      <CopyButton value={value} />
+    </span>
+  );
+}
+
+function StepLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex items-center gap-1 text-emerald-300 underline decoration-dotted underline-offset-2 hover:text-emerald-200"
+    >
+      {children}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3">
+        <path d="M14 5h5v5M19 5l-9 9M5 11v8h8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </a>
+  );
+}
+
+function OAuthSetupChecklist({
+  projectRef,
+  salonEmail,
+}: {
+  projectRef: string;
+  salonEmail: string | null;
+}) {
+  const [done, setDone] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = window.localStorage.getItem(OAUTH_CHECKLIST_STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(OAUTH_CHECKLIST_STORAGE_KEY, JSON.stringify(done));
+    } catch {
+      /* ignore */
+    }
+  }, [done]);
+
+  const useEmail = salonEmail ?? "alessanna.ilusalong@gmail.com";
+  const redirectUri = `https://${projectRef}.supabase.co/functions/v1/google-calendar/callback`;
+  const supabaseSecretsUrl = `https://supabase.com/dashboard/project/${projectRef}/settings/functions`;
+
+  const steps: Array<{ id: string; title: string; body: ReactNode }> = [
+    {
+      id: "s1",
+      title: "1. Зайти в Google Cloud Console под аккаунтом салона",
+      body: (
+        <p>
+          Открой <StepLink href="https://console.cloud.google.com/">console.cloud.google.com</StepLink>{" "}
+          и обязательно убедись, что вошёл под <OAuthValue value={useEmail} />. Календарь будет
+          создан именно в этом аккаунте.
+        </p>
+      ),
+    },
+    {
+      id: "s2",
+      title: "2. Создать новый проект",
+      body: (
+        <>
+          <p>
+            Открой <StepLink href="https://console.cloud.google.com/projectcreate">страницу
+            создания проекта</StepLink> и заведи новый. Имя — любое, для удобства предлагаю:{" "}
+            <OAuthValue value="AlesSanna Calendar Sync" />
+          </p>
+          <p className="mt-1 text-zinc-500">
+            Подождать ~30 секунд, пока проект появится в списке вверху страницы — переключиться на
+            него.
+          </p>
+        </>
+      ),
+    },
+    {
+      id: "s3",
+      title: "3. Включить Google Calendar API",
+      body: (
+        <p>
+          Открой страницу{" "}
+          <StepLink href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com">
+            Google Calendar API в Library
+          </StepLink>{" "}
+          и нажми <strong>Enable</strong>.
+        </p>
+      ),
+    },
+    {
+      id: "s4",
+      title: "4. Настроить OAuth consent screen",
+      body: (
+        <>
+          <p>
+            Открой <StepLink href="https://console.cloud.google.com/apis/credentials/consent">OAuth
+            consent screen</StepLink>. Выбери <strong>External</strong> (потому что используем
+            обычный Gmail, не Workspace) и заполни:
+          </p>
+          <ul className="mt-1.5 list-disc space-y-1 pl-5">
+            <li>
+              App name: <OAuthValue value="AlesSanna" />
+            </li>
+            <li>
+              User support email: <OAuthValue value={useEmail} />
+            </li>
+            <li>
+              Developer contact email: <OAuthValue value={useEmail} />
+            </li>
+            <li>
+              Logo / domain — можно оставить пустыми.
+            </li>
+          </ul>
+          <p className="mt-2">
+            На шаге <strong>Scopes</strong> добавь два скоупа Calendar API:
+          </p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            <li>
+              <OAuthValue value="https://www.googleapis.com/auth/calendar" multiline />
+            </li>
+            <li>
+              <OAuthValue value="https://www.googleapis.com/auth/calendar.events" multiline />
+            </li>
+          </ul>
+          <p className="mt-2">
+            На шаге <strong>Test users</strong> добавь <OAuthValue value={useEmail} /> — пока проект
+            в режиме Testing, только email из этого списка смогут пройти OAuth. Этого достаточно
+            (публикация на verification не требуется).
+          </p>
+        </>
+      ),
+    },
+    {
+      id: "s5",
+      title: "5. Создать OAuth 2.0 Client ID",
+      body: (
+        <>
+          <p>
+            Открой <StepLink href="https://console.cloud.google.com/apis/credentials">Credentials</StepLink>{" "}
+            → <strong>+ Create credentials</strong> → <strong>OAuth client ID</strong>. Выбери:
+          </p>
+          <ul className="mt-1.5 list-disc space-y-1 pl-5">
+            <li>
+              Application type: <OAuthValue value="Web application" />
+            </li>
+            <li>
+              Name: <OAuthValue value="AlesSanna CRM" />
+            </li>
+            <li>
+              <strong>Authorized redirect URIs</strong> → Add URI →{" "}
+              <OAuthValue value={redirectUri} multiline />
+            </li>
+          </ul>
+          <p className="mt-2 rounded-md border border-amber-800/40 bg-amber-950/30 p-2 text-amber-100">
+            <strong>Важно:</strong> redirect URI должен совпадать <em>буква-в-букву</em> с тем, что
+            будет в Edge Function. Если изменишь — Google вернёт <code>redirect_uri_mismatch</code>.
+          </p>
+          <p className="mt-2">
+            После клика <strong>Create</strong> Google покажет <strong>Client ID</strong> и{" "}
+            <strong>Client Secret</strong>. Скачай JSON или скопируй оба значения — они нужны на
+            следующем шаге.
+          </p>
+        </>
+      ),
+    },
+    {
+      id: "s6",
+      title: "6. Сохранить Client ID и Client Secret в Supabase",
+      body: (
+        <>
+          <p>
+            Открой <StepLink href={supabaseSecretsUrl}>Supabase → Project Settings → Edge Functions
+            → Secrets</StepLink> и добавь две переменные с такими именами (буква-в-букву):
+          </p>
+          <ul className="mt-1.5 list-disc space-y-1 pl-5">
+            <li>
+              <OAuthValue value="GOOGLE_OAUTH_CLIENT_ID" /> — значение из Google
+            </li>
+            <li>
+              <OAuthValue value="GOOGLE_OAUTH_CLIENT_SECRET" /> — значение из Google
+            </li>
+          </ul>
+          <p className="mt-2 text-zinc-500">
+            Secrets хранятся только на стороне Supabase, в репозиторий и в браузер не попадают.
+          </p>
+        </>
+      ),
+    },
+    {
+      id: "s7",
+      title: "7. Сказать ассистенту «подключаем календарь»",
+      body: (
+        <>
+          <p>
+            После этого я задеплою Edge Function <OAuthValue value="google-calendar" />, активирую
+            кнопку «Подключить» в карточке салона выше и пройду OAuth-логин из CRM. Дальше всё
+            работает само — записи начинают попадать в календарь, мастера получают приглашения по
+            email.
+          </p>
+          <p className="mt-1 text-zinc-500">
+            Если на шагах что-то не сошлось (например другой Gmail, другой Google Workspace) —
+            просто скажи, поправим.
+          </p>
+        </>
+      ),
+    },
+  ];
+
+  const completedCount = steps.filter((s) => done[s.id]).length;
+  const allDone = completedCount === steps.length;
+  const progressPct = Math.round((completedCount / steps.length) * 100);
+
+  return (
+    <details
+      className="group rounded-xl border border-zinc-800 bg-zinc-950/80 p-4 open:bg-zinc-950"
+      open={completedCount > 0 && !allDone}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+        <span className="flex items-center gap-2">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.75}
+            className="h-4 w-4 text-zinc-400 transition group-open:rotate-90"
+          >
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="text-sm font-semibold text-white">
+            Памятка: как подключить Google OAuth позже
+          </span>
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="hidden h-1.5 w-32 overflow-hidden rounded-full bg-zinc-800 sm:block">
+            <span
+              className="block h-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all"
+              style={{ width: `${progressPct}%` }}
+            />
+          </span>
+          <span className="text-[11px] tabular-nums text-zinc-400">
+            {completedCount}/{steps.length}
+          </span>
+        </span>
+      </summary>
+
+      <p className="mt-3 text-xs text-zinc-500">
+        Пошаговая инструкция: ~5–10 минут. Прогресс сохраняется в этом браузере. Скопировать любое
+        значение можно кликом по кнопке <code className="text-zinc-400">copy</code> рядом.
+      </p>
+
+      <ol className="mt-4 space-y-3">
+        {steps.map((s) => {
+          const checked = !!done[s.id];
+          return (
+            <li
+              key={s.id}
+              className={`rounded-lg border p-3 transition ${
+                checked
+                  ? "border-emerald-900/50 bg-emerald-950/10"
+                  : "border-zinc-800 bg-black/30"
+              }`}
+            >
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    setDone((prev) => ({ ...prev, [s.id]: e.target.checked }))
+                  }
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-emerald-500"
+                />
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`text-sm font-medium ${
+                      checked ? "text-emerald-200/80 line-through" : "text-zinc-100"
+                    }`}
+                  >
+                    {s.title}
+                  </p>
+                  <div className="mt-1.5 space-y-1.5 text-xs leading-relaxed text-zinc-400">
+                    {s.body}
+                  </div>
+                </div>
+              </label>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500">
+        <span>
+          Готово {completedCount} из {steps.length} шагов
+          {allDone && " — всё сделано, можно звать ассистента."}
+        </span>
+        {completedCount > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Сбросить прогресс памятки?")) setDone({});
+            }}
+            className="rounded border border-zinc-800 px-2 py-0.5 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+          >
+            Сбросить прогресс
+          </button>
+        )}
+      </div>
+    </details>
+  );
 }
 
 export function AdminIntegrationsPage() {
@@ -574,15 +946,11 @@ export function AdminIntegrationsPage() {
           </p>
         )}
 
-        <div className="mt-5 rounded-lg border border-amber-800/40 bg-amber-950/30 p-4 text-sm text-amber-100">
-          <p className="font-semibold">Подключение OAuth — следующий этап</p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-200/80">
-            База готова: записи уже копятся в очереди (см. ниже), email-адреса
-            мастеров можно вводить уже сейчас. Чтобы события начали попадать в
-            Google Calendar — нужно задеплоить Supabase Edge Function с Google
-            OAuth client. Скажи «подключаем календарь» и я пройдусь по шагам
-            Google Cloud + деплой одной командой.
-          </p>
+        <div className="mt-5">
+          <OAuthSetupChecklist
+            projectRef={getSupabaseProjectRef()}
+            salonEmail={settings.salon_calendar_email}
+          />
         </div>
 
         {settingsLoading && (
