@@ -18,6 +18,36 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (вечер) — «Multi-service master selection fix»
+
+### Russian
+
+**Исправлено (публичный сайт, форма записи)**
+- Если в корзине несколько услуг с РАЗНЫМИ мастерами (например, женская стрижка + классический маникюр), select «Мастер» больше не показывает чужих мастеров с серыми `disabled`-опциями и больше не лжёт хинтом «Один мастер на всю цепочку». Теперь поведение единообразное: остаётся только «Не важно» и пояснение «Эти услуги делают разные мастера — выберите по одному в карточках выше». Источник истины — `globalThis.__SITE_BOOKING_CHAIN__.getCommonMasters()` (пересечение по `staff_services` из CRM); внутри `setMasterOptions` стоит «hard rail», который окончательно сводит список dropdown'a к этому пересечению независимо от того, кто его пересобрал (legacy demo, API employees или filterMastersByFormCategory).
+- Когда корзина пуста — поведение прежнее (показываем всех публичных мастеров).
+- Когда в корзине одна услуга — dropdown содержит только тех мастеров, кому в CRM проставлено право её делать, плюс «Не важно».
+- Хинт под select обновляется на 4 состояния: пусто / 1 услуга / 2+ с общим мастером / 2+ без общего; required снимается при ≥1 услуге, потому что мастер задаётся per-service в карточках корзины.
+- Цепочка по времени уже работает на сервере: SQL-функция `public_book_chain` (миграция `024_public_book_chain.sql`) сама прибавляет `duration + buffer_after_min` к каждой следующей услуге — клиенту достаточно выбрать день и время начала.
+- Локальный smoke (Стрижка → переключение на Маникюр → добавление маникюра): hint менялся 1 услуга → "Один мастер" → "Эти услуги делают разные мастера", в dropdown оставалось только «Не важно», disabled-фантомов нет.
+
+**Стабильная точка**
+- `stable-2026-04-19-site-master-multi-service-fix` → (см. `RELEASES.md`)
+
+### English
+
+**Fixed (public site, booking form)**
+- When the cart contains multiple services with DIFFERENT eligible masters (e.g. women's haircut + classic manicure), the "Master" select no longer shows ineligible masters as greyed-out `disabled` options, and the hint no longer lies with "One stylist for the whole chain". The behaviour is now consistent: only "No preference" remains, with an explanation "These services are done by different stylists — pick one per card above". Source of truth is `globalThis.__SITE_BOOKING_CHAIN__.getCommonMasters()` (intersection by `staff_services` from CRM); inside `setMasterOptions` there is a hard rail that always reduces the dropdown to that intersection, regardless of who repopulated it (legacy demo, API employees, or filterMastersByFormCategory).
+- Empty cart — original behaviour (all public masters are shown).
+- One service in cart — dropdown contains only masters granted in CRM, plus "No preference".
+- Hint under the select now has 4 states: empty / 1 service / 2+ with a common master / 2+ without; `required` is dropped when ≥1 service is in the cart, because masters are picked per-service in the cart cards.
+- Time chaining is already correct on the server: SQL function `public_book_chain` (migration `024_public_book_chain.sql`) advances by `duration + buffer_after_min` for each next service — the client only picks day + start time.
+- Local smoke (Haircut → switch to Manicure tab → add manicure): hint went 1 service → "One stylist" → "These services are done by different stylists", dropdown stayed at "No preference" only, no disabled phantoms.
+
+**Stable point**
+- `stable-2026-04-19-site-master-multi-service-fix` → (see `RELEASES.md`)
+
+---
+
 ## 2026-04-19 (ночь) — «Public site clarity»
 
 ### Russian

@@ -1051,6 +1051,15 @@
         } else if (startMin == null) {
           hintEl.hidden = false;
           hintEl.textContent = "Выберите день и время — и мы покажем точное расписание визита.";
+        } else if (picked.length >= 2) {
+          /* Когда у пользователя ≥2 услуги, мастер у каждой выбран и время
+           * выбрано — поясняем, что сервер сам выстроит цепочку:
+           *   10:00 стрижка → 10:30 маникюр → … (учитывая длительность и
+           *   buffer_after_min каждой услуги). Это снимает популярный
+           *   вопрос «а как 2 услуги в одно время?». */
+          hintEl.hidden = false;
+          hintEl.textContent =
+            "Услуги пойдут одна за другой — мы автоматически расставим время с учётом длительности.";
         } else {
           hintEl.hidden = true;
           hintEl.textContent = "";
@@ -1722,6 +1731,14 @@
       count: function () {
         return picked.length;
       },
+      /** Пересечение мастеров, способных выполнить ВСЕ услуги в корзине.
+       * Возвращает массив идентификаторов из CRM (data-master-id).
+       * Если корзина пуста — пустой массив. Используется вторым IIFE
+       * (form/master select), чтобы единообразно понимать «общих мастеров». */
+      getCommonMasters: function () {
+        if (!picked.length) return [];
+        return mastersForPickedCategories().slice();
+      },
       clear: function () {
         picked = [];
         syncFormCategory();
@@ -2236,7 +2253,39 @@
       while (masterSelect.children.length > 1) {
         masterSelect.removeChild(masterSelect.lastChild);
       }
-      if (list.length) {
+      /* Сколько услуг в корзине (если общий API из первого IIFE доступен).
+       * При >=1 — даже если общих мастеров на цепочку нет, всё равно даём
+       * «Не важно», чтобы клиент мог явно выбрать «мы подберём» как fallback
+       * на цепочку. Иначе select схлопывается до одной строки «Выберите
+       * мастера» и кажется, что «не даёт выбрать». */
+      var chainApi = (typeof globalThis !== "undefined") ? globalThis.__SITE_BOOKING_CHAIN__ : null;
+      var pickedCount =
+        chainApi && typeof chainApi.count === "function" ? chainApi.count() : 0;
+      /* HARD-RAIL: если корзина непустая — окончательно сводим список к
+       * пересечению мастеров, способных выполнить ВСЕ услуги (через единый
+       * API getCommonMasters). Это страхует от случаев, когда в setMasterOptions
+       * приходит «широкий» список (например, прямо из API /api/public/employees
+       * по последней услуге, или из старого demo fallback), и ломает интуицию
+       * клиента: «вижу мастера в dropdown, но он disabled, потому что не
+       * делает другую услугу из корзины». Лучше совсем не показывать. */
+      if (
+        pickedCount > 0 &&
+        chainApi &&
+        typeof chainApi.getCommonMasters === "function"
+      ) {
+        var common = chainApi.getCommonMasters();
+        if (!common.length) {
+          list = [];
+        } else {
+          var allowSet = {};
+          for (var ci = 0; ci < common.length; ci++)
+            allowSet[String(common[ci])] = true;
+          list = list.filter(function (m) {
+            return allowSet[String(m.id)];
+          });
+        }
+      }
+      if (list.length || pickedCount > 0) {
         var anyOpt = document.createElement("option");
         anyOpt.value = ANY_MASTER_ID;
         anyOpt.textContent = anyMasterLabel();
@@ -2260,6 +2309,72 @@
         suppressNextMasterScroll = true;
         masterSelect.dispatchEvent(new Event("change", { bubbles: true }));
       }
+      /* Подсказка под селектом и required-логика — после того, как опции
+       * пересобраны. commonMasterCount = реальное число конкретных мастеров
+       * (без учёта «Не важно») в текущем dropdown. */
+      updateMasterHint(pickedCount, list.length);
+    }
+
+    /** Текст подсказки под select[data-master-select] и логика required.
+     *  Состояния:
+     *    - корзина пуста → hint скрыт, select required;
+     *    - 1 услуга → "Можно оставить ʼНе важноʼ — мы подберём свободного";
+     *    - 2+ услуги, общий мастер есть → "Один мастер на всю цепочку (необязательно). Или выберите по одному в карточках выше";
+     *    - 2+ услуги, общего мастера нет → "Эти услуги делают разные мастера — выберите по одному в карточках выше";
+     *  required снимается при picked>=1, потому что мастер уже задаётся
+     *  per-service в карточках корзины (chips). Серверный RPC принимает
+     *  staff_id="any" и сам подбирает свободного. */
+    function updateMasterHint(pickedCount, commonMasterCount) {
+      var hintEl = bookingForm
+        ? bookingForm.querySelector("[data-master-hint]")
+        : document.querySelector("[data-master-hint]");
+      var lang = String(
+        (document.documentElement && document.documentElement.getAttribute("lang")) || "et"
+      )
+        .toLowerCase()
+        .slice(0, 2);
+      if (lang !== "ru" && lang !== "et" && lang !== "fi" && lang !== "en") lang = "et";
+
+      if (!pickedCount || pickedCount <= 0) {
+        if (hintEl) {
+          hintEl.hidden = true;
+          hintEl.textContent = "";
+        }
+        if (masterSelect) masterSelect.required = true;
+        return;
+      }
+
+      if (masterSelect) masterSelect.required = false;
+      if (!hintEl) return;
+
+      var msg = "";
+      if (pickedCount === 1) {
+        msg = lang === "ru"
+          ? "Можно оставить «Не важно» — мы подберём свободного мастера."
+          : lang === "en"
+            ? "You can leave “No preference” — we’ll assign a free stylist."
+            : lang === "fi"
+              ? "Voit jättää “Ei väliä” — valitsemme vapaan stylistin."
+              : "Võid jätta “Pole vahet” — valime vaba meistri.";
+      } else if (commonMasterCount > 0) {
+        msg = lang === "ru"
+          ? "Один мастер на всю цепочку (необязательно). Или выберите по одному в карточках выше."
+          : lang === "en"
+            ? "One stylist for the whole chain (optional). Or pick one per service in the cards above."
+            : lang === "fi"
+              ? "Yksi stylisti koko ketjuun (valinnainen). Tai valitse yksi per palvelu yllä."
+              : "Üks meister kogu ahelale (valikuline). Või vali igale teenusele eraldi ülal.";
+      } else {
+        msg = lang === "ru"
+          ? "Эти услуги делают разные мастера — выберите по одному в карточках выше."
+          : lang === "en"
+            ? "These services are done by different stylists — pick one in each card above."
+            : lang === "fi"
+              ? "Nämä palvelut tekevät eri stylistit — valitse yksi kussakin kortissa yllä."
+              : "Neid teenuseid teevad erinevad meistrid — vali igas kaardis ülal eraldi.";
+      }
+      hintEl.textContent = msg;
+      hintEl.hidden = false;
     }
 
     function publicStaffAsMasterOptions() {
@@ -2298,13 +2413,17 @@
     function filterMastersByFormCategory(masters) {
       if (!Array.isArray(masters)) return [];
 
-      /* 1) Если что-то уже выбрано в корзине — берём пересечение по
-       *    data-service-masters (точная связка staff_services из CRM). */
-      if (typeof picked !== "undefined" && picked && picked.length) {
-        var allowedByPicks = mastersForPickedCategories();
-        if (!allowedByPicks || !allowedByPicks.length) return [];
+      /* 1) Если что-то уже выбрано в корзине — берём пересечение мастеров,
+       *    способных выполнить ВСЕ услуги. Источник истины — первый IIFE
+       *    (там mastersForPickedCategories() умеет считать пересечение
+       *    по staff_services). Это единый ответ для chain-формы. */
+      var chainApi = globalThis.__SITE_BOOKING_CHAIN__;
+      if (chainApi && typeof chainApi.count === "function" && chainApi.count() > 0) {
+        var common =
+          typeof chainApi.getCommonMasters === "function" ? chainApi.getCommonMasters() : [];
+        if (!common.length) return [];
         var allowSet = {};
-        for (var p = 0; p < allowedByPicks.length; p++) allowSet[String(allowedByPicks[p])] = true;
+        for (var p = 0; p < common.length; p++) allowSet[String(common[p])] = true;
         return masters.filter(function (m) {
           return allowSet[String(m.id)];
         });
@@ -2422,7 +2541,25 @@
      * Чтобы master dropdown пересчитался под новый набор услуг, ждём событие
      * «salon-picks-changed» (диспатчится из renderList). */
     window.addEventListener("salon-picks-changed", function () {
-      if (!apiBooking) refillDemoMastersForCurrentService();
+      if (!apiBooking) {
+        refillDemoMastersForCurrentService();
+        return;
+      }
+      /* В режиме apiBooking опции пришли с сервера и не пересобираются на
+       * каждом изменении корзины. Но hint и required всё равно надо
+       * обновить под текущее число услуг + количество «реальных» мастеров
+       * в dropdown (не считая «Не важно»). */
+      var chainApi = globalThis.__SITE_BOOKING_CHAIN__;
+      var pickedCount =
+        chainApi && typeof chainApi.count === "function" ? chainApi.count() : 0;
+      var realMasters = 0;
+      if (masterSelect) {
+        for (var i = 0; i < masterSelect.options.length; i++) {
+          var v = masterSelect.options[i].value;
+          if (v && v !== ANY_MASTER_ID) realMasters++;
+        }
+      }
+      updateMasterHint(pickedCount, realMasters);
     });
 
     prevBtn.addEventListener("click", function () {
