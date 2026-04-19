@@ -89,6 +89,29 @@ function buildGroups(links, staffMap) {
   return out;
 }
 
+/**
+ * Принудительно «показать» секцию #meistrid.
+ *
+ * Зачем: разметка #meistrid использует `.reveal` (opacity:0 → .is-visible через
+ * IntersectionObserver в script.js). Когда страница грузится с пустым
+ * placeholder-ом «Состав команды подгружается из CRM…», `.team-block` низкий
+ * (~40px) и при определённых rootMargin/threshold (-8% bottom + 0.08) observer
+ * может не сработать. После того как site-team.mjs уже принёс 7 категорий
+ * мастеров — секция в DOM есть, но всё ещё opacity:0, и визуально вместо неё
+ * пустой провал 250–300px между «Изменения цен…» и «О салоне».
+ *
+ * Решение: после того как мы реально нарисовали мастеров, форсим
+ * `.is-visible` на всех `.reveal` внутри #meistrid — данные пришли,
+ * нет смысла ждать observer, тем более что он мог уже пропустить элемент.
+ */
+function forceRevealMeistrid() {
+  const root = document.getElementById("meistrid");
+  if (!root) return;
+  root.querySelectorAll(".reveal").forEach((el) => {
+    el.classList.add("is-visible");
+  });
+}
+
 function renderTeam(groups, staffList) {
   const root = document.querySelector("#meistrid .team-groups");
   if (!root) return;
@@ -98,6 +121,7 @@ function renderTeam(groups, staffList) {
       '<div class="team-group"><h3 class="team-group-title">Meistrid</h3><ul class="team-names">' +
       "<li>—</li>" +
       "</ul></div>";
+    forceRevealMeistrid();
     return;
   }
 
@@ -108,6 +132,8 @@ function renderTeam(groups, staffList) {
         .map((s) => '<li data-master-id="' + esc(String(s.id)) + '">' + esc(String(s.name || "")) + "</li>")
         .join("") +
       "</ul></div>";
+    forceRevealMeistrid();
+    window.dispatchEvent(new CustomEvent("site-team-rendered"));
     return;
   }
 
@@ -130,6 +156,7 @@ function renderTeam(groups, staffList) {
     })
     .join("");
 
+  forceRevealMeistrid();
   window.dispatchEvent(new CustomEvent("site-team-rendered"));
 }
 
