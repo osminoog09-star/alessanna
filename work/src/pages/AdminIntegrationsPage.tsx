@@ -5,15 +5,18 @@ import { supabase } from "../lib/supabase";
  * /admin/integrations — управление внешними интеграциями салона.
  *
  * Сейчас поддержано:
- *   * Google Calendar — статус подключения и outbox-очередь записей,
- *     которые ждут отправки в календарь салона.
+ *   * Google Calendar САЛОНА — общий календарь, в который попадают все записи.
+ *   * Google Calendar МАСТЕРОВ — каждый сотрудник опционально подключает
+ *     свой Google Calendar, и его персональные записи дублируются туда.
+ *
+ * Никаких email-уведомлений салону/клиенту НЕ отправляется (это спам);
+ * Google Calendar сам уведомляет владельца календаря через push/web/mobile.
  *
  * Реальная отправка событий в Google Calendar делается отдельным
  * Supabase Edge Function под `service_role`-ключом (этап 2).
  * Эта страница — пульт оператора:
- *   - видеть статус подключения (`salon_settings.google_calendar_status`);
- *   - инициировать подключение (когда Edge Function задеплоен и
- *     `salon_settings.google_calendar_auth_url` настроен);
+ *   - видеть статус подключения салона и каждого сотрудника;
+ *   - инициировать подключение (когда Edge Function задеплоен);
  *   - отслеживать outbox-очередь, повторять упавшие задачи,
  *     «прогонять» накопившиеся skipped-задачи после первого подключения.
  */
@@ -26,7 +29,6 @@ type SettingsMap = {
   google_calendar_id: string | null;
   google_calendar_last_sync_at: string | null;
   google_calendar_last_error: string | null;
-  salon_calendar_email: string | null;
 };
 
 const DEFAULTS: SettingsMap = {
@@ -35,13 +37,24 @@ const DEFAULTS: SettingsMap = {
   google_calendar_id: null,
   google_calendar_last_sync_at: null,
   google_calendar_last_error: null,
-  salon_calendar_email: null,
+};
+
+type StaffCalendarRow = {
+  id: string;
+  name: string;
+  is_active: boolean;
+  google_calendar_status: GoogleStatus;
+  google_calendar_account_email: string | null;
+  google_calendar_id: string | null;
+  google_calendar_last_sync_at: string | null;
+  google_calendar_last_error: string | null;
 };
 
 type OutboxRow = {
   id: string;
   appointment_id: string | null;
   kind: "google_calendar_event" | "email" | "sms" | "telegram";
+  target_scope: string;
   payload: Record<string, unknown>;
   status: "pending" | "sent" | "error" | "skipped";
   attempts: number;
@@ -54,6 +67,7 @@ type OutboxRow = {
 };
 
 type StatusFilter = "all" | OutboxRow["status"];
+type ScopeFilter = "all" | "salon" | "staff";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -99,15 +113,33 @@ function googleStatusBadge(s: GoogleStatus): { label: string; className: string 
   }
 }
 
+/* Превращаем target_scope из БД ('salon' / 'staff:<uuid>') в человеко-читаемое
+ * имя. Для 'staff:<uuid>' пытаемся подставить имя из staffById (карта),
+ * иначе показываем «Мастер · короткий-id». */
+function scopeLabel(scope: string, staffById: Map<string, string>): string {
+  if (scope === "salon") return "Салон";
+  if (scope.startsWith("staff:")) {
+    const id = scope.slice("staff:".length);
+    const name = staffById.get(id);
+    return name ? `Мастер · ${name}` : `Мастер · ${id.slice(0, 8)}`;
+  }
+  return scope;
+}
+
 export function AdminIntegrationsPage() {
   const [settings, setSettings] = useState<SettingsMap>(DEFAULTS);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsError, setSettingsError] = useState<string | null>(null);
 
+  const [staff, setStaff] = useState<StaffCalendarRow[]>([]);
+  const [staffLoading, setStaffLoading] = useState(true);
+  const [staffError, setStaffError] = useState<string | null>(null);
+
   const [outbox, setOutbox] = useState<OutboxRow[]>([]);
   const [outboxLoading, setOutboxLoading] = useState(true);
   const [outboxError, setOutboxError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
   const loadSettings = useCallback(async () => {
@@ -121,7 +153,6 @@ export function AdminIntegrationsPage() {
         "google_calendar_id",
         "google_calendar_last_sync_at",
         "google_calendar_last_error",
-        "salon_calendar_email",
       ]);
     if (error) {
       setSettingsError(error.message);
@@ -145,6 +176,35 @@ export function AdminIntegrationsPage() {
     setSettingsLoading(false);
   }, []);
 
+  const loadStaff = useCallback(async () => {
+    setStaffError(null);
+    const { data, error } = await supabase
+      .from("staff")
+      .select(
+        "id,name,is_active,google_calendar_status,google_calendar_account_email,google_calendar_id,google_calendar_last_sync_at,google_calendar_last_error"
+      )
+      .order("name", { ascending: true });
+    if (error) {
+      setStaffError(error.message);
+      setStaffLoading(false);
+      return;
+    }
+    setStaff(
+      ((data ?? []) as Array<Partial<StaffCalendarRow>>).map((r) => ({
+        id: String(r.id ?? ""),
+        name: String(r.name ?? ""),
+        is_active: r.is_active !== false,
+        google_calendar_status:
+          (r.google_calendar_status as GoogleStatus | undefined) ?? "disconnected",
+        google_calendar_account_email: r.google_calendar_account_email ?? null,
+        google_calendar_id: r.google_calendar_id ?? null,
+        google_calendar_last_sync_at: r.google_calendar_last_sync_at ?? null,
+        google_calendar_last_error: r.google_calendar_last_error ?? null,
+      }))
+    );
+    setStaffLoading(false);
+  }, []);
+
   const loadOutbox = useCallback(async () => {
     setOutboxError(null);
     let q = supabase
@@ -153,6 +213,8 @@ export function AdminIntegrationsPage() {
       .order("created_at", { ascending: false })
       .limit(100);
     if (statusFilter !== "all") q = q.eq("status", statusFilter);
+    if (scopeFilter === "salon") q = q.eq("target_scope", "salon");
+    else if (scopeFilter === "staff") q = q.like("target_scope", "staff:%");
     const { data, error } = await q;
     if (error) {
       setOutboxError(error.message);
@@ -161,18 +223,19 @@ export function AdminIntegrationsPage() {
     }
     setOutbox((data ?? []) as OutboxRow[]);
     setOutboxLoading(false);
-  }, [statusFilter]);
+  }, [statusFilter, scopeFilter]);
 
   useEffect(() => {
     void loadSettings();
-  }, [loadSettings]);
+    void loadStaff();
+  }, [loadSettings, loadStaff]);
 
   useEffect(() => {
     void loadOutbox();
   }, [loadOutbox]);
 
-  /* Перерисовываем outbox каждые 15 сек, чтобы видеть как Edge Function
-   * (когда задеплоится) меняет статусы pending → sent. */
+  /* Auto-refresh queue every 15 sec — видно как Edge Function (когда
+   * задеплоится) меняет статусы pending → sent. */
   useEffect(() => {
     const id = window.setInterval(() => {
       void loadOutbox();
@@ -186,6 +249,12 @@ export function AdminIntegrationsPage() {
     return acc;
   }, [outbox]);
 
+  const staffById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of staff) m.set(s.id, s.name);
+    return m;
+  }, [staff]);
+
   async function retryOne(id: string) {
     setActionBusy(id);
     const { error } = await supabase.rpc("outbox_retry", { p_id: id });
@@ -197,15 +266,47 @@ export function AdminIntegrationsPage() {
     void loadOutbox();
   }
 
-  async function resumeAllSkipped() {
-    setActionBusy("resume-all");
-    const { error } = await supabase.rpc("outbox_resume_skipped");
+  async function resumeAllSkipped(scope: "all" | "salon" | "staff") {
+    const key = `resume-${scope}`;
+    setActionBusy(key);
+    /* p_scope=null → все; для 'salon' и 'staff' будем фильтровать на
+     * клиенте через несколько вызовов (точнее: для 'staff' нет одного
+     * текста, у каждого мастера свой). Поэтому:
+     *   - 'all'   → outbox_resume_skipped()
+     *   - 'salon' → outbox_resume_skipped('salon')
+     *   - 'staff' → outbox_resume_skipped() и потом откат для салона
+     * Чтобы не плодить RPC, для 'staff' пойдём прямо через UPDATE-RPC
+     * с null + предварительный UPDATE статуса salon-задач не трогаем
+     * (они уже в их собственном состоянии). Но проще: пока 'staff'
+     * ведёт себя как 'all' — это безопасно, поскольку salon-задача
+     * в отключённом состоянии всё равно skipped. */
+    const args =
+      scope === "salon"
+        ? { p_scope: "salon" }
+        : scope === "all"
+          ? { p_scope: null }
+          : { p_scope: null };
+    const { error } = await supabase.rpc("outbox_resume_skipped", args);
     setActionBusy(null);
     if (error) {
       setOutboxError(error.message);
       return;
     }
     void loadOutbox();
+  }
+
+  async function disconnectStaffCalendar(staffId: string) {
+    const key = `staff-disconnect-${staffId}`;
+    setActionBusy(key);
+    const { error } = await supabase.rpc("staff_google_calendar_disconnect", {
+      p_staff_id: staffId,
+    });
+    setActionBusy(null);
+    if (error) {
+      setStaffError(error.message);
+      return;
+    }
+    void loadStaff();
   }
 
   const status = settings.google_calendar_status;
@@ -216,12 +317,14 @@ export function AdminIntegrationsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Интеграции</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Внешние сервисы салона: календарь, уведомления, оплата. Здесь видно
-          статус подключения и очередь доставки.
+          Внешние сервисы салона: календари, оплата. Здесь видно статус
+          подключения и очередь синхронизации. E-mail-уведомления специально не
+          отправляются — Google Calendar сам уведомит владельца через push/web/
+          mobile.
         </p>
       </div>
 
-      {/* ─────── Google Calendar ─────── */}
+      {/* ─────── Google Calendar — Salon ─────── */}
       <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -234,10 +337,10 @@ export function AdminIntegrationsPage() {
               </svg>
             </span>
             <div>
-              <h2 className="text-lg font-semibold text-white">Google Calendar</h2>
+              <h2 className="text-lg font-semibold text-white">Google Calendar — Салон</h2>
               <p className="text-xs text-zinc-500">
-                Каждая новая запись из CRM/публичного сайта автоматически попадает в
-                выбранный календарь Google.
+                Общий рабочий календарь салона. В него попадают <strong>все</strong> записи —
+                с публичного сайта и созданные администратором в CRM.
               </p>
             </div>
           </div>
@@ -288,10 +391,11 @@ export function AdminIntegrationsPage() {
           </div>
           <div className="rounded-lg border border-zinc-800 bg-black/40 p-3">
             <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Резервный e-mail салона
+              Сервис уведомлений
             </dt>
-            <dd className="mt-1 truncate text-sm text-zinc-100">
-              {settings.salon_calendar_email ?? <span className="text-zinc-500">не задан</span>}
+            <dd className="mt-1 text-sm text-zinc-100">
+              <span className="text-zinc-300">Только Google Calendar</span>
+              <span className="ml-1 text-[10px] text-zinc-600">(никаких писем)</span>
             </dd>
           </div>
         </dl>
@@ -303,9 +407,6 @@ export function AdminIntegrationsPage() {
           </p>
         )}
 
-        {/* Подключение пока недоступно — Edge Function ещё не задеплоен.
-         * Когда задеплоится, эта плашка превратится в активную кнопку
-         * «Подключить Google Calendar» (open OAuth URL в новой вкладке). */}
         <div className="mt-5 rounded-lg border border-amber-800/40 bg-amber-950/30 p-4 text-sm text-amber-100">
           <p className="font-semibold">Подключение по OAuth — следующий этап</p>
           <p className="mt-1 text-xs leading-relaxed text-amber-200/80">
@@ -314,17 +415,127 @@ export function AdminIntegrationsPage() {
             Function с Google OAuth client. Скажи «подключаем календарь» и я
             пройдусь по шагам Google Cloud + деплой одной командой.
           </p>
-          <p className="mt-2 text-[11px] text-amber-200/70">
-            Что нужно от тебя: <strong>Gmail-аккаунт салона</strong>,{" "}
-            <strong>Google Cloud Project</strong> с включённым Calendar API,{" "}
-            <strong>OAuth 2.0 Client ID</strong> (Web application). Я дам пошаговую
-            инструкцию когда будем готовы — занимает ~30 минут.
-          </p>
         </div>
 
         {settingsLoading && (
           <p className="mt-3 text-[11px] text-zinc-600">Загружаем статус…</p>
         )}
+      </section>
+
+      {/* ─────── Google Calendar — Staff ─────── */}
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+        <header>
+          <h2 className="text-lg font-semibold text-white">Календари мастеров</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Каждый мастер опционально подключает свой Google Calendar — туда
+            будут дублироваться только <strong>его</strong> записи. Это удобно,
+            если мастер хочет видеть расписание салона в одном календаре с
+            личными встречами.
+          </p>
+        </header>
+
+        {staffError && (
+          <p className="mt-3 rounded-md border border-rose-700/40 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
+            {staffError}
+          </p>
+        )}
+
+        <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
+          <table className="w-full table-fixed text-left text-sm">
+            <thead className="bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th className="w-[26%] px-3 py-2">Мастер</th>
+                <th className="w-[16%] px-3 py-2">Статус</th>
+                <th className="w-[26%] px-3 py-2">Подключённый Google-аккаунт</th>
+                <th className="w-[16%] px-3 py-2">Синхронизация</th>
+                <th className="w-[16%] px-3 py-2 text-right">Действие</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-900">
+              {staffLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-3 py-6 text-center text-xs text-zinc-500">
+                    Загрузка…
+                  </td>
+                </tr>
+              ) : staff.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-3 py-6 text-center text-xs text-zinc-500">
+                    В CRM пока нет мастеров. Добавьте в разделе «Персонал».
+                  </td>
+                </tr>
+              ) : (
+                staff.map((s) => {
+                  const badge = googleStatusBadge(s.google_calendar_status);
+                  const disconnectKey = `staff-disconnect-${s.id}`;
+                  return (
+                    <tr key={s.id} className="bg-black/40 align-top hover:bg-zinc-900/40">
+                      <td className="px-3 py-2 text-sm text-zinc-100">
+                        <div className="flex items-center gap-2">
+                          <span>{s.name}</span>
+                          {!s.is_active && (
+                            <span className="rounded-full border border-zinc-700 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-zinc-500">
+                              неактивен
+                            </span>
+                          )}
+                        </div>
+                        {s.google_calendar_last_error && (
+                          <p className="mt-1 text-[10px] text-rose-300" title={s.google_calendar_last_error}>
+                            {s.google_calendar_last_error}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${badge.className}`}
+                        >
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-zinc-300">
+                        {s.google_calendar_account_email ?? (
+                          <span className="text-zinc-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-zinc-400">
+                        {formatDate(s.google_calendar_last_sync_at)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {s.google_calendar_status === "connected" || s.google_calendar_status === "error" ? (
+                          <button
+                            type="button"
+                            onClick={() => void disconnectStaffCalendar(s.id)}
+                            disabled={actionBusy === disconnectKey}
+                            className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] font-medium text-zinc-200 transition hover:border-rose-700 hover:text-rose-200 disabled:opacity-40"
+                            title="Отозвать токен и стереть привязку (мастер сможет подключить заново)"
+                          >
+                            {actionBusy === disconnectKey ? "…" : "Отключить"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            className="cursor-not-allowed rounded-md border border-zinc-800 bg-zinc-900/40 px-2 py-1 text-[10px] font-medium text-zinc-500"
+                            title="Появится после деплоя Edge Function для Google OAuth"
+                          >
+                            Подключить
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-3 text-[11px] text-zinc-600">
+          Кнопка «Подключить» станет активной после деплоя Edge Function. До
+          этого момента личные записи мастеров копятся в очереди как{" "}
+          <code className="text-zinc-400">skipped</code> и автоматически
+          запустятся, когда мастер впервые подключится.
+        </p>
       </section>
 
       {/* ─────── Outbox ─────── */}
@@ -333,15 +544,16 @@ export function AdminIntegrationsPage() {
           <div>
             <h2 className="text-lg font-semibold text-white">Очередь синхронизации</h2>
             <p className="text-xs text-zinc-500">
-              Каждая новая запись попадает сюда. Edge Function обрабатывает строки
-              со статусом <code className="text-sky-300">pending</code> и отмечает
-              их <code className="text-emerald-300">sent</code>. Пока подключение не
-              сделано — записи копятся как <code className="text-zinc-300">skipped</code>.
+              Каждая новая запись попадает сюда — до двух строк: одна для
+              салона, одна для мастера. Edge Function обрабатывает строки со
+              статусом <code className="text-sky-300">pending</code>. Пока
+              подключения нет — копятся как{" "}
+              <code className="text-zinc-300">skipped</code>.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => void resumeAllSkipped()}
+            onClick={() => void resumeAllSkipped("all")}
             disabled={actionBusy === "resume-all" || counts.skipped === 0}
             className="rounded-md border border-emerald-700/60 bg-emerald-950/40 px-3 py-1.5 text-xs font-medium text-emerald-200 transition hover:bg-emerald-900/50 disabled:opacity-40"
             title="Перевести все skipped-задачи в pending — Edge Function их обработает при первом запуске."
@@ -378,6 +590,25 @@ export function AdminIntegrationsPage() {
               </button>
             );
           })}
+          <span className="mx-2 hidden h-4 w-px bg-zinc-800 sm:inline-block" />
+          {(["all", "salon", "staff"] as ScopeFilter[]).map((s) => {
+            const isActive = scopeFilter === s;
+            const label = s === "all" ? "Все адресаты" : s === "salon" ? "Салон" : "Мастера";
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setScopeFilter(s)}
+                className={`rounded-full border px-2.5 py-1 transition ${
+                  isActive
+                    ? "border-amber-500/60 bg-amber-950/50 text-amber-100"
+                    : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {outboxError && (
@@ -390,10 +621,10 @@ export function AdminIntegrationsPage() {
           <table className="w-full table-fixed text-left text-sm">
             <thead className="bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
               <tr>
-                <th className="w-[18%] px-3 py-2">Создано</th>
-                <th className="w-[14%] px-3 py-2">Статус</th>
-                <th className="w-[14%] px-3 py-2">Канал</th>
-                <th className="w-[34%] px-3 py-2">Запись</th>
+                <th className="w-[15%] px-3 py-2">Создано</th>
+                <th className="w-[12%] px-3 py-2">Статус</th>
+                <th className="w-[18%] px-3 py-2">Адресат</th>
+                <th className="w-[35%] px-3 py-2">Запись</th>
                 <th className="w-[10%] px-3 py-2 text-right">Попыток</th>
                 <th className="w-[10%] px-3 py-2 text-right">Действие</th>
               </tr>
@@ -418,6 +649,7 @@ export function AdminIntegrationsPage() {
                   const payload = row.payload || {};
                   const client = (payload as { client_name?: string }).client_name ?? "";
                   const startTime = (payload as { start_time?: string }).start_time ?? null;
+                  const isStaffScope = row.target_scope.startsWith("staff:");
                   return (
                     <tr key={row.id} className="bg-black/40 align-top hover:bg-zinc-900/40">
                       <td className="px-3 py-2 text-xs text-zinc-400">{formatDate(row.created_at)}</td>
@@ -434,7 +666,17 @@ export function AdminIntegrationsPage() {
                           </p>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs text-zinc-400">{row.kind}</td>
+                      <td className="px-3 py-2 text-xs">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 ${
+                            isStaffScope
+                              ? "border-amber-700/60 bg-amber-950/40 text-amber-200"
+                              : "border-sky-700/60 bg-sky-950/40 text-sky-200"
+                          }`}
+                        >
+                          {scopeLabel(row.target_scope, staffById)}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-xs">
                         <p className="truncate text-zinc-200">
                           {client || <span className="text-zinc-500">—</span>}

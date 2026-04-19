@@ -37,6 +37,12 @@ export type StaffTableRow = {
   rent_per_day?: number | null;
   /** Personal Google/Apple calendar e-mail for a future sync job. */
   calendar_email?: string | null;
+  /** Personal Google Calendar OAuth state (см. миграцию 036). */
+  google_calendar_status?: "disconnected" | "connecting" | "connected" | "error" | null;
+  google_calendar_account_email?: string | null;
+  google_calendar_id?: string | null;
+  google_calendar_last_sync_at?: string | null;
+  google_calendar_last_error?: string | null;
 };
 
 export type CategoryRow = {
