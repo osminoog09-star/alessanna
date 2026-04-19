@@ -1402,6 +1402,61 @@ body.site-ilusalong #hero.hero {
   display: none;
 }
 
+/* Эффект-«пульс» на кнопке корзины при добавлении услуги.
+ * Класс .is-cart-bumped ставится в JS на 0.9s, см. updateCartCountBadge.
+ * Цель — дать клиенту visual feedback «услуга упала в корзину»,
+ * не раскрывая корзину и не перекрывая ему обзор прайса. */
+.selection-summary--dock.is-cart-bumped .selection-dock-toggle {
+  animation: cart-bump 0.7s var(--ease-silk);
+}
+
+.selection-summary--dock.is-cart-bumped .selection-dock-toggle-count {
+  animation: cart-count-pop 0.7s var(--ease-silk);
+}
+
+@keyframes cart-bump {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 175, 99, 0.55);
+  }
+  35% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 14px rgba(212, 175, 99, 0);
+  }
+  70% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 175, 99, 0);
+  }
+}
+
+@keyframes cart-count-pop {
+  0% {
+    transform: scale(1);
+    background: rgba(168, 155, 130, 0.2);
+    color: var(--gold-bright);
+  }
+  40% {
+    transform: scale(1.5);
+    background: rgba(212, 175, 99, 0.7);
+    color: #1a1a1a;
+  }
+  100% {
+    transform: scale(1);
+    background: rgba(168, 155, 130, 0.2);
+    color: var(--gold-bright);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-summary--dock.is-cart-bumped .selection-dock-toggle,
+  .selection-summary--dock.is-cart-bumped .selection-dock-toggle-count {
+    animation: none;
+  }
+}
+
 .selection-summary--dock .selection-summary-kicker {
   display: none;
 }

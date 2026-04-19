@@ -436,12 +436,35 @@
       if (typeof updateSelectionDockOffset === "function") updateSelectionDockOffset();
     }
 
+    /* Сколько услуг было в корзине на прошлом ререндере. Нужно, чтобы
+     * пульсировать кнопку «Ваш выбор» только при ДОБАВЛЕНИИ (не при
+     * удалении) и не пульсировать «впустую» при первом маунте. */
+    var lastCartCount = 0;
+
     function updateCartCountBadge() {
       var n = picked.length;
       document.querySelectorAll("[data-cart-count]").forEach(function (el) {
         el.textContent = String(n);
         el.hidden = n === 0;
       });
+      /* Эффект-«пульс» на кнопке корзины. Корзина по умолчанию остаётся
+       * свернутой (см. updateDock + setDockCollapsed(true)), чтобы не
+       * перекрывать прайс. Чтобы клиент всё-таки понял «услуга упала
+       * в корзину», даём короткую (~0.7s) анимацию scale + glow на
+       * .selection-dock-toggle и pop-эффект на бейдже-счётчике.
+       * prefers-reduced-motion гасит анимацию через CSS. */
+      if (n > lastCartCount && summary && n > 0) {
+        summary.classList.remove("is-cart-bumped");
+        // forced reflow, чтобы анимация перезапустилась при быстрых
+        // повторных добавлениях (несколько услуг подряд):
+        // eslint-disable-next-line no-unused-expressions
+        void summary.offsetWidth;
+        summary.classList.add("is-cart-bumped");
+        setTimeout(function () {
+          if (summary) summary.classList.remove("is-cart-bumped");
+        }, 900);
+      }
+      lastCartCount = n;
     }
 
     var nameToId = {};
@@ -734,7 +757,13 @@
         summary.removeAttribute("data-dock-inited");
       } else if (!summary.hasAttribute("data-dock-inited")) {
         summary.setAttribute("data-dock-inited", "");
-        setDockCollapsed(readDockCollapsedPref());
+        /* По UX-feedback'у владельца: при первом добавлении услуги корзина
+         * НЕ должна автораскрываться и перекрывать прайс. Всегда стартуем
+         * со свернутой «закладки». «Услуга добавлена» сигнализируется
+         * пульсом на toggle (см. updateCartCountBadge). Если пользователь
+         * затем сам развернет — это разовый жест в рамках сессии,
+         * пересохранять preference не нужно. */
+        setDockCollapsed(true);
         return;
       }
       if (typeof updateSelectionDockOffset === "function") updateSelectionDockOffset();

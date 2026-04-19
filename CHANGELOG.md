@@ -18,6 +18,38 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (поздний вечер) — «Cart bump effect, no auto-open»
+
+### Russian
+
+**Изменено (публичный сайт, корзина «Ваш выбор»)**
+- При первом добавлении услуги корзина больше **не раскрывается автоматически**, перекрывая прайс. Теперь она появляется как узкая вертикальная закладка справа внизу с надписью «ВАШ ВЫБОР [N]». Это feedback от владельца после ревью скриншота.
+- Чтобы клиент всё-таки понял «услуга добавилась», добавлен короткий (~0.7s) **эффект-«пульс»** на кнопку корзины: scale(1) → scale(1.12) с золотым кольцом, плюс pop-анимация бейджа-счётчика (масштабируется до ×1.5 с тёплым акцентным фоном). Срабатывает только при ДОБАВЛЕНИИ (не при удалении), сравниваем `picked.length` с предыдущим значением. `prefers-reduced-motion: reduce` гасит анимацию.
+- Развернуть корзину — по клику пользователя; preference в `localStorage` больше не подсасывается на init (чтобы не было неприятных сюрпризов «открылось само, потому что когда-то ты её разворачивал»).
+- Smoke-протестировано локально (browser-use): 1 услуга → закладка свернута и пульсирует; 2-я услуга (другая категория) → счётчик стал 2, закладка осталась свернутой, прайс полностью виден.
+
+**Добавлено (`RELEASES.md`)**
+- Закреплено формальное «правило техники безопасности»: рискованные правки (форма записи, RPC, RLS, миграции, расписание) сначала проверяются локально + браузером + (если нужно) против локальной/staging-Supabase, и только потом мёрджатся в `main`. Это правило теперь часть процесса релиза.
+
+**Стабильная точка**
+- `stable-2026-04-19-site-cart-bump-no-autoopen` → (см. `RELEASES.md`)
+
+### English
+
+**Changed (public site, cart "Your selection")**
+- After adding the first service the cart no longer **auto-expands** and covers the price list. It appears as a slim vertical tab in the bottom-right ("YOUR SELECTION [N]"), per owner feedback on the screenshot.
+- To still confirm "the service was added", a short (~0.7s) **bump animation** plays on the cart button: scale(1) → scale(1.12) with a gold ring + pop on the count badge (scale to ×1.5, warm accent bg). Triggers only on ADD (not on remove); we compare `picked.length` to the previous render. `prefers-reduced-motion: reduce` mutes the animation.
+- Expanding the cart is now strictly user-initiated; we no longer read the dock-collapse preference from `localStorage` on init (so users aren't surprised by "it opened by itself because I once expanded it").
+- Local smoke (browser-use): 1 service → tab collapsed and pulsed; adding a 2nd service from a different category → counter became 2, tab stayed collapsed, price list fully visible.
+
+**Added (`RELEASES.md`)**
+- Pinned a formal "safety rule": risky changes (booking form, RPCs, RLS, migrations, scheduling) are first verified locally + via browser smoke + (if needed) against local/staging Supabase, and only then merged into `main`. This rule is now part of the release process.
+
+**Stable point**
+- `stable-2026-04-19-site-cart-bump-no-autoopen` → (see `RELEASES.md`)
+
+---
+
 ## 2026-04-19 (вечер) — «Multi-service master selection fix»
 
 ### Russian
