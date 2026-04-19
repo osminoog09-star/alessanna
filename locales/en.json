@@ -158,7 +158,18 @@
     "cancel": "Cancel",
     "statusPending": "pending",
     "statusConfirmed": "confirmed",
-    "statusCancelled": "cancelled"
+    "statusCancelled": "cancelled",
+    "search": "Search by name, phone, service, staff…",
+    "filterAll": "All",
+    "filterActive": "Active",
+    "filterPending": "Pending",
+    "filterConfirmed": "Confirmed",
+    "filterCancelled": "Cancelled",
+    "counter": "{{shown}} of {{total}}",
+    "empty": "No bookings yet.",
+    "emptyFiltered": "Nothing matches the current filters.",
+    "resetFilters": "Reset filters",
+    "loadError": "Failed to load bookings."
   },
   "employees": {
     "title": "Employees",

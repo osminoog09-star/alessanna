@@ -31,6 +31,7 @@ type CommandItem = {
   shortcut?: string[];
   /** В каком контексте элемент доступен; null = всегда. */
   manageOnly?: boolean;
+  adminOnly?: boolean;
   group: "quick" | "go" | "recent";
   icon?: ReactNode;
   perform: (ctx: PaletteCtx) => void;
@@ -112,7 +113,7 @@ export function CommandPalette({
 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { canManage, setPreviewRole, previewRole } = useEffectiveRole();
+  const { canManage, isAdminEffective, setPreviewRole, previewRole } = useEffectiveRole();
   const { isAdmin } = useAuth();
 
   const [recent, setRecent] = useState<string[]>(() => loadRecent());
@@ -284,7 +285,7 @@ export function CommandPalette({
         id: "go./admin/integrations",
         label: t("nav.adminIntegrations"),
         group: "go",
-        manageOnly: true,
+        adminOnly: true,
         icon: ICON.integrations,
         perform: ({ navigate, close }) => {
           navigate("/admin/integrations");
@@ -306,8 +307,13 @@ export function CommandPalette({
   );
 
   const visibleItems = useMemo(
-    () => allItems.filter((i) => !i.manageOnly || canManage),
-    [allItems, canManage]
+    () =>
+      allItems.filter((i) => {
+        if (i.adminOnly && !isAdminEffective) return false;
+        if (i.manageOnly && !canManage) return false;
+        return true;
+      }),
+    [allItems, canManage, isAdminEffective]
   );
 
   const ctx: PaletteCtx = useMemo(

@@ -1115,19 +1115,71 @@ export function AdminIntegrationsPage() {
         </p>
       </section>
 
-      {/* ─────── Outbox ─────── */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
-        <header className="flex flex-wrap items-baseline justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Очередь синхронизации</h2>
-            <p className="text-xs text-zinc-500">
-              Каждая новая запись попадает сюда: одна строка <em>«Салон»</em>{" "}
-              всегда, плюс одна <em>«Мастер»</em> только если у мастера свой
-              OAuth. Edge Function обрабатывает строки со статусом{" "}
-              <code className="text-sky-300">pending</code>; пока подключения
-              нет — копятся как <code className="text-zinc-300">skipped</code>.
-            </p>
+      {/* ─────── Outbox (диагностика) ───────
+       * Секция нужна редко: только при отладке синхронизации календаря.
+       * Раньше она занимала добрую треть длинной страницы и выглядела как
+       * «пульт с кучей режимов». Теперь свёрнута в <details> по умолчанию;
+       * автоматически разворачивается, если есть error/skipped (значит —
+       * админу действительно надо туда заглянуть), плюс счётчики проблем
+       * выведены в заголовок, чтобы было видно даже когда блок свёрнут. */}
+      <details
+        open={counts.error > 0 || counts.skipped > 0}
+        className="group rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 [&_summary::-webkit-details-marker]:hidden"
+      >
+        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 list-none">
+          <div className="flex items-center gap-3">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4 text-zinc-500 transition group-open:rotate-90"
+              aria-hidden="true"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                Очередь синхронизации
+                <span className="ml-2 text-xs font-normal text-zinc-500">
+                  · диагностика
+                </span>
+              </h2>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Журнал того, что Edge Function отправляет в Google Calendar.
+                Раскройте, чтобы посмотреть статусы и повторить ошибочные задачи.
+              </p>
+            </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {counts.error > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-rose-700/50 bg-rose-950/40 px-2 py-0.5 text-[10px] font-medium text-rose-200">
+                ⚠ {counts.error} ошибок
+              </span>
+            )}
+            {counts.skipped > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+                ⏸ {counts.skipped} пропущено
+              </span>
+            )}
+            {counts.pending > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-sky-700/50 bg-sky-950/40 px-2 py-0.5 text-[10px] font-medium text-sky-200">
+                ⏳ {counts.pending} в очереди
+              </span>
+            )}
+          </div>
+        </summary>
+
+        <header className="mt-5 flex flex-wrap items-baseline justify-between gap-3">
+          <p className="text-xs text-zinc-500">
+            Каждая новая запись попадает сюда: одна строка <em>«Салон»</em>{" "}
+            всегда, плюс одна <em>«Мастер»</em> только если у мастера свой
+            OAuth. Edge Function обрабатывает строки со статусом{" "}
+            <code className="text-sky-300">pending</code>; пока подключения
+            нет — копятся как <code className="text-zinc-300">skipped</code>.
+          </p>
           <button
             type="button"
             onClick={() => void resumeAllSkipped("all")}
@@ -1292,7 +1344,7 @@ export function AdminIntegrationsPage() {
         <p className="mt-3 text-[11px] text-zinc-600">
           Очередь обновляется автоматически каждые 15 секунд.
         </p>
-      </section>
+      </details>
     </div>
   );
 }

@@ -117,7 +117,14 @@ export function AdminSupportPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ThreadDetail | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [statusFilter, setStatusFilter] = useState<"" | Status>("");
+  /* «Активные» — это NULL-фильтр на стороне клиента: open ИЛИ pending.
+   * Бэкенд RPC принимает только конкретный Status или null = все.
+   * Поэтому держим отдельный «view»-стейт и пересчитываем `statusFilter`
+   * (что уходит в RPC) и `clientStatusFilter` (для дополнительного фильтра
+   * на клиенте, чтобы не показывать closed). */
+  type StatusView = "active" | "all" | "closed";
+  const [statusView, setStatusView] = useState<StatusView>("active");
+  const statusFilter: "" | Status = statusView === "closed" ? "closed" : "";
   const [topicFilter, setTopicFilter] = useState<"" | Topic>("");
   const [listLoading, setListLoading] = useState(true);
   const [threadLoading, setThreadLoading] = useState(false);
@@ -216,7 +223,12 @@ export function AdminSupportPage() {
       .then(() => void loadList());
   }, [selectedId, detail?.unread_for_staff, staffMember, loadList]);
 
-  const visibleThreads = useMemo(() => threads, [threads]);
+  const visibleThreads = useMemo(() => {
+    if (statusView === "active") {
+      return threads.filter((th) => th.status === "open" || th.status === "pending");
+    }
+    return threads;
+  }, [threads, statusView]);
 
   const uploadAttachment = async (): Promise<{
     url: string;
@@ -341,42 +353,63 @@ export function AdminSupportPage() {
             {isAdmin ? t("support.visibilityAdmin") : t("support.visibilityManager")}
           </p>
         </div>
+        {/* Один компактный фильтр-bar вместо двух рядов pill-кнопок:
+         *   • статус (3 кнопки, по умолчанию «Активные» = open+pending);
+         *   • тема — обычный select для админа (4 значения, занимает мало места).
+         * Раньше было 4 + 4 = 8 кнопок одинаковой плотности, что и
+         * вызывало жалобу «много вкладок и непонятно». */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-black/30 p-1">
-            {(["", "open", "pending", "closed"] as const).map((s) => (
+          <div
+            role="tablist"
+            aria-label={t("support.filterStatusLabel")}
+            className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-black/30 p-1"
+          >
+            {(["active", "all", "closed"] as const).map((s) => (
               <button
-                key={s || "all"}
+                key={s}
                 type="button"
-                onClick={() => setStatusFilter(s)}
+                role="tab"
+                aria-selected={statusView === s}
+                onClick={() => setStatusView(s)}
                 className={
                   "rounded-md px-2.5 py-1 text-xs font-medium transition " +
-                  (statusFilter === s
+                  (statusView === s
                     ? "bg-zinc-200 text-black"
-                    : "text-zinc-400 hover:bg-zinc-900")
+                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100")
                 }
               >
-                {s === "" ? t("support.filterAll") : statusLabel(t, s as Status)}
+                {s === "active"
+                  ? t("support.filterActive")
+                  : s === "closed"
+                    ? t("support.filterClosed")
+                    : t("support.filterAll")}
               </button>
             ))}
           </div>
           {isAdmin && (
-            <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-black/30 p-1">
-              {(["", "salon", "site", "staff"] as const).map((tp) => (
-                <button
-                  key={tp || "all"}
-                  type="button"
-                  onClick={() => setTopicFilter(tp)}
-                  className={
-                    "rounded-md px-2.5 py-1 text-xs font-medium transition " +
-                    (topicFilter === tp
-                      ? "bg-zinc-200 text-black"
-                      : "text-zinc-400 hover:bg-zinc-900")
-                  }
-                >
-                  {tp === "" ? t("support.filterAll") : topicLabel(t, tp as Topic)}
-                </button>
-              ))}
-            </div>
+            <label className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-black/30 px-2 py-1">
+              <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+                {t("support.filterTopicLabel")}
+              </span>
+              <select
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value as "" | Topic)}
+                className="bg-transparent text-xs text-zinc-100 focus:outline-none"
+              >
+                <option value="" className="bg-zinc-900">
+                  {t("support.filterAllTopics")}
+                </option>
+                <option value="salon" className="bg-zinc-900">
+                  {t("support.topicSalon")}
+                </option>
+                <option value="site" className="bg-zinc-900">
+                  {t("support.topicSite")}
+                </option>
+                <option value="staff" className="bg-zinc-900">
+                  {t("support.topicStaff")}
+                </option>
+              </select>
+            </label>
           )}
         </div>
       </header>
@@ -539,31 +572,38 @@ export function AdminSupportPage() {
                         </button>
                       )}
 
-                      {/* Сегментированный селектор «Статус: …» — явный лейбл, чтобы
-                          отличался от status-badge (та же визуальная пилюля
-                          вводила в заблуждение: пользователь не понимал, что
-                          это кликабельные кнопки). */}
-                      <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-black/40 px-1.5 py-1">
-                        <span className="px-1 text-[10px] uppercase tracking-wider text-zinc-500">
-                          {t("support.statusLabel")}:
-                        </span>
-                        {(["open", "pending"] as const).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => void changeStatus(s)}
-                            disabled={detail.status === s}
-                            className={
-                              "rounded-md px-2 py-0.5 text-[11px] font-medium transition " +
-                              (detail.status === s
-                                ? "bg-zinc-200 text-black cursor-default"
-                                : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100")
-                            }
-                          >
-                            {statusLabel(t, s)}
-                          </button>
-                        ))}
-                      </div>
+                      {/* Раньше тут был сегментированный селектор «Статус: open/pending».
+                       * Дублировал status-badge в заголовке и сбивал с толку
+                       * (выглядел как информационная пилюля, а был кликабельным).
+                       * Теперь — одна явная кнопка «В ожидание» / «Вернуть в работу»,
+                       * рядом с главной «Закрыть обращение». Всего 2 действия
+                       * вместо 2 кнопок-выбора + 1 кнопки = 3, и логика очевидна. */}
+                      {detail.status === "open" && (
+                        <button
+                          type="button"
+                          onClick={() => void changeStatus("pending")}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 transition hover:bg-zinc-800"
+                          title={t("support.markPendingHint")}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                            <rect x="6" y="5" width="4" height="14" /><rect x="14" y="5" width="4" height="14" />
+                          </svg>
+                          {t("support.markPending")}
+                        </button>
+                      )}
+                      {detail.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={() => void changeStatus("open")}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 transition hover:bg-zinc-800"
+                          title={t("support.resumeOpenHint")}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
+                            <polygon points="6 4 20 12 6 20 6 4" />
+                          </svg>
+                          {t("support.resumeOpen")}
+                        </button>
+                      )}
 
                       {/* Главная действующая кнопка: «Закрыть обращение».
                           Явная иконка-крестик + жёлтый/зинковый акцент,

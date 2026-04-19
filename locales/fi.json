@@ -142,7 +142,18 @@
     "cancel": "Peruuta",
     "statusPending": "odottaa",
     "statusConfirmed": "vahvistettu",
-    "statusCancelled": "peruttu"
+    "statusCancelled": "peruttu",
+    "search": "Hae nimellä, puhelimella, palvelulla, työntekijällä…",
+    "filterAll": "Kaikki",
+    "filterActive": "Aktiiviset",
+    "filterPending": "Odottavat",
+    "filterConfirmed": "Vahvistetut",
+    "filterCancelled": "Perutut",
+    "counter": "{{shown}} / {{total}}",
+    "empty": "Ei vielä varauksia.",
+    "emptyFiltered": "Mikään ei vastaa nykyisiä suodattimia.",
+    "resetFilters": "Nollaa suodattimet",
+    "loadError": "Varauksia ei voitu ladata."
   },
   "employees": {
     "title": "Henkilöstö",

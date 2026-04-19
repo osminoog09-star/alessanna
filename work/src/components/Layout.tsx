@@ -44,7 +44,10 @@ type NavItem = {
   to: string;
   key: NavKey;
   end?: boolean;
+  /** Виден admin + manager. */
   manageOnly?: boolean;
+  /** Виден ТОЛЬКО admin. Менеджер не должен лазить в технические интеграции. */
+  adminOnly?: boolean;
   badge?: "supportUnread" | "myHelpUnread";
   icon: () => JSX.Element;
 };
@@ -160,7 +163,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "settings",
     items: [
-      { to: "/admin/integrations", key: "adminIntegrations", manageOnly: true, icon: ICONS.adminIntegrations },
+      { to: "/admin/integrations", key: "adminIntegrations", adminOnly: true, icon: ICONS.adminIntegrations },
     ],
   },
 ];
@@ -173,7 +176,7 @@ function publicSiteUrl(): string {
 export function Layout() {
   const { t, i18n } = useTranslation();
   const { staffMember, logout, isAdmin } = useAuth();
-  const { canManage, previewRole, setPreviewRole, isWorkerOnlyEffective } = useEffectiveRole();
+  const { canManage, isAdminEffective, previewRole, setPreviewRole, isWorkerOnlyEffective } = useEffectiveRole();
 
   /* ── sidebar state ─────────────────────────────────────────── */
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -280,7 +283,11 @@ export function Layout() {
 
   const visibleGroups: NavGroup[] = NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => !i.manageOnly || canManage),
+    items: g.items.filter((i) => {
+      if (i.adminOnly && !isAdminEffective) return false;
+      if (i.manageOnly && !canManage) return false;
+      return true;
+    }),
   })).filter((g) => g.items.length > 0);
 
   const sidebarWidth = collapsed ? "w-[68px]" : "w-60";
