@@ -80,7 +80,7 @@ export function LoginPage() {
     const deviceLabel =
       typeof navigator !== "undefined"
         ? navigator.userAgent.split(" ").slice(-2).join(" ").slice(0, 60)
-        : "CRM device";
+        : "Браузер CRM";
     const r = await login({
       phone,
       pin,

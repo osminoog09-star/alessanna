@@ -37,6 +37,33 @@ type AdminDevice = TrustedDevice & {
 /** Ключ collapsable-группы во вкладке «Все устройства». */
 type GroupKey = string;
 
+/**
+ * Локализация «технических» дефолтных лейблов устройств.
+ *
+ * До миграции 053 (включая legacy `staff_consume_invite` из удалённой
+ * 049_staff_invite_links.sql и текущую 052-версию `staff_login`) лейблы
+ * писались в БД латиницей: `Invite link`, `Invited device`, `CRM device`.
+ * Это удобно как технический маркер, но в UI хочется русский текст рядом
+ * с «Привязано к: …».
+ *
+ * Маппим только эти конкретные строки. Реальные пользовательские лейблы
+ * (например, фрагмент user-agent типа `Mobile Safari/537.36`) не трогаем,
+ * иначе сломаем читаемость и поиск глазами по «настоящему» лейблу.
+ *
+ * Делаем это во фронте, чтобы не зависеть от back-fill миграции и
+ * накрывать сразу: уже сохранённые в БД, новые из старых RPC, любые
+ * других путей создания.
+ */
+function localizeDeviceLabel(raw: string | null | undefined): string {
+  const v = (raw ?? "").trim();
+  if (!v) return "—";
+  if (v === "Invite link" || v === "Invited device") {
+    return "Ссылка-приглашение";
+  }
+  if (v === "CRM device") return "Браузер CRM";
+  return v;
+}
+
 export function ProfileSecurityPage() {
   const { t } = useTranslation();
   const { staffMember, hasDeviceToken, forgetThisDevice } = useAuth();
@@ -398,7 +425,7 @@ export function ProfileSecurityPage() {
               <li key={d.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 truncate text-sm font-medium text-white">
-                    <span className="truncate">{d.label || "—"}</span>
+                    <span className="truncate">{localizeDeviceLabel(d.label)}</span>
                     {/* Если админ забрал устройство под салон — показываем
                      * это пользователю явно: «не моё устройство, общее».
                      * Так юзер не удивится, что revoke ему недоступен. */}
@@ -780,7 +807,7 @@ function DeviceList(props: {
           >
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-white">
-                <span className="truncate">{d.label || "—"}</span>
+                <span className="truncate">{localizeDeviceLabel(d.label)}</span>
                 {d.is_salon_device && (
                   <span className="shrink-0 rounded-full border border-violet-700/60 bg-violet-950/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
                     {t("profileSecurity.badgeSalon", { defaultValue: "Салон" })}
