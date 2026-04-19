@@ -18,6 +18,79 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (вечер) — «`/admin/calendar`: чиним «Новая запись» — пустой dropdown услуг + молчаливое падение `source`»
+
+### Russian
+
+**Исправлено (`/admin/calendar` модалка «Новая запись»)**
+
+- **Блокер №1 — пустой dropdown «Услуга».** На проде в модалке нельзя
+  было выбрать услугу: список был пуст, кнопка «Сохранить» ничего не
+  делала. Причина: `CalendarPage` грузил каталог только из legacy-таблицы
+  `services` (`active=true`), а актуальный каталог давно живёт в
+  `service_listings` (UUID, `is_active`). Таблица `services` на проде
+  пустая (0 строк) — отсюда пустой select.
+- Решение: единый хелпер `lib/loadServicesCatalog.ts` — приоритет
+  `service_listings` (с join на `service_categories`), fallback на
+  legacy `services` (с обоими наборами колонок: `name_et/price_cents/duration_min`
+  и `name/price/duration`). Поле `active` нормализуется (`is_active !== false`).
+- На safe-net: если `eligibleServices` всё-таки пуст, теперь показываем
+  явное сообщение «Нет доступных услуг…» вместо пустого dropdown,
+  и кнопка «Сохранить» дизейблится (`pickService` ловит руками).
+- **Блокер №2 — silent-fail при insert.** Даже если бы dropdown
+  заполнился, INSERT падал бы с PostgREST-ошибкой:
+  `Could not find the 'source' column of 'appointments' in the schema cache`.
+  Колонка `source` была удалена из `public.appointments` ранее (миграции
+  cleanup-серии 030/031), но фронт продолжал слать `source: "manual"`
+  (`BookingModal`) и `source: "online"` (`PublicBookingPage`). Поля
+  убраны из payload.
+
+**Исправлено (БД, миграция 039 `outbox_payload_match_appointments_schema`)**
+
+- Триггер `enqueue_appointment_outbox` собирал payload из несуществующих
+  колонок `new.source` и `new.notes`. Был обёрнут в
+  `exception when others then raise warning … return new;`, поэтому
+  INSERT в `appointments` проходил молча, но строка в
+  `notifications_outbox` НЕ создавалась — события Google Calendar не
+  отправлялись. На проде `notifications_outbox` пустой (0).
+- Теперь `source` подставляется константой `'manual'`, а вместо `notes`
+  читается актуальная колонка `note` (миграция 030 переименовала её).
+
+**Аудит (по ходу)**
+
+- Проверены все RPC, которые дёргает фронт CRM
+  (`support_staff_*`, `outbox_*`, `staff_google_calendar_disconnect`,
+  `verify_staff_phone`, `public_book_chain`) — все на месте.
+- Проверены типы колонок: `appointments.service_id`, `staff_services.service_id`,
+  `service_listings.id` — все `uuid`, можно писать UUID каталога без
+  конверсии.
+- `BookingsPage`/`AnalyticsPage` уже мерджат `services` + `service_listings`
+  для отображения (норм).
+- `AdminStaffPage`/`ServicesPage` уже имеют listings-first fallback (норм).
+
+### Estonian
+
+**Parandatud (`/admin/calendar` modaal «Uus broneering»)**
+
+- Töötajal polnud tootmises võimalik luua broneeringut: rippmenüü
+  «Teenus» oli tühi. Põhjus: kalender luges teenuseid ainult vanast
+  tabelist `services` (mis on tühi), uus kataloog `service_listings` jäi
+  ignoreerituks. Lahendus: ühtne abifunktsioon
+  `lib/loadServicesCatalog.ts` (prioriteet `service_listings`, fallback
+  legacy). Kui teenuseid ikka pole, näidatakse selget hoiatust.
+- INSERT teenusesse `appointments` kukkus vaikselt läbi PostgREST'i
+  schema-cache'i tõttu (kasutati eemaldatud veergu `source`). Eemaldatud
+  nii `BookingModal`-ist kui `PublicBookingPage`-st.
+
+**Parandatud (DB, migratsioon 039)**
+
+- Trigger `enqueue_appointment_outbox` luges olematuid veerge
+  `new.source` ja `new.notes`, mistõttu `notifications_outbox` jäi
+  tühjaks ning Google Calendari sündmusi ei edastatud. Nüüd kasutatakse
+  konstandi `'manual'` ja õiget veergu `note`.
+
+---
+
 ## 2026-04-19 (под утро) — «`/admin/time-off`: иконка календаря + пресеты + длительность»
 
 ### Russian

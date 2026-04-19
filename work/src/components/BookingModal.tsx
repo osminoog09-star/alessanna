@@ -125,6 +125,10 @@ export function BookingModal({
       return;
     }
 
+    /* Колонки `source` и `notes` нет в актуальной схеме `appointments` (миграции
+     *  030/031). Если включить их в payload — PostgREST падает с «Could not find
+     *  the 'source' column of 'appointments' in the schema cache» и запись не
+     *  создаётся. Поэтому отправляем только реально существующие колонки. */
     const { error: insErr } = await supabase.from("appointments").insert({
       client_name: clientName.trim(),
       client_phone: clientPhone.trim() || null,
@@ -133,7 +137,6 @@ export function BookingModal({
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       status: "confirmed",
-      source: "manual",
     });
     setSaving(false);
     if (insErr) {
@@ -175,7 +178,8 @@ export function BookingModal({
                 const n = Number(v);
                 setServiceId(Number.isFinite(n) && String(n) === v ? n : v);
               }}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+              disabled={!eligibleServices.length}
             >
               {eligibleServices.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -183,6 +187,13 @@ export function BookingModal({
                 </option>
               ))}
             </select>
+            {!eligibleServices.length && (
+              /* Раньше тут просто был пустой dropdown — ни клиент, ни менеджер
+               *  не понимали, что делать. Показываем явное сообщение со ссылкой
+               *  на источник проблемы (нет привязок мастер↔услуга в /admin/staff
+               *  или нет активных услуг в /admin/services). */
+              <p className="mt-1 text-xs text-amber-500/90">{t("modal.noServices")}</p>
+            )}
           </div>
           {!lockStaff && (
             <div>

@@ -184,6 +184,8 @@ export function PublicBookingPage() {
     setBooking(true);
     setMsg(null);
     const end = new Date(pickedStart.getTime() + durationMin * 60 * 1000);
+    /* Колонок `source`/`notes` нет в актуальной схеме `appointments`. Отправляем
+     *  только реально существующие — иначе PostgREST вернёт ошибку schema cache. */
     const { error } = await supabase.from("appointments").insert({
       staff_id: staffId,
       service_id: svc.id,
@@ -192,7 +194,6 @@ export function PublicBookingPage() {
       start_time: pickedStart.toISOString(),
       end_time: end.toISOString(),
       status: "confirmed",
-      source: "online",
     });
     setBooking(false);
     if (error) {

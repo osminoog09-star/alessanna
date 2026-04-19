@@ -364,6 +364,7 @@
     "service": "Teenus",
     "pickService": "Vali teenus.",
     "pickStaff": "Selle teenuse jaoks pole meistreid. Lisa oskused töötajate lehel.",
+    "noServices": "Aktiivseid teenuseid pole. Lisa need lehel «Teenused» või seo töötajaga jaotises «Töötajad → Oskused».",
     "overlap": "See aeg pole selle töötaja jaoks enam vaba. Värskenda ja vali teine aeg.",
     "fillAll": "Täida kõik väljad."
   },

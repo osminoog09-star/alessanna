@@ -222,6 +222,7 @@
     "service": "Service",
     "pickService": "Pick a service.",
     "pickStaff": "No staff for this service. Assign skills on the Employees page.",
+    "noServices": "No active services. Add them on the Services page or assign them to a staff member under Staff → Skills.",
     "overlap": "That time slot is no longer free for this staff member. Refresh and pick another time.",
     "fillAll": "Fill all fields."
   },

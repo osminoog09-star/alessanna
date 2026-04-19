@@ -21,6 +21,7 @@ import type {
 } from "../types/database";
 import { isStaffRowAdmin, staffEligibleForService, hasStaffRole, normalizeStaffMember } from "../lib/roles";
 import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
+import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import { BookingModal } from "../components/BookingModal";
 import { ProCalendar } from "../components/calendar/ProCalendar";
 
@@ -51,12 +52,17 @@ export function CalendarPage() {
     if (isWorkerOnlyEffective && staffMember) {
       apQuery = apQuery.eq("staff_id", staffMember.id);
     }
-    const [st, sch, to, ap, sv, ss] = await Promise.all([
+    const [st, sch, to, ap, svCatalog, ss] = await Promise.all([
       supabase.from("staff").select("*").order("name"),
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
       apQuery,
-      supabase.from("services").select("*").eq("active", true),
+      /* Каталог услуг — через общий хелпер: сначала service_listings (актуальный
+       * UUID-каталог, который видит сайт), при пустом — fallback на legacy
+       * `services`. Без хелпера тут был блокер: если `services` пустая (а так
+       * и есть после миграции 012 на новых проектах), модалка «Новая запись»
+       * показывала пустой dropdown «Услуга». */
+      loadServicesCatalog({ activeOnly: true }),
       supabase.from("staff_services").select("*"),
     ]);
     if (st.data) {
@@ -71,7 +77,7 @@ export function CalendarPage() {
     if (to.data) setTimeOff(to.data as StaffTimeOffRow[]);
     if (ap.data) setAppointments(ap.data as AppointmentRow[]);
     if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
-    if (sv.data) setServices(sv.data as ServiceRow[]);
+    setServices(svCatalog);
     setLoading(false);
   }, [isWorkerOnlyEffective, staffMember]);
 

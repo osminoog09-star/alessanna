@@ -206,6 +206,7 @@
     "service": "Palvelu",
     "pickService": "Valitse palvelu.",
     "pickStaff": "Ei henkilöstöä tälle palvelulle. Lisää taidot Henkilöstö-sivulla.",
+    "noServices": "Aktiivisia palveluja ei ole. Lisää ne Palvelut-sivulla tai liitä työntekijään (Työntekijät → Taidot).",
     "overlap": "Tämä aika ei ole enää vapaana tälle henkilölle. Päivitä ja valitse toinen aika.",
     "fillAll": "Täytä kaikki kentät."
   },
