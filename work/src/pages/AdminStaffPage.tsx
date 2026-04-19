@@ -2,6 +2,7 @@ import { FormEvent, Fragment, useCallback, useEffect, useMemo, useState } from "
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { ToggleSwitch } from "../components/ToggleSwitch";
+import { PrivateValue, useRevealSet } from "../components/PrivateValue";
 import { useEmployeesDirectoryRealtime, useStaffAssignmentsCatalogRealtime } from "../hooks/useSalonRealtime";
 import { normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
 import type { StaffServiceRow, StaffTableRow } from "../types/database";
@@ -346,6 +347,13 @@ export function AdminStaffPage() {
    *  Без этого пользователь тащит карточку из «Неактивные» в «Активные»,
    *  и единственное, что происходит — глобальный reorder сортировки категорий,
    *  а услуги мастеру не добавляются. */
+  /* Раскрытие приватных значений (телефон/e-mail). По дефолту скрыто
+   * для всех строк — каждый клик «глазик» переключает только свою строку.
+   * Ключи: `phone:<id>` и `email:<id>`. Это намеренно общая map, чтобы
+   * одну и ту же логику можно было применить и в табличке мастеров,
+   * и в админ-блоке снизу. */
+  const reveal = useRevealSet();
+
   const [skillDrag, setSkillDrag] = useState<{
     staffId: string;
     catName: string;
@@ -1373,15 +1381,23 @@ export function AdminStaffPage() {
               return (
                 <Fragment key={r.id}>
                   <tr className="border-b border-zinc-800/80 align-middle">
-                <td className="px-3 py-2 font-mono text-zinc-300">
+                <td className="px-3 py-2 text-zinc-300">
                   {editingId === r.id ? (
                     <input
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
-                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
+                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs font-mono"
                     />
                   ) : (
-                    r.phone ?? "—"
+                    <PrivateValue
+                      value={r.phone}
+                      revealed={reveal.has(`phone:${r.id}`)}
+                      onToggle={() => reveal.toggle(`phone:${r.id}`)}
+                      kind="phone"
+                      showTitle={t("adminStaff.revealPhone", { defaultValue: "Показать номер" })}
+                      hideTitle={t("adminStaff.hidePhone", { defaultValue: "Скрыть номер" })}
+                      className="text-xs"
+                    />
                   )}
                 </td>
                 <td className="px-3 py-2">
@@ -1976,9 +1992,15 @@ export function AdminStaffPage() {
                         aria-label="Телефон"
                       />
                     ) : (
-                      <span className="mt-0.5 block font-mono text-zinc-400">
-                        {r.phone ?? "—"}
-                      </span>
+                      <PrivateValue
+                        value={r.phone}
+                        revealed={reveal.has(`phone:${r.id}`)}
+                        onToggle={() => reveal.toggle(`phone:${r.id}`)}
+                        kind="phone"
+                        showTitle={t("adminStaff.revealPhone", { defaultValue: "Показать номер" })}
+                        hideTitle={t("adminStaff.hidePhone", { defaultValue: "Скрыть номер" })}
+                        className="mt-0.5 block text-xs text-zinc-400"
+                      />
                     )}
                   </div>
 

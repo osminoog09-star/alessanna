@@ -2,8 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ================================================================
+ * Тематика «Onyx & Gold» — продолжение бренда публичного сайта
+ * Alessanna (см. /styles.css в корне репо: --gold #c4a574, --bg #0a0a0a).
+ *
+ * Переменные оформлены как `R G B` (без `rgb(...)`), чтобы Tailwind
+ * через `rgb(var(--c-x) / <alpha-value>)` мог накладывать opacity.
+ * Активная тема выбирается через data-theme="onyx|champagne|stone"
+ * на <html>. По умолчанию (без атрибута) — onyx.
+ *
+ * Что менять при добавлении 4-й темы:
+ *   1) Добавить ниже [data-theme="..."] блок с теми же ключами.
+ *   2) Добавить опцию в src/context/ThemeContext.tsx (THEMES + label).
+ *   3) Добавить локализацию в locales/ru.json|et.json (nav.theme.<id>).
+ * ================================================================ */
+:root,
+:root[data-theme="onyx"] {
+  --c-canvas: 10 10 10;       /* #0a0a0a — глубокий чёрный (как hero публичного сайта) */
+  --c-panel: 20 20 20;        /* #141414 — карточки, sidebar */
+  --c-surface: 26 26 26;      /* #1a1a1a — поднятые поверхности (active nav, hover) */
+  --c-fg: 236 236 232;        /* #ecece8 — основной текст */
+  --c-muted: 138 136 132;     /* #8a8884 — приглушённый */
+  --c-line: 255 255 255;      /* opacity управляется через `/8`, `/12` и т.д. */
+  --c-gold: 196 165 116;      /* #c4a574 — основной золотой акцент */
+  --c-gold-soft: 196 165 116; /* opacity подбирается утилитой (gold-soft/15 и т.д.) */
+  --c-gold-deep: 122 107 88;  /* #7a6b58 — глубокий золотисто-бронзовый */
+  color-scheme: dark;
+}
+
+/* Champagne — светлая, тёплая. Хорошо смотрится днём,
+ * для ресепшен-планшета у окна. */
+:root[data-theme="champagne"] {
+  --c-canvas: 251 250 246;    /* #fbfaf6 — кремово-белый */
+  --c-panel: 255 255 255;     /* #ffffff — карточки */
+  --c-surface: 244 241 235;   /* #f4f1eb — поднятая поверхность */
+  --c-fg: 28 26 23;           /* #1c1a17 — почти чёрный с тёплым оттенком */
+  --c-muted: 110 105 98;      /* #6e6962 */
+  --c-line: 0 0 0;            /* для opacity (line/10, /15…) */
+  --c-gold: 163 133 94;       /* #a3855e — приглушённое золото для контраста на свете */
+  --c-gold-soft: 196 165 116;
+  --c-gold-deep: 109 89 63;   /* #6d593f — глубокая бронза */
+  color-scheme: light;
+}
+
+/* Stone — тёплая «полутень». Не такой контраст, как onyx,
+ * меньше утомляет глаза в долгую смену. */
+:root[data-theme="stone"] {
+  --c-canvas: 37 34 30;       /* #25221e — глубокий камень */
+  --c-panel: 46 42 37;        /* #2e2a25 */
+  --c-surface: 56 51 45;      /* #38332d */
+  --c-fg: 236 232 223;        /* #ece8df */
+  --c-muted: 158 150 138;     /* #9e968a */
+  --c-line: 255 255 255;
+  --c-gold: 212 184 150;      /* #d4b896 — поярче, чтоб читалось на тёплом фоне */
+  --c-gold-soft: 212 184 150;
+  --c-gold-deep: 154 132 105; /* #9a8469 */
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {
   min-height: 100%;
+}
+
+body {
+  background-color: rgb(var(--c-canvas));
+  color: rgb(var(--c-fg));
+}
+
+/* Тонкий золотой scroll thumb — общий для всех тем. */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--c-gold) / 0.25);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--c-gold) / 0.5);
+}
+*::-webkit-scrollbar-track {
+  background-color: transparent;
 }

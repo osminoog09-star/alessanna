@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
+import { useTheme, THEMES, type ThemeId } from "../context/ThemeContext";
 import { normalizeRoles } from "../lib/roles";
 import type { Role } from "../types/database";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -65,6 +66,10 @@ type NavGroup = {
 };
 
 const COLLAPSED_KEY = "alessanna.crm.sidebar.collapsed.v1";
+/* «Какие группы свёрнуты» — отдельный ключ. Группа автоматически
+ * раскрывается, если в ней есть активная страница, поэтому хранить
+ * нужно только явные действия пользователя. */
+const GROUPS_COLLAPSED_KEY = "alessanna.crm.sidebar.groups.collapsed.v1";
 
 function NavIcon({ path }: { path: string }) {
   return (
@@ -304,17 +309,80 @@ export function Layout() {
 
   const sidebarWidth = collapsed ? "w-[68px]" : "w-60";
 
+  /* ── theme + group-collapse state ──────────────────────────── */
+  const { theme, setTheme } = useTheme();
+  const location = useLocation();
+
+  /* «Группа явно свёрнута пользователем». Группа без явной записи
+   * считается раскрытой только если в ней есть активная страница —
+   * иначе свёрнута по умолчанию (это то, что просил пользователь:
+   * «не всё нараспашку»). Hero-группа (key=null) всегда видна. */
+  const [groupsCollapsed, setGroupsCollapsed] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = window.localStorage.getItem(GROUPS_COLLAPSED_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, boolean>;
+      }
+    } catch {
+      /* ignore */
+    }
+    return {};
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(GROUPS_COLLAPSED_KEY, JSON.stringify(groupsCollapsed));
+    } catch {
+      /* ignore */
+    }
+  }, [groupsCollapsed]);
+
+  /* Группы с активной страницей: всегда раскрыты (даже если когда-то
+   * пользователь их свернул — текущая страница важнее). */
+  const activeGroupKeys = useMemo<Set<NavGroupKey>>(() => {
+    const set = new Set<NavGroupKey>();
+    for (const g of visibleGroups) {
+      if (!g.key) continue;
+      const matched = g.items.some((it) =>
+        it.end ? location.pathname === it.to : location.pathname.startsWith(it.to),
+      );
+      if (matched) set.add(g.key);
+    }
+    return set;
+  }, [visibleGroups, location.pathname]);
+
+  /* Группа открыта если:
+   *   • это hero-группа (key=null) — всегда видна;
+   *   • в ней есть активная страница — открываем принудительно;
+   *   • пользователь явно её раскрыл (groupsCollapsed[key] === false).
+   * По дефолту все остальные группы свёрнуты — это лекарство от
+   * «всё нараспашку, глаза разбегаются». */
+  function isGroupOpenV2(g: NavGroup): boolean {
+    if (g.key === null) return true;
+    if (activeGroupKeys.has(g.key)) return true;
+    return groupsCollapsed[g.key] === false;
+  }
+
+  function toggleGroup(key: NavGroupKey) {
+    setGroupsCollapsed((prev) => {
+      const wasOpen = activeGroupKeys.has(key) || prev[key] === false;
+      const nextOpen = !wasOpen;
+      return { ...prev, [key]: nextOpen ? false : true };
+    });
+  }
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-950 text-zinc-200">
+    <div className="flex min-h-screen bg-canvas text-fg">
       <aside
-        className={`sticky top-0 flex h-screen flex-col border-r border-zinc-800/80 bg-zinc-950/95 backdrop-blur-sm transition-[width] duration-200 ease-out ${sidebarWidth}`}
+        className={`sticky top-0 flex h-screen flex-col border-r border-line/10 bg-panel transition-[width] duration-200 ease-out ${sidebarWidth}`}
         aria-label="CRM navigation"
       >
-        {/* ───── Brand / collapse toggle ───── */}
-        <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 p-3">
+        {/* ───── Brand / language ───── */}
+        <div className="flex items-center justify-between gap-2 border-b border-line/10 px-3 py-3.5">
           {!collapsed ? (
             <>
-              <p className="bg-gradient-to-r from-emerald-300 via-sky-300 to-fuchsia-300 bg-clip-text text-sm font-semibold uppercase tracking-[0.22em] text-transparent">
+              <p className="font-display text-lg italic tracking-[0.18em] text-gold">
                 {t("brand")}
               </p>
               <LanguageSwitcher className="justify-end" />
@@ -323,7 +391,7 @@ export function Layout() {
             <span
               aria-hidden="true"
               title={t("brand")}
-              className="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-emerald-300 via-sky-300 to-fuchsia-300 text-xs font-bold text-black"
+              className="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-gold/40 bg-canvas font-display text-sm italic text-gold"
             >
               A
             </span>
@@ -332,18 +400,18 @@ export function Layout() {
 
         {/* ───── User card ───── */}
         {!collapsed ? (
-          <div className="border-b border-zinc-800/80 px-4 py-3">
+          <div className="border-b border-line/10 px-4 py-3">
             <div className="flex items-center gap-2.5">
               <span
                 aria-hidden="true"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/80 to-sky-500/80 text-sm font-semibold text-black shadow-inner shadow-black/30"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-surface text-sm font-semibold text-gold"
               >
                 {staffInitial}
               </span>
               <div className="min-w-0 leading-tight">
-                <p className="truncate text-sm font-semibold text-zinc-100">{staffMember?.name}</p>
+                <p className="truncate text-sm font-semibold text-fg">{staffMember?.name}</p>
                 {primaryRoleLabel && (
-                  <p className="mt-0.5 truncate text-[11px] uppercase tracking-wide text-zinc-500">
+                  <p className="mt-0.5 truncate text-[11px] uppercase tracking-wide text-muted">
                     {normalizedRoles.map((r) => t(`role.${r}`)).join(" · ")}
                   </p>
                 )}
@@ -351,10 +419,10 @@ export function Layout() {
             </div>
           </div>
         ) : (
-          <div className="flex justify-center border-b border-zinc-800/80 py-3" title={staffMember?.name ?? ""}>
+          <div className="flex justify-center border-b border-line/10 py-3" title={staffMember?.name ?? ""}>
             <span
               aria-hidden="true"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/80 to-sky-500/80 text-sm font-semibold text-black"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gold/40 bg-surface text-sm font-semibold text-gold"
             >
               {staffInitial}
             </span>
@@ -362,12 +430,12 @@ export function Layout() {
         )}
 
         {/* ───── Search trigger ───── */}
-        <div className="border-b border-zinc-800/80 p-2">
+        <div className="border-b border-line/10 p-2">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
             title={t("command.placeholder") + "  (⌘K)"}
-            className={`group flex w-full items-center gap-2 rounded-lg border border-zinc-800 bg-black/40 py-1.5 text-sm text-zinc-400 transition hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100 ${
+            className={`group flex w-full items-center gap-2 rounded-lg border border-line/10 bg-canvas/60 py-1.5 text-sm text-muted transition hover:border-gold/40 hover:bg-surface hover:text-fg ${
               collapsed ? "justify-center px-2" : "px-2.5"
             }`}
           >
@@ -387,7 +455,7 @@ export function Layout() {
             {!collapsed && (
               <>
                 <span className="min-w-0 flex-1 truncate text-left">{t("command.placeholder")}</span>
-                <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[10.5px] font-semibold text-zinc-300 transition group-hover:border-emerald-400/50 group-hover:text-emerald-200">
+                <kbd className="rounded border border-line/15 bg-surface px-1.5 py-0.5 text-[10.5px] font-semibold text-muted transition group-hover:border-gold/50 group-hover:text-gold">
                   ⌘K
                 </kbd>
               </>
@@ -396,20 +464,41 @@ export function Layout() {
         </div>
 
         {/* ───── Main nav ───── */}
-        <nav className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
           {visibleGroups.map((group, gi) => {
             const heading = group.key ? t(`nav.group.${group.key}`) : null;
+            const open = isGroupOpenV2(group);
+            const showItems = collapsed || open;
             return (
               <div key={group.key ?? `g${gi}`} className="space-y-0.5">
-                {!collapsed && heading && (
-                  <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-                    {heading}
-                  </p>
+                {!collapsed && heading && group.key && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key as NavGroupKey)}
+                    aria-expanded={open}
+                    className="group flex w-full items-center gap-2 rounded-md px-3 pb-1 pt-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted transition hover:text-gold"
+                  >
+                    <span className="flex-1 truncate">{heading}</span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`h-3 w-3 shrink-0 transition-transform ${
+                        open ? "rotate-90" : ""
+                      }`}
+                      aria-hidden="true"
+                    >
+                      <path d="m9 6 6 6-6 6" />
+                    </svg>
+                  </button>
                 )}
                 {collapsed && gi > 0 && (
-                  <div className="mx-3 my-1 h-px bg-zinc-800/60" aria-hidden="true" />
+                  <div className="mx-3 my-1 h-px bg-line/10" aria-hidden="true" />
                 )}
-                {group.items.map((item) => {
+                {showItems && group.items.map((item) => {
                   const badgeCount =
                     item.badge === "supportUnread"
                       ? supportUnread
@@ -428,8 +517,8 @@ export function Layout() {
                           collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2"
                         } ${
                           isActive
-                            ? "bg-zinc-800/90 text-white shadow-inner shadow-black/30"
-                            : "text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-100"
+                            ? "bg-surface text-fg shadow-inner shadow-black/20"
+                            : "text-muted hover:bg-surface/60 hover:text-fg"
                         }`
                       }
                     >
@@ -440,14 +529,14 @@ export function Layout() {
                               aria-hidden="true"
                               className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full transition-all ${
                                 isActive
-                                  ? "bg-gradient-to-b from-emerald-400 to-sky-400"
-                                  : "bg-transparent group-hover:bg-zinc-700"
+                                  ? "bg-gold"
+                                  : "bg-transparent group-hover:bg-gold/40"
                               }`}
                             />
                           )}
                           <span
                             className={`shrink-0 ${
-                              isActive ? "text-emerald-300" : "text-zinc-500 group-hover:text-zinc-300"
+                              isActive ? "text-gold" : "text-muted group-hover:text-fg"
                             }`}
                           >
                             {item.icon()}
@@ -458,7 +547,7 @@ export function Layout() {
                           {badgeCount > 0 && (
                             <span
                               aria-label={t("nav.unreadBadgeAria", { count: badgeCount })}
-                              className={`flex items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black shadow-sm shadow-emerald-500/30 ${
+                              className={`flex items-center justify-center rounded-full bg-gold text-[10px] font-bold text-canvas shadow-gold ${
                                 collapsed
                                   ? "absolute right-1 top-1 h-2 w-2 p-0"
                                   : "min-w-[1.25rem] px-1.5 py-[1px]"
@@ -477,10 +566,78 @@ export function Layout() {
           })}
         </nav>
 
+        {/* ───── Theme switcher ───── */}
+        {!collapsed && (
+          <div className="border-t border-line/10 px-3 py-2.5">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+              {t("nav.themeLabel", { defaultValue: "Тема" })}
+            </p>
+            <div className="grid grid-cols-3 gap-1">
+              {THEMES.map((opt) => {
+                const active = theme === opt.id;
+                const sw = themeSwatch(opt.id);
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTheme(opt.id)}
+                    aria-pressed={active}
+                    title={t(`nav.${opt.labelKey}`, { defaultValue: opt.id })}
+                    className={`flex flex-col items-center gap-1 rounded-lg border px-1.5 py-1.5 text-[10px] font-medium uppercase tracking-wide transition ${
+                      active
+                        ? "border-gold/60 bg-surface text-gold shadow-gold"
+                        : "border-line/10 bg-canvas/40 text-muted hover:border-gold/30 hover:text-fg"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="flex h-3 w-7 overflow-hidden rounded-full border border-line/10"
+                    >
+                      <span style={{ background: sw[0] }} className="flex-1" />
+                      <span style={{ background: sw[1] }} className="flex-1" />
+                      <span style={{ background: sw[2] }} className="flex-1" />
+                    </span>
+                    <span className="truncate">
+                      {t(`nav.${opt.labelKey}`, { defaultValue: opt.id })}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {collapsed && (
+          <div className="flex justify-center border-t border-line/10 py-2">
+            <button
+              type="button"
+              onClick={() => {
+                const idx = THEMES.findIndex((x) => x.id === theme);
+                setTheme(THEMES[(idx + 1) % THEMES.length].id);
+              }}
+              aria-label={t("nav.themeLabel", { defaultValue: "Тема" })}
+              title={t(`nav.theme.${theme}`, { defaultValue: theme })}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line/10 bg-canvas/40 text-gold transition hover:border-gold/40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* ───── Preview role select ───── */}
         {isAdmin && !collapsed && (
-          <div className="border-t border-zinc-800/80 px-3 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+          <div className="border-t border-line/10 px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
               {t("preview.label")}
             </p>
             <select
@@ -489,7 +646,7 @@ export function Layout() {
                 const v = e.target.value;
                 setPreviewRole(v === "" ? null : (v as Role));
               }}
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-black/60 px-2 py-1.5 text-xs text-zinc-200 transition focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+              className="mt-1 w-full rounded-md border border-line/15 bg-canvas/60 px-2 py-1.5 text-xs text-fg transition focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
             >
               <option value="">{t("preview.real")}</option>
               {previewOptions.map((r) => (
@@ -501,20 +658,20 @@ export function Layout() {
           </div>
         )}
         {isWorkerOnlyEffective && !collapsed && (
-          <p className="border-t border-zinc-800/80 px-4 py-3 text-[11px] leading-snug text-zinc-600">
+          <p className="border-t border-line/10 px-4 py-3 text-[11px] leading-snug text-muted">
             {t("nav.workerHint")}
           </p>
         )}
 
         {/* ───── Open public site as admin ───── */}
         {canManage && (
-          <div className="border-t border-zinc-800/80 p-2">
+          <div className="border-t border-line/10 p-2">
             <a
               href={publicSiteUrl()}
               target="_blank"
               rel="noopener noreferrer"
               title={t("nav.publicSiteTitle")}
-              className={`flex items-center gap-2 rounded-lg py-2 text-sm text-zinc-400 transition-colors hover:bg-amber-950/30 hover:text-amber-200 ${
+              className={`flex items-center gap-2 rounded-lg py-2 text-sm text-muted transition-colors hover:bg-surface hover:text-gold ${
                 collapsed ? "justify-center px-2" : "w-full px-3 text-left"
               }`}
             >
@@ -553,12 +710,12 @@ export function Layout() {
         )}
 
         {/* ───── Footer: collapse toggle + logout ───── */}
-        <div className="flex items-center justify-between gap-1 border-t border-zinc-800/80 p-2">
+        <div className="flex items-center justify-between gap-1 border-t border-line/10 p-2">
           <button
             type="button"
             onClick={logout}
-            title={t("nav.logout") + (collapsed ? "" : "")}
-            className={`flex items-center gap-2 rounded-lg py-2 text-sm text-zinc-500 transition-colors hover:bg-red-950/30 hover:text-red-300 ${
+            title={t("nav.logout")}
+            className={`flex items-center gap-2 rounded-lg py-2 text-sm text-muted transition-colors hover:bg-surface hover:text-red-300 ${
               collapsed ? "w-full justify-center px-2" : "flex-1 px-3 text-left"
             }`}
           >
@@ -581,7 +738,7 @@ export function Layout() {
             onClick={() => setCollapsed((c) => !c)}
             title={(collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")) + "  (⌘\\)"}
             aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
-            className={`inline-flex h-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/70 text-zinc-500 transition hover:border-zinc-700 hover:text-zinc-200 ${
+            className={`inline-flex h-8 items-center justify-center rounded-lg border border-line/10 bg-canvas/40 text-muted transition hover:border-gold/40 hover:text-gold ${
               collapsed ? "mt-2 w-full" : "w-8"
             }`}
           >
@@ -601,10 +758,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="relative min-w-0 flex-1 overflow-auto">
-        {/* sticky-баннер предпросмотра: при скролле страницы остаётся
-         * видимым, чтобы админ не забыл, что находится в режиме
-         * другой роли. Растягиваем во всю ширину main за счёт -mx-... */}
+      <main className="relative min-w-0 flex-1 overflow-auto bg-canvas">
         {previewRole && isAdmin && (
           <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-amber-600/40 bg-amber-950/95 px-6 py-2 text-sm text-amber-100 shadow-md shadow-amber-500/10 backdrop-blur-sm lg:px-8">
             <svg
@@ -643,4 +797,20 @@ export function Layout() {
       />
     </div>
   );
+}
+
+/* Хардкод-семплы цветов для маленьких swatch-индикаторов в переключателе тем.
+ * Не тянем из CSS-переменных, потому что у активной темы все три значения
+ * совпадают с реальной темой страницы — а нам нужно показать «как выглядит
+ * каждая из трёх», вне зависимости от текущей. */
+function themeSwatch(id: ThemeId): [string, string, string] {
+  switch (id) {
+    case "champagne":
+      return ["#fbfaf6", "#f4f1eb", "#a3855e"];
+    case "stone":
+      return ["#25221e", "#38332d", "#d4b896"];
+    case "onyx":
+    default:
+      return ["#0a0a0a", "#1a1a1a", "#c4a574"];
+  }
 }

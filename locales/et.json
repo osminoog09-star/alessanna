@@ -57,6 +57,12 @@
     "publicSiteTitle": "Avab avaliku saidi koos administraatori vihjetega (näha ainult sellel vahekaardil).",
     "collapseSidebar": "Ahenda menüü",
     "expandSidebar": "Laienda menüü",
+    "themeLabel": "Teema",
+    "theme": {
+      "onyx": "Oonüks",
+      "champagne": "Šampanja",
+      "stone": "Kivi"
+    },
     "group": {
       "catalog": "Kataloog",
       "schedule": "Graafik",
