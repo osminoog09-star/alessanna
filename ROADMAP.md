@@ -56,6 +56,8 @@
 - `[P3]` — **Loyalty / Подарочные сертификаты** (новые таблицы + UI в CRM).
 - `[P3]` — **Mobile app** (React Native / Expo) — общий клиент для записи + push.
 - `[P3]` — **Аналитика для владельца**: дашборд с retention, средним чеком, no-show rate, выручкой по мастерам.
+- `[P3]` — **README badges**: build status (GitHub Actions `pages.yml`), deploy (`alessannailu.com`), license, last commit. Косметика, помогает с первого взгляда видеть «всё ли живо».
+- `[P3]` — **GitHub Releases с автогенерацией**: семвер-теги `v0.x.y`, GitHub Action, который при `chore(release): vX.Y.Z` создаёт релиз и тащит описание из соответствующей секции `CHANGELOG.md`. Нужно для откатов и понятной истории «что когда вышло на прод».
 
 ### English
 
@@ -65,6 +67,8 @@
 - `[P3]` — **Loyalty / gift cards** (new tables + CRM UI).
 - `[P3]` — **Mobile app** (React Native / Expo) — single client for booking + push notifications.
 - `[P3]` — **Owner analytics**: dashboard with retention, avg ticket, no-show rate, per-master revenue.
+- `[P3]` — **README badges**: build status (GitHub Actions `pages.yml`), deploy (`alessannailu.com`), license, last commit. Cosmetic, gives an at-a-glance "is everything alive" check.
+- `[P3]` — **GitHub Releases with auto-notes**: semver tags `v0.x.y`, a GitHub Action that, on `chore(release): vX.Y.Z`, creates a release and pulls the matching section from `CHANGELOG.md` into its body. Needed for rollbacks and a clear "what shipped to prod when" history.
 
 ---
 
