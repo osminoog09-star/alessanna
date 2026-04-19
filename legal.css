@@ -1,0 +1,148 @@
+/* ============================================================================
+ *  legal.css — стили для /privacy.html и /cookies.html.
+ *  Бренд-палитра как у основного сайта (тёмный фон + золото).
+ * ============================================================================
+ */
+
+.legal-page {
+  background: #0a0a0a;
+  color: #ecece8;
+  min-height: 100vh;
+}
+
+.legal-main {
+  padding: 88px 0 80px;
+}
+
+.legal-container {
+  max-width: 760px;
+}
+
+.legal-article {
+  background: rgba(20, 20, 20, 0.6);
+  border: 1px solid rgba(196, 165, 116, 0.2);
+  border-radius: 16px;
+  padding: 32px clamp(20px, 4vw, 40px);
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: #d8d6cf;
+}
+
+.legal-article h1 {
+  font-family: "Cormorant Garamond", "Playfair Display", Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: 0.01em;
+  color: #c4a574;
+  margin: 0 0 22px;
+}
+.legal-article h2 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(20px, 2.6vw, 26px);
+  color: #d4b585;
+  margin: 28px 0 10px;
+  letter-spacing: 0.005em;
+}
+.legal-article h3 {
+  font-family: Inter, Arial, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: #ecece8;
+  margin: 20px 0 6px;
+}
+
+.legal-article p {
+  margin: 0 0 14px;
+}
+
+.legal-article ul {
+  list-style: disc;
+  padding-left: 22px;
+  margin: 0 0 16px;
+}
+.legal-article li {
+  margin-bottom: 6px;
+}
+
+.legal-article a {
+  color: #c4a574;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.legal-article a:hover {
+  color: #d4b585;
+}
+
+.legal-article strong {
+  color: #ecece8;
+  font-weight: 600;
+}
+
+.legal-loading,
+.legal-error {
+  color: #9b988e;
+  font-style: italic;
+  text-align: center;
+  padding: 40px 0;
+}
+.legal-error {
+  color: #d96a6a;
+  font-style: normal;
+}
+
+.legal-meta {
+  text-align: center;
+  margin-top: 18px;
+  color: #7a7770;
+  font-size: 12.5px;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.legal-back {
+  text-align: center;
+  margin-top: 32px;
+}
+.legal-back a {
+  color: #c4a574;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(196, 165, 116, 0.4);
+  padding-bottom: 2px;
+  font-family: Inter, Arial, sans-serif;
+}
+.legal-back a:hover {
+  border-bottom-color: #c4a574;
+}
+
+.legal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 28px 0 4px;
+}
+.legal-btn {
+  appearance: none;
+  border: 1px solid #c4a574;
+  background: #c4a574;
+  color: #0a0a0a;
+  font: inherit;
+  font-weight: 600;
+  padding: 11px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.legal-btn:hover {
+  background: #d4b585;
+  border-color: #d4b585;
+}
+.legal-btn--ghost {
+  background: transparent;
+  color: #c4a574;
+}
+.legal-btn--ghost:hover {
+  background: rgba(196, 165, 116, 0.12);
+}

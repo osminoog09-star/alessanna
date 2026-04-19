@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<!--
+  /privacy.html — официальная политика конфиденциальности.
+  Тело тянется из БД (legal_documents, kind=privacy) через RPC legal_get_active.
+  Это специально, чтобы админ мог переписать политику без релиза фронта.
+  Mini-Markdown рендерится здесь же без зависимостей (см. legal-renderer.js).
+-->
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Политика конфиденциальности | AlesSanna Ilusalong</title>
+  <meta name="description" content="Политика конфиденциальности AlesSanna Ilusalong: какие данные мы собираем, зачем и как ими управлять." />
+  <link rel="canonical" href="https://alessannailu.com/privacy.html" />
+  <link rel="icon" href="assets/alessanna-logo-transparent.png" type="image/png" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="legal.css?v=20260420a" />
+</head>
+<body class="site-ilusalong legal-page">
+  <header class="site-header" id="header">
+    <div class="container header-inner">
+      <a class="logo-link" href="/" aria-label="AlesSanna Ilusalong">
+        <img class="logo-link__image" src="assets/alessanna-logo-transparent.png" alt="" width="1200" height="430" />
+      </a>
+      <div class="header-actions">
+        <a href="/" class="nav-cta">На главную</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="legal-main">
+    <div class="container legal-container">
+      <article class="legal-article" id="legal-article" data-kind="privacy" data-lang="ru">
+        <p class="legal-loading">Загружаем актуальную версию…</p>
+      </article>
+      <p class="legal-meta" id="legal-meta"></p>
+      <p class="legal-back"><a href="/">← Вернуться на главную</a></p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <ul class="footer-links">
+        <li><a href="/">Главная</a></li>
+        <li><a href="/privacy.html">Приватность</a></li>
+        <li><a href="/cookies.html">Cookie</a></li>
+      </ul>
+      <p class="footer-meta">Härma Keskus · Tallinna mnt 70 · Pärnu</p>
+      <p class="footer-copy">© <span id="year"></span> AlesSanna Ilusalong</p>
+    </div>
+  </footer>
+
+  <script src="supabase-public-config.js"></script>
+  <script src="cookie-consent.js?v=20260420a" defer></script>
+  <script src="legal-renderer.js?v=20260420a" defer></script>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

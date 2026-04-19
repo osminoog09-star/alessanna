@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { hasStaffRole } from "../lib/roles";
+import { ActivityLogSection } from "../components/ActivityLog";
 
 type TrustedDevice = {
   id: string;
@@ -483,6 +484,16 @@ export function ProfileSecurityPage() {
           </ul>
         )}
       </section>
+
+      {staffId && (
+        <ActivityLogSection
+          actorId={staffId}
+          mode="self"
+          title={t("profileSecurity.myActivityTitle", {
+            defaultValue: "История моей активности",
+          })}
+        />
+      )}
 
       {canViewAllDevices && (
         <AllDevicesSection

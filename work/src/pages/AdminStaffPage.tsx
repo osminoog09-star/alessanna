@@ -1,8 +1,10 @@
 import { FormEvent, Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { PrivateValue, useRevealSet } from "../components/PrivateValue";
+import { ActivityLogSection } from "../components/ActivityLog";
 import { useEmployeesDirectoryRealtime, useStaffAssignmentsCatalogRealtime } from "../hooks/useSalonRealtime";
 import { normalizeRoles, sanitizeRolesForSave } from "../lib/roles";
 import type { StaffServiceRow, StaffTableRow } from "../types/database";
@@ -312,6 +314,8 @@ function SalonCalendarSettingsCard(props: { onError: (msg: string | null) => voi
 
 export function AdminStaffPage() {
   const { t } = useTranslation();
+  const { staffMember } = useAuth();
+  const currentStaffId = staffMember?.id ?? null;
   const [rows, setRows] = useState<StaffTableRow[]>([]);
   const [services, setServices] = useState<CatalogSkillService[]>([]);
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
@@ -1909,6 +1913,14 @@ export function AdminStaffPage() {
                               );
                             })()}
                           </div>
+                          {currentStaffId && (
+                            <ActivityLogSection
+                              actorId={currentStaffId}
+                              mode="admin"
+                              targetActorId={r.id}
+                              title={`История активности: ${r.name || "сотрудник"}`}
+                            />
+                          )}
                   </div>
                 </td>
                     </tr>

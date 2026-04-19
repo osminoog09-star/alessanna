@@ -415,6 +415,8 @@
         <li><a href="#meist">О салоне</a></li>
         <li><a href="#broneeri">Запись</a></li>
         <li><a href="#kontakt">Контакты</a></li>
+        <li><a href="/privacy.html">Приватность</a></li>
+        <li><a href="/cookies.html">Cookie</a></li>
       </ul>
       <img class="footer-logo" src="assets/alessanna-logo-transparent.png" alt="AlesSanna Ilusalong" width="1200" height="430" />
       <p class="footer-meta">Härma Keskus · Tallinna mnt 70 · Pärnu</p>
@@ -444,6 +446,11 @@
   <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
 
   <script src="supabase-public-config.js"></script>
+  <!-- Cookie-баннер: показывает GDPR-окно при первом визите, пишет согласие
+       в БД (client_record_consent) и предоставляет глобальный API
+       window.AlesSannaConsent. Должен загружаться ПОСЛЕ supabase-public-config.js,
+       но не блокировать рендер — поэтому defer. -->
+  <script src="cookie-consent.js?v=20260420a" defer></script>
   <!-- admin preview helper: ?admin=1 включает диагностические подсказки в углу,
        ?admin=0 выключает. Все «admin only» сообщения по умолчанию скрыты от клиентов
        через CSS, видны только когда body[data-admin-preview="1"]. -->
