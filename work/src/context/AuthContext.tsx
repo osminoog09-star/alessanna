@@ -33,20 +33,10 @@ export type LoginInput = {
   deviceLabel?: string;
 };
 
-/** Результат входа по invite-ссылке (RPC staff_consume_invite). */
-export type ConsumeInviteResult =
-  | { ok: true; mode?: string }
-  | { ok: false; status: "invalid_token" | "revoked" | "expired" | "used_up" | "staff_inactive" }
-  | { ok: false; errorKey?: string; message?: string; displayError?: string };
-
 type AuthState = {
   staffMember: StaffMember | null;
   loading: boolean;
   login: (input: LoginInput | string) => Promise<LoginResult>;
-  /** Залогиниться по одноразовому токену из invite-ссылки. Без PIN/телефона.
-   * Сразу же сохраняет device_token, так что устройство автоматически
-   * становится доверенным. */
-  consumeInvite: (token: string) => Promise<ConsumeInviteResult>;
   logout: () => void;
   /** Удалить device_token с этого устройства (без revoke в БД). */
   forgetThisDevice: () => void;
@@ -200,45 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true, mode: typeof payload.mode === "string" ? payload.mode : undefined };
   }, []);
 
-  const consumeInvite = useCallback(async (token: string): Promise<ConsumeInviteResult> => {
-    if (!isSupabaseConfigured()) {
-      return { ok: false, errorKey: "auth.error.notConfigured" };
-    }
-    if (!token || token.length < 8) {
-      return { ok: false, status: "invalid_token" };
-    }
-    const { data, error } = await supabase.rpc("staff_consume_invite", {
-      token_input: token,
-      device_label: "Invite link",
-      user_agent_input: summarizeUserAgent(),
-    });
-    if (error) {
-      return { ok: false, errorKey: "auth.error.rpcFailed", message: error.message };
-    }
-    const payload = (data ?? {}) as Record<string, unknown>;
-    const status = String(payload.status ?? "");
-    if (status === "invalid_token" || status === "revoked"
-        || status === "expired" || status === "used_up"
-        || status === "staff_inactive") {
-      return { ok: false, status };
-    }
-    if (status !== "ok") {
-      return { ok: false, errorKey: "auth.error.accessDenied" };
-    }
-    const staffRaw = payload.staff;
-    if (!staffRaw || typeof staffRaw !== "object") {
-      return { ok: false, errorKey: "auth.error.accessDenied" };
-    }
-    const row = staffTableRowToMember(staffRaw as Record<string, unknown>);
-    if (typeof payload.new_device_token === "string" && payload.new_device_token) {
-      writeDeviceToken(payload.new_device_token);
-      setHasDeviceToken(true);
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
-    setStaffMember(row);
-    return { ok: true, mode: typeof payload.mode === "string" ? payload.mode : undefined };
-  }, []);
-
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     // Внимание: device_token НЕ удаляем — это смысл «доверенного устройства».
@@ -256,7 +207,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       staffMember,
       loading,
       login,
-      consumeInvite,
       logout,
       forgetThisDevice,
       hasDeviceToken,
@@ -265,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isWorkerOnly: isWorkerOnlyView(staffMember?.roles),
       isReceptionMode: false,
     }),
-    [staffMember, loading, login, consumeInvite, logout, forgetThisDevice, hasDeviceToken]
+    [staffMember, loading, login, logout, forgetThisDevice, hasDeviceToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

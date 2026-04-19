@@ -4,7 +4,6 @@ import { useAuth } from "./context/AuthContext";
 import { EffectiveRoleProvider, useEffectiveRole } from "./context/EffectiveRoleContext";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
-import { InvitePage } from "./pages/InvitePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { BookingsPage } from "./pages/BookingsPage";
@@ -20,6 +19,8 @@ import { AdminCommunicationsPage } from "./pages/AdminCommunicationsPage";
 import { MyHelpPage } from "./pages/MyHelpPage";
 import { ProfileSecurityPage } from "./pages/ProfileSecurityPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
+import { PublicInvitePage } from "./pages/PublicInvitePage";
+import { AdminInvitesPage } from "./pages/AdminInvitesPage";
 
 function RequireManage({ children }: { children: React.ReactNode }) {
   const { canManage } = useEffectiveRole();
@@ -45,9 +46,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/invite" element={<InvitePage />} />
-      <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/book" element={<PublicBookingPage />} />
+      <Route path="/invite/:token" element={<PublicInvitePage />} />
       <Route
         path="/"
         element={
@@ -128,6 +128,14 @@ export default function App() {
           element={
             <RequireManage>
               <AdminCommunicationsPage />
+            </RequireManage>
+          }
+        />
+        <Route
+          path="admin/invites"
+          element={
+            <RequireManage>
+              <AdminInvitesPage />
             </RequireManage>
           }
         />

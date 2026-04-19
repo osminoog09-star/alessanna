@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -26,67 +26,44 @@ type AdminDevice = TrustedDevice & {
   staff_name: string | null;
   claimed_by_admin_id: string | null;
   claimed_by_admin_name: string | null;
+  /* Поля из 050_manage_list_devices.sql — нужны менеджеру/админу, чтобы
+   * группировать устройства по сотрудникам (показывать роль/активность).
+   * На admin-RPC их пока нет — отсюда optional. */
+  staff_role?: string | null;
+  staff_roles?: string[] | null;
+  staff_is_active?: boolean | null;
 };
 
-/** Запись о приглашении из staff_admin_list_invites. */
-type InviteLink = {
-  id: string;
-  staff_id: string;
-  staff_name: string | null;
-  created_by_admin_id: string | null;
-  created_by_admin_name: string | null;
-  created_at: string;
-  expires_at: string;
-  max_uses: number;
-  uses_count: number;
-  last_used_at: string | null;
-  last_used_ip: string | null;
-  note: string | null;
-  revoked_at: string | null;
-  status: "active" | "used_up" | "expired" | "revoked";
-};
-
-/** Минимальный сотрудник для селекта «кому приглашение». */
-type InviteStaffOption = { id: string; name: string };
-
-/** Один из пресетов «срок жизни ссылки» в минутах. */
-const INVITE_TTL_PRESETS: Array<{ label: string; minutes: number }> = [
-  { label: "1 час", minutes: 60 },
-  { label: "6 часов", minutes: 60 * 6 },
-  { label: "24 часа", minutes: 60 * 24 },
-  { label: "7 дней", minutes: 60 * 24 * 7 },
-];
+/** Ключ collapsable-группы во вкладке «Все устройства». */
+type GroupKey = string;
 
 export function ProfileSecurityPage() {
   const { t } = useTranslation();
   const { staffMember, hasDeviceToken, forgetThisDevice } = useAuth();
   const staffId = staffMember?.id;
   const isAdmin = hasStaffRole(staffMember, "admin");
+  const isManager = hasStaffRole(staffMember, "manager");
+  /* «Может видеть весь парк устройств». Мастер (worker) — не может. */
+  const canViewAllDevices = isAdmin || isManager;
 
   const [adminDevices, setAdminDevices] = useState<AdminDevice[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
-
-  /* Приглашения. Доступны только админам. */
-  const [invites, setInvites] = useState<InviteLink[]>([]);
-  const [invitesLoading, setInvitesLoading] = useState(false);
-  const [invitesError, setInvitesError] = useState<string | null>(null);
-  const [inviteStaffOptions, setInviteStaffOptions] = useState<InviteStaffOption[]>([]);
-  const [inviteStaffId, setInviteStaffId] = useState("");
-  const [inviteTtlMinutes, setInviteTtlMinutes] = useState(60 * 24);
-  const [inviteMaxUses, setInviteMaxUses] = useState(1);
-  const [inviteNote, setInviteNote] = useState("");
-  const [inviteCreating, setInviteCreating] = useState(false);
-  /* Только что созданная ссылка показывается отдельной плашкой — plaintext
-   * токена больше нигде не сохраняется, второй раз посмотреть нельзя. */
-  const [justCreatedInvite, setJustCreatedInvite] = useState<{
-    url: string;
-    staffName: string;
-    expiresAt: string;
-  } | null>(null);
-  const [inviteBusyId, setInviteBusyId] = useState<string | null>(null);
-  const [inviteCopyOk, setInviteCopyOk] = useState(false);
+  /* Развёрнутые группы во вкладке «Все устройства». По умолчанию ВСЁ
+   * свёрнуто — пользователь сам раскрывает то, что нужно. Только так
+   * экран не превращается в простыню при 30+ устройствах. */
+  const [expandedGroups, setExpandedGroups] = useState<Set<GroupKey>>(
+    () => new Set<GroupKey>(),
+  );
+  const toggleGroup = useCallback((key: GroupKey) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const [devices, setDevices] = useState<TrustedDevice[]>([]);
   const [devicesLoading, setDevicesLoading] = useState(true);
@@ -117,23 +94,28 @@ export function ProfileSecurityPage() {
     void reload();
   }, [reload]);
 
-  /* Админский список ВСЕХ устройств всех сотрудников — нужен только админу.
-   * Подтягиваем отдельным RPC, который сам проверит роль вызывающего и
-   * вернёт расширенный набор полей (staff_name, claimed_by_admin_name…). */
+  /* Список ВСЕХ устройств — показываем менеджеру и админу.
+   * - admin → staff_admin_list_all_devices (полный набор + право управлять)
+   * - manager → staff_manage_list_all_devices (read-only, без claim/revoke)
+   * - worker → ничего, fall through.
+   *
+   * RPC выбирается строго по роли: менеджер не должен ловить 42501 от
+   * admin-RPC при каждом открытии страницы. */
   const reloadAdminDevices = useCallback(async () => {
-    if (!isAdmin || !staffId) return;
+    if (!canViewAllDevices || !staffId) return;
     setAdminLoading(true);
     setAdminError(null);
-    const { data, error } = await supabase.rpc("staff_admin_list_all_devices", {
-      actor_id: staffId,
-    });
+    const rpcName = isAdmin
+      ? "staff_admin_list_all_devices"
+      : "staff_manage_list_all_devices";
+    const { data, error } = await supabase.rpc(rpcName, { actor_id: staffId });
     setAdminLoading(false);
     if (error) {
       setAdminError(error.message);
       return;
     }
     setAdminDevices((data ?? []) as AdminDevice[]);
-  }, [isAdmin, staffId]);
+  }, [canViewAllDevices, isAdmin, staffId]);
 
   useEffect(() => {
     void reloadAdminDevices();
@@ -190,129 +172,6 @@ export function ProfileSecurityPage() {
     }
     await Promise.all([reloadAdminDevices(), reload()]);
   }
-
-  /* ---- Приглашения (admin) ----------------------------------------- */
-
-  const reloadInvites = useCallback(async () => {
-    if (!isAdmin || !staffId) return;
-    setInvitesLoading(true);
-    setInvitesError(null);
-    const { data, error } = await supabase.rpc("staff_admin_list_invites", {
-      actor_id: staffId,
-    });
-    setInvitesLoading(false);
-    if (error) {
-      setInvitesError(error.message);
-      return;
-    }
-    setInvites((data ?? []) as InviteLink[]);
-  }, [isAdmin, staffId]);
-
-  /* Подтянем список активных сотрудников для селекта «кому приглашение».
-   * Берём только active=true, но не фильтруем по роли — иногда админу нужно
-   * пригласить даже временного админа/менеджера. */
-  const reloadInviteStaffOptions = useCallback(async () => {
-    if (!isAdmin) return;
-    const { data, error } = await supabase
-      .from("staff")
-      .select("id,name")
-      .eq("is_active", true)
-      .order("name", { ascending: true });
-    if (error) {
-      setInvitesError(error.message);
-      return;
-    }
-    const opts = (data ?? []).map((s) => ({
-      id: String(s.id),
-      name: String(s.name ?? ""),
-    }));
-    setInviteStaffOptions(opts);
-    setInviteStaffId((prev) => prev || opts[0]?.id || "");
-  }, [isAdmin]);
-
-  useEffect(() => {
-    void reloadInvites();
-    void reloadInviteStaffOptions();
-  }, [reloadInvites, reloadInviteStaffOptions]);
-
-  async function onCreateInvite(e: FormEvent) {
-    e.preventDefault();
-    if (!staffId || !inviteStaffId) return;
-    setInviteCreating(true);
-    setInvitesError(null);
-    setJustCreatedInvite(null);
-    setInviteCopyOk(false);
-    const { data, error } = await supabase.rpc("staff_admin_create_invite", {
-      actor_id: staffId,
-      target_staff_id: inviteStaffId,
-      expires_in_minutes: inviteTtlMinutes,
-      max_uses_input: inviteMaxUses,
-      note_input: inviteNote.trim() || null,
-    });
-    setInviteCreating(false);
-    if (error) {
-      setInvitesError(error.message);
-      return;
-    }
-    const payload = (data ?? {}) as Record<string, unknown>;
-    const status = String(payload.status ?? "");
-    if (status !== "ok") {
-      setInvitesError(
-        status === "staff_not_found"
-          ? "Сотрудник не найден"
-          : status === "staff_inactive"
-            ? "Сотрудник деактивирован"
-            : `RPC вернул status=${status}`,
-      );
-      return;
-    }
-    const token = String(payload.token ?? "");
-    const url = `${window.location.origin}/invite/${encodeURIComponent(token)}`;
-    setJustCreatedInvite({
-      url,
-      staffName: String(payload.staff_name ?? ""),
-      expiresAt: String(payload.expires_at ?? ""),
-    });
-    setInviteNote("");
-    await reloadInvites();
-  }
-
-  async function copyJustCreatedInvite() {
-    if (!justCreatedInvite) return;
-    try {
-      await navigator.clipboard.writeText(justCreatedInvite.url);
-      setInviteCopyOk(true);
-      window.setTimeout(() => setInviteCopyOk(false), 2000);
-    } catch {
-      /* свалится на mobile с http — не страшно, пользователь скопирует руками */
-    }
-  }
-
-  async function onRevokeInvite(inviteId: string) {
-    if (!staffId) return;
-    if (
-      !window.confirm(
-        t("profileSecurity.inviteRevokeConfirm", {
-          defaultValue: "Отозвать ссылку?",
-        }),
-      )
-    ) {
-      return;
-    }
-    setInviteBusyId(inviteId);
-    const { error } = await supabase.rpc("staff_admin_revoke_invite", {
-      invite_id_input: inviteId,
-      actor_id: staffId,
-    });
-    setInviteBusyId(null);
-    if (error) {
-      setInvitesError(error.message);
-      return;
-    }
-    await reloadInvites();
-  }
-
-  /* ------------------------------------------------------------------- */
 
   async function onSetPin(e: FormEvent) {
     e.preventDefault();
@@ -598,447 +457,423 @@ export function ProfileSecurityPage() {
         )}
       </section>
 
-      {isAdmin && (
-        <section className="rounded-xl border border-sky-900/50 bg-zinc-950 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="flex items-center gap-2 text-base font-semibold text-white">
-                {t("profileSecurity.invitesTitle", {
-                  defaultValue: "Пригласительные ссылки",
-                })}
-                <span className="rounded-full border border-sky-700/60 bg-sky-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-200">
-                  admin
-                </span>
-              </h2>
-              <p className="mt-1 max-w-2xl text-xs text-zinc-500">
-                {t("profileSecurity.invitesHint", {
-                  defaultValue:
-                    "Создайте одноразовую ссылку для конкретного мастера или админа. Он откроет её → автоматически залогинится → его устройство сразу станет доверенным. PIN/телефон вводить не нужно.",
-                })}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void reloadInvites()}
-              className="text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline"
-            >
-              {t("common.refresh", { defaultValue: "Обновить" })}
-            </button>
-          </div>
-
-          <form
-            onSubmit={onCreateInvite}
-            className="mt-4 grid gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 sm:grid-cols-2"
-          >
-            <label className="block">
-              <span className="block text-xs font-medium text-zinc-500">
-                {t("profileSecurity.inviteFor", { defaultValue: "Кому" })}
-              </span>
-              <select
-                value={inviteStaffId}
-                onChange={(e) => setInviteStaffId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
-              >
-                {inviteStaffOptions.length === 0 && (
-                  <option value="">—</option>
-                )}
-                {inviteStaffOptions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-xs font-medium text-zinc-500">
-                {t("profileSecurity.inviteTtl", {
-                  defaultValue: "Срок действия",
-                })}
-              </span>
-              <select
-                value={inviteTtlMinutes}
-                onChange={(e) => setInviteTtlMinutes(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
-              >
-                {INVITE_TTL_PRESETS.map((p) => (
-                  <option key={p.minutes} value={p.minutes}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-xs font-medium text-zinc-500">
-                {t("profileSecurity.inviteMaxUses", {
-                  defaultValue: "Сколько раз можно использовать",
-                })}
-              </span>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={inviteMaxUses}
-                onChange={(e) =>
-                  setInviteMaxUses(
-                    Math.max(1, Math.min(20, Number(e.target.value) || 1)),
-                  )
-                }
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
-              />
-              <span className="mt-1 block text-[11px] text-zinc-600">
-                {t("profileSecurity.inviteMaxUsesHint", {
-                  defaultValue:
-                    "Обычно 1. Больше — если планшет один и хотите подключать несколько устройств подряд.",
-                })}
-              </span>
-            </label>
-            <label className="block">
-              <span className="block text-xs font-medium text-zinc-500">
-                {t("profileSecurity.inviteNote", {
-                  defaultValue: "Заметка (необязательно)",
-                })}
-              </span>
-              <input
-                type="text"
-                value={inviteNote}
-                onChange={(e) => setInviteNote(e.target.value.slice(0, 200))}
-                placeholder={t("profileSecurity.inviteNotePlaceholder", {
-                  defaultValue: "Например: «iPad на ресепшене»",
-                })}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
-              />
-            </label>
-            <div className="sm:col-span-2">
-              <button
-                type="submit"
-                disabled={inviteCreating || !inviteStaffId}
-                className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500 disabled:opacity-50"
-              >
-                {inviteCreating
-                  ? t("common.saving", { defaultValue: "Сохраняем…" })
-                  : t("profileSecurity.inviteCreate", {
-                      defaultValue: "Создать ссылку",
-                    })}
-              </button>
-            </div>
-          </form>
-
-          {justCreatedInvite && (
-            <div className="mt-4 rounded-lg border border-emerald-800/60 bg-emerald-950/30 p-4">
-              <p className="text-sm font-medium text-emerald-100">
-                {t("profileSecurity.inviteCreatedFor", {
-                  defaultValue: "Ссылка для {{name}} создана",
-                  name: justCreatedInvite.staffName,
-                })}
-              </p>
-              <p className="mt-1 text-[11px] text-emerald-300/80">
-                {t("profileSecurity.inviteCreatedHint", {
-                  defaultValue:
-                    "Скопируйте и отправьте мастеру. Это единственный момент, когда вы её видите — потом восстановить нельзя, можно только создать новую.",
-                })}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <input
-                  readOnly
-                  value={justCreatedInvite.url}
-                  onFocus={(e) => e.currentTarget.select()}
-                  className="min-w-0 flex-1 rounded-lg border border-emerald-800/60 bg-black px-3 py-2 font-mono text-xs text-emerald-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => void copyJustCreatedInvite()}
-                  className="rounded-lg border border-emerald-700 bg-emerald-900/40 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-900/60"
-                >
-                  {inviteCopyOk
-                    ? t("profileSecurity.inviteCopied", {
-                        defaultValue: "Скопировано",
-                      })
-                    : t("profileSecurity.inviteCopy", {
-                        defaultValue: "Копировать",
-                      })}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setJustCreatedInvite(null)}
-                  className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-900"
-                >
-                  {t("profileSecurity.inviteDismiss", {
-                    defaultValue: "Скрыть",
-                  })}
-                </button>
-              </div>
-              <p className="mt-2 text-[11px] text-zinc-400">
-                {t("profileSecurity.inviteExpiresAt", {
-                  defaultValue: "Действует до",
-                })}
-                : {new Date(justCreatedInvite.expiresAt).toLocaleString()}
-              </p>
-            </div>
-          )}
-
-          {invitesError && (
-            <p className="mt-3 text-sm text-red-400">{invitesError}</p>
-          )}
-          {invitesLoading ? (
-            <p className="mt-3 text-sm text-zinc-500">{t("common.loading")}</p>
-          ) : invites.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">
-              {t("profileSecurity.invitesEmpty", {
-                defaultValue: "Пока нет созданных ссылок.",
-              })}
-            </p>
-          ) : (
-            <ul className="mt-4 divide-y divide-zinc-800">
-              {invites.map((inv) => {
-                const busy = inviteBusyId === inv.id;
-                const status = inv.status;
-                const statusBadge =
-                  status === "active"
-                    ? "border-emerald-700/60 bg-emerald-950/40 text-emerald-200"
-                    : status === "used_up"
-                      ? "border-zinc-700 bg-zinc-900 text-zinc-300"
-                      : status === "expired"
-                        ? "border-amber-700/60 bg-amber-950/40 text-amber-200"
-                        : "border-rose-700/60 bg-rose-950/40 text-rose-200";
-                const statusLabel =
-                  status === "active"
-                    ? "активна"
-                    : status === "used_up"
-                      ? "использована"
-                      : status === "expired"
-                        ? "просрочена"
-                        : "отозвана";
-                return (
-                  <li
-                    key={inv.id}
-                    className="flex flex-wrap items-center justify-between gap-3 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-white">
-                        <span className="truncate">{inv.staff_name || "—"}</span>
-                        <span
-                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadge}`}
-                        >
-                          {statusLabel}
-                        </span>
-                        {inv.note && (
-                          <span className="truncate text-xs text-zinc-500">
-                            · {inv.note}
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-500">
-                        {t("profileSecurity.inviteExpiresAt", {
-                          defaultValue: "Действует до",
-                        })}
-                        : {new Date(inv.expires_at).toLocaleString()}
-                        {" · "}
-                        {t("profileSecurity.inviteUsage", {
-                          defaultValue: "использований",
-                        })}
-                        : {inv.uses_count}/{inv.max_uses}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-600">
-                        {t("profileSecurity.inviteCreatedAt", {
-                          defaultValue: "Создана",
-                        })}
-                        : {new Date(inv.created_at).toLocaleString()}
-                        {inv.created_by_admin_name && (
-                          <span> · {inv.created_by_admin_name}</span>
-                        )}
-                        {inv.last_used_at && (
-                          <span>
-                            {" · "}
-                            {t("profileSecurity.inviteLastUsed", {
-                              defaultValue: "последний раз использована",
-                            })}{" "}
-                            {new Date(inv.last_used_at).toLocaleString()}
-                            {inv.last_used_ip && (
-                              <span className="ml-1 font-mono text-[10px] text-zinc-500">
-                                IP {inv.last_used_ip}
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    {status === "active" && (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void onRevokeInvite(inv.id)}
-                        className="rounded-lg border border-red-900/60 px-3 py-1.5 text-xs text-red-300 hover:bg-red-950/30 disabled:opacity-50"
-                      >
-                        {t("profileSecurity.inviteRevoke", {
-                          defaultValue: "Отозвать",
-                        })}
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-      )}
-
-      {isAdmin && (
-        <section className="rounded-xl border border-violet-900/50 bg-zinc-950 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="flex items-center gap-2 text-base font-semibold text-white">
-                {t("profileSecurity.adminAllDevices", {
-                  defaultValue: "Все устройства салона",
-                })}
-                <span className="rounded-full border border-violet-700/60 bg-violet-950/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
-                  admin
-                </span>
-              </h2>
-              <p className="mt-1 text-xs text-zinc-500">
-                {t("profileSecurity.adminAllDevicesHint", {
-                  defaultValue:
-                    "Сотрудники добавляют устройства автоматически при входе. Чтобы планшет на ресепшене или другой общий девайс пускал любого мастера без PIN — переведите его в «Устройство салона».",
-                })}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void reloadAdminDevices()}
-              className="text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline"
-            >
-              {t("common.refresh", { defaultValue: "Обновить" })}
-            </button>
-          </div>
-
-          {adminError && (
-            <p className="mt-3 text-sm text-red-400">{adminError}</p>
-          )}
-          {adminLoading ? (
-            <p className="mt-3 text-sm text-zinc-500">{t("common.loading")}</p>
-          ) : adminDevices.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500">
-              {t("profileSecurity.adminNoDevices", {
-                defaultValue: "Пока нет ни одного зарегистрированного устройства.",
-              })}
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y divide-zinc-800">
-              {adminDevices.map((d) => {
-                const busy = adminBusyId === d.id;
-                return (
-                  <li
-                    key={d.id}
-                    className={
-                      "flex flex-wrap items-center justify-between gap-3 py-3 " +
-                      (d.is_salon_device
-                        ? "rounded-lg bg-violet-950/20 px-2"
-                        : "")
-                    }
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-white">
-                        <span className="truncate">{d.label || "—"}</span>
-                        {d.is_salon_device && (
-                          <span className="shrink-0 rounded-full border border-violet-700/60 bg-violet-950/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
-                            Салон
-                          </span>
-                        )}
-                        {d.revoked_at && (
-                          <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
-                            Отозвано
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-400">
-                        {d.is_salon_device
-                          ? t("profileSecurity.adminClaimedFrom", {
-                              defaultValue:
-                                "Общий девайс. Изначально добавил: {{name}}",
-                              name: d.staff_name || "—",
-                            })
-                          : t("profileSecurity.adminOwnedBy", {
-                              defaultValue: "Привязано к: {{name}}",
-                              name: d.staff_name || "—",
-                            })}
-                        {d.is_salon_device && d.claimed_by_admin_name && (
-                          <span className="text-zinc-500">
-                            {" · "}
-                            {t("profileSecurity.adminClaimedBy", {
-                              defaultValue: "переведён админом {{name}}",
-                              name: d.claimed_by_admin_name,
-                            })}
-                          </span>
-                        )}
-                      </p>
-                      <p className="truncate text-xs text-zinc-600">
-                        {d.user_agent ?? ""}
-                      </p>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-zinc-600">
-                        <span>
-                          {t("profileSecurity.lastSeen", {
-                            defaultValue: "Последний вход",
-                          })}
-                          : {new Date(d.last_seen_at).toLocaleString()}
-                        </span>
-                        {d.ip_address && (
-                          <span
-                            className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400"
-                            title={t("profileSecurity.ipHint", {
-                              defaultValue:
-                                "IP, с которого был последний вход",
-                            })}
-                          >
-                            IP {d.ip_address}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    {!d.revoked_at && (
-                      <div className="flex shrink-0 items-center gap-2">
-                        {d.is_salon_device ? (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void adminRelease(d.id)}
-                            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
-                            title="Снять статус «общего», вернуть исходному владельцу"
-                          >
-                            {t("profileSecurity.adminRelease", {
-                              defaultValue: "Вернуть владельцу",
-                            })}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void adminClaim(d.id)}
-                            className="rounded-lg border border-violet-700/60 bg-violet-950/40 px-3 py-1.5 text-xs font-medium text-violet-100 hover:bg-violet-900/50 disabled:opacity-50"
-                            title="Сделать общим устройством салона: любой активный сотрудник сможет войти без PIN"
-                          >
-                            {t("profileSecurity.adminClaim", {
-                              defaultValue: "Сделать устройством салона",
-                            })}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void adminRevoke(d.id)}
-                          className="rounded-lg border border-red-900/60 px-3 py-1.5 text-xs text-red-300 hover:bg-red-950/30 disabled:opacity-50"
-                        >
-                          {t("profileSecurity.revoke", {
-                            defaultValue: "Отозвать",
-                          })}
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+      {canViewAllDevices && (
+        <AllDevicesSection
+          devices={adminDevices}
+          loading={adminLoading}
+          error={adminError}
+          isAdmin={isAdmin}
+          currentStaffId={staffId ?? null}
+          expanded={expandedGroups}
+          onToggle={toggleGroup}
+          busyId={adminBusyId}
+          onClaim={adminClaim}
+          onRelease={adminRelease}
+          onRevoke={adminRevoke}
+          onReload={reloadAdminDevices}
+          t={t}
+        />
       )}
     </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Секция «Все устройства» — для админа и менеджера.
+ *
+ * UX-правила:
+ *   • Каждый сотрудник по умолчанию видит ТОЛЬКО свои устройства (это в
+ *     отдельной секции выше). Здесь — обзор всего парка.
+ *   • Устройства сгруппированы и СВЁРНУТЫ по умолчанию. Это сознательно:
+ *     админу/менеджеру при 30+ девайсах не нужна простыня.
+ *   • Админ видит кнопки claim/release/revoke. Менеджер — только смотрит.
+ *   • Свои устройства из группировок исключаем (они уже выше).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+type AllDevicesSectionProps = {
+  devices: AdminDevice[];
+  loading: boolean;
+  error: string | null;
+  isAdmin: boolean;
+  currentStaffId: string | null;
+  expanded: Set<GroupKey>;
+  onToggle: (key: GroupKey) => void;
+  busyId: string | null;
+  onClaim: (id: string) => Promise<void> | void;
+  onRelease: (id: string) => Promise<void> | void;
+  onRevoke: (id: string) => Promise<void> | void;
+  onReload: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: any;
+};
+
+function AllDevicesSection(props: AllDevicesSectionProps) {
+  const {
+    devices,
+    loading,
+    error,
+    isAdmin,
+    currentStaffId,
+    expanded,
+    onToggle,
+    busyId,
+    onClaim,
+    onRelease,
+    onRevoke,
+    onReload,
+    t,
+  } = props;
+
+  /* Раскладываем устройства по группам:
+   *   salon  — активные общие устройства (не привязаны к одному сотруднику)
+   *   staff:<id> — активные устройства конкретного сотрудника (кроме меня)
+   *   revoked — всё отозванное (история) */
+  const groups = useMemo(() => {
+    const salon: AdminDevice[] = [];
+    const revoked: AdminDevice[] = [];
+    /* Map<staff_id, { name, items[] }>. Используем Map чтобы сохранить
+     * порядок «как пришло» и стабильно показывать. */
+    const byStaff = new Map<string, { name: string; items: AdminDevice[] }>();
+
+    for (const d of devices) {
+      if (d.revoked_at) {
+        revoked.push(d);
+        continue;
+      }
+      if (d.is_salon_device) {
+        salon.push(d);
+        continue;
+      }
+      // Свои собственные активные — НЕ показываем здесь (они выше в
+      // «Доверенные устройства»). Иначе двойной список и риск нажать revoke
+      // не там, где ожидал.
+      if (currentStaffId && d.staff_id === currentStaffId) continue;
+
+      const key = d.staff_id;
+      const existing = byStaff.get(key);
+      if (existing) {
+        existing.items.push(d);
+      } else {
+        byStaff.set(key, {
+          name: d.staff_name || t("profileSecurity.unknownStaff", { defaultValue: "Неизвестный сотрудник" }),
+          items: [d],
+        });
+      }
+    }
+    return { salon, revoked, byStaff };
+  }, [devices, currentStaffId, t]);
+
+  const totalShown =
+    groups.salon.length +
+    groups.revoked.length +
+    Array.from(groups.byStaff.values()).reduce((acc, g) => acc + g.items.length, 0);
+
+  return (
+    <section className="rounded-xl border border-violet-900/50 bg-zinc-950 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="flex items-center gap-2 text-base font-semibold text-white">
+            {t("profileSecurity.allDevicesTitle", {
+              defaultValue: "Все устройства",
+            })}
+            <span
+              className={
+                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
+                (isAdmin
+                  ? "border-rose-700/60 bg-rose-950/40 text-rose-200"
+                  : "border-emerald-700/60 bg-emerald-950/40 text-emerald-200")
+              }
+            >
+              {isAdmin
+                ? t("profileSecurity.roleAdmin", { defaultValue: "admin" })
+                : t("profileSecurity.roleManager", { defaultValue: "manager" })}
+            </span>
+            <span className="rounded-full border border-zinc-700 bg-zinc-900/60 px-2 py-0.5 text-[10px] text-zinc-400">
+              {totalShown}
+            </span>
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            {isAdmin
+              ? t("profileSecurity.adminAllDevicesHint", {
+                  defaultValue:
+                    "Сотрудники добавляют устройства автоматически при входе. Чтобы планшет на ресепшене или другой общий девайс пускал любого мастера без PIN — переведите его в «Устройство салона».",
+                })
+              : t("profileSecurity.managerAllDevicesHint", {
+                  defaultValue:
+                    "Только просмотр. Управлять (сделать «общим», отозвать) может админ.",
+                })}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onReload}
+          className="text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline"
+        >
+          {t("common.refresh", { defaultValue: "Обновить" })}
+        </button>
+      </div>
+
+      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+      {loading ? (
+        <p className="mt-3 text-sm text-zinc-500">{t("common.loading")}</p>
+      ) : totalShown === 0 ? (
+        <p className="mt-3 text-sm text-zinc-500">
+          {t("profileSecurity.adminNoDevices", {
+            defaultValue: "Пока нет ни одного зарегистрированного устройства.",
+          })}
+        </p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {groups.salon.length > 0 && (
+            <CollapsibleGroup
+              groupKey="salon"
+              expanded={expanded.has("salon")}
+              onToggle={onToggle}
+              icon="🏢"
+              title={t("profileSecurity.groupSalon", {
+                defaultValue: "Устройства салона",
+              })}
+              count={groups.salon.length}
+              accent="violet"
+              hint={t("profileSecurity.groupSalonHint", {
+                defaultValue: "Общие планшеты/ноутбуки. Пускают любого активного сотрудника без PIN.",
+              })}
+            >
+              <DeviceList
+                items={groups.salon}
+                isAdmin={isAdmin}
+                busyId={busyId}
+                onClaim={onClaim}
+                onRelease={onRelease}
+                onRevoke={onRevoke}
+                t={t}
+              />
+            </CollapsibleGroup>
+          )}
+
+          {Array.from(groups.byStaff.entries()).map(([sid, g]) => (
+            <CollapsibleGroup
+              key={sid}
+              groupKey={`staff:${sid}`}
+              expanded={expanded.has(`staff:${sid}`)}
+              onToggle={onToggle}
+              icon="👤"
+              title={g.name}
+              count={g.items.length}
+              accent="zinc"
+            >
+              <DeviceList
+                items={g.items}
+                isAdmin={isAdmin}
+                busyId={busyId}
+                onClaim={onClaim}
+                onRelease={onRelease}
+                onRevoke={onRevoke}
+                t={t}
+              />
+            </CollapsibleGroup>
+          ))}
+
+          {groups.revoked.length > 0 && (
+            <CollapsibleGroup
+              groupKey="revoked"
+              expanded={expanded.has("revoked")}
+              onToggle={onToggle}
+              icon="🗑"
+              title={t("profileSecurity.groupRevoked", {
+                defaultValue: "Отозванные",
+              })}
+              count={groups.revoked.length}
+              accent="zinc"
+              hint={t("profileSecurity.groupRevokedHint", {
+                defaultValue: "История. Этими токенами уже нельзя войти.",
+              })}
+            >
+              <DeviceList
+                items={groups.revoked}
+                isAdmin={isAdmin}
+                busyId={busyId}
+                onClaim={onClaim}
+                onRelease={onRelease}
+                onRevoke={onRevoke}
+                t={t}
+              />
+            </CollapsibleGroup>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CollapsibleGroup(props: {
+  groupKey: GroupKey;
+  expanded: boolean;
+  onToggle: (key: GroupKey) => void;
+  icon: string;
+  title: string;
+  count: number;
+  accent: "violet" | "zinc";
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  const accent =
+    props.accent === "violet"
+      ? "border-violet-900/40 bg-violet-950/10"
+      : "border-zinc-800 bg-zinc-900/30";
+  return (
+    <div className={`rounded-lg border ${accent}`}>
+      <button
+        type="button"
+        onClick={() => props.onToggle(props.groupKey)}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-100 hover:bg-white/5"
+        aria-expanded={props.expanded}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span aria-hidden="true">{props.icon}</span>
+          <span className="truncate font-medium">{props.title}</span>
+          <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/70 px-1.5 py-0.5 text-[10px] text-zinc-400">
+            {props.count}
+          </span>
+        </span>
+        <span
+          className={`shrink-0 text-zinc-500 transition-transform ${props.expanded ? "rotate-90" : ""}`}
+          aria-hidden="true"
+        >
+          ▶
+        </span>
+      </button>
+      {props.expanded && (
+        <div className="border-t border-zinc-800/80 px-3 py-2">
+          {props.hint && (
+            <p className="mb-2 text-[11px] text-zinc-500">{props.hint}</p>
+          )}
+          {props.children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeviceList(props: {
+  items: AdminDevice[];
+  isAdmin: boolean;
+  busyId: string | null;
+  onClaim: (id: string) => Promise<void> | void;
+  onRelease: (id: string) => Promise<void> | void;
+  onRevoke: (id: string) => Promise<void> | void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: any;
+}) {
+  const { items, isAdmin, busyId, onClaim, onRelease, onRevoke, t } = props;
+  return (
+    <ul className="divide-y divide-zinc-800/80">
+      {items.map((d) => {
+        const busy = busyId === d.id;
+        return (
+          <li
+            key={d.id}
+            className={
+              "flex flex-wrap items-center justify-between gap-3 py-2.5 " +
+              (d.is_salon_device ? "rounded-lg bg-violet-950/10 px-2" : "")
+            }
+          >
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-white">
+                <span className="truncate">{d.label || "—"}</span>
+                {d.is_salon_device && (
+                  <span className="shrink-0 rounded-full border border-violet-700/60 bg-violet-950/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
+                    {t("profileSecurity.badgeSalon", { defaultValue: "Салон" })}
+                  </span>
+                )}
+                {d.revoked_at && (
+                  <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
+                    {t("profileSecurity.revoked", { defaultValue: "Отозвано" })}
+                  </span>
+                )}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-400">
+                {d.is_salon_device
+                  ? t("profileSecurity.adminClaimedFrom", {
+                      defaultValue:
+                        "Общий девайс. Изначально добавил: {{name}}",
+                      name: d.staff_name || "—",
+                    })
+                  : t("profileSecurity.adminOwnedBy", {
+                      defaultValue: "Привязано к: {{name}}",
+                      name: d.staff_name || "—",
+                    })}
+                {d.is_salon_device && d.claimed_by_admin_name && (
+                  <span className="text-zinc-500">
+                    {" · "}
+                    {t("profileSecurity.adminClaimedBy", {
+                      defaultValue: "переведён админом {{name}}",
+                      name: d.claimed_by_admin_name,
+                    })}
+                  </span>
+                )}
+              </p>
+              <p className="truncate text-xs text-zinc-600">
+                {d.user_agent ?? ""}
+              </p>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-zinc-600">
+                <span>
+                  {t("profileSecurity.lastSeen", { defaultValue: "Последний вход" })}
+                  : {new Date(d.last_seen_at).toLocaleString()}
+                </span>
+                {d.ip_address && (
+                  <span
+                    className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400"
+                    title={t("profileSecurity.ipHint", {
+                      defaultValue: "IP, с которого был последний вход",
+                    })}
+                  >
+                    IP {d.ip_address}
+                  </span>
+                )}
+              </p>
+            </div>
+            {/* Управляющие кнопки только для админа и только для активных устройств. */}
+            {isAdmin && !d.revoked_at && (
+              <div className="flex shrink-0 items-center gap-2">
+                {d.is_salon_device ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onRelease(d.id)}
+                    className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                    title="Снять статус «общего», вернуть исходному владельцу"
+                  >
+                    {t("profileSecurity.adminRelease", {
+                      defaultValue: "Вернуть владельцу",
+                    })}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onClaim(d.id)}
+                    className="rounded-lg border border-violet-700/60 bg-violet-950/40 px-3 py-1.5 text-xs font-medium text-violet-100 hover:bg-violet-900/50 disabled:opacity-50"
+                    title="Сделать общим устройством салона: любой активный сотрудник сможет войти без PIN"
+                  >
+                    {t("profileSecurity.adminClaim", {
+                      defaultValue: "Сделать устройством салона",
+                    })}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onRevoke(d.id)}
+                  className="rounded-lg border border-red-900/60 px-3 py-1.5 text-xs text-red-300 hover:bg-red-950/30 disabled:opacity-50"
+                >
+                  {t("profileSecurity.revoke", { defaultValue: "Отозвать" })}
+                </button>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

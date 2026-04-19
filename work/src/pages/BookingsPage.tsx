@@ -155,6 +155,39 @@ export function BookingsPage() {
     return "border-zinc-700 bg-zinc-900 text-zinc-300";
   }
 
+  /* Источник записи (миграция 053). Цветовая схема выбрана так, чтобы
+   * сразу отличать «пришёл сам через сайт» (нейтральный голубой) от
+   * «принял сотрудник» (фиолетовый/изумрудный — подчёркивает участие
+   * персонала). Legacy-значения отображаем серым «прочерком», чтобы не
+   * путать аналитику. */
+  function sourceMeta(source: string | null | undefined): {
+    label: string;
+    tone: string;
+  } | null {
+    const s = (source ?? "").toLowerCase();
+    if (s === "public_site") {
+      return {
+        label: t("bookings.sourceSite", { defaultValue: "Сайт" }),
+        tone: "border-sky-800/60 bg-sky-950/40 text-sky-200",
+      };
+    }
+    if (s === "reception") {
+      return {
+        label: t("bookings.sourceReception", { defaultValue: "Ресепшен" }),
+        tone: "border-violet-800/60 bg-violet-950/40 text-violet-200",
+      };
+    }
+    if (s === "crm") {
+      return {
+        label: t("bookings.sourceCrm", { defaultValue: "CRM" }),
+        tone: "border-emerald-800/60 bg-emerald-950/40 text-emerald-200",
+      };
+    }
+    // Не отображаем бейдж для пустого/неизвестного — чтобы legacy-записи
+    // (старая `online`/`manual`) не вводили в заблуждение.
+    return null;
+  }
+
   function filterLabel(f: StatusFilter): string {
     if (f === "all") return t("bookings.filterAll");
     if (f === "active") return t("bookings.filterActive");
@@ -262,6 +295,9 @@ export function BookingsPage() {
                 <th className="px-4 py-3">{t("bookings.staff")}</th>
                 <th className="px-4 py-3">{t("bookings.service")}</th>
                 <th className="px-4 py-3">{t("bookings.status")}</th>
+                <th className="px-4 py-3">
+                  {t("bookings.source", { defaultValue: "Источник" })}
+                </th>
                 {(canManage || (isWorkerOnlyEffective && staffMember)) && <th className="px-4 py-3" />}
               </tr>
             </thead>
@@ -270,6 +306,10 @@ export function BookingsPage() {
                 const when = b.start_time;
                 const em = staffNames.find((x) => x.id === b.staff_id);
                 const sv = services.find((x) => x.id === String(b.service_id));
+                const src = sourceMeta(b.source);
+                const acceptedBy = b.created_by_staff_id
+                  ? staffNames.find((x) => x.id === b.created_by_staff_id)
+                  : null;
                 return (
                   <tr key={b.id} className="bg-zinc-950/80">
                     <td className="px-4 py-3 text-zinc-300">
@@ -297,6 +337,36 @@ export function BookingsPage() {
                       >
                         {statusLabel(b.status)}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {src ? (
+                        <span
+                          className={
+                            "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
+                            src.tone
+                          }
+                          title={
+                            acceptedBy
+                              ? t("bookings.acceptedBy", {
+                                  defaultValue: "Принял: {{name}}",
+                                  name: acceptedBy.name,
+                                })
+                              : undefined
+                          }
+                        >
+                          {src.label}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600">{t("common.dash")}</span>
+                      )}
+                      {acceptedBy && (
+                        <div className="mt-0.5 text-[10px] text-zinc-500">
+                          {t("bookings.acceptedBy", {
+                            defaultValue: "Принял: {{name}}",
+                            name: acceptedBy.name,
+                          })}
+                        </div>
+                      )}
                     </td>
                     {(canManage || (isWorkerOnlyEffective && staffMember)) && (
                       <td className="px-4 py-3">

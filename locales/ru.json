@@ -45,6 +45,7 @@
     "adminTimeOff": "Выходные",
     "adminSupport": "Входящие",
     "adminCommunications": "Письма",
+    "adminInvites": "Приглашения",
     "adminIntegrations": "Интеграции",
     "profileSecurity": "Безопасность",
     "myHelp": "Помощь",
@@ -322,7 +323,12 @@
     "empty": "Записей пока нет.",
     "emptyFiltered": "По текущим фильтрам ничего не найдено. Сбросьте фильтры или поиск.",
     "resetFilters": "Сбросить фильтры",
-    "loadError": "Не удалось загрузить записи. Попробуйте обновить страницу."
+    "loadError": "Не удалось загрузить записи. Попробуйте обновить страницу.",
+    "source": "Источник",
+    "sourceSite": "Сайт",
+    "sourceReception": "Ресепшен",
+    "sourceCrm": "CRM",
+    "acceptedBy": "Принял: {{name}}"
   },
   "employees": {
     "title": "Сотрудники",

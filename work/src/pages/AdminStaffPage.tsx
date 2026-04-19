@@ -1334,13 +1334,13 @@ export function AdminStaffPage() {
                 </button>
               );
             })}
-          </div>
+        </div>
           <button
             type="submit"
             className="inline-flex h-9 items-center justify-center rounded-md bg-sky-600 px-4 text-sm font-semibold text-white shadow-sm shadow-sky-950/40 transition hover:bg-sky-500 active:bg-sky-700"
           >
-            {t("common.add")}
-          </button>
+          {t("common.add")}
+        </button>
         </div>
       </form>
 
@@ -1373,30 +1373,30 @@ export function AdminStaffPage() {
               return (
                 <Fragment key={r.id}>
                   <tr className="border-b border-zinc-800/80 align-middle">
-                    <td className="px-3 py-2 font-mono text-zinc-300">
-                      {editingId === r.id ? (
-                        <input
-                          value={editPhone}
-                          onChange={(e) => setEditPhone(e.target.value)}
-                          className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
-                        />
-                      ) : (
-                        r.phone ?? "—"
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {editingId === r.id ? (
-                        <input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
-                        />
-                      ) : (
-                        r.name
-                      )}
-                    </td>
+                <td className="px-3 py-2 font-mono text-zinc-300">
+                  {editingId === r.id ? (
+                    <input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
+                    />
+                  ) : (
+                    r.phone ?? "—"
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  {editingId === r.id ? (
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
+                    />
+                  ) : (
+                    r.name
+                  )}
+                </td>
                     <td className="max-w-[14rem] px-3 py-2 text-xs text-zinc-400">{roleLabelsSummary(r)}</td>
-                    <td className="px-3 py-2">
+                <td className="px-3 py-2">
                       <div className="flex flex-col gap-0.5 text-xs">
                         <div className="flex items-center gap-2">
                           <ToggleSwitch
@@ -1469,32 +1469,32 @@ export function AdminStaffPage() {
                             <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
                               {t("role.label")}
                             </p>
-                            <div className="flex flex-wrap gap-2">
-                              {(["admin", "manager", "worker"] as UiRole[]).map((roleToken) => {
-                                const current = rowRoles(r);
-                                return (
-                                  <label key={roleToken} className="inline-flex items-center gap-1 text-xs text-zinc-300">
-                                    <input
-                                      type="checkbox"
-                                      checked={current.includes(roleToken)}
-                                      onChange={(e) =>
+                  <div className="flex flex-wrap gap-2">
+                    {(["admin", "manager", "worker"] as UiRole[]).map((roleToken) => {
+                      const current = rowRoles(r);
+                      return (
+                        <label key={roleToken} className="inline-flex items-center gap-1 text-xs text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={current.includes(roleToken)}
+                            onChange={(e) =>
                                         void updateStaffRoles(
                                           r.id,
                                           current,
                                           toggleRoleToken(current, roleToken, e.target.checked),
                                           r,
                                         )
-                                      }
-                                    />
-                                    {roleToken === "admin"
-                                      ? t("role.admin")
-                                      : roleToken === "manager"
-                                        ? t("role.manager")
-                                        : t("role.worker")}
-                                  </label>
-                                );
-                              })}
-                            </div>
+                            }
+                          />
+                          {roleToken === "admin"
+                            ? t("role.admin")
+                            : roleToken === "manager"
+                              ? t("role.manager")
+                              : t("role.worker")}
+                        </label>
+                      );
+                    })}
+                  </div>
                           </div>
                           <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
                             <span className="text-[11px] font-medium uppercase text-zinc-500">
@@ -1512,7 +1512,7 @@ export function AdminStaffPage() {
                             </span>
                             <div className="flex items-center gap-2 text-xs">
                               <ToggleSwitch
-                                checked={r.is_active}
+                      checked={r.is_active}
                                 onCheckedChange={(v) => void updateStaffActive(r, v)}
                                 aria-label={`${r.name}: активен в CRM и на сайте`}
                               />
@@ -1878,7 +1878,7 @@ export function AdminStaffPage() {
                                                       aria-label={`${r.name}: ${s.name}`}
                                                     />
                                                     <span className="min-w-0 truncate" title={s.name}>
-                                                      {s.name}
+                        {s.name}
                                                     </span>
                                                   </div>
                                                 ))}
@@ -1893,8 +1893,8 @@ export function AdminStaffPage() {
                               );
                             })()}
                           </div>
-                        </div>
-                      </td>
+                  </div>
+                </td>
                     </tr>
                   )}
                 </Fragment>
@@ -2001,25 +2001,25 @@ export function AdminStaffPage() {
                           className="text-sky-400 underline"
                           onClick={() => void saveEdit()}
                         >
-                          {t("common.save")}
-                        </button>
+                        {t("common.save")}
+                      </button>
                         <button
                           type="button"
                           className="text-zinc-500 underline"
                           onClick={() => setEditingId(null)}
                         >
-                          {t("common.cancel")}
-                        </button>
-                      </>
-                    ) : (
-                      <>
+                        {t("common.cancel")}
+                      </button>
+                    </>
+                  ) : (
+                    <>
                         <button
                           type="button"
                           className="text-sky-400 underline"
                           onClick={() => startEdit(r)}
                         >
-                          {t("adminStaff.edit")}
-                        </button>
+                        {t("adminStaff.edit")}
+                      </button>
                         <button
                           type="button"
                           className="text-red-400 underline disabled:cursor-not-allowed disabled:opacity-40"
@@ -2027,11 +2027,11 @@ export function AdminStaffPage() {
                           disabled={isOwner}
                           title={isOwner ? "Owner удалять нельзя" : undefined}
                         >
-                          delete
-                        </button>
-                      </>
-                    )}
-                  </div>
+                        delete
+                      </button>
+                    </>
+                  )}
+      </div>
                 </li>
               );
             })}

@@ -40,6 +40,7 @@ type NavKey =
   | "adminIntegrations"
   | "adminInventory"
   | "adminCommunications"
+  | "adminInvites"
   | "profileSecurity"
   | "myHelp";
 
@@ -98,6 +99,7 @@ const ICONS: Record<NavKey, () => JSX.Element> = {
   profileSecurity: () => <NavIcon path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />,
   adminInventory: () => <NavIcon path="M3 7l9-4 9 4-9 4-9-4Zm0 5 9 4 9-4M3 17l9 4 9-4" />,
   adminCommunications: () => <NavIcon path="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z M2 6l10 7 10-7" />,
+  adminInvites: () => <NavIcon path="M16 11V7a4 4 0 0 0-8 0v4M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z" />,
 };
 
 let _chimeCtx: AudioContext | null = null;
@@ -144,6 +146,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/services", key: "adminServices", manageOnly: true, icon: ICONS.adminServices },
       { to: "/admin/staff", key: "adminStaff", manageOnly: true, icon: ICONS.adminStaff },
+      { to: "/admin/invites", key: "adminInvites", adminOnly: true, icon: ICONS.adminInvites },
       { to: "/admin/inventory", key: "adminInventory", manageOnly: true, icon: ICONS.adminInventory },
     ],
   },

@@ -77,12 +77,21 @@ export type AppointmentRow = {
   start_time: string;
   end_time: string;
   status: "pending" | "confirmed" | "cancelled";
+  /** Откуда пришла запись (миграция 053): public_site = форма на сайте,
+   *  reception = kiosk на салонном планшете, crm = ручное создание сотрудником
+   *  в админке. У записей, созданных до 053, тут 'crm' (default).
+   *  Тип оставляем `string`, потому что на проде могут быть legacy-значения
+   *  типа 'online'/'manual' (старая `bookings`-таблица). UI должен это
+   *  переваривать. */
   source: string;
   /** Свободный комментарий клиента из формы записи; колонка appointments.note. */
   note: string | null;
   /** Backwards-compat: старое имя поля, использовалось до миграции 030.
    *  Оставлено только чтобы не упасть, если где-то ещё читают `.notes`. */
   notes?: string | null;
+  /** Сотрудник, который создал запись (миграция 053). NULL для public_site
+   *  и для всех записей, созданных до миграции. */
+  created_by_staff_id?: string | null;
   client_id?: string | null;
   created_at?: string;
 };

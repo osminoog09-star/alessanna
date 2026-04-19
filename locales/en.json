@@ -48,6 +48,7 @@
     "adminStaff": "Staff",
     "adminInventory": "Inventory",
     "adminCommunications": "Emails",
+    "adminInvites": "Invites",
     "adminServices": "Services",
     "adminSchedule": "Schedule",
     "adminTimeOff": "Time off",
