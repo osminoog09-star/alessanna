@@ -15,6 +15,7 @@ import { AdminTimeOffPage } from "./pages/AdminTimeOffPage";
 import { AdminSupportPage } from "./pages/AdminSupportPage";
 import { AdminIntegrationsPage } from "./pages/AdminIntegrationsPage";
 import { MyHelpPage } from "./pages/MyHelpPage";
+import { ProfileSecurityPage } from "./pages/ProfileSecurityPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 
 function RequireManage({ children }: { children: React.ReactNode }) {
@@ -110,6 +111,7 @@ export default function App() {
           }
         />
         <Route path="help" element={<MyHelpPage />} />
+        <Route path="profile/security" element={<ProfileSecurityPage />} />
         <Route path="services" element={<Navigate to="/admin/services" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -12,16 +12,36 @@ import { hasStaffRole, isWorkerOnlyView, normalizeStaffMember } from "../lib/rol
 import type { StaffMember } from "../types/database";
 
 const STORAGE_KEY = "alessanna_crm_staff";
+const DEVICE_TOKEN_KEY = "alessanna_crm_device_token";
 
+/**
+ * Результат login. Кроме привычного { ok: true } теперь может быть состояние
+ * `requires_pin` — фронт показывает поле PIN и повторно вызывает login(phone, pin).
+ */
 export type LoginResult =
-  | { ok: true }
+  | { ok: true; mode?: string }
+  | { ok: false; status: "requires_pin"; staffName?: string }
+  | { ok: false; status: "invalid_pin" }
+  | { ok: false; status: "pin_locked"; lockedUntil?: string }
+  | { ok: false; status: "access_denied" }
   | { ok: false; errorKey?: string; message?: string; displayError?: string };
+
+export type LoginInput = {
+  phone: string;
+  pin?: string;
+  trustThisDevice?: boolean;
+  deviceLabel?: string;
+};
 
 type AuthState = {
   staffMember: StaffMember | null;
   loading: boolean;
-  login: (phone: string) => Promise<LoginResult>;
+  login: (input: LoginInput | string) => Promise<LoginResult>;
   logout: () => void;
+  /** Удалить device_token с этого устройства (без revoke в БД). */
+  forgetThisDevice: () => void;
+  /** Есть ли локально сохранённый device_token. */
+  hasDeviceToken: boolean;
   canManage: boolean;
   isAdmin: boolean;
   /** True when real (non-preview) role is worker-only. */
@@ -43,7 +63,6 @@ function parseStored(): StaffMember | null {
 }
 
 function staffTableRowToMember(raw: Record<string, unknown>): StaffMember {
-  /* `normalizeStaffMember` заполнит `roles`/`active` из `role`/`is_active`. */
   return normalizeStaffMember({
     id: String(raw.id),
     name: String(raw.name ?? ""),
@@ -53,79 +72,134 @@ function staffTableRowToMember(raw: Record<string, unknown>): StaffMember {
   } as unknown as StaffMember);
 }
 
-/**
- * `verify_staff_phone` must return a JSON staff row (object with `id`).
- * Booleans and null mean access denied.
- */
-function parseStaffFromRpcData(data: unknown): StaffMember | null {
-  if (data == null || data === false || data === true) return null;
-
-  if (typeof data === "string") {
-    const s = data.trim();
-    if (!s || s === "null" || s === "false") return null;
-    try {
-      return parseStaffFromRpcData(JSON.parse(s) as unknown);
-    } catch {
-      return null;
-    }
-  }
-
-  if (Array.isArray(data)) {
-    const first = data[0];
-    if (first && typeof first === "object" && !Array.isArray(first) && "id" in first) {
-      return staffTableRowToMember(first as Record<string, unknown>);
-    }
+function readDeviceToken(): string | null {
+  try {
+    return localStorage.getItem(DEVICE_TOKEN_KEY);
+  } catch {
     return null;
   }
+}
 
-  if (typeof data === "object" && data !== null && "id" in data) {
-    return staffTableRowToMember(data as Record<string, unknown>);
+function writeDeviceToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(DEVICE_TOKEN_KEY, token);
+    else localStorage.removeItem(DEVICE_TOKEN_KEY);
+  } catch {
+    /* swallow */
   }
+}
 
-  return null;
+function summarizeUserAgent(): string {
+  if (typeof navigator === "undefined") return "";
+  // Не пишем весь UA — секретов нет, но без необходимости тащить fingerprint.
+  // Ограничим длиной, чтобы не раздувать БД.
+  return String(navigator.userAgent || "").slice(0, 240);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [staffMember, setStaffMember] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasDeviceToken, setHasDeviceToken] = useState(false);
 
   useEffect(() => {
     setStaffMember(parseStored());
+    setHasDeviceToken(Boolean(readDeviceToken()));
     setLoading(false);
   }, []);
 
-  const login = useCallback(async (phone: string): Promise<LoginResult> => {
+  const login = useCallback(async (input: LoginInput | string): Promise<LoginResult> => {
+    const normalized: LoginInput = typeof input === "string" ? { phone: input } : input;
+
     if (!isSupabaseConfigured()) {
       return { ok: false, errorKey: "auth.error.notConfigured" };
     }
-
-    const cleanPhone = phone.replace(/\D/g, "");
+    const cleanPhone = normalized.phone.replace(/\D/g, "");
     if (!cleanPhone) {
       return { ok: false, errorKey: "auth.error.phoneRequired" };
     }
 
-    const { data, error } = await supabase.rpc("verify_staff_phone", {
+    const deviceToken = readDeviceToken();
+
+    const { data, error } = await supabase.rpc("staff_login", {
       phone_input: cleanPhone,
+      pin_input: normalized.pin ?? null,
+      device_token: deviceToken,
+      trust_this_device: Boolean(normalized.trustThisDevice),
+      device_label: normalized.deviceLabel ?? null,
+      user_agent_input: summarizeUserAgent(),
     });
 
     if (error) {
+      // Fallback на старый RPC для случая если миграция 041 ещё не применена
+      // на каком-то окружении (dev/staging). На проде после деплоя его можно
+      // удалить через несколько релизов.
+      if (/staff_login.*does not exist/i.test(error.message || "")) {
+        const legacy = await supabase.rpc("verify_staff_phone", { phone_input: cleanPhone });
+        if (legacy.error) {
+          return { ok: false, errorKey: "auth.error.rpcFailed", message: legacy.error.message };
+        }
+        const legacyRow = legacy.data && typeof legacy.data === "object" && "id" in legacy.data
+          ? staffTableRowToMember(legacy.data as Record<string, unknown>)
+          : null;
+        if (!legacyRow) return { ok: false, status: "access_denied" };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(legacyRow));
+        setStaffMember(legacyRow);
+        return { ok: true, mode: "legacy_verify_staff_phone" };
+      }
       console.error(error);
       return { ok: false, errorKey: "auth.error.rpcFailed", message: error.message };
     }
 
-    const row = parseStaffFromRpcData(data);
-    if (!row) {
+    const payload = (data ?? {}) as Record<string, unknown>;
+    const status = String(payload.status ?? "");
+
+    if (status === "requires_pin") {
+      return {
+        ok: false,
+        status: "requires_pin",
+        staffName: typeof payload.staff_name === "string" ? payload.staff_name : undefined,
+      };
+    }
+    if (status === "invalid_pin") return { ok: false, status: "invalid_pin" };
+    if (status === "pin_locked") {
+      return {
+        ok: false,
+        status: "pin_locked",
+        lockedUntil: typeof payload.locked_until === "string" ? payload.locked_until : undefined,
+      };
+    }
+    if (status === "access_denied") return { ok: false, status: "access_denied" };
+
+    if (status !== "ok") {
       return { ok: false, errorKey: "auth.error.accessDenied" };
+    }
+
+    const staffRaw = payload.staff;
+    if (!staffRaw || typeof staffRaw !== "object") {
+      return { ok: false, errorKey: "auth.error.accessDenied" };
+    }
+    const row = staffTableRowToMember(staffRaw as Record<string, unknown>);
+
+    if (typeof payload.new_device_token === "string" && payload.new_device_token) {
+      writeDeviceToken(payload.new_device_token);
+      setHasDeviceToken(true);
     }
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
     setStaffMember(row);
-    return { ok: true };
+    return { ok: true, mode: typeof payload.mode === "string" ? payload.mode : undefined };
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    // Внимание: device_token НЕ удаляем — это смысл «доверенного устройства».
+    // Чтобы устройство «забыть», есть отдельный forgetThisDevice().
     setStaffMember(null);
+  }, []);
+
+  const forgetThisDevice = useCallback(() => {
+    writeDeviceToken(null);
+    setHasDeviceToken(false);
   }, []);
 
   const value = useMemo<AuthState>(
@@ -134,12 +208,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       logout,
+      forgetThisDevice,
+      hasDeviceToken,
       canManage: hasStaffRole(staffMember, "admin") || hasStaffRole(staffMember, "manager"),
       isAdmin: hasStaffRole(staffMember, "admin"),
       isWorkerOnly: isWorkerOnlyView(staffMember?.roles),
       isReceptionMode: false,
     }),
-    [staffMember, loading, login, logout]
+    [staffMember, loading, login, logout, forgetThisDevice, hasDeviceToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

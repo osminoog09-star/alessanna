@@ -18,6 +18,105 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-20 — «P0: PIN + доверенные устройства для CRM-логина»
+
+### Russian
+
+**Проблема.** Вход в CRM был на одном факторе — телефоне. Кто знает номер
+мастера, тот вошёл. Никаких секретов, никакой возможности отозвать сессию,
+а `verify_staff_phone` ещё и возвращал клиенту **всю строку `staff`** —
+вместе с `google_calendar_email`, `calendar_token_expires_at` и т.п. — и
+всё это записывалось в `localStorage`.
+
+**Что сделано (миграция `041_staff_pin_and_trusted_devices.sql`).**
+
+- Новые колонки на `public.staff`: `pin_hash` (bcrypt через `pgcrypto.crypt`),
+  `pin_set_at`, `pin_failed_attempts`, `pin_locked_until`. PIN опциональный:
+  если `pin_hash IS NULL`, работает старый «вход по телефону» — пока админ
+  не задаст PIN. Это обратно совместимо.
+- Новая таблица `public.staff_trusted_devices` (RLS deny-all, доступ только
+  через RPC). Хранит **только sha256-хеш** токена, plaintext живёт у клиента
+  в `localStorage[alessanna_crm_device_token]`.
+- Новый RPC `public.staff_login(phone, pin?, device_token?, trust_this_device?, device_label?, user_agent?)`:
+  * нет PIN → `ok` (legacy mode);
+  * валидный `device_token` → `ok` без PIN, обновляет `last_seen_at`;
+  * иначе → `requires_pin`; после правильного PIN — опционально создаёт
+    новый device-token и возвращает его клиенту;
+  * 5 неверных PIN подряд → 15 минут lock.
+- RPC для управления: `staff_set_pin`, `staff_list_trusted_devices`,
+  `staff_revoke_trusted_device`, `staff_active_devices_count`. При смене PIN
+  все доверенные устройства автоматически отзываются (как в Google).
+- `_staff_to_public_json` отдаёт клиенту **только** `id, name, phone, role,
+  roles, is_active` — больше никаких google-полей в `localStorage`.
+- Все новые функции с `set search_path = public, extensions` (pgcrypto в
+  Supabase живёт в схеме `extensions`, а не `public`).
+- `verify_staff_phone` помечен `DEPRECATED` через `COMMENT`, но оставлен
+  работающим — на время катящегося релиза.
+
+**CRM-фронт.**
+
+- `AuthContext` полностью переписан: `login` теперь принимает
+  `{ phone, pin?, trustThisDevice?, deviceLabel? }`, ходит в `staff_login`,
+  с graceful fallback на `verify_staff_phone` (если миграция 041 ещё не
+  применена на каком-то окружении). Добавлены `forgetThisDevice()` и
+  `hasDeviceToken`.
+- `LoginPage` стала двухшаговой: телефон → (если есть PIN) PIN-инпут с
+  чекбоксом «Доверять этому устройству» и опциональным labelом.
+- `StaffLoginModal` тоже двухшаговая, по той же логике.
+- Новая страница `ProfileSecurityPage` (`/profile/security`): установить или
+  сменить PIN, увидеть список своих доверенных устройств, отозвать любое
+  устройство, забыть текущее. Добавлен пункт меню «Безопасность» в группу
+  настроек.
+
+**Почему это важно.**
+
+- Закрывает реальный сценарий: уволенный мастер всё ещё знает свой телефон
+  → больше не может зайти, если админ сменил его PIN или дезактивировал
+  staff.
+- Дает стандартный паттерн «доверенное устройство» — мастер один раз вводит
+  PIN, дальше работает как обычно. Без раздражения.
+- Перестали разливать чужие данные (`calendar_*`) в `localStorage`.
+
+### English
+
+**Problem.** CRM login had a single factor — phone number. Whoever knew a
+worker's phone could log in. Plus `verify_staff_phone` returned the entire
+`staff` row to the client (including `google_calendar_*`), all of which was
+persisted in `localStorage`.
+
+**What's done (migration `041`).**
+
+- New columns on `staff`: `pin_hash` (bcrypt via `pgcrypto.crypt`),
+  `pin_set_at`, `pin_failed_attempts`, `pin_locked_until`. PIN is optional;
+  if `pin_hash IS NULL`, the old phone-only login keeps working — backwards
+  compatible until an admin sets a PIN.
+- New table `staff_trusted_devices` (RLS deny-all, access only via RPC).
+  Stores only a sha256 hash of the token; plaintext lives in the client's
+  `localStorage`.
+- New RPC `staff_login(phone, pin?, device_token?, trust_this_device?, ...)`
+  with statuses `ok / requires_pin / invalid_pin / pin_locked / access_denied`.
+  5 wrong PINs → 15-minute lock. Changing the PIN revokes all trusted devices.
+- RPCs for self-service: `staff_set_pin`, `staff_list_trusted_devices`,
+  `staff_revoke_trusted_device`, `staff_active_devices_count`.
+- The public projection (`_staff_to_public_json`) returns only id/name/phone/
+  role/roles/is_active — no more Google calendar fields leaking into
+  `localStorage`.
+- `verify_staff_phone` is now marked `DEPRECATED` (left working for rolling
+  release).
+
+**CRM frontend.**
+
+- Rewrote `AuthContext`. `login` now accepts an object with optional `pin`
+  and `trustThisDevice`. Falls back to `verify_staff_phone` if the new RPC
+  is missing.
+- `LoginPage` and `StaffLoginModal` became two-step (phone → PIN with
+  "trust this device" checkbox).
+- New `/profile/security` page: set/change PIN, list trusted devices,
+  revoke them, forget the current device. New "Security" item in the
+  settings group.
+
+---
+
 ## 2026-04-19 (поздно вечером) — «Полный аудит: БД-гигиена, P1-фиксы CRM, починка блока «Мастера» на сайте»
 
 ### Russian

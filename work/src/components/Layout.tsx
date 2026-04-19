@@ -38,6 +38,7 @@ type NavKey =
   | "analytics"
   | "adminSupport"
   | "adminIntegrations"
+  | "profileSecurity"
   | "myHelp";
 
 type NavItem = {
@@ -92,6 +93,7 @@ const ICONS: Record<NavKey, () => JSX.Element> = {
   adminSupport: () => <NavIcon path="M21 12a8 8 0 1 0-16 0v3a2 2 0 0 0 2 2h1v-5H5a6 6 0 1 1 12 0h-3v5h1a2 2 0 0 0 2-2Zm-4 7a2 2 0 0 1-2 2h-2v-2h4Z" />,
   adminIntegrations: () => <NavIcon path="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.83 4.1M14 11a5 5 0 0 0-7.07 0l-3.54 3.54a5 5 0 0 0 7.07 7.07L12.17 19.9" />,
   myHelp: () => <NavIcon path="M12 17v.01M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />,
+  profileSecurity: () => <NavIcon path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />,
 };
 
 let _chimeCtx: AudioContext | null = null;
@@ -163,6 +165,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: "settings",
     items: [
+      { to: "/profile/security", key: "profileSecurity", icon: ICONS.profileSecurity },
       { to: "/admin/integrations", key: "adminIntegrations", adminOnly: true, icon: ICONS.adminIntegrations },
     ],
   },
