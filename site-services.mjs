@@ -434,17 +434,28 @@ function render(groups, serviceMasters) {
 }
 
 /**
- * Все эти warn'ы — внутренние подсказки для админа салона (диагностика
- * конфигурации, прав, отсутствия данных и т. п.). Помечаем их как
- * data-admin-only, чтобы CSS из site-admin-preview.mjs скрыл их от
- * обычного клиента и показывал только когда body[data-admin-preview="1"].
- */
+ * Внутренние диагностические сообщения (битый supabase-public-config,
+ * нет прав на чтение каталога, услуги без мастеров и т. п.).
+ *
+ * РАНЬШЕ они выводились в DOM через `#teenused-config-warn` и помечались
+ * `data-admin-only`, чтобы быть видимыми только в admin preview. Но даже
+ * в admin preview этот блок выглядел на главной странице как «коды и тех.
+ * информация» и мешал. Поэтому теперь все warn'ы уходят ТОЛЬКО в консоль
+ * — админ их увидит в DevTools, а на витрине салона ничего лишнего не
+ * появится. Сам элемент `#teenused-config-warn` принудительно скрываем,
+ * на случай если CSS из `index.html` оставлял его видимым. */
 function showConfigWarn(msg) {
+  try {
+    console.warn("[salon-site]", msg);
+  } catch (_) {
+    /* ignore */
+  }
   const warn = document.getElementById("teenused-config-warn");
-  if (!warn) return;
-  warn.hidden = false;
-  warn.textContent = msg;
-  warn.setAttribute("data-admin-only", "1");
+  if (warn) {
+    warn.hidden = true;
+    warn.textContent = "";
+    warn.removeAttribute("data-admin-only");
+  }
 }
 
 function showCatalogWarn(msg) {
