@@ -4,6 +4,7 @@ import { useAuth } from "./context/AuthContext";
 import { EffectiveRoleProvider, useEffectiveRole } from "./context/EffectiveRoleContext";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
+import { InvitePage } from "./pages/InvitePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { BookingsPage } from "./pages/BookingsPage";
@@ -44,6 +45,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/invite" element={<InvitePage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/book" element={<PublicBookingPage />} />
       <Route
         path="/"

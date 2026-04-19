@@ -12,8 +12,6 @@ export function LoginPage() {
   const { staffMember, login, hasDeviceToken } = useAuth();
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
-  const [trustDevice, setTrustDevice] = useState(false);
-  const [deviceLabel, setDeviceLabel] = useState("");
   const [step, setStep] = useState<Step>("phone");
   const [staffName, setStaffName] = useState<string>("");
   const [error, setError] = useState("");
@@ -75,11 +73,19 @@ export function LoginPage() {
     e.preventDefault();
     setError("");
     setPending(true);
+    /* Каждый успешный логин по PIN = новое доверенное устройство.
+     * Это убирает занудный шаг «поставь галочку, если хочешь без PIN»:
+     * админ может в любой момент отозвать в /profile/security или вообще
+     * перевести устройство в статус «салонного». См. 047_salon_devices.sql. */
+    const deviceLabel =
+      typeof navigator !== "undefined"
+        ? navigator.userAgent.split(" ").slice(-2).join(" ").slice(0, 60)
+        : "CRM device";
     const r = await login({
       phone,
       pin,
-      trustThisDevice: trustDevice,
-      deviceLabel: trustDevice ? deviceLabel.trim() : undefined,
+      trustThisDevice: true,
+      deviceLabel,
     });
     setPending(false);
     applyResult(r);
@@ -176,39 +182,18 @@ export function LoginPage() {
               />
             </div>
 
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-300">
-              <input
-                type="checkbox"
-                checked={trustDevice}
-                onChange={(e) => setTrustDevice(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-sky-600"
-              />
-              <span>
-                <span className="block font-medium text-zinc-200">
-                  {t("login.trustDevice", {
-                    defaultValue: "Доверять этому устройству",
-                  })}
-                </span>
-                <span className="mt-0.5 block text-zinc-500">
-                  {t("login.trustDeviceDescription", {
-                    defaultValue:
-                      "В следующий раз можно войти без PIN. Можно отозвать в настройках профиля.",
-                  })}
-                </span>
-              </span>
-            </label>
-
-            {trustDevice && (
-              <input
-                type="text"
-                value={deviceLabel}
-                onChange={(e) => setDeviceLabel(e.target.value.slice(0, 60))}
-                placeholder={t("login.deviceLabelPlaceholder", {
-                  defaultValue: "Название устройства (например «iPhone Дениса»)",
-                })}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-600"
-              />
-            )}
+            {/* Раньше тут был чекбокс «Доверять устройству». Убрал: каждый
+              * успешный логин теперь автоматически добавляет устройство в
+              * доверенные (см. 047_salon_devices.sql и onSubmitPin). Меньше
+              * кликов и меньше путаницы — а отозвать всё равно можно в
+              * /profile/security. Заодно админ из той же страницы может
+              * перевести устройство в статус «общего салонного». */}
+            <p className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs text-zinc-400">
+              {t("login.deviceWillBeRemembered", {
+                defaultValue:
+                  "Это устройство автоматически запомнится — в следующий раз войдёте без PIN. Отозвать можно в Профиле → Безопасность.",
+              })}
+            </p>
 
             {error && <p className="text-sm text-red-400">{error}</p>}
 

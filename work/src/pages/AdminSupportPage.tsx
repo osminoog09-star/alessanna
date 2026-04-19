@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import { hasStaffRole } from "../lib/roles";
+import { hasStaffRole, normalizeRoles, type StaffRole } from "../lib/roles";
 
 type Topic = "salon" | "site" | "staff";
 type Status = "open" | "pending" | "closed";
@@ -43,7 +43,57 @@ type ThreadDetail = ThreadSummary & {
   is_suspicious: boolean;
 };
 
-type StaffOption = { id: string; name: string };
+type StaffOption = { id: string; name: string; roles: StaffRole[] };
+
+/** Цветовая «расцветка» роли в выпадающих списках сотрудников.
+ * Один источник правды, чтобы admin везде был красным, manager — зелёным,
+ * мастер (worker) — синим. Multi-role берём по старшинству:
+ *   admin > manager > worker. Так юзер с ролями manager+worker считается
+ *   менеджером, а admin+что-угодно — админом. */
+type StaffRoleStyle = {
+  /** Короткая подпись (RU): «админ» / «менеджер» / «мастер». */
+  label: string;
+  /** tailwind-классы для пилюли роли в списке. */
+  pill: string;
+  /** tailwind-класс цвета для самого имени, чтобы цвет читался даже без пилюли. */
+  name: string;
+  /** Цветной маркер слева от имени. */
+  dot: string;
+};
+
+function pickStaffRoleStyle(roles: StaffRole[] | undefined): StaffRoleStyle {
+  const r = new Set(roles ?? []);
+  if (r.has("admin")) {
+    return {
+      label: "админ",
+      pill: "border-rose-700/60 bg-rose-950/40 text-rose-200",
+      name: "text-rose-200",
+      dot: "bg-rose-400",
+    };
+  }
+  if (r.has("manager")) {
+    return {
+      label: "менеджер",
+      pill: "border-emerald-700/60 bg-emerald-950/40 text-emerald-200",
+      name: "text-emerald-200",
+      dot: "bg-emerald-400",
+    };
+  }
+  if (r.has("worker")) {
+    return {
+      label: "мастер",
+      pill: "border-sky-700/60 bg-sky-950/40 text-sky-200",
+      name: "text-sky-200",
+      dot: "bg-sky-400",
+    };
+  }
+  return {
+    label: "",
+    pill: "border-zinc-700 bg-zinc-900/40 text-zinc-300",
+    name: "text-zinc-200",
+    dot: "bg-zinc-500",
+  };
+}
 
 type SupportStats = {
   open: number;
@@ -297,15 +347,23 @@ export function AdminSupportPage() {
     let cancelled = false;
     void supabase
       .from("staff")
-      .select("id,name,is_active")
+      .select("id,name,is_active,role,roles")
       .eq("is_active", true)
       .order("name")
       .then(({ data }) => {
         if (cancelled || !data) return;
         setStaffOptions(
-          (data as Array<{ id: string; name: string }>).map((s) => ({
+          (
+            data as Array<{
+              id: string;
+              name: string;
+              role?: unknown;
+              roles?: unknown;
+            }>
+          ).map((s) => ({
             id: s.id,
             name: s.name,
+            roles: normalizeRoles(s.roles ?? s.role),
           }))
         );
       });
@@ -891,6 +949,7 @@ export function AdminSupportPage() {
                               {staffOptions.map((s) => {
                                 const isCurrent =
                                   s.id === detail.assigned_staff_id;
+                                const style = pickStaffRoleStyle(s.roles);
                                 return (
                                   <button
                                     key={s.id}
@@ -898,17 +957,57 @@ export function AdminSupportPage() {
                                     role="option"
                                     aria-selected={isCurrent}
                                     onClick={() => void transferTo(s.id)}
+                                    title={
+                                      style.label
+                                        ? `${s.name} — ${style.label}`
+                                        : s.name
+                                    }
                                     className={
-                                      "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs transition " +
+                                      "flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs transition " +
                                       (isCurrent
-                                        ? "bg-emerald-900/30 text-emerald-100"
-                                        : "text-zinc-200 hover:bg-zinc-900")
+                                        ? "bg-emerald-900/30 ring-1 ring-emerald-700/40"
+                                        : "hover:bg-zinc-900")
                                     }
                                   >
-                                    <span className="truncate">{s.name}</span>
-                                    {isCurrent && (
-                                      <span aria-hidden="true">✓</span>
-                                    )}
+                                    <span className="flex min-w-0 items-center gap-1.5">
+                                      <span
+                                        aria-hidden="true"
+                                        className={
+                                          "h-1.5 w-1.5 shrink-0 rounded-full " +
+                                          style.dot
+                                        }
+                                      />
+                                      <span
+                                        className={
+                                          "truncate " +
+                                          (isCurrent
+                                            ? "text-emerald-100"
+                                            : style.name)
+                                        }
+                                      >
+                                        {s.name}
+                                      </span>
+                                    </span>
+                                    <span className="flex shrink-0 items-center gap-1.5">
+                                      {style.label && (
+                                        <span
+                                          className={
+                                            "rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-wide " +
+                                            style.pill
+                                          }
+                                        >
+                                          {style.label}
+                                        </span>
+                                      )}
+                                      {isCurrent && (
+                                        <span
+                                          aria-hidden="true"
+                                          className="text-emerald-300"
+                                        >
+                                          ✓
+                                        </span>
+                                      )}
+                                    </span>
                                   </button>
                                 );
                               })}

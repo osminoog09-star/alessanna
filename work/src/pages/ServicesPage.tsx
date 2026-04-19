@@ -125,7 +125,10 @@ export function ServicesPage() {
    * а полный редактор открывается по клику (аккордеон). Категории тоже можно
    * сворачивать. Все предпочтения хранятся в localStorage, чтобы возврат
    * на страницу не «забывал» свёрнутое состояние. */
-  const SERVICES_PREFS_KEY = "admin/services/v1";
+  /* v2: by default ALL categories start collapsed (см. effect ниже). v1
+   * хранил пустой collapsedCategories, что означало «всё развёрнуто» —
+   * при бампе ключа старые юзеры тоже один раз получат свернутый вид. */
+  const SERVICES_PREFS_KEY = "admin/services/v2";
   type ActiveFilter = "all" | "active" | "inactive";
   type SortBy = "name" | "price-asc" | "price-desc" | "duration-asc" | "duration-desc" | "masters-desc";
   type ServicesPrefs = {
@@ -137,6 +140,9 @@ export function ServicesPage() {
     filterCategoryIds: string[];
     sortBy: SortBy;
     showToolbar: boolean;
+    /** true после того, как мы один раз свернули все категории по дефолту.
+     * Без флага мы каждый раз сбрасывали бы пользовательские «развернул». */
+    collapseAllInitialized: boolean;
   };
   const DEFAULT_PREFS: ServicesPrefs = {
     expandedServiceIds: [],
@@ -147,6 +153,7 @@ export function ServicesPage() {
     filterCategoryIds: [],
     sortBy: "name",
     showToolbar: false,
+    collapseAllInitialized: false,
   };
   const loadPrefs = (): ServicesPrefs => {
     if (typeof window === "undefined") return DEFAULT_PREFS;
@@ -174,6 +181,31 @@ export function ServicesPage() {
   const [filterCategoryIds, setFilterCategoryIds] = useState<Set<string>>(() => new Set(initialPrefs.filterCategoryIds));
   const [sortBy, setSortBy] = useState<SortBy>(initialPrefs.sortBy);
   const [showToolbar, setShowToolbar] = useState<boolean>(initialPrefs.showToolbar);
+  const [collapseAllInitialized, setCollapseAllInitialized] = useState<boolean>(initialPrefs.collapseAllInitialized);
+
+  /* Однократный сворачивающий эффект: при первом заходе админа на страницу
+   * (нет ни одного флага в localStorage v2) сворачиваем ВСЕ категории, чтобы
+   * на /services сразу была краткая «карта» салона, а детали разворачивались
+   * по клику. После того как мы это сделали хоть раз — флаг collapseAll-
+   * Initialized уезжает в localStorage и больше не трогает выбор юзера. */
+  useEffect(() => {
+    if (collapseAllInitialized) return;
+    if (categories.length === 0 && services.length === 0) return;
+    const allCategoryNames = new Set<string>();
+    for (const c of categories) {
+      const name = String(c.name || "").trim();
+      if (name) allCategoryNames.add(name);
+    }
+    if (services.some((s) => !categoryNameFromService(s))) {
+      allCategoryNames.add("Без категории");
+    }
+    setCollapsedCats((prev) => {
+      const next = new Set(prev);
+      for (const n of allCategoryNames) next.add(n);
+      return next;
+    });
+    setCollapseAllInitialized(true);
+  }, [categories, services, collapseAllInitialized]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -186,11 +218,12 @@ export function ServicesPage() {
       filterCategoryIds: Array.from(filterCategoryIds),
       sortBy,
       showToolbar,
+      collapseAllInitialized,
     };
     try {
       window.localStorage.setItem(SERVICES_PREFS_KEY, JSON.stringify(payload));
     } catch { /* quota / private mode — silently ignore */ }
-  }, [expandedIds, collapsedCats, filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds, sortBy, showToolbar]);
+  }, [expandedIds, collapsedCats, filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds, sortBy, showToolbar, collapseAllInitialized]);
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -1124,8 +1157,15 @@ export function ServicesPage() {
     const total = services.length;
     const active = services.filter((s) => s.active).length;
     const onSite = publicListingNames.size;
-    return { total, active, onSite };
-  }, [services, publicListingNames]);
+    /* «Без мастеров» — активные услуги, у которых в staff_services нет ни одной
+     * привязки. Совпадает с подсветкой карточек ниже (см. noMasters в списке)
+     * и с фильтром filterNoMasters в тулбаре, чтобы клик по чипу открывал ровно
+     * те же карточки, что выделены жёлтым. */
+    const noMasters = services.filter(
+      (s) => s.active && staffLinksForService(String(s.id)).length === 0,
+    ).length;
+    return { total, active, onSite, noMasters };
+  }, [services, publicListingNames, serviceStaffLinksMap]);
 
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
@@ -1165,6 +1205,38 @@ export function ServicesPage() {
                 На главной: <strong className="font-semibold">{servicesStats.onSite}</strong>
                 {publicCheckLoading && <span className="ml-1 opacity-70">(проверка…)</span>}
               </span>
+              {/* Кликабельный чип «Без мастеров» — переключает тот же фильтр,
+                * что и кнопка в тулбаре, чтобы из шапки можно было сразу
+                * увидеть только проблемные услуги. Подсвечен красным, если
+                * есть хоть одна такая услуга — иначе нейтральный серый. */}
+              <button
+                type="button"
+                onClick={() => setFilterNoMasters((v) => !v)}
+                title={
+                  servicesStats.noMasters > 0
+                    ? "Показать только услуги без назначенных мастеров"
+                    : "Все активные услуги имеют хотя бы одного мастера"
+                }
+                className={
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition " +
+                  (servicesStats.noMasters > 0
+                    ? (filterNoMasters
+                        ? "border-rose-500/80 bg-rose-900/40 text-rose-100"
+                        : "border-rose-700/50 bg-rose-950/30 text-rose-200 hover:border-rose-500/70 hover:bg-rose-900/40")
+                    : (filterNoMasters
+                        ? "border-zinc-500/80 bg-zinc-800/60 text-zinc-100"
+                        : "border-zinc-700/50 bg-zinc-900/40 text-zinc-300 hover:border-zinc-500/70"))
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  className={
+                    "h-1.5 w-1.5 rounded-full " +
+                    (servicesStats.noMasters > 0 ? "bg-rose-400" : "bg-zinc-500")
+                  }
+                />
+                Без мастеров: <strong className="font-semibold">{servicesStats.noMasters}</strong>
+              </button>
             </div>
           </div>
 
@@ -1515,6 +1587,18 @@ export function ServicesPage() {
       <div className="space-y-6">
         {groupedServices.map(([categoryName, list]) => {
           const activeCount = list.filter((s) => s.active).length;
+          /* Те же определения, что для отдельных карточек ниже — иначе у нас
+           * счётчик в шапке расходился бы с подсветкой строк, и юзер думал
+           * бы «бейдж врёт». noMasters/notOnSite считаем только среди активных
+           * услуг, потому что выключенные и так не видны клиенту. */
+          const noMastersCount = list.filter(
+            (s) => s.active && staffLinksForService(String(s.id)).length === 0,
+          ).length;
+          const notOnSiteCount = list.filter(
+            (s) =>
+              s.active &&
+              !publicListingNames.has(String(s.name_et || "").trim().toLowerCase()),
+          ).length;
           const isCatCollapsed = collapsedCats.has(categoryName);
           return (
           <section
@@ -1553,6 +1637,26 @@ export function ServicesPage() {
                     {activeCount}/{list.length} активно
                   </span>
                 )}
+                {/* Тревожные индикаторы категории — видны и в свёрнутом
+                  * состоянии, чтобы проблемы было заметно сразу. Кликами они
+                  * не управляют (это по-прежнему toggle категории), цель —
+                  * быстро глазами найти категорию, требующую внимания. */}
+                {noMastersCount > 0 && (
+                  <span
+                    className="shrink-0 rounded-full border border-rose-700/50 bg-rose-950/30 px-2 py-0.5 text-[10px] font-medium text-rose-200"
+                    title={`Без назначенных мастеров: ${noMastersCount}. Услуги скрыты на сайте, никто их не возьмёт.`}
+                  >
+                    ⚠ {noMastersCount} без мастеров
+                  </span>
+                )}
+                {notOnSiteCount > 0 && (
+                  <span
+                    className="shrink-0 rounded-full border border-amber-700/40 bg-amber-950/20 px-2 py-0.5 text-[10px] font-medium text-amber-300"
+                    title={`Не опубликовано на главном сайте: ${notOnSiteCount}. Нажмите «Обновить всё на сайте» вверху страницы.`}
+                  >
+                    🌐 {notOnSiteCount} не на сайте
+                  </span>
+                )}
               </button>
               {canManage && (
                 <button
@@ -1582,7 +1686,7 @@ export function ServicesPage() {
                   className={
                     "group relative overflow-hidden rounded-xl border bg-black/30 shadow-sm transition hover:border-zinc-700/80 " +
                     (!s.active
-                      ? "border-zinc-800/60 bg-zinc-950/40 opacity-80"
+                      ? "border-rose-800/60 bg-rose-950/20 shadow-rose-950/20"
                       : noMasters
                         ? "border-amber-700/60 shadow-amber-950/20"
                         : "border-zinc-800/80 shadow-black/30")
@@ -1594,7 +1698,7 @@ export function ServicesPage() {
                     className={
                       "absolute inset-y-0 left-0 w-0.5 " +
                       (!s.active
-                        ? "bg-zinc-700"
+                        ? "bg-gradient-to-b from-rose-500 to-rose-700"
                         : noMasters
                           ? "bg-gradient-to-b from-amber-500 to-amber-700"
                           : "bg-gradient-to-b from-emerald-500 to-sky-500")
@@ -1626,7 +1730,7 @@ export function ServicesPage() {
                         className={
                           "h-2 w-2 shrink-0 rounded-full " +
                           (!s.active
-                            ? "bg-zinc-600"
+                            ? "bg-rose-500"
                             : noMasters
                               ? "bg-amber-400"
                               : existsOnMain
@@ -1634,7 +1738,7 @@ export function ServicesPage() {
                                 : "bg-sky-400")
                         }
                       />
-                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-zinc-100" : "text-zinc-400"}`}>
+                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-zinc-100" : "text-rose-200/80 line-through decoration-rose-500/60"}`}>
                         {String(s.name_et || "").trim() || <span className="italic text-zinc-500">без названия</span>}
                       </span>
                       <span className="hidden sm:inline-flex shrink-0 items-center gap-2 text-[11px] text-zinc-400 tabular-nums">
