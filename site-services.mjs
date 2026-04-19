@@ -375,8 +375,27 @@ function renderFormSelects(groups, svcMasters) {
 
   /* Восстановить категорию (если такой id всё ещё существует), иначе оставить
    * placeholder и заблокировать service-select — script.js обработчик change
-   * сам разберётся, какие option показать. */
+   * сам разберётся, какие option показать.
+   *
+   * ВАЖНО: даже если restoredCat пустая, опции услуг (с data-category-id)
+   * УЖЕ заполнены в цикле выше и должны ОСТАТЬСЯ в DOM. Раньше мы ошибочно
+   * вычищали их через itemSel.innerHTML = "" — из-за чего relayoutServiceItemSelect
+   * (script.js) находил 0 опций и показывал «В категории нет услуг» даже когда
+   * пользователь сразу кликал услугу в прайсе и категория синхронизировалась.
+   * Теперь мы только добавляем placeholder в начало и держим select disabled,
+   * а опции живут — relayoutServiceItemSelect их раскроет, когда придёт catId. */
   catSel.value = restoredCat;
+  /* Гарантируем, что в начале списка стоит placeholder — он нужен,
+   * чтобы select мог показать «Сначала выберите категорию» когда никакая
+   * категория ещё не выбрана. Без data-form-placeholder, чтобы
+   * relayoutServiceItemSelect (script.js) воспринял его как обычный
+   * placeholder, не пытаясь стереть. */
+  if (!itemSel.querySelector('option[value=""]')) {
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = "Сначала выберите категорию";
+    itemSel.insertBefore(ph, itemSel.firstChild);
+  }
   if (restoredCat) {
     /* Дать script.js пере-фильтровать service-select под текущую категорию. */
     catSel.dispatchEvent(new Event("change", { bubbles: true }));
@@ -390,11 +409,7 @@ function renderFormSelects(groups, svcMasters) {
     }
   } else {
     itemSel.disabled = true;
-    itemSel.innerHTML = "";
-    const ph = document.createElement("option");
-    ph.value = "";
-    ph.textContent = "Сначала выберите категорию";
-    itemSel.appendChild(ph);
+    itemSel.value = "";
   }
 }
 
