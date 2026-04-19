@@ -134,24 +134,33 @@ function renderTeam(groups, staffList) {
 }
 
 async function main() {
+  const LOG = "[site-team]";
   try {
     globalThis.__SALON_PUBLIC_STAFF__ = [];
     const c = cfg();
+    console.info(LOG, "Resolved config", { hasUrl: Boolean(c.url), hasKey: Boolean(c.key) });
     if (!c.url || !c.key) {
+      console.warn(LOG, "Missing SUPABASE_CONFIG — render empty team");
       renderTeam([], []);
       return;
     }
     const supabase = getSb(c.url, c.key);
 
-    const { data: staffRows } = await supabase
+    const staffRes = await supabase
       .from("staff")
       .select("id,name,is_active,show_on_marketing_site,role,roles")
       .eq("is_active", true)
       .order("name");
-    const staff = (staffRows || [])
+    if (staffRes.error) {
+      console.error(LOG, "staff query failed", staffRes.error);
+      renderTeam([], []);
+      return;
+    }
+    const staff = (staffRes.data || [])
       .filter(staffRowIsPublicVisible)
       .map((r) => ({ id: r.id, name: String(r.name || "").trim() }))
       .filter((r) => r.name);
+    console.info(LOG, "Loaded staff", { total: staffRes.data?.length || 0, visible: staff.length });
     if (!staff.length) {
       renderTeam([], []);
       return;
@@ -160,14 +169,23 @@ async function main() {
     const staffMap = new Map(staff.map((s) => [s.id, s]));
     const staffIds = staff.map((s) => s.id);
 
-    const { data: linksRows } = await supabase
+    const linksRes = await supabase
       .from("staff_services")
       .select("staff_id, show_on_site, service_listings!inner(id, service_categories(name))")
       .in("staff_id", staffIds);
+    if (linksRes.error) {
+      console.warn(LOG, "staff_services join failed — fallback to flat list", linksRes.error);
+      globalThis.__SALON_PUBLIC_STAFF__ = staff.map((s) => ({ id: String(s.id), name: s.name }));
+      renderTeam([], staff);
+      return;
+    }
 
-    const groups = buildGroups(linksRows || [], staffMap);
+    const groups = buildGroups(linksRes.data || [], staffMap);
+    console.info(LOG, "Built team groups", { count: groups.length });
     globalThis.__SALON_PUBLIC_STAFF__ = staff.map((s) => ({ id: String(s.id), name: s.name }));
     renderTeam(groups, staff);
+  } catch (e) {
+    console.error(LOG, "main() threw", e);
   } finally {
     notifyReady();
   }

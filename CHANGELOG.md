@@ -18,6 +18,125 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (поздно вечером) — «Полный аудит: БД-гигиена, P1-фиксы CRM, починка блока «Мастера» на сайте»
+
+### Russian
+
+**БД-гигиена и безопасность (миграция `040_db_hygiene_fk_indexes_and_search_path.sql`)**
+
+- **Индексы на FK.** Supabase advisor показал 13 foreign key без покрывающих
+  индексов (`appointment_services.appointment_id/service_id/staff_id`,
+  `appointments.client_id/service_id/staff_id`, `service_listings.category_id`,
+  `staff_schedule.staff_id`, `staff_services.service_id/staff_id`,
+  `staff_time_off.staff_id`, `support_messages.sender_staff_id`,
+  `support_threads.assigned_by_staff_id`). Добавили все. Это критично
+  для cascade-delete (когда удаляем мастера, Postgres сканирует FK без
+  индекса фуллскэном — на больших таблицах будет тормозить).
+- **`search_path`** для трёх SECURITY-чувствительных функций
+  (`google_oauth_tokens_touch_updated_at`, `notifications_outbox_touch_updated_at`,
+  `_support_topic_prefix`) явно зафиксирован = `public`. Без этого SECURITY DEFINER
+  функция теоретически может получить «не свою» схему через `set_config`
+  в сессии — стандартное замечание security advisor.
+- **Deny-all RLS** для `support_threads` / `support_messages` для anon и
+  authenticated (мы уже ходим туда только через `support_*` RPC,
+  но раньше политик вообще не было — RLS включён без полиси = «никому,
+  включая RPC через service_role», а с явным deny — намерение читается).
+
+**P1-фиксы CRM по результатам кода-аудита**
+
+- **`AdminSchedulePage`.**
+  - При выборе режима «всем сразу» (`__ALL__`) сетка не сбрасывалась —
+    можно было случайно сохранить «прошлый» график (одного человека) на
+    всю команду. Теперь при переключении на «всем» рисуем чистый шаблон
+    `emptyWeek()`.
+  - При сохранении проверяем, что `start < end` для всех working-строк;
+    раньше можно было сохранить «10:00 → 09:00».
+  - `delete().eq("staff_id", staffId)` молча игнорил ошибку — теперь
+    показываем её через `setErr`, не уходя в insert «поверх» прошлого.
+- **`FinancePage`.**
+  - **`work_type='salary'`** считался как `percentage` (с `rate=NULL → 0`),
+    итог: «доля мастера = 0 €, доля салона = 100%». Для оклада это
+    неправильное представление, теперь явная ветка: окладник → доля салона
+    100% от выручки (зарплата выплачивается отдельным потоком).
+  - Ошибки supabase-запросов **молча игнорировались** — теперь `err`
+    показывается над таблицей.
+  - `useFinanceRealtime` подписан на `staff_work_days` (раньше только
+    appointments/services), чтобы пересчёт «рабочих дней» был мгновенным.
+  - **Добавлены недостающие i18n-ключи** `finance.*` и
+    `adminStaff.payModel/payRent/payPercentage/paySalary` во все 4 локали
+    (ранее на странице висели сырые ключи как «технический мусор»).
+- **`SiteBuilderPage`.**
+  - Кнопка `Publish` без подтверждения и без отката — между `delete blocks`
+    и `insert blocks` могла «убить» прошлую опубликованную версию страницы.
+    Теперь: `confirm()` → бэкап старых блоков в памяти → delete → insert →
+    при ошибке insert восстанавливаем бэкап. Кнопка дизейблится во время
+    публикации, появляется зелёный статус.
+- **`AdminStaffPage`.**
+  - `staff_services` загружался без проверки `error` — если запрос упадёт
+    (RLS / network), на странице тихо пропадут все «галки услуг» у
+    мастеров, и нельзя понять что произошло. Теперь явный `setErr`.
+
+**Публичный сайт (`alessannailu.com`) — блок «Мастера»**
+
+- **Симптом:** под заголовком «Мастера» висит «Состав команды
+  подгружается из CRM…» и не сменяется на список. Услуги (site-services.mjs)
+  при этом грузятся нормально, календарь показывает «Много окон».
+- **Гипотезы (без полного исправления — нужен релиз):**
+  - `site-team.mjs` подключался без cache-bust, возможна старая
+    закэшированная версия с устаревшей схемой. Добавили `?v=20260420j`,
+    чтобы CDN/Cloudflare обновили модуль.
+  - В `site-team.mjs` все ошибки supabase молча терялись (`const { data } = await ...`
+    без `.error`). Сделали полный logging: `console.info/warn/error` с
+    префиксом `[site-team]` для каждой стадии (resolve config, staff query,
+    staff_services join). Если что-то упадёт — будет видно в DevTools.
+  - Добавили graceful fallback: если `staff_services` join упал,
+    рендерим плоский список мастеров без группировки по категориям —
+    лучше «Meistrid: Александр, Анна» чем висящее «подгружается…».
+- **Что ещё проверить после релиза:** `/book` отдаёт 404 (GitHub Pages
+  отдаёт 404.html). Если этот URL должен работать — нужен либо
+  `book.html` в корне репо, либо редирект `index.html#broneeri`.
+
+### English
+
+**DB hygiene & security (migration `040_db_hygiene_fk_indexes_and_search_path.sql`)**
+
+- **FK indexes.** Supabase advisor flagged 13 foreign keys without
+  covering indexes. Added all. Critical for cascade-deletes on big tables.
+- **`search_path`** locked to `public` for three SECURITY DEFINER-style
+  functions (`google_oauth_tokens_touch_updated_at`,
+  `notifications_outbox_touch_updated_at`, `_support_topic_prefix`).
+- **Deny-all RLS** for `support_threads` / `support_messages` (anon +
+  authenticated). We only go through `support_*` RPCs anyway; explicit
+  deny makes intent clear.
+
+**CRM P1 fixes from code audit**
+
+- **`AdminSchedulePage`** — reset to empty grid when switching to
+  "all staff" mode; validate `start < end`; surface `delete()` errors.
+- **`FinancePage`** — proper `salary` work_type math; surface supabase
+  errors; subscribe finance realtime to `staff_work_days`; add missing
+  `finance.*` and `adminStaff.pay*` i18n keys to all 4 locales.
+- **`SiteBuilderPage`** — `Publish` now asks confirmation, backs up old
+  blocks in memory, restores on insert failure, shows progress.
+- **`AdminStaffPage`** — surface `staff_services` load errors instead
+  of silently dropping the "skills" grid.
+
+**Public site team block fix-attempt**
+
+- "Состав команды подгружается из CRM…" stuck below the "Мастера"
+  heading. Added cache-bust to `site-team.mjs`, full
+  `console.info/warn/error` logging, and a graceful fallback to a flat
+  master list if the `staff_services` join fails.
+
+### Notes
+
+- 4 коммита (calendar, services, time-off, support) уже на проде —
+  «Новая запись» и поездка в Google Calendar проверены живьём, тестовая
+  бронь создана и удалена, `notifications_outbox` строит payload
+  корректно.
+
+---
+
 ## 2026-04-19 (вечер) — «`/admin/calendar`: чиним «Новая запись» — пустой dropdown услуг + молчаливое падение `source`»
 
 ### Russian
