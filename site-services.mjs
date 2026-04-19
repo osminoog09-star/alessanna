@@ -422,11 +422,18 @@ function render(groups, serviceMasters) {
   window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
 }
 
+/**
+ * Все эти warn'ы — внутренние подсказки для админа салона (диагностика
+ * конфигурации, прав, отсутствия данных и т. п.). Помечаем их как
+ * data-admin-only, чтобы CSS из site-admin-preview.mjs скрыл их от
+ * обычного клиента и показывал только когда body[data-admin-preview="1"].
+ */
 function showConfigWarn(msg) {
   const warn = document.getElementById("teenused-config-warn");
   if (!warn) return;
   warn.hidden = false;
   warn.textContent = msg;
+  warn.setAttribute("data-admin-only", "1");
 }
 
 function showCatalogWarn(msg) {

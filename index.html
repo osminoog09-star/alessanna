@@ -116,7 +116,7 @@
           <h2 class="section-title">Выберите категорию</h2>
           <p class="section-lead">Цены и перечень услуг подгружаются из CRM салона (Supabase) — обновления на этой странице появляются автоматически.</p>
         </div>
-        <p class="section-lead reveal" id="teenused-config-warn" hidden style="color: #c9a227">
+        <p class="section-lead reveal" id="teenused-config-warn" data-admin-only="1" hidden style="color: #c9a227">
           Укажите <code>anonKey</code> в <code>supabase-public-config.js</code> (шаблон — <code>supabase-public-config.example.js</code>). URL по умолчанию задан; в сборке Vite модуль может взять <code>import.meta.env</code>.
         </p>
         <div id="teenused-supabase-mount"></div>
@@ -451,6 +451,10 @@
   </div>
 
   <script src="supabase-public-config.js"></script>
+  <!-- admin preview helper: ?admin=1 включает диагностические подсказки в углу,
+       ?admin=0 выключает. Все «admin only» сообщения по умолчанию скрыты от клиентов
+       через CSS, видны только когда body[data-admin-preview="1"]. -->
+  <script type="module" src="site-admin-preview.mjs"></script>
   <script type="module" src="site-services.mjs"></script>
   <script type="module" src="site-team.mjs"></script>
   <script type="module" src="site-builder.mjs"></script>

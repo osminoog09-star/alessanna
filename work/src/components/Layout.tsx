@@ -322,6 +322,52 @@ export function Layout() {
           </p>
         )}
 
+        {/* ───── Open public site as admin (preview) ─────
+         * Открывает лендинг с ?admin=1, чтобы site-admin-preview.mjs
+         * включил показ диагностических подсказок (типа «Часть услуг
+         * скрыта на сайте…»). Для обычных клиентов эти тексты
+         * скрыты, чтобы не пугать. */}
+        {canManage && (
+          <div className="border-t border-zinc-800/80 p-2">
+            <a
+              href={(((import.meta as unknown as { env?: { VITE_PUBLIC_SITE_URL?: string } }).env?.VITE_PUBLIC_SITE_URL) || "https://alessannailu.com").replace(/\/+$/, "") + "/?admin=1"}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Откроет публичный сайт с включёнными админ-подсказками (видны только в этой вкладке/браузере, клиент их не увидит)"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-zinc-400 transition-colors hover:bg-amber-950/30 hover:text-amber-200"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4 shrink-0"
+                aria-hidden="true"
+              >
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span className="min-w-0 flex-1 truncate">Открыть сайт как админ</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3 shrink-0 opacity-60"
+                aria-hidden="true"
+              >
+                <path d="M7 17 17 7M7 7h10v10" />
+              </svg>
+            </a>
+          </div>
+        )}
+
         {/* ───── Logout ───── */}
         <div className="border-t border-zinc-800/80 p-2">
           <button
