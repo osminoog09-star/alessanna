@@ -436,6 +436,11 @@
     <a href="#broneeri" class="btn btn-primary" tabindex="-1">Записаться</a>
   </div>
 
+  <!-- Контейнер для всплывающих уведомлений (toast). Используется script.js
+       для замены window.alert() при отправке заявки на запись — нативный alert
+       выглядел грубо и блокировал страницу. -->
+  <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+
   <script src="supabase-public-config.js"></script>
   <!-- admin preview helper: ?admin=1 включает диагностические подсказки в углу,
        ?admin=0 выключает. Все «admin only» сообщения по умолчанию скрыты от клиентов

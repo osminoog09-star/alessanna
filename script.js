@@ -35,6 +35,58 @@
   var mobileBookLink = mobileBar ? mobileBar.querySelector("a") : null;
   var reduceMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  /* ─── Toast (замена window.alert) ──────────────────────────────────────
+   * Минималистичный аналог alert() для подтверждения записи и ошибок.
+   * Использование: showToast("Запись подтверждена", "ok") / "err".
+   * Контейнер #toast-root живёт в index.html. Если его нет — fallback в alert,
+   * чтобы клиент гарантированно увидел сообщение даже при сбое CSS.
+   * Авто-исчезает за DEFAULT_TTL_MS; кликабельная «×» убирает раньше. */
+  function showToast(message, kind) {
+    if (!message) return;
+    var root = document.getElementById("toast-root");
+    if (!root) {
+      window.alert(message);
+      return;
+    }
+    var DEFAULT_TTL_MS = kind === "err" ? 8000 : 5500;
+    var t = document.createElement("div");
+    t.className = "toast " + (kind === "err" ? "toast--err" : "toast--ok");
+    t.setAttribute("role", kind === "err" ? "alert" : "status");
+
+    var icon = document.createElement("span");
+    icon.className = "toast__icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = kind === "err" ? "!" : "✓";
+    t.appendChild(icon);
+
+    var msg = document.createElement("span");
+    msg.className = "toast__msg";
+    msg.textContent = message;
+    t.appendChild(msg);
+
+    var closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "toast__close";
+    closeBtn.setAttribute("aria-label", "Закрыть уведомление");
+    closeBtn.textContent = "×";
+    t.appendChild(closeBtn);
+
+    function dismiss() {
+      if (!t.parentNode) return;
+      t.classList.add("is-leaving");
+      window.setTimeout(function () {
+        if (t.parentNode) t.parentNode.removeChild(t);
+      }, 240);
+    }
+    closeBtn.addEventListener("click", dismiss);
+
+    root.appendChild(t);
+    window.setTimeout(dismiss, DEFAULT_TTL_MS);
+  }
+  /* Экспортируем глобально, чтобы можно было дёргать из других скриптов
+   * (site-services.mjs, site-team.mjs) без дублирования реализации. */
+  window.showToast = showToast;
+
   if (yearEl) {
     yearEl.textContent = String(new Date().getFullYear());
   }
@@ -2522,14 +2574,15 @@
 
       if (!items.length) {
         /* Прайс ещё не загружен, или пользователь не выбрал категорию: мягкий блок, без mailto. */
-        window.alert(
+        showToast(
           isRu
             ? "Выберите услугу в прайсе выше, чтобы мы знали цену и длительность."
             : isEn
               ? "Please pick a service from the price list so we know price and duration."
               : isFi
                 ? "Valitse palvelu hinnastosta, jotta tiedämme hinnan ja keston."
-                : "Palun valige teenus hinnakirjast (hind ja kestus)."
+                : "Palun valige teenus hinnakirjast (hind ja kestus).",
+          "err"
         );
         return Promise.resolve({ handled: true, ok: false });
       }
@@ -2575,7 +2628,7 @@
                 : isFi
                   ? "Varaus vahvistettu. Nähdään salongilla."
                   : "Broneering kinnitatud. Täname!";
-            window.alert(okMsg);
+            showToast(okMsg, "ok");
             bookingForm.reset();
             if (chainApi && chainApi.clear) chainApi.clear();
             invalidateMonthCache();
@@ -2589,7 +2642,7 @@
           var fb = isRu
             ? "Не удалось забронировать. Выберите другое время или напишите нам."
             : "Booking failed. Please pick another time or contact us.";
-          window.alert(chainHumanErrorMessage(j.error, (j.message || fb)));
+          showToast(chainHumanErrorMessage(j.error, (j.message || fb)), "err");
           return { handled: true, ok: false };
         })
         .catch(function () {
@@ -2664,7 +2717,7 @@
                   : isFi
                     ? "Varaus vahvistettu. Nähdään salongilla."
                     : "Broneering kinnitatud. Täname!";
-              window.alert(okMsg);
+              showToast(okMsg, "ok");
               bookingForm.reset();
               invalidateMonthCache();
               clearSelection();
@@ -2679,18 +2732,19 @@
                     : isFi
                       ? "Varaus epäonnistui. Valitse toinen aika."
                       : "Broneering ebaõnnestus.");
-              window.alert(err);
+              showToast(err, "err");
             }
           })
           .catch(function () {
-            window.alert(
+            showToast(
               isRu
                 ? "Сеть или сервер недоступны."
                 : isEn
                   ? "Network or server unavailable."
                   : isFi
                     ? "Verkko tai palvelin ei tavoitettavissa."
-                    : "Võrgu viga."
+                    : "Võrgu viga.",
+              "err"
             );
           });
         return;
@@ -2775,17 +2829,17 @@
       var rating = ratingEl && ratingEl.value ? ratingEl.value : "";
       var msg = msgEl ? msgEl.value.trim() : "";
       if (!name) {
-        window.alert(revMsg.alertName);
+        showToast(revMsg.alertName, "err");
         if (nameEl) nameEl.focus();
         return;
       }
       if (msg.length < 8) {
-        window.alert(revMsg.alertMsg);
+        showToast(revMsg.alertMsg, "err");
         if (msgEl) msgEl.focus();
         return;
       }
       if (email && email.indexOf("@") < 1) {
-        window.alert(revMsg.alertEmail);
+        showToast(revMsg.alertEmail, "err");
         if (emailEl) emailEl.focus();
         return;
       }
