@@ -368,7 +368,7 @@ export function Layout() {
             {!collapsed && (
               <>
                 <span className="min-w-0 flex-1 truncate text-left">{t("command.placeholder")}</span>
-                <kbd className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 group-hover:border-zinc-700 group-hover:text-zinc-300">
+                <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[10.5px] font-semibold text-zinc-300 transition group-hover:border-emerald-400/50 group-hover:text-emerald-200">
                   ⌘K
                 </kbd>
               </>
@@ -582,9 +582,12 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="relative min-w-0 flex-1 overflow-auto p-6 lg:p-8">
+      <main className="relative min-w-0 flex-1 overflow-auto">
+        {/* sticky-баннер предпросмотра: при скролле страницы остаётся
+         * видимым, чтобы админ не забыл, что находится в режиме
+         * другой роли. Растягиваем во всю ширину main за счёт -mx-... */}
         {previewRole && isAdmin && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-600/40 bg-amber-950/50 px-4 py-2 text-sm text-amber-100 shadow-sm shadow-amber-500/10">
+          <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-amber-600/40 bg-amber-950/95 px-6 py-2 text-sm text-amber-100 shadow-md shadow-amber-500/10 backdrop-blur-sm lg:px-8">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -597,10 +600,21 @@ export function Layout() {
             >
               <path d="M2.5 17.5 12 3l9.5 14.5H2.5ZM12 10v4M12 17h.01" />
             </svg>
-            <span>{t("preview.banner", { role: t(`role.${previewRole}`) })}</span>
+            <span className="flex-1">
+              {t("preview.banner", { role: t(`role.${previewRole}`) })}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPreviewRole(null)}
+              className="rounded-md border border-amber-500/30 px-2 py-0.5 text-xs font-medium text-amber-100 transition hover:border-amber-300 hover:bg-amber-900/40 hover:text-white"
+            >
+              {t("preview.exit")}
+            </button>
           </div>
         )}
-        <Outlet />
+        <div className="p-6 lg:p-8">
+          <Outlet />
+        </div>
       </main>
 
       <CommandPalette

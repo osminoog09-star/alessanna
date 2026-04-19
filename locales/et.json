@@ -140,7 +140,8 @@
   "preview": {
     "label": "Vaata kui",
     "real": "Nagu profiilis",
-    "banner": "Eelvaade: {{role}}"
+    "banner": "Eelvaade: {{role}}",
+    "exit": "Välju eelvaatest"
   },
   "adminStaff": {
     "subtitle": "Staff tabel: telefon, nimi, roll, aktiivsus, teenused.",

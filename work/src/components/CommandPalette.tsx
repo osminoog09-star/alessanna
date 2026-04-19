@@ -327,11 +327,23 @@ export function CommandPalette({
   }, [recent, visibleItems]);
 
   function runItem(item: CommandItem) {
-    pushRecent(item.id);
-    setRecent(loadRecent());
+    /* В «Недавнее» пишем только переходы (go-команды). Quick actions
+     * быстрее набрать руками — дублировать их в recent — лишний шум
+     * (и из-за того, что некоторые quick actions по факту ведут в
+     * те же роуты, recent заполнялся одинаковыми пунктами). */
+    if (item.group === "go") {
+      pushRecent(item.id);
+      setRecent(loadRecent());
+    }
     item.perform(ctx);
   }
 
+  /* NB: cmdk пробрасывает только `label` в Radix Dialog как aria-label.
+   *     Современные Radix DialogContent предупреждают о требовании
+   *     <Dialog.Title>/Description, но cmdk не даёт вставить их как
+   *     siblings — children идут ВНУТРЬ Command, а не Dialog.Content.
+   *     Принимаем dev-only warning; пользователь его не видит, screen
+   *     reader всё равно читает aria-label. */
   return (
     <Command.Dialog
       open={open}

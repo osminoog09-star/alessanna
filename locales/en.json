@@ -87,7 +87,14 @@
   "role": {
     "admin": "Admin",
     "manager": "Manager",
-    "staff": "Staff"
+    "staff": "Staff",
+    "worker": "Staff"
+  },
+  "preview": {
+    "label": "View as",
+    "real": "As in profile",
+    "banner": "Preview mode: {{role}}",
+    "exit": "Exit preview"
   },
   "dashboard": {
     "title": "Dashboard",

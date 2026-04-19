@@ -79,7 +79,13 @@
     "hintNav": "navigointi",
     "hintToggle": "avaa / sulje"
   },
-  "role": { "admin": "Ylläpitäjä", "manager": "Esihenkilö", "staff": "Työntekijä" },
+  "role": { "admin": "Ylläpitäjä", "manager": "Esihenkilö", "staff": "Työntekijä", "worker": "Työntekijä" },
+  "preview": {
+    "label": "Näytä roolissa",
+    "real": "Kuten profiilissa",
+    "banner": "Esikatselu: {{role}}",
+    "exit": "Poistu esikatselusta"
+  },
   "dashboard": {
     "title": "Etusivu",
     "subtitle": "Tänään ja tulevat varaukset.",
