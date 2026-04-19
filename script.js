@@ -1250,8 +1250,15 @@
        * не оставляем «лишних» сотрудников disabled, а полностью убираем
        * их из dropdown — иначе клиент видит, например, всех 6 мастеров
        * для категории «Маникюр», хотя у тебя в CRM маникюр делает только один.
-       * refillDemoMastersForCurrentService — это локальный пересчёт без сети. */
-      refillDemoMastersForCurrentService();
+       *
+       * ВАЖНО: refillDemoMastersForCurrentService живёт в ДРУГОМ IIFE
+       * (calendar / form), поэтому напрямую вызвать её отсюда нельзя — будет
+       * ReferenceError, который ломал ВСЁ выполнение renderList и не давал
+       * сработать syncFormFromCart. Поэтому вместо вызова бросаем кастомное
+       * событие, на которое второй IIFE подписан и сам сделает refill. */
+      try {
+        window.dispatchEvent(new CustomEvent("salon-picks-changed"));
+      } catch (_) {}
       syncMasterSelectEligibility();
       renderMasterChips();
       validateMasterForPicks();
@@ -2296,6 +2303,14 @@
      * После перерисовки команды прогоняем фильтр заново — иначе до первого клика
      * по select остаются все мастера. */
     window.addEventListener("site-team-rendered", function () {
+      if (!apiBooking) refillDemoMastersForCurrentService();
+    });
+
+    /* Корзина (picked[]) меняется в IIFE initServiceAndMasterPicks — у него
+     * нет доступа к refillDemoMastersForCurrentService напрямую (другой scope).
+     * Чтобы master dropdown пересчитался под новый набор услуг, ждём событие
+     * «salon-picks-changed» (диспатчится из renderList). */
+    window.addEventListener("salon-picks-changed", function () {
       if (!apiBooking) refillDemoMastersForCurrentService();
     });
 
