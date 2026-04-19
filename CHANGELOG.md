@@ -13,6 +13,45 @@
 Здесь копится то, что уже в `main`, но ещё не получило версионную «коробку».
 What is in `main` but not yet boxed into a release.
 
+> Стабильные точки и правила версионирования теперь живут в [`RELEASES.md`](./RELEASES.md).
+> Stable points and versioning rules now live in [`RELEASES.md`](./RELEASES.md).
+
+---
+
+## 2026-04-19 (поздний вечер) — «CRM UX cleanup + public-site cleanup»
+
+### Russian
+
+**Изменено**
+- `BookingsPage`: добавлены поиск (имя/телефон/услуга/мастер/заметка), сегментированный фильтр статуса (по умолчанию «Активные»), счётчик «X из N», empty-state с «Сбросить фильтры», error-state, status-badge с цветом, телефон под именем клиента. (`29752ad`)
+- `AdminSupportPage`: два ряда pill-фильтров (4 + 4 = 8 кнопок) свёрнуты в один компактный bar — 3 пилюли «Активные/Все/Закрытые» + dropdown «Тема» для админа. В шапке треда удалён сегмент «Статус: open/pending», заменён одной явной кнопкой «⏸ В ожидание» / «↩ Вернуть в работу» рядом с «✓ Закрыть». (`29752ad`)
+- `AdminIntegrationsPage`: длинная секция «Очередь синхронизации» обёрнута в `<details>`, по умолчанию свёрнута, авто-открывается при наличии error/skipped. В summary выведены счётчики ⚠ ошибок / ⏸ пропущено / ⏳ в очереди — видны и в свёрнутом виде. (`29752ad`)
+- `Layout` + `CommandPalette`: новый флаг `adminOnly` для NavItem/CommandItem. «Интеграции» теперь admin-only (раньше менеджер видел технический setup). (`29752ad`)
+
+**Удалено (публичный сайт)**
+- Декоративный SVG `hero-flourish` рядом с логотипом AlesSanna в hero. (`796b07a`)
+- Два параграфа в секции «О салоне» (`Härma Keskus…` и `Волосы, ногти…`). (`796b07a`)
+
+**Стабильные точки**
+- `stable-2026-04-19-crm-ux` → `29752ad`
+- `stable-2026-04-19-public-site-cleanup` → `796b07a`
+
+### English
+
+**Changed**
+- `BookingsPage`: search (name/phone/service/staff/note), segmented status filter (default "Active"), counter, empty/error states, colored status badge, phone under client name. (`29752ad`)
+- `AdminSupportPage`: two rows of pill filters (4 + 4 = 8 buttons) collapsed into one compact bar — 3 pills (Active/All/Closed) + Topic dropdown for admin. In thread header, removed the segmented "Status: open/pending" control; replaced with a single explicit "⏸ Pending" / "↩ Resume" button next to "✓ Close". (`29752ad`)
+- `AdminIntegrationsPage`: the long "Sync queue" section is now inside `<details>`, collapsed by default, auto-opens on error/skipped. Summary shows ⚠ errors / ⏸ skipped / ⏳ pending counters. (`29752ad`)
+- `Layout` + `CommandPalette`: new `adminOnly` flag. "Integrations" is now admin-only. (`29752ad`)
+
+**Removed (public site)**
+- Decorative `hero-flourish` SVG next to the AlesSanna logo. (`796b07a`)
+- Two paragraphs in the "About" section. (`796b07a`)
+
+**Stable tags**
+- `stable-2026-04-19-crm-ux` → `29752ad`
+- `stable-2026-04-19-public-site-cleanup` → `796b07a`
+
 ---
 
 ## 2026-04-19 — «Type debt cleanup + DnD services» / «Закрытие TS-долга + DnD услуг»
