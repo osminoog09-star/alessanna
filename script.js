@@ -141,17 +141,26 @@
     });
   });
 
-  /* Tabs: delegation so Supabase-injected .tab-btn in #teenused work after load. */
+  /* Tabs delegation: работает и для прайса (#teenused), и для копии каталога
+   * внутри формы записи (#form-services-mount). Скоуп переключения берём
+   * как ближайший контейнер каталога — иначе клик в форме переключал бы
+   * панели в прайсе и наоборот. */
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest("#teenused .tab-btn");
+    var btn = e.target.closest(".tab-btn");
     if (!btn || e.button !== 0) return;
+    var teenused = document.getElementById("teenused");
+    var inTeenused = !!(teenused && teenused.contains(btn));
+    var formMount = document.getElementById("form-services-mount");
+    var inFormMount = !!(formMount && formMount.contains(btn));
+    if (!inTeenused && !inFormMount) return;
+
     var targetId = btn.getAttribute("aria-controls");
     if (!targetId) return;
-    var teenused = document.getElementById("teenused");
-    if (teenused) teenused.classList.remove("price-list-open");
+    if (inTeenused && teenused) teenused.classList.remove("price-list-open");
 
-    var mount = btn.closest("#teenused-supabase-mount");
-    var scope = mount || teenused;
+    var scope = inFormMount
+      ? formMount
+      : btn.closest("#teenused-supabase-mount") || teenused;
     if (!scope) return;
     scope.querySelectorAll(".tab-btn").forEach(function (b) {
       b.classList.remove("is-active");
@@ -165,6 +174,20 @@
       panel.hidden = !show;
       panel.classList.toggle("is-active", show);
     });
+
+    /* Если кликнули чип категории внутри формы — заодно синхронизируем
+     * скрытый <select name="service">, чтобы filterMastersByFormCategory
+     * сузил dropdown «Мастер» уже на этом шаге, до клика по самой услуге. */
+    if (inFormMount) {
+      var activePanel = document.getElementById(targetId);
+      var catKey = activePanel ? String(activePanel.getAttribute("data-pick-category") || "") : "";
+      var bookingForm = document.getElementById("booking-form");
+      var sel = bookingForm ? bookingForm.querySelector('select[name="service"]') : null;
+      if (sel && catKey && sel.value !== catKey) {
+        sel.value = catKey;
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
 
     applyTeamFilterForActiveTab();
   });
@@ -193,7 +216,12 @@
     var teenusedRoot = document.getElementById("teenused");
     var priceOpen = !!(teenusedRoot && teenusedRoot.classList.contains("price-list-open"));
 
-    var activeBtn = document.querySelector("#teenused .tab-btn.is-active");
+    /* Считываем активную категорию ИЗ ОБОИХ источников: чипы в прайсе и
+     * чипы внутри формы записи. Если юзер последним кликнул в форме —
+     * фильтр блока «Мастера» подстраивается под этот выбор. */
+    var activeBtn =
+      document.querySelector("#form-services-mount .tab-btn.is-active") ||
+      document.querySelector("#teenused .tab-btn.is-active");
     var targetPanel = null;
     if (activeBtn) {
       var targetId = activeBtn.getAttribute("aria-controls");
@@ -441,8 +469,23 @@
       }
     }
 
-    function pickKey(panelId, label) {
-      return panelId + "|" + label.trim();
+    /**
+     * Ключ позиции в корзине = категория + метка услуги.
+     * Раньше был panel.id, но после того как тот же каталог стал рисоваться
+     * и в #form-services-mount (id-шники там префиксованы "f-"), один и тот
+     * же сервис давал бы разные pickKey в прайсе и в форме — корзина рвалась.
+     * Нормализуем ключ от data-pick-category панели → один источник истины.
+     */
+    function pickKey(panelOrId, label) {
+      var cat = "";
+      if (panelOrId && typeof panelOrId === "object" && panelOrId.getAttribute) {
+        cat = String(panelOrId.getAttribute("data-pick-category") || panelOrId.id || "");
+      } else {
+        cat = String(panelOrId || "");
+        /* Сжимаем "f-panel-cat-3" и "panel-cat-3" в одно "panel-cat-3". */
+        if (cat.indexOf("f-") === 0) cat = cat.slice(2);
+      }
+      return cat + "|" + String(label || "").trim();
     }
 
     function masterNameById(id) {
@@ -864,13 +907,21 @@
     function syncMenuRowsPickedClass() {
       var keys = {};
       for (var i = 0; i < picked.length; i++) keys[picked[i].key] = true;
-      var rows = teenused.querySelectorAll(".menu-list li.menu-pick-row");
-      for (var r = 0; r < rows.length; r++) {
-        var li = rows[r];
-        var k = li.getAttribute("data-pick-key");
-        var on = !!(k && keys[k]);
-        li.classList.toggle("is-picked", on);
-        li.setAttribute("aria-pressed", on ? "true" : "false");
+      /* Подсветка «выбрано» нужна и в прайсе, и в копии каталога внутри
+       * формы записи — иначе пользователь видит выбор в одном месте, а в
+       * другом услуга кажется доступной к добавлению. */
+      var roots = [teenused, document.getElementById("form-services-mount")];
+      for (var ri = 0; ri < roots.length; ri++) {
+        var root = roots[ri];
+        if (!root) continue;
+        var rows = root.querySelectorAll(".menu-list li.menu-pick-row");
+        for (var r = 0; r < rows.length; r++) {
+          var li = rows[r];
+          var k = li.getAttribute("data-pick-key");
+          var on = !!(k && keys[k]);
+          li.classList.toggle("is-picked", on);
+          li.setAttribute("aria-pressed", on ? "true" : "false");
+        }
       }
     }
 
@@ -1181,34 +1232,47 @@
       }
       syncFormCategory();
       renderList();
-      if (picked.length) scrollToMastersBlock();
+      /* Авто-скролл к блоку «Мастера» делаем только когда пользователь
+       * выбирает услугу в прайсе (#teenused). Если он уже внутри формы
+       * записи и кликает услугу там — скролл наверх раздражает и теряет
+       * контекст. */
+      var fromFormMount = !!li.closest("#form-services-mount");
+      if (picked.length && !fromFormMount) scrollToMastersBlock();
     }
 
     function wireMenuPickRows() {
-      teenused.querySelectorAll(".menu-list li").forEach(function (li) {
-        if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
-        var nameSpan = li.querySelector("span:not(.price)");
-        var priceEl = li.querySelector(".price");
-        if (!nameSpan || !priceEl) return;
-        var panel = li.closest(".tab-panel");
-        if (!panel) return;
-        if (!serviceCategoryFromPanel(panel)) return;
-        if (li.getAttribute("data-pick-wired") === "1") return;
-        li.classList.add("menu-pick-row");
-        li.setAttribute("role", "button");
-        li.tabIndex = 0;
-        li.setAttribute("data-pick-key", pickKey(panel.id, nameSpan.textContent.trim()));
-        li.setAttribute("data-pick-wired", "1");
-        li.addEventListener("click", function () {
-          togglePick(li);
-        });
-        li.addEventListener("keydown", function (e) {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
+      /* Подключаем клик-в-корзину и для прайса (#teenused), и для копии
+       * каталога внутри формы записи (#form-services-mount). data-pick-wired
+       * защищает от двойной подвязки при realtime-ре-рендере. */
+      var roots = [teenused, document.getElementById("form-services-mount")];
+      for (var ri = 0; ri < roots.length; ri++) {
+        var root = roots[ri];
+        if (!root) continue;
+        root.querySelectorAll(".menu-list li").forEach(function (li) {
+          if (li.classList.contains("menu-subhead") || li.classList.contains("menu-section-title")) return;
+          var nameSpan = li.querySelector("span:not(.price)");
+          var priceEl = li.querySelector(".price");
+          if (!nameSpan || !priceEl) return;
+          var panel = li.closest(".tab-panel");
+          if (!panel) return;
+          if (!serviceCategoryFromPanel(panel)) return;
+          if (li.getAttribute("data-pick-wired") === "1") return;
+          li.classList.add("menu-pick-row");
+          li.setAttribute("role", "button");
+          li.tabIndex = 0;
+          li.setAttribute("data-pick-key", pickKey(panel.id, nameSpan.textContent.trim()));
+          li.setAttribute("data-pick-wired", "1");
+          li.addEventListener("click", function () {
             togglePick(li);
-          }
+          });
+          li.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              togglePick(li);
+            }
+          });
         });
-      });
+      }
     }
 
     wireMenuPickRows();

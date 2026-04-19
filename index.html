@@ -319,21 +319,22 @@
                 <span>Телефон</span>
                 <input type="tel" name="phone" autocomplete="tel" placeholder="+372 439 8384" />
               </label>
-              <label>
-                <span>Категория услуги</span>
-                <!-- data-category-name — CRM-название категории (lowercase, RU). script.js по нему
-                     находит <div class="team-group" data-category-name="..."> и показывает в списке
-                     «Мастер» только тех, кто реально закреплён за услугами этой категории. -->
-                <select name="service">
-                  <option value="hair-cut" data-category-name="стрижка">Стрижка</option>
-                  <option value="hair-color" data-category-name="окрашивание">Окрашивание</option>
-                  <option value="perm" data-category-name="химическая завивка">Химическая завивка</option>
-                  <option value="styling" data-category-name="укладки">Укладки</option>
-                  <option value="brows-lashes" data-category-name="брови и ресницы">Брови и ресницы</option>
-                  <option value="manicure" data-category-name="маникюр">Маникюр</option>
-                  <option value="pedicure" data-category-name="педикюр">Педикюр</option>
-                </select>
-              </label>
+              <div class="form-services-block">
+                <span class="form-services-label">Услуги</span>
+                <p class="form-services-hint">Выберите категорию и услугу — список совпадает с прайсом выше и подгружается из CRM.</p>
+                <!-- Сюда site-services.mjs кладёт ту же чипсовую UI, что и в #teenused-supabase-mount:
+                     .tabs-bar (категории) + .tab-panel > .menu-list (услуги).
+                     Клик по строке услуги работает через ту же делегацию из script.js, что и в прайсе,
+                     поэтому picked[] у формы и у блока «Услуги» — один источник истины. -->
+                <div id="form-services-mount" class="form-services-mount" aria-live="polite">
+                  <p class="menu-footnote">Услуги загружаются…</p>
+                </div>
+                <!-- Скрытый «зеркальный» select: site-services.mjs пишет в него имена категорий,
+                     а script.js (filterMastersByFormCategory / syncFormCategory) использует
+                     его для фоллбека «корзина пуста, но категория уже выбрана чипом». Не трогаем
+                     UI, поле всегда hidden. -->
+                <select name="service" data-form-category-mirror hidden tabindex="-1" aria-hidden="true"></select>
+              </div>
               <label>
                 <span>Мастер</span>
                 <select name="master" data-master-select required>

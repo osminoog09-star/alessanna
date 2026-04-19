@@ -201,47 +201,26 @@ async function fetchServiceMasters(client) {
   return out;
 }
 
-function render(groups, serviceMasters) {
-  const mount = mountEl();
-  const warn = document.getElementById("teenused-config-warn");
-  const form = document.getElementById("booking-form");
-  const serviceSelect = form ? form.querySelector('select[name="service"]') : null;
-  const svcMasters = serviceMasters instanceof Map ? serviceMasters : new Map();
-
-  if (!mount) return;
-
-  if (!groups || groups.length === 0) {
-    mount.innerHTML =
-      '<p class="menu-footnote">Teenuseid ei leitud. Kontrolli, et teenused oleksid andmebaasis aktiivsed.</p>';
-    if (warn) warn.hidden = true;
-    window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
-    return;
-  }
-
-  if (serviceSelect) {
-    serviceSelect.innerHTML = "";
-    for (let g = 0; g < groups.length; g++) {
-      const gr = groups[g];
-      const opt = document.createElement("option");
-      opt.value = gr.id;
-      opt.textContent = gr.name;
-      /* script.js (filterMastersByFormCategory) ищет совпадение
-       * option[data-category-name] === team-group[data-category-name].
-       * site-team.mjs кладёт туда String(name).trim().toLocaleLowerCase("ru"),
-       * поэтому нормализуем точно так же. */
-      const catKey = String(gr.name || "").trim().toLocaleLowerCase("ru");
-      if (catKey) opt.setAttribute("data-category-name", catKey);
-      serviceSelect.appendChild(opt);
-    }
-  }
-
+/**
+ * Сборка HTML «чипы категорий + список услуг» с заданным префиксом id.
+ * Используется и для основного прайса (#teenused-supabase-mount, prefix=""),
+ * и для копии внутри формы записи (#form-services-mount, prefix="f-"),
+ * чтобы не дублировать один и тот же набор атрибутов и сохранить
+ * единую логику клика/делегации в script.js.
+ */
+function buildCatalogHtml(groups, svcMasters, prefix) {
+  const px = prefix || "";
   let tabHtml = '<div class="tabs-bar" role="tablist" aria-label="Teenuste kategooriad">';
   let panelHtml = "";
   for (let t = 0; t < groups.length; t++) {
     const gr = groups[t];
-    /* Уникальный id по индексу: slug от кириллицы даёт одинаковую длину дефисов у разных «n:…» → дубли id и все панели видны сразу. */
-    const panelId = "panel-cat-" + t;
-    const tabId = "tab-cat-" + t;
+    /* Уникальный id по индексу + префиксу:
+     *   - "panel-cat-0"  — прайс
+     *   - "f-panel-cat-0" — форма
+     *   разные id обязательны, иначе aria-controls пересечётся и обе панели
+     *   будут переключаться синхронно при клике в любом месте. */
+    const panelId = px + "panel-cat-" + t;
+    const tabId = px + "tab-cat-" + t;
     const isFirst = t === 0;
     const catKey = gr.id;
     tabHtml +=
@@ -309,7 +288,49 @@ function render(groups, serviceMasters) {
     panelHtml += "</ul></div>";
   }
   tabHtml += "</div>";
-  mount.innerHTML = tabHtml + panelHtml;
+  return tabHtml + panelHtml;
+}
+
+function render(groups, serviceMasters) {
+  const mount = mountEl();
+  const formMount = document.getElementById("form-services-mount");
+  const warn = document.getElementById("teenused-config-warn");
+  const form = document.getElementById("booking-form");
+  const serviceSelect = form ? form.querySelector('select[name="service"]') : null;
+  const svcMasters = serviceMasters instanceof Map ? serviceMasters : new Map();
+
+  if (!mount) return;
+
+  if (!groups || groups.length === 0) {
+    const empty = '<p class="menu-footnote">Teenuseid ei leitud. Kontrolli, et teenused oleksid andmebaasis aktiivsed.</p>';
+    mount.innerHTML = empty;
+    if (formMount) formMount.innerHTML = empty;
+    if (warn) warn.hidden = true;
+    window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
+    return;
+  }
+
+  if (serviceSelect) {
+    /* Скрытый mirror-select: фронт формы больше не показывает его юзеру,
+     * но script.js (filterMastersByFormCategory / syncFormCategory) ещё
+     * читает его как fallback категории, когда корзина пуста. Поэтому
+     * держим здесь полный синхронизированный набор опций. */
+    serviceSelect.innerHTML = "";
+    for (let g = 0; g < groups.length; g++) {
+      const gr = groups[g];
+      const opt = document.createElement("option");
+      opt.value = gr.id;
+      opt.textContent = gr.name;
+      const catKey = String(gr.name || "").trim().toLocaleLowerCase("ru");
+      if (catKey) opt.setAttribute("data-category-name", catKey);
+      serviceSelect.appendChild(opt);
+    }
+  }
+
+  mount.innerHTML = buildCatalogHtml(groups, svcMasters, "");
+  if (formMount) {
+    formMount.innerHTML = buildCatalogHtml(groups, svcMasters, "f-");
+  }
 
   if (warn) warn.hidden = true;
   window.dispatchEvent(new CustomEvent("teenused-supabase-ready"));
