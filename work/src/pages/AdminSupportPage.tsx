@@ -10,6 +10,7 @@ type SenderType = "visitor" | "staff" | "system";
 
 type ThreadSummary = {
   id: string;
+  display_id: string | null;
   created_at: string;
   updated_at: string;
   topic: Topic;
@@ -21,13 +22,38 @@ type ThreadSummary = {
   last_sender_type: SenderType | null;
   unread_for_staff: boolean;
   assigned_staff_id: string | null;
+  assigned_at: string | null;
+  assigned_staff_name: string | null;
   staff_author_id?: string | null;
   staff_author_name?: string | null;
+  is_suspicious?: boolean;
 };
 
 type ThreadDetail = ThreadSummary & {
   visitor_user_agent: string | null;
   visitor_origin_url: string | null;
+  assigned_by_staff_id: string | null;
+  assigned_by_staff_name: string | null;
+  /* IP виден только админу — для менеджера приходит null. */
+  client_ip: string | null;
+  client_ip_set_at: string | null;
+  device_fingerprint_short: string | null;
+  ip_threads_24h: number;
+  device_threads_24h: number;
+  is_suspicious: boolean;
+};
+
+type StaffOption = { id: string; name: string };
+
+type SupportStats = {
+  open: number;
+  pending: number;
+  unassigned: number;
+  mine: number;
+  avg_first_response_seconds: number | null;
+  closed_24h: number;
+  closed_7d: number;
+  suspicious_24h: number;
 };
 
 type Message = {
@@ -81,6 +107,21 @@ function isImage(mime: string | null | undefined): boolean {
   return !!mime && mime.startsWith("image/");
 }
 
+/** «3 ч 12 мин» / «42 мин» / «18 с» — компактно для плитки stats. */
+function formatDurationShort(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
+  const s = Math.round(seconds);
+  if (s < 60) return `${s} с`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} мин`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  if (h < 24) return rest ? `${h} ч ${rest} мин` : `${h} ч`;
+  const d = Math.floor(h / 24);
+  const restH = h % 24;
+  return restH ? `${d} д ${restH} ч` : `${d} д`;
+}
+
 function topicLabel(t: (k: string) => string, topic: Topic): string {
   if (topic === "site") return t("support.topicSite");
   if (topic === "staff") return t("support.topicStaff");
@@ -103,6 +144,40 @@ function topicTone(topic: Topic): string {
   if (topic === "site") return "border-violet-600/50 bg-violet-900/30 text-violet-200";
   if (topic === "staff") return "border-orange-600/50 bg-orange-900/30 text-orange-200";
   return "border-sky-600/50 bg-sky-900/30 text-sky-200";
+}
+
+type StatTone = "emerald" | "amber" | "violet" | "sky" | "zinc" | "rose";
+
+const STAT_TONE: Record<StatTone, string> = {
+  emerald: "border-emerald-700/40 bg-emerald-950/40 text-emerald-100",
+  amber: "border-amber-700/40 bg-amber-950/40 text-amber-100",
+  violet: "border-violet-700/40 bg-violet-950/40 text-violet-100",
+  sky: "border-sky-700/40 bg-sky-950/40 text-sky-100",
+  zinc: "border-zinc-800 bg-zinc-950/60 text-zinc-200",
+  rose: "border-rose-700/60 bg-rose-950/40 text-rose-100",
+};
+
+function StatTile(props: {
+  label: string;
+  value: number | string;
+  tone: StatTone;
+  hint?: string;
+}) {
+  return (
+    <div
+      className={
+        "rounded-lg border px-3 py-2 " + STAT_TONE[props.tone]
+      }
+      title={props.hint}
+    >
+      <div className="text-[10px] uppercase tracking-wider opacity-70">
+        {props.label}
+      </div>
+      <div className="mt-0.5 text-lg font-semibold leading-none">
+        {props.value}
+      </div>
+    </div>
+  );
 }
 
 export function AdminSupportPage() {
@@ -135,6 +210,9 @@ export function AdminSupportPage() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [stats, setStats] = useState<SupportStats | null>(null);
+  const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -188,11 +266,53 @@ export function AdminSupportPage() {
     [staffMember, t]
   );
 
+  const loadStats = useCallback(async () => {
+    if (!staffMember) return;
+    try {
+      const { data, error } = await supabase.rpc("support_staff_stats", {
+        p_staff_id: staffMember.id,
+        p_topic_filter: topicFilter || null,
+      });
+      if (error) throw error;
+      setStats((data as SupportStats) ?? null);
+    } catch {
+      /* статистика — фоновая, без шумных ошибок */
+    }
+  }, [staffMember, topicFilter]);
+
   useEffect(() => {
     void loadList();
-    const id = window.setInterval(() => void loadList(), POLL_LIST_MS);
+    void loadStats();
+    const id = window.setInterval(() => {
+      void loadList();
+      void loadStats();
+    }, POLL_LIST_MS);
     return () => window.clearInterval(id);
-  }, [loadList]);
+  }, [loadList, loadStats]);
+
+  /* Список активных сотрудников — нужен админу для «передать другому».
+     Менеджеру/мастеру не подгружаем. RLS на staff открыт, выбираем минимум. */
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    void supabase
+      .from("staff")
+      .select("id,name,is_active")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setStaffOptions(
+          (data as Array<{ id: string; name: string }>).map((s) => ({
+            id: s.id,
+            name: s.name,
+          }))
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -328,6 +448,46 @@ export function AdminSupportPage() {
       if (error) throw error;
       await loadThread(selectedId, { silent: true });
       await loadList();
+      await loadStats();
+    } catch (err) {
+      setThreadError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const releaseAssignment = async () => {
+    if (!staffMember || !selectedId || !detail) return;
+    try {
+      const { error } = await supabase.rpc("support_staff_update_thread", {
+        p_staff_id: staffMember.id,
+        p_thread_id: selectedId,
+        p_clear_assignee: true,
+      });
+      if (error) throw error;
+      await loadThread(selectedId, { silent: true });
+      await loadList();
+      await loadStats();
+    } catch (err) {
+      setThreadError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const transferTo = async (targetStaffId: string) => {
+    if (!staffMember || !selectedId || !detail) return;
+    if (!targetStaffId) {
+      setTransferOpen(false);
+      return;
+    }
+    try {
+      const { error } = await supabase.rpc("support_staff_update_thread", {
+        p_staff_id: staffMember.id,
+        p_thread_id: selectedId,
+        p_assigned_staff_id: targetStaffId,
+      });
+      if (error) throw error;
+      setTransferOpen(false);
+      await loadThread(selectedId, { silent: true });
+      await loadList();
+      await loadStats();
     } catch (err) {
       setThreadError(err instanceof Error ? err.message : String(err));
     }
@@ -420,6 +580,38 @@ export function AdminSupportPage() {
         </div>
       )}
 
+      {/* Компактный дашборд: 5 плиток (открытых / в ожидании / без ассайни /
+       * мои / средн. время первого ответа). Если есть подозрительные за 24ч —
+       * добавляем пунцовую плитку с предупреждением. Здесь нет интерактива:
+       * это «градусник», чтобы менеджер с одного взгляда понимал нагрузку. */}
+      {stats && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <StatTile label={t("support.statsOpen")} value={stats.open} tone="emerald" />
+          <StatTile label={t("support.statsPending")} value={stats.pending} tone="amber" />
+          <StatTile
+            label={t("support.statsUnassigned")}
+            value={stats.unassigned}
+            tone={stats.unassigned > 0 ? "violet" : "zinc"}
+            hint={t("support.statsUnassignedHint")}
+          />
+          <StatTile label={t("support.statsMine")} value={stats.mine} tone="sky" />
+          <StatTile
+            label={t("support.statsAvgReply")}
+            value={formatDurationShort(stats.avg_first_response_seconds)}
+            tone="zinc"
+            hint={t("support.statsAvgReplyHint")}
+          />
+          {stats.suspicious_24h > 0 && (
+            <StatTile
+              label={t("support.statsSuspicious")}
+              value={stats.suspicious_24h}
+              tone="rose"
+              hint={t("support.statsSuspiciousHint")}
+            />
+          )}
+        </div>
+      )}
+
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[340px_1fr]">
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
           <div className="border-b border-zinc-800 px-3 py-2 text-[11px] uppercase tracking-wider text-zinc-500">
@@ -448,12 +640,21 @@ export function AdminSupportPage() {
                       }
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-1.5 text-sm font-medium text-zinc-100">
+                        <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-zinc-100">
                           {th.unread_for_staff && (
                             <span
                               aria-hidden="true"
-                              className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+                              className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"
                             />
+                          )}
+                          {th.is_suspicious && (
+                            <span
+                              aria-label={t("support.suspiciousBadge")}
+                              title={t("support.suspiciousBadge")}
+                              className="shrink-0 text-[11px] leading-none text-rose-400"
+                            >
+                              ⚠
+                            </span>
                           )}
                           <span className="truncate">
                             {th.topic === "staff"
@@ -470,7 +671,14 @@ export function AdminSupportPage() {
                           {formatTime(th.last_message_at || th.updated_at)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[10px]">
+                      {/* display_id моноширинным мелким — чтобы можно было
+                       * сослаться в звонке/чате: «открой SAL-000123». */}
+                      {th.display_id && (
+                        <div className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                          {th.display_id}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                         <span
                           className={
                             "rounded-full border px-1.5 py-[1px] " + topicTone(th.topic)
@@ -485,6 +693,24 @@ export function AdminSupportPage() {
                         >
                           {statusLabel(t, th.status)}
                         </span>
+                        {th.assigned_staff_name && (
+                          <span
+                            className={
+                              "inline-flex items-center gap-1 rounded-full border px-1.5 py-[1px] " +
+                              (th.assigned_staff_id === staffMember?.id
+                                ? "border-emerald-700/60 bg-emerald-900/30 text-emerald-200"
+                                : "border-zinc-700 bg-zinc-900/60 text-zinc-300")
+                            }
+                            title={t("support.assignedTo", { name: th.assigned_staff_name })}
+                          >
+                            <span aria-hidden="true">👤</span>
+                            <span className="max-w-[110px] truncate">
+                              {th.assigned_staff_id === staffMember?.id
+                                ? t("support.assignedMine")
+                                : th.assigned_staff_name}
+                            </span>
+                          </span>
+                        )}
                       </div>
                       {th.last_message_preview && (
                         <p className="line-clamp-2 text-xs text-zinc-500">
@@ -523,6 +749,14 @@ export function AdminSupportPage() {
                             ? detail.staff_author_name || detail.visitor_name
                             : detail.visitor_name}
                         </h2>
+                        {detail.display_id && (
+                          <span
+                            className="rounded-full border border-zinc-700 bg-zinc-900/60 px-2 py-[1px] font-mono text-[10px] uppercase tracking-wider text-zinc-300"
+                            title={t("support.threadIdHint")}
+                          >
+                            {detail.display_id}
+                          </span>
+                        )}
                         <span
                           className={
                             "rounded-full border px-2 py-[1px] text-[10px] " +
@@ -539,6 +773,15 @@ export function AdminSupportPage() {
                         >
                           {statusLabel(t, detail.status)}
                         </span>
+                        {detail.is_suspicious && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border border-rose-700/60 bg-rose-900/30 px-2 py-[1px] text-[10px] text-rose-200"
+                            title={t("support.suspiciousHint")}
+                          >
+                            <span aria-hidden="true">⚠</span>
+                            {t("support.suspicious")}
+                          </span>
+                        )}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
                         {detail.visitor_email ? (
@@ -560,16 +803,118 @@ export function AdminSupportPage() {
                           </>
                         ) : null}
                       </p>
+                      {/* Бейдж «Закреплено за …»: всегда видим, чтобы любой
+                       * менеджер/админ с одного взгляда понимал, чей это тред
+                       * и к кому идти за статусом. Если пусто — «не закреплено». */}
+                      <p className="mt-1 inline-flex items-center gap-1.5 text-[11px]">
+                        <span aria-hidden="true">👤</span>
+                        {detail.assigned_staff_id ? (
+                          detail.assigned_staff_id === staffMember?.id ? (
+                            <span className="text-emerald-300">
+                              {t("support.assignedMineFull")}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-300">
+                              {t("support.assignedTo", {
+                                name: detail.assigned_staff_name || "—",
+                              })}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-zinc-500">
+                            {t("support.notAssigned")}
+                          </span>
+                        )}
+                        {detail.assigned_by_staff_id &&
+                          detail.assigned_by_staff_id !==
+                            detail.assigned_staff_id && (
+                            <span className="text-zinc-600">
+                              ·{" "}
+                              {t("support.assignedBy", {
+                                name: detail.assigned_by_staff_name || "—",
+                              })}
+                            </span>
+                          )}
+                      </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      {detail.assigned_staff_id !== staffMember?.id && (
+                      {/* Действия по ассайни:
+                       *   • если тред не на мне  → «Взять себе»
+                       *   • если на мне          → «Снять с себя»
+                       *   • admin дополнительно  → «Передать другому…» (поповер)
+                       * Менеджер не может перетянуть чужой тред — backend
+                       * прокинет access_denied, кнопку и не показываем. */}
+                      {detail.assigned_staff_id !== staffMember?.id ? (
                         <button
                           type="button"
                           onClick={() => void assignToMe()}
                           className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 hover:bg-zinc-800"
+                          disabled={
+                            !!detail.assigned_staff_id && !isAdmin
+                          }
+                          title={
+                            detail.assigned_staff_id && !isAdmin
+                              ? t("support.assignedTakenHint", {
+                                  name: detail.assigned_staff_name || "—",
+                                })
+                              : t("support.assignMe")
+                          }
                         >
                           {t("support.assignMe")}
                         </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void releaseAssignment()}
+                          className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800"
+                          title={t("support.releaseHint")}
+                        >
+                          {t("support.release")}
+                        </button>
+                      )}
+                      {isAdmin && staffOptions.length > 0 && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setTransferOpen((v) => !v)}
+                            aria-haspopup="listbox"
+                            aria-expanded={transferOpen}
+                            className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 hover:bg-zinc-800"
+                          >
+                            {t("support.transferTo")}
+                          </button>
+                          {transferOpen && (
+                            <div
+                              role="listbox"
+                              className="absolute right-0 top-full z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-1 shadow-2xl"
+                            >
+                              {staffOptions.map((s) => {
+                                const isCurrent =
+                                  s.id === detail.assigned_staff_id;
+                                return (
+                                  <button
+                                    key={s.id}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={isCurrent}
+                                    onClick={() => void transferTo(s.id)}
+                                    className={
+                                      "flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs transition " +
+                                      (isCurrent
+                                        ? "bg-emerald-900/30 text-emerald-100"
+                                        : "text-zinc-200 hover:bg-zinc-900")
+                                    }
+                                  >
+                                    <span className="truncate">{s.name}</span>
+                                    {isCurrent && (
+                                      <span aria-hidden="true">✓</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       )}
 
                       {/* Раньше тут был сегментированный селектор «Статус: open/pending».
@@ -660,6 +1005,76 @@ export function AdminSupportPage() {
                   <p className="mt-2 text-xs text-red-300">{threadError}</p>
                 )}
               </header>
+
+              {/* «Тех. контекст»: IP/устройство/счётчики. Помогает понять,
+               * не накручивает ли один человек 10 обращений с разными именами.
+               *   • admin видит сам IP и короткий fingerprint;
+               *   • менеджер видит только обезличенные счётчики «N за 24ч»;
+               *   • для тем 'staff' (тикеты сотрудников) скрываем —
+               *     для них «мошенник» не имеет смысла. */}
+              {detail && detail.topic !== "staff" && (
+                (detail.ip_threads_24h > 1 ||
+                  detail.device_threads_24h > 1 ||
+                  detail.client_ip ||
+                  detail.is_suspicious) && (
+                  <section
+                    aria-label={t("support.techContext")}
+                    className={
+                      "border-b px-4 py-2 text-[11px] " +
+                      (detail.is_suspicious
+                        ? "border-rose-900/60 bg-rose-950/30 text-rose-100"
+                        : "border-zinc-800 bg-zinc-950/50 text-zinc-400")
+                    }
+                  >
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="uppercase tracking-wider text-zinc-500">
+                        {t("support.techContext")}
+                      </span>
+                      {detail.client_ip ? (
+                        <span>
+                          IP:{" "}
+                          <span className="font-mono text-zinc-200">
+                            {detail.client_ip}
+                          </span>
+                        </span>
+                      ) : (
+                        !isAdmin && (
+                          <span className="text-zinc-500">
+                            {t("support.ipHidden")}
+                          </span>
+                        )
+                      )}
+                      <span>
+                        {t("support.ipThreads24h", {
+                          count: detail.ip_threads_24h,
+                        })}
+                      </span>
+                      <span>
+                        {t("support.deviceThreads24h", {
+                          count: detail.device_threads_24h,
+                        })}
+                      </span>
+                      {detail.device_fingerprint_short && isAdmin && (
+                        <span>
+                          {t("support.device")}:{" "}
+                          <span className="font-mono text-zinc-300">
+                            {detail.device_fingerprint_short}…
+                          </span>
+                        </span>
+                      )}
+                      {detail.visitor_user_agent && isAdmin && (
+                        <span
+                          className="truncate text-zinc-500"
+                          title={detail.visitor_user_agent}
+                        >
+                          UA: {detail.visitor_user_agent.slice(0, 60)}
+                          {detail.visitor_user_agent.length > 60 ? "…" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </section>
+                )
+              )}
 
               <div className="flex-1 overflow-y-auto px-4 py-4">
                 {messages.length === 0 ? (

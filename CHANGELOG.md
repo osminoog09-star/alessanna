@@ -18,6 +18,63 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (ночь) — «Support: assignment + display IDs + IP/abuse signals + stats»
+
+### Russian
+
+**Добавлено (`/admin/support`, БД)**
+- **«Закрепить за собой» / «Снять с себя» / «Передать другому…»** — у каждого обращения теперь есть явный ассайни. Менеджер видит «закреплено за: Имя» в списке и в шапке треда; может взять свободный тред себе и снять с себя. **Только админ** может перехватить чужой тред или передать его кому-то другому через выпадающий список активных сотрудников. История назначения хранится: `assigned_at` + `assigned_by_staff_id` (кто закрепил), чтобы при споре «а кто его взял?» можно было ответить точно.
+- **Человекочитаемые ID обращений** — `SAL-000123` (запрос в салон), `SIT-000045` (техподдержка сайта), `EMP-000012` (тикет от сотрудника CRM). Триггер `_support_assign_display_id` ставит ID на BEFORE INSERT, на каждый `topic` — отдельный sequence. Backfill пробежал по всем существующим тредам в порядке даты создания. ID видно в списке слева (мелким моноширинным) и chip'ом в шапке детали — можно цитировать в звонке/чате: «открой SAL-000123».
+- **IP клиента + device fingerprint** — при создании треда из публички в БД пишется `client_ip` (читается из заголовков PostgREST: `cf-connecting-ip` → `x-forwarded-for` → `x-real-ip`, безопасно через хелпер `_support_request_ip()`, при ошибке парсинга — `null`) и `device_fingerprint = sha256(user-agent + accept-language)`. **IP виден только админу** (host(inet) → строка), менеджер получает только обезличенные счётчики. Тикеты сотрудников (`topic='staff'`) от этого исключены — для них «мошенник» не имеет смысла, а IP/fp пишется только для аудита.
+- **Anti-abuse флаг «⚠ Подозрительно»** — обращение помечается, если за последние 24 часа с того же IP **или** с того же `device_fingerprint` пришло ≥5 тредов (исключая `topic='staff'`). Бейдж видно в списке (иконка ⚠ перед именем) и в шапке детали (chip «Подозрительно»), плюс отдельная плитка в общем дашборде «Подозрительных за 24ч».
+- **Дашборд статистики** — компактная панель из 5 плиток над списком: «Открытых», «В ожидании», «Без ассайни», «Мои», «Средн. ответ» (среднее время до первого ответа staff'а за 30 дней). Шестая плитка («Подозрительных») появляется только когда счётчик > 0. Считается на стороне БД через `support_staff_stats(p_staff_id, p_topic_filter)`, обновляется каждые 5 секунд вместе со списком.
+- **«Тех. контекст»** — узкая полоска под шапкой треда (видна только при наличии данных): IP (если admin), кол-во обращений за 24ч с этого IP / устройства, короткий хеш fingerprint, обрезанный UA. При `is_suspicious=true` полоска становится пунцовой.
+
+**Изменено (БД, RPC поддержки)**
+- `support_visitor_start_thread` и `support_staff_self_open` теперь дополнительно пишут `client_ip`, `client_ip_set_at`, `device_fingerprint` через `_support_request_ip()` + sha256 заголовков.
+- `support_staff_list_threads` возвращает `display_id`, `assigned_staff_name`, `is_suspicious`.
+- `support_staff_fetch_messages` возвращает `display_id`, `assigned_staff_name`, `assigned_at`, `assigned_by_staff_name`, `client_ip` (только admin), `device_fingerprint_short`, `ip_threads_24h`, `device_threads_24h`, `is_suspicious`.
+- `support_staff_update_thread` получил параметр `p_clear_assignee boolean` (по умолчанию `false`). RLS по правам: менеджер может только взять «себе» свободный тред или снять «с себя», админ — что угодно. Любая попытка менеджера перехватить чужой тред → `access_denied`.
+- Новый RPC `support_staff_stats(p_staff_id, p_topic_filter)` для дашборда.
+
+**Тех. детали миграции**
+- Файл: [`supabase/migrations/038_support_assignment_ids_ip_stats.sql`](./supabase/migrations/038_support_assignment_ids_ip_stats.sql) (на проде применена 4 транзакциями `038`, `038b`, `038c`, `038d` через MCP, чтобы атомарно по разделам).
+- Идемпотентно: все `add column if not exists`, `create … if not exists`, `create or replace function`. Можно прогонять повторно.
+- Проверка: `select public.support_staff_stats('<admin-id>'::uuid, null)` → `{open, pending, unassigned, mine, avg_first_response_seconds, closed_24h, closed_7d, suspicious_24h}`.
+
+**Smoke (БД, прод)**
+- Display_id выставлен у всех 6 существующих тредов корректно по дате (SAL-000001..003, SIT-000001..002, EMP-000001).
+- `support_staff_stats` для Дениса: `{open: 1, mine: 1, closed_24h: 1, closed_7d: 5, avg_first_response_seconds: 100, suspicious_24h: 0}`.
+- `support_staff_list_threads` возвращает `display_id`, `assigned_staff_name='Денис'`, `is_suspicious=false` для всех.
+
+**Smoke (CRM, локально)**
+- `npx tsc --noEmit` — чисто.
+- `npm run build` — чисто, 795 KB бандл (без изменений размера от факта добавления `StatTile`/типов).
+- Live UI smoke на проде — за владельцем (нужна реальная сессия с PIN).
+
+### English
+
+**Added (`/admin/support`, DB)**
+- **"Assign to me" / "Release" / "Transfer to…"** — every conversation now has an explicit assignee. Managers see a "Assigned to: Name" chip in both the list and the thread header; they can claim a free thread or release their own. **Only admins** can override an existing assignee or transfer to another staff via a popover with active staff. Assignment history kept: `assigned_at` + `assigned_by_staff_id`.
+- **Human-readable thread IDs** — `SAL-000123` (salon inquiry), `SIT-000045` (site tech support), `EMP-000012` (employee internal ticket). `BEFORE INSERT` trigger picks the next value from one of three sequences keyed by `topic`. Backfill ran over all existing threads ordered by `created_at`. ID visible in list (mono-spaced small) and as a chip in the detail header — quotable in calls/chats.
+- **Client IP + device fingerprint** — captured at thread-creation time. IP read from `cf-connecting-ip` / `x-forwarded-for` / `x-real-ip` via `_support_request_ip()` helper; gracefully `null` on parse error. Fingerprint = `sha256(user-agent + accept-language)`. **IP visible to admins only**; managers see only anonymised 24h counters. Employee tickets (`topic='staff'`) excluded from abuse scoring.
+- **Anti-abuse flag "⚠ Suspicious"** — set when ≥5 threads in last 24h share the same IP **or** the same fingerprint (excluding employee tickets). Shown as ⚠ in the list, as a "Suspicious" chip in the header, and as its own dashboard tile when count > 0.
+- **Stats dashboard** — compact 5-tile panel above the list: open / pending / unassigned / mine / avg first reply (30d). Sixth tile ("Suspicious") appears only when > 0. Computed server-side via `support_staff_stats`, refreshed every 5 s.
+- **"Tech context"** strip — IP (admin only), 24h thread counts per IP / per device, short fingerprint, trimmed UA. Strip turns rose-coloured when `is_suspicious`.
+
+**Changed (DB, support RPCs)**
+- `support_visitor_start_thread` and `support_staff_self_open` write IP + fingerprint.
+- `support_staff_list_threads` returns `display_id`, `assigned_staff_name`, `is_suspicious`.
+- `support_staff_fetch_messages` returns assignment info, IP (admin only), abuse signals.
+- `support_staff_update_thread` got `p_clear_assignee boolean`. Manager-only rules enforced server-side.
+- New RPC `support_staff_stats`.
+
+**Migration tech**
+- File: `supabase/migrations/038_support_assignment_ids_ip_stats.sql`. On prod applied as 4 atomic chunks (`038`, `038b`, `038c`, `038d`).
+- Idempotent — all `if not exists` / `create or replace`.
+
+---
+
 ## 2026-04-19 (поздний вечер) — «Cart bump effect, no auto-open»
 
 ### Russian
