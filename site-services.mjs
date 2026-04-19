@@ -385,14 +385,18 @@ function renderFormSelects(groups, svcMasters) {
    * Теперь мы только добавляем placeholder в начало и держим select disabled,
    * а опции живут — relayoutServiceItemSelect их раскроет, когда придёт catId. */
   catSel.value = restoredCat;
-  /* Гарантируем, что в начале списка стоит placeholder — он нужен,
-   * чтобы select мог показать «Сначала выберите категорию» когда никакая
-   * категория ещё не выбрана. Без data-form-placeholder, чтобы
-   * relayoutServiceItemSelect (script.js) воспринял его как обычный
-   * placeholder, не пытаясь стереть. */
-  if (!itemSel.querySelector('option[value=""]')) {
+  /* Добавляем placeholder с тем же атрибутом data-form-placeholder="1",
+   * который ожидает relayoutServiceItemSelect (script.js) — иначе при
+   * следующем relayout создастся ВТОРОЙ placeholder, и select будет иметь
+   * два option'а с value="", что ломает selectedIndex и syncFormFromCart
+   * (он не сможет выбрать конкретную услугу, потому что placeholder
+   * перетягивает selection). */
+  if (!itemSel.querySelector('option[data-form-placeholder="1"]')) {
     const ph = document.createElement("option");
     ph.value = "";
+    ph.disabled = true;
+    ph.selected = true;
+    ph.setAttribute("data-form-placeholder", "1");
     ph.textContent = "Сначала выберите категорию";
     itemSel.insertBefore(ph, itemSel.firstChild);
   }

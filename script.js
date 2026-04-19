@@ -813,6 +813,12 @@
             foundOpt.hidden = false;
             foundOpt.disabled = false;
             serviceItemSelect.disabled = false;
+            /* Дублируем выбор двумя способами:
+             *   1) opt.selected = true — самый надёжный, работает даже если
+             *      между relayout и нами кто-то сбросил placeholder.selected;
+             *   2) select.value = id — корректно обновляет selectedIndex
+             *      и для form submit'a. */
+            foundOpt.selected = true;
             serviceItemSelect.value = targetVal;
           }
         }
@@ -827,6 +833,12 @@
             if (masterSelect.options[mi].value === mid) { has = true; break; }
           }
           if (has && masterSelect.value !== mid) {
+            for (var mj = 0; mj < masterSelect.options.length; mj++) {
+              if (masterSelect.options[mj].value === mid) {
+                masterSelect.options[mj].selected = true;
+                break;
+              }
+            }
             masterSelect.value = mid;
             setMasterDisplayText(
               mid === ANY_MASTER_ID ? anyMasterLabelForChip() : masterNameById(mid)
