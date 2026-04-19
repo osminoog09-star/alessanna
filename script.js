@@ -954,6 +954,9 @@
           var dur = document.createElement("span");
           dur.className = "booking-chain-duration";
           dur.textContent = formatDuration(p.duration);
+          /* Длительность — внутренняя инфа салона. Клиенту её не показываем,
+           * админ увидит в режиме admin preview (см. site-admin-preview.mjs). */
+          dur.setAttribute("data-admin-only", "1");
           li.appendChild(dur);
         }
 
@@ -983,8 +986,12 @@
         var totalMin = computePlanTotalMinutes();
         var tail = startMin != null ? " · ориентировочно до " + formatTimeHm(startMin + totalMin) : "";
         totalEl.textContent = "Суммарно ~" + formatDuration(totalMin) + tail;
+        /* Суммарная длительность — внутренняя инфа салона (используется
+         * для расчёта слотов в календаре). Клиенту не показываем. */
+        totalEl.setAttribute("data-admin-only", "1");
       } else {
         totalEl.textContent = "";
+        totalEl.removeAttribute("data-admin-only");
       }
 
       if (hintEl) {
@@ -1185,6 +1192,8 @@
       }
       host.hidden = false;
       host.textContent = "Общая длительность: ~" + formatDuration(total);
+      /* Внутренняя инфа: видна только админу в режиме admin preview. */
+      host.setAttribute("data-admin-only", "1");
     }
 
     function renderList() {
@@ -1213,6 +1222,9 @@
               var durBadge = document.createElement("span");
               durBadge.className = "pick-chip-duration";
               durBadge.textContent = formatDuration(item.duration);
+              /* Длительность услуги в чипе «Ваш выбор» — внутренняя инфа,
+               * клиенту скрыта; видна админу в режиме admin preview. */
+              durBadge.setAttribute("data-admin-only", "1");
               head.appendChild(durBadge);
             }
 

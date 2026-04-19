@@ -291,15 +291,6 @@ function buildCatalogHtml(groups, svcMasters, prefix) {
   return tabHtml + panelHtml;
 }
 
-function fmtDurationLabel(min) {
-  const m = Math.max(0, Math.round(Number(min) || 0));
-  if (!m) return "";
-  if (m < 60) return m + " мин";
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return r ? h + " ч " + r + " мин" : h + " ч";
-}
-
 /**
  * Заполняет два связанных <select> в форме записи:
  *   select[data-form-category]      — список категорий (option.value = group.id)
@@ -356,12 +347,13 @@ function renderFormSelects(groups, svcMasters) {
       const itemOpt = document.createElement("option");
       itemOpt.value = sid;
       const priceTxt = fmtPrice(it.price);
-      const durTxt = fmtDurationLabel(durNum);
+      /* Длительность услуги — внутренняя информация салона. Клиенту в
+       * выпадающем списке услуг показываем только название и цену; точное
+       * время визита он увидит после выбора даты («Свободное время»).
+       * Сама длительность по-прежнему лежит в data-service-duration —
+       * её используют расчёты слотов и admin preview. */
       itemOpt.textContent =
-        String(it.name || "Teenus") +
-        " — " +
-        priceTxt +
-        (durTxt ? " · " + durTxt : "");
+        String(it.name || "Teenus") + " — " + priceTxt;
       itemOpt.setAttribute("data-category-id", gr.id);
       itemOpt.setAttribute("data-service-id", sid);
       itemOpt.setAttribute("data-service-name", String(it.name || ""));
