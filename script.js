@@ -485,10 +485,24 @@
 
     var picked = [];
 
+    /**
+     * Раньше эта функция полностью прятала #meistrid (через `hidden`)
+     * пока юзер не клацнет хотя бы одну услугу в прайсе. Это был
+     * настоящий UX-баг: на чистой главной странице блок «Мастера»
+     * визуально отсутствовал — между «Изменения цен…» и «О салоне»
+     * был пустой провал на ~300px, и казалось, что site-team.mjs
+     * не сработал, хотя в console.info он давно отрисовал 7 категорий.
+     *
+     * Теперь секция «Мастера» всегда видима (она — самостоятельный
+     * контент главной страницы, а не подсказка к корзине).
+     * Когда пользователь начинает выбирать услуги — мы дополнительно
+     * форсим .is-visible на .reveal внутри (чтобы анимация не залипала)
+     * и сбрасываем выбор мастера, если пользователь убрал все услуги.
+     */
     function updateTeamSectionVisibility() {
       if (!teamRoot) return;
+      teamRoot.hidden = false;
       var hasPickedServices = picked.length > 0;
-      teamRoot.hidden = !hasPickedServices;
       if (hasPickedServices) {
         teamRoot.querySelectorAll(".reveal").forEach(function (el) {
           el.classList.add("is-visible");
