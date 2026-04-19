@@ -39,6 +39,8 @@
     "calendar": "Kalender",
     "bookings": "Broneeringud",
     "adminStaff": "Personal",
+    "adminInventory": "Ladu",
+    "adminCommunications": "Kirjad",
     "adminServices": "Teenused",
     "adminSchedule": "Graafik",
     "adminTimeOff": "Vabad ajad",

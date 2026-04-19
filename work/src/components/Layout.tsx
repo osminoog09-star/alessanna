@@ -38,6 +38,8 @@ type NavKey =
   | "analytics"
   | "adminSupport"
   | "adminIntegrations"
+  | "adminInventory"
+  | "adminCommunications"
   | "profileSecurity"
   | "myHelp";
 
@@ -94,6 +96,8 @@ const ICONS: Record<NavKey, () => JSX.Element> = {
   adminIntegrations: () => <NavIcon path="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.83 4.1M14 11a5 5 0 0 0-7.07 0l-3.54 3.54a5 5 0 0 0 7.07 7.07L12.17 19.9" />,
   myHelp: () => <NavIcon path="M12 17v.01M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />,
   profileSecurity: () => <NavIcon path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />,
+  adminInventory: () => <NavIcon path="M3 7l9-4 9 4-9 4-9-4Zm0 5 9 4 9-4M3 17l9 4 9-4" />,
+  adminCommunications: () => <NavIcon path="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z M2 6l10 7 10-7" />,
 };
 
 let _chimeCtx: AudioContext | null = null;
@@ -140,6 +144,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/services", key: "adminServices", manageOnly: true, icon: ICONS.adminServices },
       { to: "/admin/staff", key: "adminStaff", manageOnly: true, icon: ICONS.adminStaff },
+      { to: "/admin/inventory", key: "adminInventory", manageOnly: true, icon: ICONS.adminInventory },
     ],
   },
   {
@@ -159,6 +164,7 @@ const NAV_GROUPS: NavGroup[] = [
     key: "support",
     items: [
       { to: "/admin/support", key: "adminSupport", manageOnly: true, badge: "supportUnread", icon: ICONS.adminSupport },
+      { to: "/admin/communications", key: "adminCommunications", manageOnly: true, icon: ICONS.adminCommunications },
       { to: "/help", key: "myHelp", badge: "myHelpUnread", icon: ICONS.myHelp },
     ],
   },

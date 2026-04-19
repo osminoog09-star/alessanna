@@ -46,6 +46,8 @@
     "services": "Services",
     "analytics": "Analytics",
     "adminStaff": "Staff",
+    "adminInventory": "Inventory",
+    "adminCommunications": "Emails",
     "adminServices": "Services",
     "adminSchedule": "Schedule",
     "adminTimeOff": "Time off",

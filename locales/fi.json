@@ -41,6 +41,8 @@
     "services": "Palvelut",
     "analytics": "Analytiikka",
     "adminStaff": "Henkilöstö",
+    "adminInventory": "Varasto",
+    "adminCommunications": "Sähköpostit",
     "adminServices": "Palvelut",
     "adminSchedule": "Aikataulu",
     "adminTimeOff": "Vapaat",
