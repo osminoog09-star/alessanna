@@ -42,13 +42,40 @@
     "adminServices": "Услуги",
     "adminSchedule": "График",
     "adminTimeOff": "Выходные",
-    "adminSupport": "Поддержка",
+    "adminSupport": "Входящие",
     "adminIntegrations": "Интеграции",
     "myHelp": "Помощь",
     "analytics": "Аналитика",
     "logout": "Выйти",
     "workerHint": "Режим мастера: только свои записи и календарь. Полный доступ у менеджера.",
-    "unreadBadgeAria": "Непрочитанных: {{count}}"
+    "unreadBadgeAria": "Непрочитанных: {{count}}",
+    "publicSite": "Открыть сайт как админ",
+    "publicSiteTitle": "Откроет публичный сайт с включёнными админ-подсказками (видны только в этой вкладке).",
+    "collapseSidebar": "Свернуть меню",
+    "expandSidebar": "Развернуть меню",
+    "group": {
+      "catalog": "Каталог",
+      "schedule": "Расписание",
+      "reports": "Отчёты",
+      "support": "Поддержка",
+      "settings": "Настройки"
+    }
+  },
+  "command": {
+    "placeholder": "Поиск или команда…",
+    "empty": "Ничего не найдено",
+    "groupQuick": "Быстрые действия",
+    "groupGo": "Перейти к",
+    "groupRecent": "Недавнее",
+    "newBooking": "Создать запись",
+    "newBookingHint": "Открыть календарь",
+    "calendarToday": "Открыть календарь · сегодня",
+    "openPublicSite": "Открыть публичный сайт",
+    "openPublicSiteHint": "Режим админа",
+    "resetPreview": "Сбросить предпросмотр роли",
+    "hintEnter": "выбрать",
+    "hintNav": "перемещение",
+    "hintToggle": "открыть / закрыть"
   },
   "support": {
     "pageTitle": "Поддержка · чат с сайта",

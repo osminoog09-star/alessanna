@@ -42,13 +42,40 @@
     "adminServices": "Teenused",
     "adminSchedule": "Graafik",
     "adminTimeOff": "Vabad ajad",
-    "adminSupport": "Tugi",
+    "adminSupport": "Sissetulnud",
     "adminIntegrations": "Integratsioonid",
     "myHelp": "Abi",
     "analytics": "Analüütika",
     "logout": "Logi välja",
     "workerHint": "Meistri režiim: ainult oma broneeringud ja kalender. Täielik juurdepääs juhil.",
-    "unreadBadgeAria": "Lugemata: {{count}}"
+    "unreadBadgeAria": "Lugemata: {{count}}",
+    "publicSite": "Ava sait administraatorina",
+    "publicSiteTitle": "Avab avaliku saidi koos administraatori vihjetega (näha ainult sellel vahekaardil).",
+    "collapseSidebar": "Ahenda menüü",
+    "expandSidebar": "Laienda menüü",
+    "group": {
+      "catalog": "Kataloog",
+      "schedule": "Graafik",
+      "reports": "Aruanded",
+      "support": "Tugi",
+      "settings": "Seaded"
+    }
+  },
+  "command": {
+    "placeholder": "Otsing või käsk…",
+    "empty": "Ei leitud",
+    "groupQuick": "Kiired tegevused",
+    "groupGo": "Mine",
+    "groupRecent": "Viimati",
+    "newBooking": "Uus broneering",
+    "newBookingHint": "Ava kalender",
+    "calendarToday": "Ava kalender · täna",
+    "openPublicSite": "Ava avalik sait",
+    "openPublicSiteHint": "Admini režiim",
+    "resetPreview": "Lähtesta rollide eelvaade",
+    "hintEnter": "vali",
+    "hintNav": "navigeerimine",
+    "hintToggle": "ava / sulge"
   },
   "support": {
     "pageTitle": "Tugi · vestlus veebilehelt",
