@@ -2410,6 +2410,17 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   margin-top: 0.25rem;
 }
 
+/* Контекстная подсказка под полем формы (например, под master-select):
+ * объясняет «выберите по одному в карточках выше», когда у выбранных услуг
+ * нет общего мастера, либо «один мастер на всю цепочку (необязательно)»,
+ * когда есть пересечение. По умолчанию hidden — показывается из script.js. */
+.form-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-muted, rgba(220, 215, 205, 0.7));
+}
+
 /* select[data-form-service-item]: дисэйбл — приглушаем,
  * чтобы пользователь видел «сначала выбери категорию». */
 .booking-form select[data-form-service-item]:disabled {
