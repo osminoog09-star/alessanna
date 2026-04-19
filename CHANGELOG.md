@@ -18,6 +18,38 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (ночь) — «Public site clarity»
+
+### Russian
+
+**Изменено (публичный сайт)**
+- Календарь записи: каждая ячейка теперь имеет осмысленный `title` и `aria-label` — «Прошедшая дата», «Выходной», «Нет свободных окон в этот день» или «Доступно: N». Раньше неподходящие даты выглядели одинаково и клиенты подозревали баг сайта. (`8153a4f`)
+- В легенду календаря добавлен четвёртый индикатор «Нет окон / выходной» (пунктирный круг) — соответствует серым ячейкам.
+- `window.alert(...)` заменён на компактный toast в правом верхнем углу (на мобиле — снизу, выше панели быстрой записи). Применено к подтверждению записи (Supabase RPC и legacy API), к ошибкам сети, к валидации формы отзыва. (`70964b0`)
+- Toast: ✓ для успеха, ! для ошибки, авто-исчезает через 5–8 с, есть кнопка «×», `role="status"`/`role="alert"`, поддержка `prefers-reduced-motion`.
+
+**Удалено**
+- Дубль кнопки «Записаться» внизу секции «Контакты» — на странице уже есть основная CTA в hero, sticky-кнопка в шапке и mobile-book-bar. Лишняя повторяющаяся кнопка зашумляла финал страницы. (`4f73c5f`)
+
+**Стабильная точка**
+- `stable-2026-04-19-public-site-clarity` → `dfaa56c`
+
+### English
+
+**Changed (public site)**
+- Booking calendar: every day cell now has a meaningful `title` and `aria-label` — "Past date", "Day off", "No openings this day" or "Available: N". Previously all unavailable dates looked the same and clients suspected a website bug. (`8153a4f`)
+- Calendar legend: added the fourth indicator "No openings / day off" (dashed circle) — matches greyed-out cells.
+- Replaced `window.alert(...)` with a compact toast in the top-right corner (bottom on mobile, above the quick-book bar). Applied to booking confirmation (Supabase RPC and legacy API), network errors, and review-form validation. (`70964b0`)
+- Toast: ✓ for success, ! for error, auto-dismiss after 5–8s, "×" close button, `role="status"`/`role="alert"`, respects `prefers-reduced-motion`.
+
+**Removed**
+- Duplicate "Записаться" CTA at the bottom of the Contacts section — the page already has the primary CTA in hero, sticky button in the header, and the mobile-book-bar. (`4f73c5f`)
+
+**Stable point**
+- `stable-2026-04-19-public-site-clarity` → `dfaa56c`
+
+---
+
 ## 2026-04-19 (поздний вечер) — «CRM UX cleanup + public-site cleanup»
 
 ### Russian
