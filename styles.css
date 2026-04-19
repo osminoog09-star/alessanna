@@ -2144,6 +2144,14 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   box-shadow: 0 0 0 1px rgba(197, 160, 89, 0.35);
 }
 
+/* Серый/пунктирный индикатор для «Нет окон / выходной» — объясняет клиенту,
+ * почему ячейка disabled, и снимает подозрение в баге сайта. */
+.legend-dot-unavailable {
+  background: transparent;
+  border: 1px dashed rgba(245, 245, 244, 0.32);
+  box-shadow: none;
+}
+
 .calendar-weekdays,
 .calendar-grid {
   display: grid;
@@ -2960,33 +2968,3 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
   }
 }
 
-/* Календарь: компактная легенда статусов дней. Помогает понять, почему
- * день серый — это «нет окон в этот день», а не баг сайта. */
-.calendar-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.1rem;
-  margin: 0.85rem 0 0;
-  font-size: 0.78rem;
-  color: rgba(245, 245, 244, 0.62);
-  align-items: center;
-}
-.calendar-legend__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.calendar-legend__dot {
-  display: inline-block;
-  width: 0.62rem;
-  height: 0.62rem;
-  border-radius: 999px;
-  background: var(--gold, #c9a34a);
-  box-shadow: 0 0 0 2px rgba(201, 163, 74, 0.18);
-}
-.calendar-legend__dot--busy { background: #c08a2c; }
-.calendar-legend__dot--unavailable {
-  background: transparent;
-  border: 1px dashed rgba(245, 245, 244, 0.28);
-  box-shadow: none;
-}

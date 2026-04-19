@@ -1798,6 +1798,16 @@
           busy: "Почти занято",
           best: "Лучший день",
           slotsAvailable: "Доступно:",
+          /* Объяснения почему день серый — попадают в title (tooltip) и в aria-label
+           * у disabled-ячеек календаря. Раньше клиенты не понимали разницу между
+           * «прошедшая дата», «выходной» и «нет окон у выбранного мастера». */
+          dayPast: "Прошедшая дата",
+          dayOff: "Выходной",
+          dayNoSlots: "Нет свободных окон в этот день",
+          legendBest: "Лучший день",
+          legendMany: "Много окон",
+          legendBusy: "Почти занято",
+          legendUnavailable: "Нет окон / выходной",
         }
       : isEn
         ? {
@@ -1811,6 +1821,13 @@
             busy: "Almost full",
             best: "Recommended day",
             slotsAvailable: "Available:",
+            dayPast: "Past date",
+            dayOff: "Day off",
+            dayNoSlots: "No openings this day",
+            legendBest: "Recommended",
+            legendMany: "Many openings",
+            legendBusy: "Almost full",
+            legendUnavailable: "No openings / day off",
           }
         : isFi
           ? {
@@ -1824,6 +1841,13 @@
               busy: "Lähes täynnä",
               best: "Suositeltu päivä",
               slotsAvailable: "Vapaana:",
+              dayPast: "Mennyt päivä",
+              dayOff: "Vapaapäivä",
+              dayNoSlots: "Ei aikoja tänä päivänä",
+              legendBest: "Suositeltu",
+              legendMany: "Paljon vapaita",
+              legendBusy: "Lähes täynnä",
+              legendUnavailable: "Ei aikoja / vapaapäivä",
             }
           : {
               noTime: "Pole vaba aega",
@@ -1836,6 +1860,13 @@
               busy: "Peaaegu täis",
               best: "Soovituspäev",
               slotsAvailable: "Saadaval:",
+              dayPast: "Möödunud kuupäev",
+              dayOff: "Puhkepäev",
+              dayNoSlots: "Sel päeval pole vabu aegu",
+              legendBest: "Soovituspäev",
+              legendMany: "Palju vabu aegu",
+              legendBusy: "Peaaegu täis",
+              legendUnavailable: "Pole aegu / puhkepäev",
             };
 
     var ANY_MASTER_ID = "any";
@@ -2133,10 +2164,23 @@
         (function (d) {
           var info = dayAvailability(masterVal, viewY, viewM, d);
           var key = dateKey(viewY, viewM, d);
+          var longDate = formatLongDate(viewY, viewM, d);
           cell = document.createElement("button");
           cell.type = "button";
           cell.className = "calendar-day";
-          cell.setAttribute("aria-label", formatLongDate(viewY, viewM, d));
+
+          /* Объяснение «почему серый» — теперь не загадка.
+           * locked  = прошедшая дата (бэкенд не пускает в прошлое);
+           * off     = воскресенье или плановый выходной мастера;
+           * none/0  = у выбранного мастера/услуги нет окон в этот день. */
+          var reason = "";
+          if (info.tier === "locked") {
+            reason = MSGS.dayPast;
+          } else if (info.tier === "off") {
+            reason = MSGS.dayOff;
+          } else if (info.tier === "none" || !info.slots.length) {
+            reason = MSGS.dayNoSlots;
+          }
 
           if (info.tier === "locked") {
             cell.classList.add("is-unavailable");
@@ -2151,6 +2195,18 @@
             cell.addEventListener("click", function () {
               selectDay(viewY, viewM, d, slotsCopy);
             });
+          }
+
+          /* aria-label склеиваем из длинной даты + причины (для disabled) либо
+           * + количества слотов (для активных). title — то же самое для
+           * mouse-пользователей. */
+          if (cell.disabled) {
+            cell.setAttribute("aria-label", longDate + " — " + reason);
+            cell.title = reason;
+          } else {
+            var slotsHint = MSGS.slotsAvailable + " " + info.slots.length;
+            cell.setAttribute("aria-label", longDate + " — " + slotsHint);
+            cell.title = slotsHint;
           }
 
           if (key === selectedKey && !cell.disabled) {
