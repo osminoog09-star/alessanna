@@ -950,15 +950,12 @@
         main.textContent = p.label;
         li.appendChild(main);
 
-        if (Number(p.duration) > 0) {
-          var dur = document.createElement("span");
-          dur.className = "booking-chain-duration";
-          dur.textContent = formatDuration(p.duration);
-          /* Длительность — внутренняя инфа салона. Клиенту её не показываем,
-           * админ увидит в режиме admin preview (см. site-admin-preview.mjs). */
-          dur.setAttribute("data-admin-only", "1");
-          li.appendChild(dur);
-        }
+        /* Длительность услуги — служебная информация салона. На публичной
+         * странице её не показываем вообще (даже в admin preview): клиенту
+         * она не нужна, админ всегда видит её в CRM. Сама `p.duration`
+         * по-прежнему используется ниже для расчёта `cursor` (времени
+         * каждого шага) и итоговой суммарной длительности слотов — это
+         * остаётся внутренней механикой и в DOM не попадает. */
 
         var master = document.createElement("span");
         master.className = "booking-chain-master";
@@ -982,17 +979,17 @@
         }
       }
 
-      if (hasDur) {
+      if (hasDur && startMin != null) {
+        /* Клиенту показываем только ориентир окончания визита («до 14:20»),
+         * без суммарной длительности в минутах/часах — это служебная инфа.
+         * Сам расчёт `totalMin` остаётся, потому что он нужен для подбора
+         * слотов и для конца окна визита. */
         var totalMin = computePlanTotalMinutes();
-        var tail = startMin != null ? " · ориентировочно до " + formatTimeHm(startMin + totalMin) : "";
-        totalEl.textContent = "Суммарно ~" + formatDuration(totalMin) + tail;
-        /* Суммарная длительность — внутренняя инфа салона (используется
-         * для расчёта слотов в календаре). Клиенту не показываем. */
-        totalEl.setAttribute("data-admin-only", "1");
+        totalEl.textContent = "Ориентировочно до " + formatTimeHm(startMin + totalMin);
       } else {
         totalEl.textContent = "";
-        totalEl.removeAttribute("data-admin-only");
       }
+      totalEl.removeAttribute("data-admin-only");
 
       if (hintEl) {
         if (missingMaster) {
@@ -1185,15 +1182,15 @@
       var hasDurations = picked.some(function (p) {
         return (Number(p.duration) || 0) > 0;
       });
-      if (!hasDurations) {
-        host.hidden = true;
-        host.textContent = "";
-        return;
-      }
-      host.hidden = false;
-      host.textContent = "Общая длительность: ~" + formatDuration(total);
-      /* Внутренняя инфа: видна только админу в режиме admin preview. */
-      host.setAttribute("data-admin-only", "1");
+      /* Сводку «Общая длительность: ~…» больше не показываем: длительность
+       * визита — внутренняя информация салона. Клиенту достаточно того, что
+       * слоты в календаре уже учитывают суммарное время. Сам `total` ниже
+       * по коду используется для подбора свободных слотов. */
+      void total;
+      void hasDurations;
+      host.hidden = true;
+      host.textContent = "";
+      host.removeAttribute("data-admin-only");
     }
 
     function renderList() {
@@ -1218,15 +1215,9 @@
             text.textContent = item.label + " — " + item.price;
             head.appendChild(text);
 
-            if (Number(item.duration) > 0) {
-              var durBadge = document.createElement("span");
-              durBadge.className = "pick-chip-duration";
-              durBadge.textContent = formatDuration(item.duration);
-              /* Длительность услуги в чипе «Ваш выбор» — внутренняя инфа,
-               * клиенту скрыта; видна админу в режиме admin preview. */
-              durBadge.setAttribute("data-admin-only", "1");
-              head.appendChild(durBadge);
-            }
+            /* Бейдж длительности на чипе «Ваш выбор» убран совсем —
+             * это служебная инфа салона. Сама `item.duration` остаётся
+             * в picked[] и используется для расчёта слотов. */
 
             var btn = document.createElement("button");
             btn.type = "button";
