@@ -41,6 +41,7 @@
     "services": "Palvelut",
     "analytics": "Analytiikka",
     "adminStaff": "Admin · henkilöstö",
+    "adminIntegrations": "Integraatiot",
     "logout": "Kirjaudu ulos",
     "staffHint": "Henkilöstö: vain kalenteri ja varaukset. Palvelut ja analytiikka — esihenkilöllä."
   },

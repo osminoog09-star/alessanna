@@ -18,6 +18,7 @@ type NavKey =
   | "adminTimeOff"
   | "analytics"
   | "adminSupport"
+  | "adminIntegrations"
   | "myHelp";
 
 type NavItem = {
@@ -78,6 +79,9 @@ const ICONS: Record<NavKey, (active: boolean) => JSX.Element> = {
   adminSupport: () => (
     <NavIcon path="M21 12a8 8 0 1 0-16 0v3a2 2 0 0 0 2 2h1v-5H5a6 6 0 1 1 12 0h-3v5h1a2 2 0 0 0 2-2Zm-4 7a2 2 0 0 1-2 2h-2v-2h4Z" />
   ),
+  adminIntegrations: () => (
+    <NavIcon path="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.83 4.1M14 11a5 5 0 0 0-7.07 0l-3.54 3.54a5 5 0 0 0 7.07 7.07L12.17 19.9" />
+  ),
   myHelp: () => (
     <NavIcon path="M12 17v.01M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
   ),
@@ -122,6 +126,7 @@ const navAll: NavItem[] = [
   { to: "/admin/schedule", key: "adminSchedule", manageOnly: true, icon: ICONS.adminSchedule },
   { to: "/admin/time-off", key: "adminTimeOff", manageOnly: true, icon: ICONS.adminTimeOff },
   { to: "/admin/support", key: "adminSupport", manageOnly: true, badge: "supportUnread", icon: ICONS.adminSupport },
+  { to: "/admin/integrations", key: "adminIntegrations", manageOnly: true, icon: ICONS.adminIntegrations },
   { to: "/analytics", key: "analytics", manageOnly: true, icon: ICONS.analytics },
   { to: "/help", key: "myHelp", badge: "myHelpUnread", icon: ICONS.myHelp },
 ];
@@ -248,13 +253,13 @@ export function Layout() {
                   ? myHelpUnread
                   : 0;
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={Boolean(item.end)}
-                className={({ isActive }) =>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={Boolean(item.end)}
+              className={({ isActive }) =>
                   `group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-                    isActive
+                  isActive
                       ? "bg-zinc-800/90 text-white shadow-inner shadow-black/30"
                       : "text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-100"
                   }`
@@ -288,7 +293,7 @@ export function Layout() {
                     )}
                   </>
                 )}
-              </NavLink>
+            </NavLink>
             );
           })}
         </nav>

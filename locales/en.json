@@ -46,6 +46,7 @@
     "services": "Services",
     "analytics": "Analytics",
     "adminStaff": "Admin · Staff",
+    "adminIntegrations": "Integrations",
     "logout": "Log out",
     "staffHint": "Staff: calendar and bookings only. Managers handle services and analytics."
   },
