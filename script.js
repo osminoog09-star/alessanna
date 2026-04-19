@@ -35,6 +35,58 @@
   var mobileBookLink = mobileBar ? mobileBar.querySelector("a") : null;
   var reduceMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  /* ─── Toast (замена window.alert) ──────────────────────────────────────
+   * Минималистичный аналог alert() для подтверждения записи и ошибок.
+   * Использование: showToast("Запись подтверждена", "ok") / "err".
+   * Контейнер #toast-root живёт в index.html. Если его нет — fallback в alert,
+   * чтобы клиент гарантированно увидел сообщение даже при сбое CSS.
+   * Авто-исчезает за DEFAULT_TTL_MS; кликабельная «×» убирает раньше. */
+  function showToast(message, kind) {
+    if (!message) return;
+    var root = document.getElementById("toast-root");
+    if (!root) {
+      window.alert(message);
+      return;
+    }
+    var DEFAULT_TTL_MS = kind === "err" ? 8000 : 5500;
+    var t = document.createElement("div");
+    t.className = "toast " + (kind === "err" ? "toast--err" : "toast--ok");
+    t.setAttribute("role", kind === "err" ? "alert" : "status");
+
+    var icon = document.createElement("span");
+    icon.className = "toast__icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = kind === "err" ? "!" : "✓";
+    t.appendChild(icon);
+
+    var msg = document.createElement("span");
+    msg.className = "toast__msg";
+    msg.textContent = message;
+    t.appendChild(msg);
+
+    var closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "toast__close";
+    closeBtn.setAttribute("aria-label", "Закрыть уведомление");
+    closeBtn.textContent = "×";
+    t.appendChild(closeBtn);
+
+    function dismiss() {
+      if (!t.parentNode) return;
+      t.classList.add("is-leaving");
+      window.setTimeout(function () {
+        if (t.parentNode) t.parentNode.removeChild(t);
+      }, 240);
+    }
+    closeBtn.addEventListener("click", dismiss);
+
+    root.appendChild(t);
+    window.setTimeout(dismiss, DEFAULT_TTL_MS);
+  }
+  /* Экспортируем глобально, чтобы можно было дёргать из других скриптов
+   * (site-services.mjs, site-team.mjs) без дублирования реализации. */
+  window.showToast = showToast;
+
   if (yearEl) {
     yearEl.textContent = String(new Date().getFullYear());
   }
@@ -1746,6 +1798,16 @@
           busy: "Почти занято",
           best: "Лучший день",
           slotsAvailable: "Доступно:",
+          /* Объяснения почему день серый — попадают в title (tooltip) и в aria-label
+           * у disabled-ячеек календаря. Раньше клиенты не понимали разницу между
+           * «прошедшая дата», «выходной» и «нет окон у выбранного мастера». */
+          dayPast: "Прошедшая дата",
+          dayOff: "Выходной",
+          dayNoSlots: "Нет свободных окон в этот день",
+          legendBest: "Лучший день",
+          legendMany: "Много окон",
+          legendBusy: "Почти занято",
+          legendUnavailable: "Нет окон / выходной",
         }
       : isEn
         ? {
@@ -1759,6 +1821,13 @@
             busy: "Almost full",
             best: "Recommended day",
             slotsAvailable: "Available:",
+            dayPast: "Past date",
+            dayOff: "Day off",
+            dayNoSlots: "No openings this day",
+            legendBest: "Recommended",
+            legendMany: "Many openings",
+            legendBusy: "Almost full",
+            legendUnavailable: "No openings / day off",
           }
         : isFi
           ? {
@@ -1772,6 +1841,13 @@
               busy: "Lähes täynnä",
               best: "Suositeltu päivä",
               slotsAvailable: "Vapaana:",
+              dayPast: "Mennyt päivä",
+              dayOff: "Vapaapäivä",
+              dayNoSlots: "Ei aikoja tänä päivänä",
+              legendBest: "Suositeltu",
+              legendMany: "Paljon vapaita",
+              legendBusy: "Lähes täynnä",
+              legendUnavailable: "Ei aikoja / vapaapäivä",
             }
           : {
               noTime: "Pole vaba aega",
@@ -1784,6 +1860,13 @@
               busy: "Peaaegu täis",
               best: "Soovituspäev",
               slotsAvailable: "Saadaval:",
+              dayPast: "Möödunud kuupäev",
+              dayOff: "Puhkepäev",
+              dayNoSlots: "Sel päeval pole vabu aegu",
+              legendBest: "Soovituspäev",
+              legendMany: "Palju vabu aegu",
+              legendBusy: "Peaaegu täis",
+              legendUnavailable: "Pole aegu / puhkepäev",
             };
 
     var ANY_MASTER_ID = "any";
@@ -2081,10 +2164,23 @@
         (function (d) {
           var info = dayAvailability(masterVal, viewY, viewM, d);
           var key = dateKey(viewY, viewM, d);
+          var longDate = formatLongDate(viewY, viewM, d);
           cell = document.createElement("button");
           cell.type = "button";
           cell.className = "calendar-day";
-          cell.setAttribute("aria-label", formatLongDate(viewY, viewM, d));
+
+          /* Объяснение «почему серый» — теперь не загадка.
+           * locked  = прошедшая дата (бэкенд не пускает в прошлое);
+           * off     = воскресенье или плановый выходной мастера;
+           * none/0  = у выбранного мастера/услуги нет окон в этот день. */
+          var reason = "";
+          if (info.tier === "locked") {
+            reason = MSGS.dayPast;
+          } else if (info.tier === "off") {
+            reason = MSGS.dayOff;
+          } else if (info.tier === "none" || !info.slots.length) {
+            reason = MSGS.dayNoSlots;
+          }
 
           if (info.tier === "locked") {
             cell.classList.add("is-unavailable");
@@ -2099,6 +2195,18 @@
             cell.addEventListener("click", function () {
               selectDay(viewY, viewM, d, slotsCopy);
             });
+          }
+
+          /* aria-label склеиваем из длинной даты + причины (для disabled) либо
+           * + количества слотов (для активных). title — то же самое для
+           * mouse-пользователей. */
+          if (cell.disabled) {
+            cell.setAttribute("aria-label", longDate + " — " + reason);
+            cell.title = reason;
+          } else {
+            var slotsHint = MSGS.slotsAvailable + " " + info.slots.length;
+            cell.setAttribute("aria-label", longDate + " — " + slotsHint);
+            cell.title = slotsHint;
           }
 
           if (key === selectedKey && !cell.disabled) {
@@ -2522,14 +2630,15 @@
 
       if (!items.length) {
         /* Прайс ещё не загружен, или пользователь не выбрал категорию: мягкий блок, без mailto. */
-        window.alert(
+        showToast(
           isRu
             ? "Выберите услугу в прайсе выше, чтобы мы знали цену и длительность."
             : isEn
               ? "Please pick a service from the price list so we know price and duration."
               : isFi
                 ? "Valitse palvelu hinnastosta, jotta tiedämme hinnan ja keston."
-                : "Palun valige teenus hinnakirjast (hind ja kestus)."
+                : "Palun valige teenus hinnakirjast (hind ja kestus).",
+          "err"
         );
         return Promise.resolve({ handled: true, ok: false });
       }
@@ -2575,7 +2684,7 @@
                 : isFi
                   ? "Varaus vahvistettu. Nähdään salongilla."
                   : "Broneering kinnitatud. Täname!";
-            window.alert(okMsg);
+            showToast(okMsg, "ok");
             bookingForm.reset();
             if (chainApi && chainApi.clear) chainApi.clear();
             invalidateMonthCache();
@@ -2589,7 +2698,7 @@
           var fb = isRu
             ? "Не удалось забронировать. Выберите другое время или напишите нам."
             : "Booking failed. Please pick another time or contact us.";
-          window.alert(chainHumanErrorMessage(j.error, (j.message || fb)));
+          showToast(chainHumanErrorMessage(j.error, (j.message || fb)), "err");
           return { handled: true, ok: false };
         })
         .catch(function () {
@@ -2664,7 +2773,7 @@
                   : isFi
                     ? "Varaus vahvistettu. Nähdään salongilla."
                     : "Broneering kinnitatud. Täname!";
-              window.alert(okMsg);
+              showToast(okMsg, "ok");
               bookingForm.reset();
               invalidateMonthCache();
               clearSelection();
@@ -2679,18 +2788,19 @@
                     : isFi
                       ? "Varaus epäonnistui. Valitse toinen aika."
                       : "Broneering ebaõnnestus.");
-              window.alert(err);
+              showToast(err, "err");
             }
           })
           .catch(function () {
-            window.alert(
+            showToast(
               isRu
                 ? "Сеть или сервер недоступны."
                 : isEn
                   ? "Network or server unavailable."
                   : isFi
                     ? "Verkko tai palvelin ei tavoitettavissa."
-                    : "Võrgu viga."
+                    : "Võrgu viga.",
+              "err"
             );
           });
         return;
@@ -2775,17 +2885,17 @@
       var rating = ratingEl && ratingEl.value ? ratingEl.value : "";
       var msg = msgEl ? msgEl.value.trim() : "";
       if (!name) {
-        window.alert(revMsg.alertName);
+        showToast(revMsg.alertName, "err");
         if (nameEl) nameEl.focus();
         return;
       }
       if (msg.length < 8) {
-        window.alert(revMsg.alertMsg);
+        showToast(revMsg.alertMsg, "err");
         if (msgEl) msgEl.focus();
         return;
       }
       if (email && email.indexOf("@") < 1) {
-        window.alert(revMsg.alertEmail);
+        showToast(revMsg.alertEmail, "err");
         if (emailEl) emailEl.focus();
         return;
       }

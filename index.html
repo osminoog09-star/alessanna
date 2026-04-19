@@ -272,6 +272,7 @@
                 <span><i class="legend-dot legend-dot-soft" aria-hidden="true"></i>Много окон</span>
                 <span><i class="legend-dot legend-dot-busy" aria-hidden="true"></i>Почти занято</span>
                 <span><i class="legend-dot legend-dot-featured" aria-hidden="true"></i>Лучшие даты</span>
+                <span><i class="legend-dot legend-dot-unavailable" aria-hidden="true"></i>Нет окон / выходной</span>
               </div>
             </div>
             <div class="calendar-weekdays" aria-hidden="true">
@@ -399,9 +400,9 @@
             <iframe title="Карта" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Tallinna%20mnt%2070%2C%20P%C3%A4rnu%2C%20Estonia%2C%2080034&output=embed"></iframe>
           </div>
         </div>
-        <div class="contact-cta reveal">
-          <a href="#broneeri" class="btn btn-primary">Записаться</a>
-        </div>
+        <!-- Дубль CTA «Записаться» удалён: на странице уже есть основная кнопка
+             в hero, sticky-кнопка в шапке и mobile-book-bar внизу. Лишняя
+             повторяющаяся кнопка под адресом только зашумляла финал страницы. -->
       </div>
     </section>
   </main>
@@ -435,6 +436,11 @@
   <div class="mobile-book-bar" role="region" aria-label="Быстрая запись">
     <a href="#broneeri" class="btn btn-primary" tabindex="-1">Записаться</a>
   </div>
+
+  <!-- Контейнер для всплывающих уведомлений (toast). Используется script.js
+       для замены window.alert() при отправке заявки на запись — нативный alert
+       выглядел грубо и блокировал страницу. -->
+  <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
 
   <script src="supabase-public-config.js"></script>
   <!-- admin preview helper: ?admin=1 включает диагностические подсказки в углу,
