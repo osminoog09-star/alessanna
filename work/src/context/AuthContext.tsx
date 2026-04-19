@@ -102,9 +102,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hasDeviceToken, setHasDeviceToken] = useState(false);
 
   useEffect(() => {
-    setStaffMember(parseStored());
-    setHasDeviceToken(Boolean(readDeviceToken()));
-    setLoading(false);
+    let cancelled = false;
+
+    async function bootstrap() {
+      const stored = parseStored();
+      const token = readDeviceToken();
+      setHasDeviceToken(Boolean(token));
+
+      /* Если уже есть сохранённый staffMember — значит прошлую сессию завершали
+       * корректно (например, пользователь свернул и открыл вкладку заново).
+       * Не лезем в сеть, показываем мгновенно. */
+      if (stored) {
+        if (!cancelled) {
+          setStaffMember(stored);
+          setLoading(false);
+        }
+        return;
+      }
+
+      /* staffMember нет, но есть доверенное устройство → пробуем автологин.
+       * Для персональных устройств backend вернёт ok+staff и мы сразу
+       * попадём в CRM без формы. Для салонных — requires_phone (нужно
+       * выбрать сотрудника по телефону), для инвалидированных — invalid_token
+       * (затираем локальный токен, чтобы пользователь увидел нормальную форму). */
+      if (token && isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabase.rpc("staff_login_by_device", {
+            device_token: token,
+            user_agent_input: summarizeUserAgent(),
+          });
+          if (!cancelled) {
+            if (!error && data && typeof data === "object") {
+              const payload = data as Record<string, unknown>;
+              const status = String(payload.status ?? "");
+              if (status === "ok" && payload.staff && typeof payload.staff === "object") {
+                const row = staffTableRowToMember(payload.staff as Record<string, unknown>);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(row));
+                setStaffMember(row);
+              } else if (status === "invalid_token") {
+                /* Токен уже не действителен (устройство отозвано, сотрудник
+                 * деактивирован и т.п.) — чистим локально, чтобы не спамить
+                 * RPC при каждом открытии вкладки. */
+                writeDeviceToken(null);
+                setHasDeviceToken(false);
+              }
+              /* requires_phone (салонное) и access_denied — оставляем всё как
+               * есть: пользователь увидит форму, подпись про доверенное
+               * устройство корректна (для салонных мы не теряем токен). */
+            }
+          }
+        } catch {
+          /* Сеть отвалилась — не блокируем, пользователь введёт номер руками. */
+        }
+      }
+
+      if (!cancelled) setLoading(false);
+    }
+
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = useCallback(async (input: LoginInput | string): Promise<LoginResult> => {

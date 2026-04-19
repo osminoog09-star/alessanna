@@ -9,7 +9,7 @@ type Step = "phone" | "pin";
 
 export function LoginPage() {
   const { t } = useTranslation();
-  const { staffMember, login, hasDeviceToken } = useAuth();
+  const { staffMember, login, hasDeviceToken, loading } = useAuth();
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [step, setStep] = useState<Step>("phone");
@@ -18,6 +18,15 @@ export function LoginPage() {
   const [pending, setPending] = useState(false);
 
   if (staffMember) return <Navigate to="/" replace />;
+  /* Пока AuthContext пробует автологин по device_token — не показываем форму,
+   * чтобы не моргала. Успешный автологин сам редиректнет выше по условию. */
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black text-zinc-500">
+        {t("common.loading")}
+      </div>
+    );
+  }
 
   function applyResult(r: LoginResult) {
     if (r.ok) return;
