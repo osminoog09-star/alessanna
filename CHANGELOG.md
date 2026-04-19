@@ -18,6 +18,54 @@ What is in `main` but not yet boxed into a release.
 
 ---
 
+## 2026-04-19 (под утро) — «`/admin/time-off`: иконка календаря + пресеты + длительность»
+
+### Russian
+
+**Изменено (`/admin/time-off`)**
+
+- В полях «Начало» / «Конец» появилась **видимая иконка календаря слева** —
+  раньше в тёмной теме индикатор у `<input type="datetime-local">` был
+  почти не виден, и кликать было непонятно куда. Иконка кликабельная
+  (открывает native picker через `showPicker()` с фолбэком на `focus()`).
+- `[color-scheme:dark]` — встроенный индикатор Chrome/Edge тоже стал
+  светлым на чёрном фоне, не сливается.
+- Поля встали в **2 колонки** на десктопе (раньше было 2 строки подряд).
+- **Быстрые пресеты** одним кликом:
+  - «Сейчас на 1 час» — с округлением минут до 5.
+  - «Весь день» — `00:00–23:59` от выбранной (или сегодняшней) даты.
+  - «Завтра, 9–18» — типичный рабочий день.
+- При выборе «Начала», если «Конец» пустой — авто-подставляется
+  `start + 1 час` (самый частый паттерн).
+- Под полями показывается **длительность блока** («2 ч 30 мин»)
+  и предупреждение «⚠ Конец должен быть позже начала».
+- Кнопка «Добавить» **disabled**, пока пара невалидна (нет сотрудника /
+  пустые даты / `end ≤ start`).
+- У поля «Причина» появился placeholder-пример.
+
+**Не меняли:** структуру БД, RPC, RLS — это чисто UI-фикс.
+
+**Smoke**
+
+- `npx tsc --noEmit` — clean.
+- `npm run build` — clean (811 KB JS, +5 KB к 806 KB).
+
+### English
+
+**Changed (`/admin/time-off`)**
+
+- Visible calendar icon to the left of "Start/End" fields (was almost invisible
+  in dark theme). Click opens the native picker via `showPicker()` with
+  `focus()` fallback. `[color-scheme:dark]` makes the built-in indicator legible.
+- Quick presets: "Now +1 hour", "Whole day", "Tomorrow 9–18".
+- Auto-suggest `end = start + 1h` when end is empty.
+- Live duration label + "end must be after start" validation.
+- "Add" button disabled until the pair is valid.
+
+No DB/RPC changes. tsc + build green.
+
+---
+
 ## 2026-04-19 (поздно ночью) — «`/admin/services`: аккордеон + фильтры + сортировка»
 
 ### Russian
