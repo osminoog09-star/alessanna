@@ -387,6 +387,17 @@
     document.body.appendChild(fab);
   }
 
+  function shouldShowFab() {
+    /* По UX для сайта: кнопка "Настройки cookie" не должна торчать постоянно.
+     * Показываем её только при явном дебаг-флаге в URL. */
+    try {
+      var p = new URLSearchParams(window.location.search || "");
+      return p.get("cookie_settings") === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
   function maybeLogVisit() {
     if (sessionStorage && sessionStorage.getItem(STORAGE.sessionLogged)) return;
     try {
@@ -437,7 +448,7 @@
     } else {
       maybeLogVisit();
     }
-    showFab();
+    if (shouldShowFab()) showFab();
   }
 
   /* Публичный API. */

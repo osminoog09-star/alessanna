@@ -112,6 +112,13 @@ export function LoginPage() {
     setError("");
   }
 
+  function focusPhoneInput() {
+    const el = document.getElementById("phone");
+    if (el && "focus" in el) {
+      (el as HTMLInputElement).focus();
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       <div className="absolute right-4 top-4">
@@ -131,11 +138,21 @@ export function LoginPage() {
 
         {step === "phone" && (
           <div className="mt-4 grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              onClick={focusPhoneInput}
+              className="rounded-lg border border-sky-700/60 bg-sky-950/30 px-3 py-2 text-left text-sm text-sky-100 hover:bg-sky-900/40"
+            >
+              1. Вход в рабочую панель
+              <span className="mt-0.5 block text-xs text-sky-200/70">
+                Стандартный вход по телефону ниже
+              </span>
+            </button>
             <Link
               to="/reception"
               className="rounded-lg border border-amber-700/60 bg-amber-950/30 px-3 py-2 text-sm text-amber-100 hover:bg-amber-900/40"
             >
-              Ресепшен (быстрый вход)
+              2. Вход на ресепшен
               <span className="mt-0.5 block text-xs text-amber-200/70">
                 Открыть планшетный режим записи без логина
               </span>
@@ -146,9 +163,9 @@ export function LoginPage() {
               rel="noopener noreferrer"
               className="rounded-lg border border-zinc-700 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800/60"
             >
-              Рабочий чат
+              3. Сайт
               <span className="mt-0.5 block text-xs text-zinc-400">
-                Открыть сайт с виджетом чата в новой вкладке
+                Открыть публичный сайт в новой вкладке
               </span>
             </a>
           </div>
