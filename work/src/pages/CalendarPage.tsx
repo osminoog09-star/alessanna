@@ -63,6 +63,22 @@ export function CalendarPage() {
   const [modal, setModal] = useState<{ start: Date; staffId: string } | null>(null);
   const [durationMin, setDurationMin] = useState(60);
 
+  const jumpCursor = useCallback(
+    (mode: "today" | "tomorrow" | "nextWeek") => {
+      const now = new Date();
+      if (mode === "today") {
+        setCursor(now);
+        return;
+      }
+      if (mode === "tomorrow") {
+        setCursor(addDays(now, 1));
+        return;
+      }
+      setCursor(addDays(now, 7));
+    },
+    []
+  );
+
   const load = useCallback(async () => {
     let apQuery = supabase.from("appointments").select("*").neq("status", "cancelled");
     if (isWorkerOnlyEffective && staffMember) {
@@ -263,10 +279,21 @@ export function CalendarPage() {
     if (!targetStaffId) return;
     const base = startOfDay(cursor);
     const now = new Date();
+    const wd = base.getDay();
+    const existing = appointmentsForStaffOnDay(filteredAppointments, targetStaffId, base);
+    const sched = schedules
+      .filter((s) => s.staff_id === targetStaffId)
+      .map((s) => ({
+        day_of_week: s.day_of_week,
+        start_time: s.start_time,
+        end_time: s.end_time,
+      }));
+    const generated = buildSlotsForDay(base, wd, sched, existing, durationMin, 30);
     const sameDay = isSameDay(base, now);
-    const hour = sameDay ? now.getHours() : 10;
-    const mins = sameDay ? (now.getMinutes() <= 30 ? 30 : 0) : 0;
-    const start = setMinutes(setHours(base, hour), mins);
+    const firstFuture = generated.find((s) => s.start.getTime() >= now.getTime());
+    const firstAny = generated[0];
+    const fallback = setMinutes(setHours(base, sameDay ? now.getHours() : 10), sameDay ? (now.getMinutes() <= 30 ? 30 : 0) : 0);
+    const start = (sameDay ? firstFuture : firstAny)?.start ?? firstAny?.start ?? fallback;
     setModal({ start, staffId: targetStaffId });
   }
 
@@ -320,10 +347,24 @@ export function CalendarPage() {
           </button>
           <button
             type="button"
-            onClick={() => setCursor(new Date())}
+            onClick={() => jumpCursor("today")}
             className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-900"
           >
             {t("calendar.today")}
+          </button>
+          <button
+            type="button"
+            onClick={() => jumpCursor("tomorrow")}
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-900"
+          >
+            {t("calendar.tomorrow", { defaultValue: "Завтра" })}
+          </button>
+          <button
+            type="button"
+            onClick={() => jumpCursor("nextWeek")}
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-900"
+          >
+            {t("calendar.nextWeek", { defaultValue: "Через 7 дней" })}
           </button>
           <button
             type="button"

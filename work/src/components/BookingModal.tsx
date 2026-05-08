@@ -7,6 +7,9 @@ import { staffEligibleForService, servicesEligibleForStaff } from "../lib/roles"
 import { eurFromCents } from "../lib/format";
 import { overlapsExistingAppointments } from "../lib/slots";
 
+const LAST_SERVICE_KEY = "crm:last-booking-service-id";
+const LAST_EXTRA_BLOCK_KEY = "crm:last-booking-extra-block-min";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -68,8 +71,26 @@ export function BookingModal({
     setManualServiceNote("");
     setExtraBlockMin(0);
     setError("");
-    const firstSvc = eligibleServices[0]?.id ?? services.find((s) => s.active)?.id ?? 0;
-    setServiceId(firstSvc);
+    let preferredService: string | number | null = null;
+    let preferredExtraBlock = 0;
+    try {
+      const raw = localStorage.getItem(LAST_SERVICE_KEY);
+      if (raw && raw.trim()) {
+        const n = Number(raw);
+        preferredService = Number.isFinite(n) && String(n) === raw ? n : raw;
+      }
+      const rawExtra = Number(localStorage.getItem(LAST_EXTRA_BLOCK_KEY) || 0);
+      preferredExtraBlock = Number.isFinite(rawExtra) ? Math.max(0, Math.min(240, rawExtra)) : 0;
+    } catch {
+      /* ignore storage errors */
+    }
+    const fallback = eligibleServices[0]?.id ?? services.find((s) => s.active)?.id ?? 0;
+    const nextService =
+      preferredService != null && eligibleServices.some((s) => String(s.id) === String(preferredService))
+        ? preferredService
+        : fallback;
+    setServiceId(nextService);
+    setExtraBlockMin(preferredExtraBlock);
   }, [open, initialStaffId, eligibleServices, services]);
 
   useEffect(() => {
@@ -159,6 +180,12 @@ export function BookingModal({
       }
       setError(t("auth.error.rpcFailed", { message: insErr.message }));
       return;
+    }
+    try {
+      localStorage.setItem(LAST_SERVICE_KEY, String(serviceId));
+      localStorage.setItem(LAST_EXTRA_BLOCK_KEY, String(safeExtraBlockMin));
+    } catch {
+      /* ignore storage errors */
     }
     onSaved();
     onClose();
