@@ -42,7 +42,7 @@ function passesStatus(filter: StatusFilter, status: string): boolean {
 
 export function BookingsPage() {
   const { t } = useTranslation();
-  const { staffMember } = useAuth();
+  const { staffMember, isAdmin } = useAuth();
   const { canManage, isWorkerOnlyEffective } = useEffectiveRole();
 
   const [rows, setRows] = useState<AppointmentRow[]>([]);
@@ -139,6 +139,26 @@ export function BookingsPage() {
     }
     await q;
     load();
+  }
+
+  async function deleteBooking(id: string) {
+    if (!isAdmin) return;
+    const ok = window.confirm(
+      t("bookings.deleteConfirm", {
+        defaultValue: "Удалить запись безвозвратно? Это действие нельзя отменить.",
+      })
+    );
+    if (!ok) return;
+    const { error } = await supabase.from("appointments").delete().eq("id", id);
+    if (error) {
+      window.alert(
+        t("bookings.deleteFailed", {
+          defaultValue: "Не удалось удалить запись. Проверьте права и попробуйте снова.",
+        })
+      );
+      return;
+    }
+    await load();
   }
 
   function statusLabel(status: string) {
@@ -370,15 +390,26 @@ export function BookingsPage() {
                     </td>
                     {(canManage || (isWorkerOnlyEffective && staffMember)) && (
                       <td className="px-4 py-3">
-                        {b.status !== "cancelled" && (
-                          <button
-                            type="button"
-                            onClick={() => void cancelBooking(b.id)}
-                            className="text-xs text-red-400 hover:text-red-300"
-                          >
-                            {t("bookings.cancel")}
-                          </button>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {b.status !== "cancelled" && (
+                            <button
+                              type="button"
+                              onClick={() => void cancelBooking(b.id)}
+                              className="text-xs text-red-400 hover:text-red-300"
+                            >
+                              {t("bookings.cancel")}
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => void deleteBooking(b.id)}
+                              className="text-xs text-zinc-400 hover:text-red-300"
+                            >
+                              {t("bookings.delete", { defaultValue: "Удалить" })}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
