@@ -3,7 +3,7 @@ import { format, startOfDay } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { generateAvailableSlots, formatSlotRange } from "../lib/slots";
+import { generateAvailableSlots, formatSlotRange, type Slot } from "../lib/slots";
 import {
   applyPublicStaffVisibility,
   isStaffRowAdmin,
@@ -21,6 +21,8 @@ type PublicService = {
   active: boolean;
 };
 
+const ANY_MASTER_ID = "any";
+
 export function PublicBookingPage() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -35,7 +37,7 @@ export function PublicBookingPage() {
   >([]);
 
   const [serviceId, setServiceId] = useState<string | null>(null);
-  const [staffId, setStaffId] = useState<string | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(ANY_MASTER_ID);
   const [dayStr, setDayStr] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -121,8 +123,20 @@ export function PublicBookingPage() {
     return map;
   }, [staff]);
 
+  const eligibleStaff = useMemo(() => {
+    if (serviceId == null) return [];
+    const base = staffEligibleForService(staff, links, serviceId);
+    return applyPublicStaffVisibility(base, links, serviceId);
+  }, [staff, links, serviceId]);
+
   const loadDayData = useCallback(async () => {
-    if (!isSupabaseConfigured() || !staffId) return;
+    if (!isSupabaseConfigured() || serviceId == null) return;
+    const eligibleIds = eligibleStaff.map((s) => s.id);
+    if (!eligibleIds.length) {
+      setAppointments([]);
+      setTimeOff([]);
+      return;
+    }
     const start = new Date(day);
     start.setHours(0, 0, 0, 0);
     const end = new Date(day);
@@ -131,14 +145,14 @@ export function PublicBookingPage() {
       supabase
         .from("appointments")
         .select("*")
-        .eq("staff_id", staffId)
+        .in("staff_id", eligibleIds)
         .gte("start_time", start.toISOString())
         .lte("start_time", end.toISOString())
         .neq("status", "cancelled"),
       supabase
         .from("staff_time_off")
         .select("*")
-        .eq("staff_id", staffId)
+        .in("staff_id", eligibleIds)
         .lte("start_time", end.toISOString())
         .gte("end_time", start.toISOString()),
     ]);
@@ -152,7 +166,7 @@ export function PublicBookingPage() {
         }))
       );
     }
-  }, [day, staffId]);
+  }, [day, eligibleStaff, serviceId]);
 
   useEffect(() => {
     void loadDayData();
@@ -175,38 +189,59 @@ export function PublicBookingPage() {
     void loadUpcomingData();
   }, [loadUpcomingData]);
 
-  const eligibleStaff = useMemo(() => {
-    if (serviceId == null) return [];
-    const base = staffEligibleForService(staff, links, serviceId);
-    return applyPublicStaffVisibility(base, links, serviceId);
-  }, [staff, links, serviceId]);
-
   const svc = services.find((s) => s.id === serviceId);
   const durationMin = svc ? svc.duration_min + svc.buffer_after_min : 60;
 
-  const staffScheduleForGen = useMemo(() => {
-    if (!staffId) return [];
-    return schedules
-      .filter((s) => s.staff_id === staffId)
-      .map((s) => ({
-        day_of_week: s.day_of_week,
-        start_time: s.start_time,
-        end_time: s.end_time,
-      }));
-  }, [schedules, staffId]);
+  const slotsByStaff = useMemo(() => {
+    if (!svc) return new Map<string, Slot[]>();
+    const out = new Map<string, Slot[]>();
+    for (const member of eligibleStaff) {
+      const memberSchedule = schedules
+        .filter((s) => s.staff_id === member.id)
+        .map((s) => ({
+          day_of_week: s.day_of_week,
+          start_time: s.start_time,
+          end_time: s.end_time,
+        }));
+      const slots = generateAvailableSlots({
+        schedule: memberSchedule,
+        appointments,
+        timeOff,
+        duration: durationMin,
+        day,
+        stepMinutes: 15,
+        staffId: member.id,
+      });
+      out.set(member.id, slots);
+    }
+    return out;
+  }, [appointments, day, durationMin, eligibleStaff, schedules, svc, timeOff]);
+
+  const slotCoverage = useMemo(() => {
+    const coverage = new Map<string, number>();
+    for (const slots of slotsByStaff.values()) {
+      for (const s of slots) {
+        const key = s.start.toISOString();
+        coverage.set(key, (coverage.get(key) || 0) + 1);
+      }
+    }
+    return coverage;
+  }, [slotsByStaff]);
 
   const slots = useMemo(() => {
-    if (!staffId || !svc) return [];
-    return generateAvailableSlots({
-      schedule: staffScheduleForGen,
-      appointments,
-      timeOff,
-      duration: durationMin,
-      day,
-      stepMinutes: 15,
-      staffId,
-    });
-  }, [staffId, svc, staffScheduleForGen, appointments, timeOff, durationMin, day]);
+    if (!svc) return [];
+    if (staffId && staffId !== ANY_MASTER_ID) {
+      return slotsByStaff.get(staffId) || [];
+    }
+    const byStart = new Map<string, Slot>();
+    for (const staffSlots of slotsByStaff.values()) {
+      for (const s of staffSlots) {
+        const key = s.start.toISOString();
+        if (!byStart.has(key)) byStart.set(key, s);
+      }
+    }
+    return Array.from(byStart.values()).sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [slotsByStaff, staffId, svc]);
 
   const receptionUpcoming = useMemo(() => {
     const allowedStaffIds = new Set(staff.map((s) => s.id));
@@ -232,17 +267,32 @@ export function PublicBookingPage() {
   }, [upcomingAppointments, staffNameById]);
 
   async function confirmBook() {
-    if (!svc || !staffId || !pickedStart || !clientName.trim()) {
+    if (!svc || !pickedStart || !clientName.trim()) {
       setMsg(t("publicBook.fillAll"));
       return;
     }
     setBooking(true);
     setMsg(null);
+    let finalStaffId = staffId && staffId !== ANY_MASTER_ID ? staffId : null;
+    if (!finalStaffId) {
+      for (const candidate of eligibleStaff) {
+        const candidateSlots = slotsByStaff.get(candidate.id) || [];
+        if (candidateSlots.some((s) => s.start.getTime() === pickedStart.getTime())) {
+          finalStaffId = candidate.id;
+          break;
+        }
+      }
+    }
+    if (!finalStaffId) {
+      setBooking(false);
+      setMsg("На выбранное время нет свободного мастера. Выберите другое время.");
+      return;
+    }
     const end = new Date(pickedStart.getTime() + durationMin * 60 * 1000);
     /* Колонок `source`/`notes` нет в актуальной схеме `appointments`. Отправляем
      *  только реально существующие — иначе PostgREST вернёт ошибку schema cache. */
     const { error } = await supabase.from("appointments").insert({
-      staff_id: staffId,
+      staff_id: finalStaffId,
       service_id: svc.id,
       client_name: clientName.trim(),
       client_phone: clientPhone.trim() || null,
@@ -302,7 +352,7 @@ export function PublicBookingPage() {
               value={serviceId ?? ""}
               onChange={(e) => {
                 setServiceId(e.target.value ? String(e.target.value) : null);
-                setStaffId(null);
+                setStaffId(ANY_MASTER_ID);
                 setPickedStart(null);
               }}
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
@@ -415,25 +465,54 @@ export function PublicBookingPage() {
             </section>
           )}
 
-          {staffId && (
+          {serviceId != null && (
             <>
+              <label className="block text-sm">
+                <span className="text-zinc-400">Мастер (по желанию)</span>
+                <select
+                  value={staffId ?? ANY_MASTER_ID}
+                  onChange={(e) => {
+                    setStaffId(e.target.value || ANY_MASTER_ID);
+                    setPickedStart(null);
+                  }}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
+                >
+                  <option value={ANY_MASTER_ID}>Любой свободный мастер</option>
+                  {eligibleStaff.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <div>
                 <p className="text-sm text-zinc-400">{t("publicBook.slots")}</p>
+                {staffId === ANY_MASTER_ID && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Показаны слоты, где есть хотя бы один свободный мастер.
+                  </p>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {slots.map((s) => (
-                    <button
-                      key={s.start.toISOString()}
-                      type="button"
-                      onClick={() => setPickedStart(s.start)}
-                      className={`rounded-lg border px-3 py-2 text-sm ${
-                        pickedStart?.getTime() === s.start.getTime()
-                          ? "border-sky-500 bg-sky-950/50 text-white"
-                          : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
-                      }`}
-                    >
-                      {formatSlotRange(s)}
-                    </button>
-                  ))}
+                  {slots.map((s) => {
+                    const key = s.start.toISOString();
+                    const freeCount = slotCoverage.get(key) || 0;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setPickedStart(s.start)}
+                        className={`rounded-lg border px-3 py-2 text-sm ${
+                          pickedStart?.getTime() === s.start.getTime()
+                            ? "border-sky-500 bg-sky-950/50 text-white"
+                            : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
+                        }`}
+                      >
+                        {formatSlotRange(s)}
+                        {staffId === ANY_MASTER_ID && freeCount > 0 ? ` · свободно: ${freeCount}` : ""}
+                      </button>
+                    );
+                  })}
                 </div>
                 {slots.length === 0 && <p className="mt-2 text-xs text-zinc-600">{t("publicBook.noSlots")}</p>}
               </div>
