@@ -29,6 +29,7 @@ export function PublicBookingPage() {
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
   const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<AppointmentRow[]>([]);
   const [timeOff, setTimeOff] = useState<
     Array<{ staff_id: string; start_time: string; end_time: string }>
   >([]);
@@ -108,6 +109,18 @@ export function PublicBookingPage() {
 
   const day = useMemo(() => startOfDay(new Date(dayStr + "T12:00:00")), [dayStr]);
 
+  const serviceNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of services) map.set(String(s.id), s.name);
+    return map;
+  }, [services]);
+
+  const staffNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of staff) map.set(String(s.id), s.name);
+    return map;
+  }, [staff]);
+
   const loadDayData = useCallback(async () => {
     if (!isSupabaseConfigured() || !staffId) return;
     const start = new Date(day);
@@ -145,6 +158,23 @@ export function PublicBookingPage() {
     void loadDayData();
   }, [loadDayData]);
 
+  const loadUpcomingData = useCallback(async () => {
+    if (!isSupabaseConfigured()) return;
+    const nowIso = new Date().toISOString();
+    const { data } = await supabase
+      .from("appointments")
+      .select("*")
+      .gte("start_time", nowIso)
+      .neq("status", "cancelled")
+      .order("start_time", { ascending: true })
+      .limit(120);
+    if (data) setUpcomingAppointments(data as AppointmentRow[]);
+  }, []);
+
+  useEffect(() => {
+    void loadUpcomingData();
+  }, [loadUpcomingData]);
+
   const eligibleStaff = useMemo(() => {
     if (serviceId == null) return [];
     const base = staffEligibleForService(staff, links, serviceId);
@@ -178,6 +208,29 @@ export function PublicBookingPage() {
     });
   }, [staffId, svc, staffScheduleForGen, appointments, timeOff, durationMin, day]);
 
+  const receptionUpcoming = useMemo(() => {
+    const allowedStaffIds = new Set(staff.map((s) => s.id));
+    const base = upcomingAppointments.filter((a) => allowedStaffIds.has(a.staff_id));
+    const relevant = staffId ? base.filter((a) => a.staff_id === staffId) : base;
+    return relevant.slice(0, 8);
+  }, [upcomingAppointments, staff, staffId]);
+
+  const nearestByMaster = useMemo(() => {
+    const out = new Map<string, AppointmentRow>();
+    for (const row of upcomingAppointments) {
+      if (!staffNameById.has(row.staff_id)) continue;
+      if (!out.has(row.staff_id)) out.set(row.staff_id, row);
+    }
+    return Array.from(out.entries())
+      .map(([sid, ap]) => ({ staffId: sid, appointment: ap }))
+      .sort((a, b) => {
+        const ta = new Date(a.appointment.start_time || "").getTime();
+        const tb = new Date(b.appointment.start_time || "").getTime();
+        return ta - tb;
+      })
+      .slice(0, 6);
+  }, [upcomingAppointments, staffNameById]);
+
   async function confirmBook() {
     if (!svc || !staffId || !pickedStart || !clientName.trim()) {
       setMsg(t("publicBook.fillAll"));
@@ -207,6 +260,7 @@ export function PublicBookingPage() {
     setClientName("");
     setClientPhone("");
     void loadDayData();
+    void loadUpcomingData();
   }
 
   if (!isSupabaseConfigured()) {
@@ -283,21 +337,86 @@ export function PublicBookingPage() {
             </label>
           )}
 
+          {serviceId != null && (
+            <label className="block text-sm">
+              <span className="text-zinc-400">{t("publicBook.day")}</span>
+              <input
+                type="date"
+                value={dayStr}
+                onChange={(e) => {
+                  setDayStr(e.target.value);
+                  setPickedStart(null);
+                }}
+                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
+              />
+            </label>
+          )}
+
+          {isReceptionMode && (
+            <section className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+              <h2 className="text-sm font-semibold text-white">Ближайшие работы</h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                {staffId
+                  ? "Показаны ближайшие записи выбранного мастера."
+                  : "Показаны ближайшие записи по всем мастерам. Выберите мастера, чтобы сузить список."}
+              </p>
+
+              <div className="mt-3 space-y-2">
+                {receptionUpcoming.length > 0 ? (
+                  receptionUpcoming.map((ap) => (
+                    <div
+                      key={ap.id}
+                      className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-xs text-zinc-300"
+                    >
+                      <div className="font-medium text-zinc-100">
+                        {ap.start_time
+                          ? new Date(ap.start_time).toLocaleString(i18n.language, {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
+                          : "—"}
+                      </div>
+                      <div className="mt-0.5 text-zinc-400">
+                        {staffNameById.get(ap.staff_id) || "—"} · {serviceNameById.get(String(ap.service_id)) || "—"}
+                      </div>
+                      <div className="mt-0.5 text-zinc-500">{ap.client_name || "—"}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-zinc-600">Ближайших записей пока нет.</p>
+                )}
+              </div>
+
+              {!staffId && nearestByMaster.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs font-medium text-zinc-400">Следующая запись по мастерам</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {nearestByMaster.map(({ staffId: sid, appointment }) => (
+                      <button
+                        key={sid}
+                        type="button"
+                        onClick={() => setStaffId(sid)}
+                        className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-left text-xs text-zinc-300 transition hover:border-sky-700/70 hover:text-white"
+                      >
+                        <div className="font-medium text-zinc-100">{staffNameById.get(sid) || "—"}</div>
+                        <div className="mt-0.5 text-zinc-500">
+                          {appointment.start_time
+                            ? new Date(appointment.start_time).toLocaleString(i18n.language, {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              })
+                            : "—"}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
           {staffId && (
             <>
-              <label className="block text-sm">
-                <span className="text-zinc-400">{t("publicBook.day")}</span>
-                <input
-                  type="date"
-                  value={dayStr}
-                  onChange={(e) => {
-                    setDayStr(e.target.value);
-                    setPickedStart(null);
-                  }}
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
-                />
-              </label>
-
               <div>
                 <p className="text-sm text-zinc-400">{t("publicBook.slots")}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
