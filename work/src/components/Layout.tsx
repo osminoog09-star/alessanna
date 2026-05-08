@@ -146,6 +146,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/", key: "dashboard", end: true, icon: ICONS.dashboard },
       { to: "/calendar", key: "calendar", icon: ICONS.calendar },
       { to: "/bookings", key: "bookings", icon: ICONS.bookings },
+      { to: "/help", key: "myHelp", badge: "myHelpUnread", icon: ICONS.myHelp },
     ],
   },
   {
@@ -175,7 +176,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/support", key: "adminSupport", manageOnly: true, badge: "supportUnread", icon: ICONS.adminSupport },
       { to: "/admin/communications", key: "adminCommunications", manageOnly: true, icon: ICONS.adminCommunications },
-      { to: "/help", key: "myHelp", badge: "myHelpUnread", icon: ICONS.myHelp },
     ],
   },
   {

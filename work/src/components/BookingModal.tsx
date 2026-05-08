@@ -140,6 +140,10 @@ export function BookingModal({
     });
     setSaving(false);
     if (insErr) {
+      if (insErr.code === "23P01" || /overlap|занят/i.test(String(insErr.message || ""))) {
+        setError(t("modal.overlap"));
+        return;
+      }
       setError(t("auth.error.rpcFailed", { message: insErr.message }));
       return;
     }
