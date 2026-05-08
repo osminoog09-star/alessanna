@@ -18,6 +18,7 @@ export function LoginPage() {
   const { staffMember, login, hasDeviceToken, loading } = useAuth();
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
+  const [showWorkLoginForm, setShowWorkLoginForm] = useState(false);
   const [showTrustedHint, setShowTrustedHint] = useState(false);
   const [step, setStep] = useState<Step>("phone");
   const [staffName, setStaffName] = useState<string>("");
@@ -114,6 +115,7 @@ export function LoginPage() {
   }
 
   function focusPhoneInput() {
+    setShowWorkLoginForm(true);
     setShowTrustedHint(true);
     const el = document.getElementById("phone");
     if (el && "focus" in el) {
@@ -179,7 +181,7 @@ export function LoginPage() {
           </p>
         )}
 
-        {step === "phone" && hasDeviceToken && showTrustedHint && (
+        {step === "phone" && showWorkLoginForm && hasDeviceToken && showTrustedHint && (
           <p className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-2.5 text-xs text-emerald-200/80">
             {t("login.trustedDeviceHint", {
               defaultValue: "Это устройство добавлено в доверенные — войдёте без PIN",
@@ -188,6 +190,7 @@ export function LoginPage() {
         )}
 
         {step === "phone" ? (
+          showWorkLoginForm ? (
           <form onSubmit={onSubmitPhone} className="mt-6 space-y-4">
             <div>
               <label htmlFor="phone" className="block text-xs font-medium text-zinc-500">
@@ -218,6 +221,7 @@ export function LoginPage() {
               {pending ? t("login.signingIn") : t("login.button")}
             </button>
           </form>
+          ) : null
         ) : (
           <form onSubmit={onSubmitPin} className="mt-6 space-y-4">
             <div>
