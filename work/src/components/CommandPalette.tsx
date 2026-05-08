@@ -96,6 +96,7 @@ const ICON = {
   analytics: <IconStroke d="M3 3v18h18M7 15l4-4 4 4 5-6" />,
   support: <IconStroke d="M21 12a8 8 0 1 0-16 0v3a2 2 0 0 0 2 2h1v-5H5a6 6 0 1 1 12 0h-3v5h1a2 2 0 0 0 2-2Z" />,
   integrations: <IconStroke d="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.83 4.1M14 11a5 5 0 0 0-7.07 0l-3.54 3.54a5 5 0 0 0 7.07 7.07L12.17 19.9" />,
+  siteSettings: <IconStroke d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Zm9-5v5l3 3" />,
   help: <IconStroke d="M12 17v.01M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />,
   bolt: <IconStroke d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />,
   external: <IconStroke d="M14 5h5v5M19 5l-9 9M5 11v8h8" />,
@@ -278,6 +279,17 @@ export function CommandPalette({
         icon: ICON.support,
         perform: ({ navigate, close }) => {
           navigate("/admin/support");
+          close();
+        },
+      },
+      {
+        id: "go./admin/site-settings",
+        label: t("nav.adminSiteSettings"),
+        group: "go",
+        manageOnly: true,
+        icon: ICON.siteSettings,
+        perform: ({ navigate, close }) => {
+          navigate("/admin/site-settings");
           close();
         },
       },

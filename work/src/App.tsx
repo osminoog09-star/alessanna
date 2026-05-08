@@ -16,6 +16,7 @@ import { AdminSupportPage } from "./pages/AdminSupportPage";
 import { AdminIntegrationsPage } from "./pages/AdminIntegrationsPage";
 import { AdminInventoryPage } from "./pages/AdminInventoryPage";
 import { AdminCommunicationsPage } from "./pages/AdminCommunicationsPage";
+import { AdminSiteSettingsPage } from "./pages/AdminSiteSettingsPage";
 import { MyHelpPage } from "./pages/MyHelpPage";
 import { ProfileSecurityPage } from "./pages/ProfileSecurityPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
@@ -112,6 +113,14 @@ export default function App() {
           element={
             <RequireManage>
               <AdminIntegrationsPage />
+            </RequireManage>
+          }
+        />
+        <Route
+          path="admin/site-settings"
+          element={
+            <RequireManage>
+              <AdminSiteSettingsPage />
             </RequireManage>
           }
         />

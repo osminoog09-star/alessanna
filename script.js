@@ -484,6 +484,7 @@
     rebuildNameToId();
 
     var picked = [];
+    var bookingCartEnabled = true;
 
     /**
      * Раньше эта функция полностью прятала #meistrid (через `hidden`)
@@ -510,6 +511,53 @@
       } else if (masterSelect && masterSelect.value) {
         applyMaster("");
       }
+    }
+
+    function parseBoolSetting(raw, fallback) {
+      var v = String(raw == null ? "" : raw).trim().toLowerCase();
+      if (!v) return fallback;
+      if (v === "true" || v === "1" || v === "yes" || v === "on") return true;
+      if (v === "false" || v === "0" || v === "no" || v === "off") return false;
+      return fallback;
+    }
+
+    function getSalonSupabaseCfgForSiteSettings() {
+      var sc = globalThis.SUPABASE_CONFIG || {};
+      var url = String(sc.url || globalThis.SALON_SUPABASE_URL || "").trim().replace(/\/+$/, "");
+      var key = String(sc.anonKey || globalThis.SALON_SUPABASE_ANON_KEY || "").trim();
+      return { url: url, key: key };
+    }
+
+    function applyBookingCartVisibility() {
+      if (summary) summary.hidden = !bookingCartEnabled;
+    }
+
+    function loadBookingCartFeatureFlag() {
+      var cfg = getSalonSupabaseCfgForSiteSettings();
+      if (!cfg.url || !cfg.key) {
+        applyBookingCartVisibility();
+        return Promise.resolve();
+      }
+      var q = "/rest/v1/salon_settings?select=value&key=eq.site_booking_cart_enabled&limit=1";
+      return fetch(cfg.url + q, {
+        headers: {
+          apikey: cfg.key,
+          Authorization: "Bearer " + cfg.key,
+        },
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("settings-http");
+          return r.json();
+        })
+        .then(function (rows) {
+          var value = rows && rows[0] ? rows[0].value : null;
+          bookingCartEnabled = parseBoolSetting(value, true);
+          applyBookingCartVisibility();
+        })
+        .catch(function () {
+          bookingCartEnabled = true;
+          applyBookingCartVisibility();
+        });
     }
 
     function currentTeamGroupKey() {
@@ -832,6 +880,15 @@
     }
 
     function updateDock() {
+      if (!bookingCartEnabled) {
+        summary.classList.remove("selection-summary--dock");
+        summary.classList.remove("selection-summary--dock-collapsed");
+        document.body.classList.remove("selection-dock-active");
+        document.body.classList.remove("selection-dock-panel-collapsed");
+        updateCartCountBadge();
+        if (dockToggle) dockToggle.setAttribute("aria-expanded", "false");
+        return;
+      }
       var has = picked.length > 0;
       summary.classList.toggle("selection-summary--dock", has);
       document.body.classList.toggle("selection-dock-active", has);
@@ -1162,19 +1219,10 @@
         if (missingMaster) {
           hintEl.hidden = false;
           hintEl.textContent =
-            "Выберите мастера для каждой услуги в блоке «Ваш выбор» (или «Не важно» — тогда распределим мы).";
+            "Выберите мастера (или «Не важно» — тогда подберём свободного).";
         } else if (startMin == null) {
           hintEl.hidden = false;
           hintEl.textContent = "Выберите день и время — и мы покажем точное расписание визита.";
-        } else if (picked.length >= 2) {
-          /* Когда у пользователя ≥2 услуги, мастер у каждой выбран и время
-           * выбрано — поясняем, что сервер сам выстроит цепочку:
-           *   10:00 стрижка → 10:30 маникюр → … (учитывая длительность и
-           *   buffer_after_min каждой услуги). Это снимает популярный
-           *   вопрос «а как 2 услуги в одно время?». */
-          hintEl.hidden = false;
-          hintEl.textContent =
-            "Услуги пойдут одна за другой — мы автоматически расставим время с учётом длительности.";
         } else {
           hintEl.hidden = true;
           hintEl.textContent = "";
@@ -1532,7 +1580,8 @@
       if (idx >= 0) {
         picked.splice(idx, 1);
       } else {
-        picked.push(readPickFromLi(li, panel, label, price));
+        /* Режим «одна запись за раз»: новая услуга заменяет предыдущую. */
+        picked = [readPickFromLi(li, panel, label, price)];
       }
       syncFormCategory();
       renderList();
@@ -1640,8 +1689,7 @@
       var key = pickKey(category, label);
       for (var i = 0; i < picked.length; i++) {
         if (picked[i].key === key) {
-          /* Уже в корзине — оставляем как есть, просто сбросим select. */
-          if (serviceItemSelect) serviceItemSelect.value = "";
+          /* Уже выбрана эта услуга — ничего не меняем. */
           return;
         }
       }
@@ -1657,13 +1705,10 @@
         selectedMaster: "",
       };
       pick.selectedMaster = resolveDefaultMasterFor(pick, "");
-      picked.push(pick);
+      /* Режим «одна запись за раз»: выбор в форме тоже заменяет услугу. */
+      picked = [pick];
       syncFormCategory();
       renderList();
-      /* После добавления услуги сбрасываем service-select обратно к
-       * placeholder, чтобы пользователь мог сразу добавить ещё одну
-       * услугу из этой же или другой категории. */
-      if (serviceItemSelect) serviceItemSelect.value = "";
     }
 
     if (serviceSelect) {
@@ -1900,6 +1945,7 @@
     };
 
     renderList();
+    void loadBookingCartFeatureFlag();
   })();
 
   /* =============================================================================
@@ -2543,30 +2589,22 @@
             : lang === "fi"
               ? "Voit jättää “Ei väliä” — valitsemme vapaan stylistin."
               : "Võid jätta “Pole vahet” — valime vaba meistri.";
-      } else if (commonMasterCount > 0) {
+      } else if (commonMasterCount > 0 || hasPartialMasters) {
         msg = lang === "ru"
-          ? "Один мастер на всю цепочку (необязательно). Или выберите по одному в карточках выше."
+          ? "Выберите мастера для записи или оставьте «Не важно»."
           : lang === "en"
-            ? "One stylist for the whole chain (optional). Or pick one per service in the cards above."
+            ? "Choose a stylist for this booking or leave “No preference”."
             : lang === "fi"
-              ? "Yksi stylisti koko ketjuun (valinnainen). Tai valitse yksi per palvelu yllä."
-              : "Üks meister kogu ahelale (valikuline). Või vali igale teenusele eraldi ülal.";
-      } else if (hasPartialMasters) {
-        msg = lang === "ru"
-          ? "Общего мастера на всю цепочку нет. Выберите конкретного — мы поставим его на услуги, которые он делает, остальные — на «Не важно». Или назначьте мастеров по одному в карточках выше."
-          : lang === "en"
-            ? "No single stylist covers all services. Pick one — we’ll assign them to the services they do; others stay on “No preference”. Or pick per service in the cards above."
-            : lang === "fi"
-              ? "Yksi stylisti ei kata kaikkia palveluita. Valitse yksi — laitamme hänet niihin, jotka hän tekee; muille jää “Ei väliä”. Tai valitse erikseen yllä."
-              : "Üks meister ei kata kõiki teenuseid. Vali üks — paneme ta talle sobivatele teenustele; ülejäänud jäävad “Pole vahet”. Või vali kaardis ülal eraldi.";
+              ? "Valitse tälle varaukselle stylisti tai jätä “Ei väliä”."
+              : "Vali broneeringule meister või jäta “Pole vahet”.";
       } else {
         msg = lang === "ru"
-          ? "Эти услуги делают разные мастера — выберите по одному в карточках выше."
+          ? "Выберите мастера для записи."
           : lang === "en"
-            ? "These services are done by different stylists — pick one in each card above."
+            ? "Choose a stylist for this booking."
             : lang === "fi"
-              ? "Nämä palvelut tekevät eri stylistit — valitse yksi kussakin kortissa yllä."
-              : "Neid teenuseid teevad erinevad meistrid — vali igas kaardis ülal eraldi.";
+              ? "Valitse tälle varaukselle stylisti."
+              : "Vali sellele broneeringule meister.";
       }
       hintEl.textContent = msg;
       hintEl.hidden = false;
@@ -2893,8 +2931,8 @@
             service_no_duration: "Для услуги не задана длительность — обратитесь в салон.",
             missing_name: "Укажите имя.",
             missing_start: "Выберите день и время.",
-            empty_items: "Выберите хотя бы одну услугу в прайсе.",
-            too_many_items: "Слишком много услуг за один визит.",
+            empty_items: "Выберите услугу в прайсе.",
+            too_many_items: "Сейчас доступна запись только на одну услугу за раз.",
           }
         : {
             staff_busy: "Master is busy at that time.",
@@ -2906,8 +2944,8 @@
             service_no_duration: "Service duration is missing.",
             missing_name: "Please enter your name.",
             missing_start: "Pick a day and time.",
-            empty_items: "Pick at least one service from the price list.",
-            too_many_items: "Too many services for one visit.",
+            empty_items: "Pick one service from the price list.",
+            too_many_items: "Only one service per booking is available now.",
           };
       return (code && map[code]) || fallback;
     }
