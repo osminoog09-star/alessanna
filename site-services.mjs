@@ -249,7 +249,9 @@ function buildCatalogHtml(groups, svcMasters, prefix) {
       (isFirst ? "" : " hidden") +
       ' data-pick-category="' +
       esc(catKey) +
-      '"><ul class="menu-list">';
+      '"><p class="price-panel-title">' +
+      esc(gr.name) +
+      '</p><ul class="menu-list">';
     if (!gr.items || gr.items.length === 0) {
       panelHtml += '<li><span class="menu-footnote">Teenused lisatakse peagi.</span></li>';
     } else {

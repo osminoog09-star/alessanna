@@ -1168,6 +1168,7 @@ body.site-ilusalong #hero.hero {
 }
 
 .price-panel-title {
+  display: none;
   margin: 0 0 1rem;
   font-family: var(--font-sans);
   font-size: 0.78rem;
@@ -1177,6 +1178,11 @@ body.site-ilusalong #hero.hero {
   text-align: left;
   text-transform: uppercase;
   color: var(--gold-bright);
+}
+
+.services-list-open .price-panel-title,
+.price-list-open .price-panel-title {
+  display: block;
 }
 
 .menu-list {
