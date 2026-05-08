@@ -25,6 +25,7 @@ type StaffName = { id: string; name: string };
 type ServiceName = { id: string; name: string };
 
 type StatusFilter = "all" | "active" | "pending" | "confirmed" | "cancelled";
+type TimeFilter = "all" | "today" | "tomorrow" | "week";
 
 const STATUS_FILTERS: StatusFilter[] = [
   "active",
@@ -54,6 +55,7 @@ export function BookingsPage() {
   /* фильтры/поиск */
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -102,8 +104,25 @@ export function BookingsPage() {
   /* Подготовка отфильтрованного списка. */
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const now = new Date();
+    const startToday = new Date(now);
+    startToday.setHours(0, 0, 0, 0);
+    const startTomorrow = new Date(startToday);
+    startTomorrow.setDate(startTomorrow.getDate() + 1);
+    const endTomorrow = new Date(startTomorrow);
+    endTomorrow.setDate(endTomorrow.getDate() + 1);
+    const endWeek = new Date(startToday);
+    endWeek.setDate(endWeek.getDate() + 7);
+
     return rows.filter((b) => {
       if (!passesStatus(statusFilter, b.status)) return false;
+      if (timeFilter !== "all") {
+        const dt = b.start_time ? parseISO(b.start_time) : null;
+        if (!dt || Number.isNaN(dt.getTime())) return false;
+        if (timeFilter === "today" && (dt < startToday || dt >= startTomorrow)) return false;
+        if (timeFilter === "tomorrow" && (dt < startTomorrow || dt >= endTomorrow)) return false;
+        if (timeFilter === "week" && (dt < startToday || dt >= endWeek)) return false;
+      }
       if (!q) return true;
       const em = staffNames.find((x) => x.id === b.staff_id);
       const sv = services.find((x) => x.id === String(b.service_id));
@@ -119,9 +138,24 @@ export function BookingsPage() {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [rows, search, statusFilter, staffNames, services]);
+  }, [rows, search, statusFilter, staffNames, services, timeFilter]);
 
-  const filtersActive = statusFilter !== "active" || search.trim().length > 0;
+  const filtersActive = statusFilter !== "active" || search.trim().length > 0 || timeFilter !== "all";
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = (target?.tagName || "").toLowerCase();
+      if (target?.isContentEditable || tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.key === "/") {
+        e.preventDefault();
+        const el = document.getElementById("bookings-search") as HTMLInputElement | null;
+        el?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   async function cancelBooking(id: string) {
     const row = rows.find((r) => r.id === id);
@@ -245,6 +279,7 @@ export function BookingsPage() {
             <path d="m21 21-4.3-4.3" />
           </svg>
           <input
+            id="bookings-search"
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -275,6 +310,28 @@ export function BookingsPage() {
             </button>
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-1 rounded-lg border border-zinc-800 bg-black/30 p-1">
+          {([
+            ["all", t("bookings.periodAll", { defaultValue: "Любой период" })],
+            ["today", t("bookings.periodToday", { defaultValue: "Сегодня" })],
+            ["tomorrow", t("bookings.periodTomorrow", { defaultValue: "Завтра" })],
+            ["week", t("bookings.periodWeek", { defaultValue: "7 дней" })],
+          ] as Array<[TimeFilter, string]>).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTimeFilter(id)}
+              className={
+                "rounded-md px-2.5 py-1 text-xs font-medium transition " +
+                (timeFilter === id
+                  ? "bg-zinc-200 text-black"
+                  : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100")
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Состояния ── */}
@@ -298,6 +355,7 @@ export function BookingsPage() {
               onClick={() => {
                 setSearch("");
                 setStatusFilter("active");
+                setTimeFilter("all");
               }}
               className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 transition hover:border-zinc-600 hover:text-white"
             >

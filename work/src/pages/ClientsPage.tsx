@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format, parseISO } from "date-fns";
 import { supabase } from "../lib/supabase";
@@ -31,6 +31,7 @@ export function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingVisits, setLoadingVisits] = useState(false);
   const [listErr, setListErr] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -46,6 +47,16 @@ export function ClientsPage() {
   }, [loadClients]);
 
   useBookingsRealtime(loadClients);
+
+  const visibleClients = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return clients;
+    return clients.filter((c) => {
+      const name = String(c.name ?? "").toLowerCase();
+      const phone = String(c.phone ?? "").replace(/\D/g, "");
+      return name.includes(q) || phone.includes(q.replace(/\D/g, ""));
+    });
+  }, [clients, search]);
 
   async function loadVisits(clientId: string, clientPhone: string | null) {
     setLoadingVisits(true);
@@ -131,9 +142,21 @@ export function ClientsPage() {
         <p className="rounded border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">{listErr}</p>
       )}
 
+      <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-black/30 p-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("clients.search", { defaultValue: "Поиск по имени или телефону" })}
+          className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-zinc-500 focus:outline-none"
+        />
+        <span className="shrink-0 text-xs text-zinc-500">
+          {visibleClients.length}/{clients.length}
+        </span>
+      </div>
+
       <ul className="divide-y divide-zinc-800 rounded-xl border border-zinc-800">
-        {clients.length === 0 && <li className="px-4 py-6 text-sm text-zinc-500">{t("clients.empty")}</li>}
-        {clients.map((c) => (
+        {visibleClients.length === 0 && <li className="px-4 py-6 text-sm text-zinc-500">{t("clients.empty")}</li>}
+        {visibleClients.map((c) => (
           <li key={c.id} className="bg-zinc-950/50">
             <button
               type="button"
