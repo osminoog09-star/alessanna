@@ -81,6 +81,19 @@ type OutboxRow = {
 
 type StatusFilter = "all" | OutboxRow["status"];
 type ScopeFilter = "all" | "salon" | "staff";
+type ImportSummary = {
+  total: number;
+  skippedCancelled: number;
+  skippedNoTime: number;
+  skippedAlreadyLinked: number;
+  skippedNoStaff: number;
+  inserted: number;
+  failed: number;
+  mode: "dry-run" | "apply";
+  from: string;
+  to: string;
+  calendarId: string;
+};
 
 /** Простейшая клиентская валидация — глубокую делает CHECK-constraint в БД. */
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -569,6 +582,11 @@ export function AdminIntegrationsPage() {
    * на каждый ввод символа). Сохранение происходит по blur / Enter / кнопке. */
   const [salonEmailDraft, setSalonEmailDraft] = useState<string>("");
   const [staffEmailDraft, setStaffEmailDraft] = useState<Record<string, string>>({});
+  const [importFrom, setImportFrom] = useState<string>("2026-01-01");
+  const [importTo, setImportTo] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importDryResult, setImportDryResult] = useState<ImportSummary | null>(null);
+  const [importApplyResult, setImportApplyResult] = useState<ImportSummary | null>(null);
 
   const loadSettings = useCallback(async () => {
     setSettingsError(null);
@@ -783,6 +801,59 @@ export function AdminIntegrationsPage() {
     void loadStaff();
   }
 
+  async function runSalonCalendarImport(dryRun: boolean): Promise<ImportSummary | null> {
+    const key = dryRun ? "google-import-dry" : "google-import-apply";
+    setActionBusy(key);
+    setImportError(null);
+    const from = String(importFrom || "").trim();
+    const to = String(importTo || "").trim();
+    if (!from || !to) {
+      setImportError("Укажите диапазон дат (from/to).");
+      setActionBusy(null);
+      return null;
+    }
+    const calendarId = String(settings.google_calendar_id || "primary");
+    const { data, error } = await supabase.functions.invoke("google-calendar-import", {
+      body: {
+        dryRun,
+        from,
+        to,
+        calendarId,
+      },
+    });
+    setActionBusy(null);
+    if (error) {
+      setImportError(error.message);
+      return null;
+    }
+    const summary = (data ?? null) as ImportSummary | null;
+    if (!summary) {
+      setImportError("Функция вернула пустой ответ.");
+      return null;
+    }
+    if (dryRun) setImportDryResult(summary);
+    else setImportApplyResult(summary);
+    void loadOutbox();
+    return summary;
+  }
+
+  async function runOneTapImport() {
+    setImportError(null);
+    setActionBusy("google-import-all");
+    const preview = await runSalonCalendarImport(true);
+    if (!preview) {
+      setActionBusy(null);
+      return;
+    }
+    // Если после dry-run нечего импортировать — второй шаг не нужен.
+    if (preview.inserted <= 0) {
+      setActionBusy(null);
+      return;
+    }
+    await runSalonCalendarImport(false);
+    setActionBusy(null);
+  }
+
   const status = settings.google_calendar_status;
   const statusInfo = googleStatusBadge(status);
 
@@ -955,6 +1026,97 @@ export function AdminIntegrationsPage() {
 
         {settingsLoading && (
           <p className="mt-3 text-[11px] text-zinc-600">Загружаем статус…</p>
+        )}
+      </section>
+
+      {/* ─────── Google Calendar — Staff ─────── */}
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+        <header>
+          <h2 className="text-lg font-semibold text-white">Импорт старых записей (салонная почта)</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Запуск с планшета: сначала <strong>Проверить (dry-run)</strong>, затем{" "}
+            <strong>Импортировать</strong>. Дубли не создаются: повторный запуск
+            пропускает уже импортированные события.
+          </p>
+        </header>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <label className="text-xs text-zinc-400">
+            С даты
+            <input
+              type="date"
+              value={importFrom}
+              onChange={(e) => setImportFrom(e.target.value)}
+              className="mt-1 w-full rounded-md border border-zinc-700 bg-black/40 px-2 py-1.5 text-sm text-zinc-100 focus:border-sky-700 focus:outline-none"
+            />
+          </label>
+          <label className="text-xs text-zinc-400">
+            По дату
+            <input
+              type="date"
+              value={importTo}
+              onChange={(e) => setImportTo(e.target.value)}
+              className="mt-1 w-full rounded-md border border-zinc-700 bg-black/40 px-2 py-1.5 text-sm text-zinc-100 focus:border-sky-700 focus:outline-none"
+            />
+          </label>
+          <label className="text-xs text-zinc-400 md:col-span-2">
+            Календарь Google
+            <input
+              type="text"
+              value={settings.google_calendar_id ?? "primary"}
+              readOnly
+              className="mt-1 w-full rounded-md border border-zinc-800 bg-black/20 px-2 py-1.5 text-sm text-zinc-400"
+            />
+          </label>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void runOneTapImport()}
+            disabled={actionBusy === "google-import-all"}
+            className="rounded-md border border-fuchsia-700/60 bg-fuchsia-950/40 px-3 py-1.5 text-xs font-medium text-fuchsia-200 transition hover:bg-fuchsia-900/50 disabled:opacity-40"
+          >
+            {actionBusy === "google-import-all"
+              ? "Подключаем и импортируем…"
+              : "1 кнопка: подключить и импортировать"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void runSalonCalendarImport(true)}
+            disabled={actionBusy === "google-import-dry" || actionBusy === "google-import-all"}
+            className="rounded-md border border-sky-700/60 bg-sky-950/40 px-3 py-1.5 text-xs font-medium text-sky-200 transition hover:bg-sky-900/50 disabled:opacity-40"
+          >
+            {actionBusy === "google-import-dry" ? "Проверяем…" : "Проверить (dry-run)"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void runSalonCalendarImport(false)}
+            disabled={actionBusy === "google-import-apply" || actionBusy === "google-import-all"}
+            className="rounded-md border border-emerald-700/60 bg-emerald-950/40 px-3 py-1.5 text-xs font-medium text-emerald-200 transition hover:bg-emerald-900/50 disabled:opacity-40"
+          >
+            {actionBusy === "google-import-apply" ? "Импортируем…" : "Импортировать в CRM"}
+          </button>
+        </div>
+
+        {importError && (
+          <p className="mt-3 rounded-md border border-rose-700/40 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
+            {importError}
+          </p>
+        )}
+
+        {importDryResult && (
+          <p className="mt-3 text-xs text-zinc-300">
+            Dry-run: найдено {importDryResult.total}, к импорту {importDryResult.inserted}, уже было{" "}
+            {importDryResult.skippedAlreadyLinked}, без времени {importDryResult.skippedNoTime}, ошибок{" "}
+            {importDryResult.failed}.
+          </p>
+        )}
+        {importApplyResult && (
+          <p className="mt-1 text-xs text-emerald-300">
+            Импорт завершён: добавлено {importApplyResult.inserted}, пропущено как дубли{" "}
+            {importApplyResult.skippedAlreadyLinked}, ошибок {importApplyResult.failed}.
+          </p>
         )}
       </section>
 

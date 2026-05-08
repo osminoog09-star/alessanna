@@ -477,9 +477,9 @@ export function PublicBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-200">
-      <div className="mx-auto max-w-lg">
-        <h1 className="text-2xl font-semibold text-white">{t("publicBook.title")}</h1>
+    <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-200 md:px-6 md:py-10">
+      <div className="mx-auto w-full max-w-5xl">
+        <h1 className="text-2xl font-semibold text-white md:text-3xl">{t("publicBook.title")}</h1>
         <p className="mt-1 text-sm text-zinc-500">
           {isReceptionMode
             ? "Режим ресепшен: быстрая запись клиента без входа в CRM."
@@ -489,9 +489,9 @@ export function PublicBookingPage() {
           {t("publicBook.staffLogin")}
         </Link>
 
-        <div className="mt-8 space-y-6">
-          <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-            <section className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+        <div className="mt-6 space-y-6 md:mt-8">
+          <div className="grid gap-4 md:grid-cols-[1.45fr_1fr] md:gap-5">
+            <section className="rounded-xl border border-zinc-800 bg-black/30 p-4 md:p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm font-medium text-zinc-200">{t("publicBook.day")}</p>
               <div className="flex items-center gap-2">
@@ -512,12 +512,12 @@ export function PublicBookingPage() {
                 </button>
               </div>
             </div>
-            <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-zinc-600">
+            <div className="mb-2 grid grid-cols-7 gap-1.5 text-center text-[10px] uppercase tracking-wide text-zinc-600 md:gap-2 md:text-xs">
               {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((w) => (
                 <span key={w}>{w}</span>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-1.5 md:gap-2">
               {calendarDays.map((d) => {
                 const selected = isSameDay(d, selectedDay);
                 const inMonth = isSameMonth(d, monthStart);
@@ -542,7 +542,7 @@ export function PublicBookingPage() {
                       setPickedStart(null);
                     }}
                     className={
-                      "rounded-md border px-2 py-2 text-xs transition " +
+                      "rounded-md border px-2 py-2 text-xs transition md:min-h-[54px] md:text-sm " +
                       (selected
                         ? "border-sky-500 bg-sky-950/50 text-white"
                         : inMonth
@@ -562,7 +562,7 @@ export function PublicBookingPage() {
             </div>
             </section>
 
-            <section className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+            <section className="rounded-xl border border-zinc-800 bg-black/30 p-4 md:p-5">
               <h2 className="text-sm font-semibold text-white">Ближайшие работы</h2>
               <p className="mt-1 text-xs text-zinc-500">Следующие записи по салону.</p>
               <div className="mt-3 space-y-2">
@@ -598,8 +598,8 @@ export function PublicBookingPage() {
           </div>
 
           {serviceId != null && (
-            <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-              <section className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+            <div className="grid gap-4 md:grid-cols-[1.45fr_1fr] md:gap-5">
+              <section className="rounded-xl border border-zinc-800 bg-black/30 p-4 md:p-5">
                 <h2 className="text-sm font-semibold text-white">Свободные мастера</h2>
                 <p className="mt-1 text-xs text-zinc-500">
                   Нажмите на мастера, чтобы сразу смотреть его доступные слоты.
@@ -614,7 +614,7 @@ export function PublicBookingPage() {
                           setStaffId(m.id);
                           setPickedStart(null);
                         }}
-                        className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-left text-xs text-zinc-300 transition hover:border-sky-700/70 hover:text-white"
+                        className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-left text-xs text-zinc-300 transition hover:border-sky-700/70 hover:text-white md:px-4 md:py-2.5 md:text-sm"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-zinc-100">{m.name}</span>
@@ -655,7 +655,7 @@ export function PublicBookingPage() {
                     setStaffId(ANY_MASTER_ID);
                     setPickedStart(null);
                   }}
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white md:py-2.5"
                 >
                   <option value="">{t("modal.pickService")}</option>
                   {services.filter((s) => s.active).map((s) => (
@@ -682,7 +682,7 @@ export function PublicBookingPage() {
                         key={key}
                         type="button"
                         onClick={() => setPickedStart(s.start)}
-                        className={`rounded-lg border px-3 py-2 text-sm ${
+                        className={`rounded-lg border px-3 py-2 text-sm md:px-4 md:py-2.5 ${
                           pickedStart?.getTime() === s.start.getTime()
                             ? "border-sky-500 bg-sky-950/50 text-white"
                             : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
@@ -705,7 +705,7 @@ export function PublicBookingPage() {
                     setStaffId(e.target.value || ANY_MASTER_ID);
                     setPickedStart(null);
                   }}
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white md:py-2.5"
                 >
                   <option value={ANY_MASTER_ID}>Любой свободный мастер</option>
                   {eligibleStaff.map((s) => (
