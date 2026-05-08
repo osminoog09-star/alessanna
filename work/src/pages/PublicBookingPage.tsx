@@ -332,6 +332,38 @@ export function PublicBookingPage() {
     return Array.from(byStart.values()).sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [slotsByStaff, staffId, svc]);
 
+  useEffect(() => {
+    if (!isReceptionMode) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = (target?.tagName || "").toLowerCase();
+      if (target?.isContentEditable || tag === "input" || tag === "textarea" || tag === "select") return;
+      if ((e.metaKey || e.ctrlKey || e.altKey) && e.key.toLowerCase() !== "n") return;
+
+      if (e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        const now = new Date();
+        setDayStr(format(now, "yyyy-MM-dd"));
+        setViewMonth(startOfMonth(now));
+        setPickedStart(null);
+        return;
+      }
+      if (e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        if (slots.length > 0) setPickedStart(slots[0].start);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setPickedStart(null);
+        setClientName("");
+        setClientPhone("");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isReceptionMode, slots]);
+
   const dayAvailabilityBadge = useMemo(() => {
     const out = new Map<
       string,
@@ -530,6 +562,35 @@ export function PublicBookingPage() {
         </Link>
 
         <div className="mt-6 space-y-6 md:mt-8">
+          {isReceptionMode && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800 bg-black/30 p-3 text-xs text-zinc-300 md:text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  setDayStr(format(now, "yyyy-MM-dd"));
+                  setViewMonth(startOfMonth(now));
+                  setPickedStart(null);
+                }}
+                className="rounded-md border border-sky-700/60 bg-sky-900/30 px-3 py-1.5 text-sky-100 hover:bg-sky-900/50"
+              >
+                Сегодня
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                  setDayStr(format(tomorrow, "yyyy-MM-dd"));
+                  setViewMonth(startOfMonth(tomorrow));
+                  setPickedStart(null);
+                }}
+                className="rounded-md border border-zinc-700 px-3 py-1.5 text-zinc-200 hover:border-zinc-500 hover:text-white"
+              >
+                Завтра
+              </button>
+              <span className="text-zinc-500">Горячие клавиши: T = сегодня, N = первый слот, Esc = очистить</span>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-[1.45fr_1fr] md:gap-5">
             <section className="rounded-xl border border-zinc-800 bg-black/30 p-4 md:p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -821,6 +882,36 @@ export function PublicBookingPage() {
 
           {msg && <p className="text-sm text-emerald-400/90">{msg}</p>}
         </div>
+
+        {isReceptionMode && pickedStart && (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-800 bg-zinc-950/95 p-3 backdrop-blur md:p-4">
+            <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2">
+              <span className="text-xs text-zinc-300 md:text-sm">
+                Выбрано:{" "}
+                {pickedStart.toLocaleString(i18n.language, { dateStyle: "short", timeStyle: "short" })}
+              </span>
+              <button
+                type="button"
+                disabled={booking}
+                onClick={() => void confirmBook()}
+                className="ml-auto rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {t("publicBook.confirm")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPickedStart(null);
+                  setClientName("");
+                  setClientPhone("");
+                }}
+                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:border-zinc-500 hover:text-white"
+              >
+                Очистить
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
