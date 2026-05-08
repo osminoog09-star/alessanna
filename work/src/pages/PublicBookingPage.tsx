@@ -535,10 +535,24 @@ export function PublicBookingPage() {
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm font-medium text-zinc-200">{t("publicBook.day")}</p>
               <div className="flex items-center gap-2">
+                {isReceptionMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      setDayStr(format(now, "yyyy-MM-dd"));
+                      setViewMonth(startOfMonth(now));
+                      setPickedStart(null);
+                    }}
+                    className="rounded-md border border-sky-700/60 bg-sky-900/30 px-2.5 py-1.5 text-xs text-sky-100 hover:bg-sky-900/50 md:px-3 md:py-2 md:text-sm"
+                  >
+                    Сегодня
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setViewMonth((prev) => addMonths(prev, -1))}
-                  className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-500 hover:text-white"
+                  className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-500 hover:text-white md:px-3 md:py-2 md:text-sm"
                 >
                   ←
                 </button>
@@ -546,7 +560,7 @@ export function PublicBookingPage() {
                 <button
                   type="button"
                   onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
-                  className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-500 hover:text-white"
+                  className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-500 hover:text-white md:px-3 md:py-2 md:text-sm"
                 >
                   →
                 </button>
@@ -582,7 +596,7 @@ export function PublicBookingPage() {
                       setPickedStart(null);
                     }}
                     className={
-                      "rounded-md border px-2 py-2 text-xs transition md:min-h-[54px] md:text-sm " +
+                      "rounded-md border px-2 py-2 text-xs transition md:min-h-[62px] md:text-sm " +
                       (selected
                         ? "border-sky-500 bg-sky-950/50 text-white"
                         : inMonth
@@ -718,7 +732,7 @@ export function PublicBookingPage() {
                     Показаны слоты, где есть хотя бы один свободный мастер.
                   </p>
                 )}
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2 md:gap-2.5">
                   {slots.map((s) => {
                     const key = s.start.toISOString();
                     const freeCount = slotCoverage.get(key) || 0;
@@ -727,7 +741,7 @@ export function PublicBookingPage() {
                         key={key}
                         type="button"
                         onClick={() => setPickedStart(s.start)}
-                        className={`rounded-lg border px-3 py-2 text-sm md:px-4 md:py-2.5 ${
+                        className={`rounded-lg border px-3 py-2 text-sm md:px-5 md:py-3 md:text-base ${
                           pickedStart?.getTime() === s.start.getTime()
                             ? "border-sky-500 bg-sky-950/50 text-white"
                             : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
@@ -787,6 +801,19 @@ export function PublicBookingPage() {
                   >
                     {t("publicBook.confirm")}
                   </button>
+                  {isReceptionMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPickedStart(null);
+                        setClientName("");
+                        setClientPhone("");
+                      }}
+                      className="w-full rounded-lg border border-zinc-700 py-2 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-white"
+                    >
+                      Очистить выбор
+                    </button>
+                  )}
                 </div>
               )}
             </>
