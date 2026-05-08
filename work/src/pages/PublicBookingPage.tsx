@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { format, startOfDay } from "date-fns";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isSameMonth,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
@@ -39,6 +50,7 @@ export function PublicBookingPage() {
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(ANY_MASTER_ID);
   const [dayStr, setDayStr] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [pickedStart, setPickedStart] = useState<Date | null>(null);
@@ -110,6 +122,14 @@ export function PublicBookingPage() {
   }, [loadBase]);
 
   const day = useMemo(() => startOfDay(new Date(dayStr + "T12:00:00")), [dayStr]);
+  const selectedDay = useMemo(() => startOfDay(new Date(dayStr + "T12:00:00")), [dayStr]);
+  const monthStart = useMemo(() => startOfMonth(viewMonth), [viewMonth]);
+  const monthLabel = useMemo(() => format(monthStart, "LLLL yyyy"), [monthStart]);
+  const calendarDays = useMemo(() => {
+    const from = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const to = endOfWeek(endOfMonth(monthStart), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: from, end: to });
+  }, [monthStart]);
 
   const serviceNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -243,6 +263,45 @@ export function PublicBookingPage() {
     return Array.from(byStart.values()).sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [slotsByStaff, staffId, svc]);
 
+  const masterDayLoad = useMemo(() => {
+    const weekday = day.getDay();
+    return eligibleStaff
+      .map((m) => {
+        const daySchedule = schedules
+          .filter((s) => s.staff_id === m.id && s.day_of_week === weekday)
+          .sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
+        const workTime =
+          daySchedule.length > 0
+            ? `${String(daySchedule[0].start_time || "").slice(0, 5)}–${String(
+                daySchedule[daySchedule.length - 1].end_time || ""
+              ).slice(0, 5)}`
+            : "выходной";
+        const freeSlots = (slotsByStaff.get(m.id) || []).length;
+        const busyItems = appointments.filter((a) => a.staff_id === m.id).length;
+        const timeOffItems = timeOff.filter((t) => t.staff_id === m.id).length;
+        let status: "free" | "busy" | "off" = "busy";
+        if (!daySchedule.length) status = "off";
+        else if (freeSlots > 0) status = "free";
+        return {
+          id: m.id,
+          name: m.name,
+          workTime,
+          freeSlots,
+          busyItems,
+          timeOffItems,
+          status,
+        };
+      })
+      .sort((a, b) => {
+        if (a.status === b.status) return b.freeSlots - a.freeSlots;
+        if (a.status === "free") return -1;
+        if (b.status === "free") return 1;
+        if (a.status === "busy" && b.status === "off") return -1;
+        if (a.status === "off" && b.status === "busy") return 1;
+        return 0;
+      });
+  }, [appointments, day, eligibleStaff, schedules, slotsByStaff, timeOff]);
+
   const receptionUpcoming = useMemo(() => {
     const allowedStaffIds = new Set(staff.map((s) => s.id));
     const base = upcomingAppointments.filter((a) => allowedStaffIds.has(a.staff_id));
@@ -367,39 +426,104 @@ export function PublicBookingPage() {
           </label>
 
           {serviceId != null && (
-            <label className="block text-sm">
-              <span className="text-zinc-400">{t("modal.staff")}</span>
-              <select
-                value={staffId ?? ""}
-                onChange={(e) => {
-                  setStaffId(e.target.value || null);
-                  setPickedStart(null);
-                }}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
-              >
-                <option value="">{t("publicBook.pickStaff")}</option>
-                {eligibleStaff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
+            <section className="rounded-xl border border-zinc-800 bg-black/30 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-zinc-200">{t("publicBook.day")}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewMonth((prev) => addMonths(prev, -1))}
+                    className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-500 hover:text-white"
+                  >
+                    ←
+                  </button>
+                  <span className="min-w-[120px] text-center text-xs text-zinc-400">{monthLabel}</span>
+                  <button
+                    type="button"
+                    onClick={() => setViewMonth((prev) => addMonths(prev, 1))}
+                    className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-500 hover:text-white"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+              <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-zinc-600">
+                {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((w) => (
+                  <span key={w}>{w}</span>
                 ))}
-              </select>
-            </label>
-          )}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((d) => {
+                  const selected = isSameDay(d, selectedDay);
+                  const inMonth = isSameMonth(d, monthStart);
+                  return (
+                    <button
+                      key={d.toISOString()}
+                      type="button"
+                      onClick={() => {
+                        setDayStr(format(d, "yyyy-MM-dd"));
+                        setViewMonth(startOfMonth(d));
+                        setPickedStart(null);
+                      }}
+                      className={
+                        "rounded-md border px-2 py-2 text-xs transition " +
+                        (selected
+                          ? "border-sky-500 bg-sky-950/50 text-white"
+                          : inMonth
+                            ? "border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-white"
+                            : "border-zinc-900 text-zinc-600 hover:border-zinc-800")
+                      }
+                    >
+                      {format(d, "d")}
+                    </button>
+                  );
+                })}
+              </div>
 
-          {serviceId != null && (
-            <label className="block text-sm">
-              <span className="text-zinc-400">{t("publicBook.day")}</span>
-              <input
-                type="date"
-                value={dayStr}
-                onChange={(e) => {
-                  setDayStr(e.target.value);
-                  setPickedStart(null);
-                }}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
-              />
-            </label>
+              <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                <p className="text-xs font-medium text-zinc-300">
+                  Загрузка мастеров на {selectedDay.toLocaleDateString(i18n.language)}
+                </p>
+                <div className="mt-2 space-y-2">
+                  {masterDayLoad.length > 0 ? (
+                    masterDayLoad.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setStaffId(m.id);
+                          setPickedStart(null);
+                        }}
+                        className="w-full rounded-md border border-zinc-800 bg-black/40 px-3 py-2 text-left text-xs transition hover:border-sky-700/70"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-zinc-100">{m.name}</span>
+                          <span
+                            className={
+                              "rounded-full border px-2 py-0.5 text-[10px] " +
+                              (m.status === "free"
+                                ? "border-emerald-700/60 bg-emerald-950/40 text-emerald-200"
+                                : m.status === "off"
+                                  ? "border-zinc-700 bg-zinc-900 text-zinc-400"
+                                  : "border-amber-700/60 bg-amber-950/40 text-amber-200")
+                            }
+                          >
+                            {m.status === "free" ? "Есть окна" : m.status === "off" ? "Выходной" : "Занят"}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-zinc-500">
+                          Рабочее время: {m.workTime} · свободных слотов: {m.freeSlots}
+                          {m.busyItems > 0 ? ` · записей: ${m.busyItems}` : ""}
+                          {m.timeOffItems > 0 ? ` · перерывов: ${m.timeOffItems}` : ""}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-xs text-zinc-600">Нет мастеров для выбранной услуги.</p>
+                  )}
+                </div>
+              </div>
+            </section>
           )}
 
           {isReceptionMode && (
@@ -467,25 +591,6 @@ export function PublicBookingPage() {
 
           {serviceId != null && (
             <>
-              <label className="block text-sm">
-                <span className="text-zinc-400">Мастер (по желанию)</span>
-                <select
-                  value={staffId ?? ANY_MASTER_ID}
-                  onChange={(e) => {
-                    setStaffId(e.target.value || ANY_MASTER_ID);
-                    setPickedStart(null);
-                  }}
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
-                >
-                  <option value={ANY_MASTER_ID}>Любой свободный мастер</option>
-                  {eligibleStaff.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
               <div>
                 <p className="text-sm text-zinc-400">{t("publicBook.slots")}</p>
                 {staffId === ANY_MASTER_ID && (
@@ -516,6 +621,25 @@ export function PublicBookingPage() {
                 </div>
                 {slots.length === 0 && <p className="mt-2 text-xs text-zinc-600">{t("publicBook.noSlots")}</p>}
               </div>
+
+              <label className="block text-sm">
+                <span className="text-zinc-400">Мастер (по желанию)</span>
+                <select
+                  value={staffId ?? ANY_MASTER_ID}
+                  onChange={(e) => {
+                    setStaffId(e.target.value || ANY_MASTER_ID);
+                    setPickedStart(null);
+                  }}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
+                >
+                  <option value={ANY_MASTER_ID}>Любой свободный мастер</option>
+                  {eligibleStaff.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
               {pickedStart && (
                 <div className="space-y-3 rounded-xl border border-zinc-800 bg-black/40 p-4">
