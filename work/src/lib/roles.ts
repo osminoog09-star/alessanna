@@ -7,6 +7,7 @@ function mapRoleToken(x: unknown): StaffRole | null {
   const l = x.toLowerCase().trim();
   if (l === "viewer") return null;
   if (l === "employee" || l === "staff") return "worker";
+  if (l === "owner" || l === "superadmin") return "admin";
   if (l === "admin" || l === "manager" || l === "worker") return l;
   return null;
 }

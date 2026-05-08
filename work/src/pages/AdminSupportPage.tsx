@@ -119,6 +119,23 @@ type Message = {
   attachment_size_bytes: number | null;
 };
 
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object") {
+    const anyErr = err as Record<string, unknown>;
+    const msg = anyErr.message;
+    if (typeof msg === "string" && msg.trim()) return msg;
+    const details = anyErr.details;
+    if (typeof details === "string" && details.trim()) return details;
+    const hint = anyErr.hint;
+    if (typeof hint === "string" && hint.trim()) return hint;
+    const code = anyErr.code;
+    if (typeof code === "string" && code.trim()) return `Ошибка: ${code}`;
+  }
+  return "Неизвестная ошибка";
+}
+
 const POLL_LIST_MS = 5000;
 const POLL_THREAD_MS = 3000;
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -281,7 +298,7 @@ export function AdminSupportPage() {
       setThreads(arr);
       setListError(null);
     } catch (err) {
-      setListError(err instanceof Error ? err.message : String(err));
+      setListError(extractErrorMessage(err));
     } finally {
       setListLoading(false);
     }
@@ -308,7 +325,7 @@ export function AdminSupportPage() {
         setMessages(Array.isArray(payload.messages) ? payload.messages : []);
         setThreadError(null);
       } catch (err) {
-        setThreadError(err instanceof Error ? err.message : String(err));
+        setThreadError(extractErrorMessage(err));
       } finally {
         if (!opts?.silent) setThreadLoading(false);
       }
@@ -472,7 +489,7 @@ export function AdminSupportPage() {
       await loadThread(selectedId, { silent: true });
       await loadList();
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : String(err));
+      setSendError(extractErrorMessage(err));
     } finally {
       setSending(false);
     }
@@ -491,7 +508,7 @@ export function AdminSupportPage() {
       await loadThread(selectedId, { silent: true });
       await loadList();
     } catch (err) {
-      setThreadError(err instanceof Error ? err.message : String(err));
+      setThreadError(extractErrorMessage(err));
     }
   };
 
@@ -508,7 +525,7 @@ export function AdminSupportPage() {
       await loadList();
       await loadStats();
     } catch (err) {
-      setThreadError(err instanceof Error ? err.message : String(err));
+      setThreadError(extractErrorMessage(err));
     }
   };
 
@@ -525,7 +542,7 @@ export function AdminSupportPage() {
       await loadList();
       await loadStats();
     } catch (err) {
-      setThreadError(err instanceof Error ? err.message : String(err));
+      setThreadError(extractErrorMessage(err));
     }
   };
 
@@ -547,7 +564,7 @@ export function AdminSupportPage() {
       await loadList();
       await loadStats();
     } catch (err) {
-      setThreadError(err instanceof Error ? err.message : String(err));
+      setThreadError(extractErrorMessage(err));
     }
   };
 

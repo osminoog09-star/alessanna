@@ -3,9 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useEffectiveRole } from "../context/EffectiveRoleContext";
-import { useTheme, THEMES, type ThemeId } from "../context/ThemeContext";
 import { normalizeRoles } from "../lib/roles";
-import type { Role } from "../types/database";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { supabase } from "../lib/supabase";
 import { CommandPalette } from "./CommandPalette";
@@ -296,7 +294,6 @@ export function Layout() {
   }, [staffMember]);
 
   /* ── derive ────────────────────────────────────────────────── */
-  const previewOptions: Role[] = ["admin", "manager", "worker"];
   const staffInitial = (staffMember?.name || "?").trim().slice(0, 1).toUpperCase();
   const normalizedRoles = staffMember?.roles?.length ? normalizeRoles(staffMember.roles) : [];
   const primaryRoleLabel = normalizedRoles[0] ? t(`role.${normalizedRoles[0]}`) : "";
@@ -312,8 +309,7 @@ export function Layout() {
 
   const sidebarWidth = collapsed ? "w-[68px]" : "w-60";
 
-  /* ── theme + group-collapse state ──────────────────────────── */
-  const { theme, setTheme } = useTheme();
+  /* ── group-collapse state ──────────────────────────────────── */
   const location = useLocation();
 
   /* «Группа явно свёрнута пользователем». Группа без явной записи
@@ -569,147 +565,10 @@ export function Layout() {
           })}
         </nav>
 
-        {/* ───── Theme switcher ───── */}
-        {!collapsed && (
-          <div className="border-t border-line/10 px-3 py-2.5">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-              {t("nav.themeLabel", { defaultValue: "Тема" })}
-            </p>
-            <div className="grid grid-cols-3 gap-1">
-              {THEMES.map((opt) => {
-                const active = theme === opt.id;
-                const sw = themeSwatch(opt.id);
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setTheme(opt.id)}
-                    aria-pressed={active}
-                    title={t(`nav.${opt.labelKey}`, { defaultValue: opt.id })}
-                    className={`flex flex-col items-center gap-1 rounded-lg border px-1.5 py-1.5 text-[10px] font-medium uppercase tracking-wide transition ${
-                      active
-                        ? "border-gold/60 bg-surface text-gold shadow-gold"
-                        : "border-line/10 bg-canvas/40 text-muted hover:border-gold/30 hover:text-fg"
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="flex h-3 w-7 overflow-hidden rounded-full border border-line/10"
-                    >
-                      <span style={{ background: sw[0] }} className="flex-1" />
-                      <span style={{ background: sw[1] }} className="flex-1" />
-                      <span style={{ background: sw[2] }} className="flex-1" />
-                    </span>
-                    <span className="truncate">
-                      {t(`nav.${opt.labelKey}`, { defaultValue: opt.id })}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        {collapsed && (
-          <div className="flex justify-center border-t border-line/10 py-2">
-            <button
-              type="button"
-              onClick={() => {
-                const idx = THEMES.findIndex((x) => x.id === theme);
-                setTheme(THEMES[(idx + 1) % THEMES.length].id);
-              }}
-              aria-label={t("nav.themeLabel", { defaultValue: "Тема" })}
-              title={t(`nav.theme.${theme}`, { defaultValue: theme })}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line/10 bg-canvas/40 text-gold transition hover:border-gold/40"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.75}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-                aria-hidden="true"
-              >
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* ───── Preview role select ───── */}
-        {isAdmin && !collapsed && (
-          <div className="border-t border-line/10 px-3 py-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-              {t("preview.label")}
-            </p>
-            <select
-              value={previewRole ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                setPreviewRole(v === "" ? null : (v as Role));
-              }}
-              className="mt-1 w-full rounded-md border border-line/15 bg-canvas/60 px-2 py-1.5 text-xs text-fg transition focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/40"
-            >
-              <option value="">{t("preview.real")}</option>
-              {previewOptions.map((r) => (
-                <option key={r} value={r}>
-                  {t(`role.${r}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
         {isWorkerOnlyEffective && !collapsed && (
           <p className="border-t border-line/10 px-4 py-3 text-[11px] leading-snug text-muted">
             {t("nav.workerHint")}
           </p>
-        )}
-
-        {/* ───── Open public site as admin ───── */}
-        {canManage && (
-          <div className="border-t border-line/10 p-2">
-            <a
-              href={publicSiteUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={t("nav.publicSiteTitle")}
-              className={`flex items-center gap-2 rounded-lg py-2 text-sm text-muted transition-colors hover:bg-surface hover:text-gold ${
-                collapsed ? "justify-center px-2" : "w-full px-3 text-left"
-              }`}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.75}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4 shrink-0"
-                aria-hidden="true"
-              >
-                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              {!collapsed && (
-                <>
-                  <span className="min-w-0 flex-1 truncate">{t("nav.publicSite")}</span>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.75}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-3 w-3 shrink-0 opacity-60"
-                    aria-hidden="true"
-                  >
-                    <path d="M7 17 17 7M7 7h10v10" />
-                  </svg>
-                </>
-              )}
-            </a>
-          </div>
         )}
 
         {/* ───── Footer: collapse toggle + logout ───── */}
@@ -800,20 +659,4 @@ export function Layout() {
       />
     </div>
   );
-}
-
-/* Хардкод-семплы цветов для маленьких swatch-индикаторов в переключателе тем.
- * Не тянем из CSS-переменных, потому что у активной темы все три значения
- * совпадают с реальной темой страницы — а нам нужно показать «как выглядит
- * каждая из трёх», вне зависимости от текущей. */
-function themeSwatch(id: ThemeId): [string, string, string] {
-  switch (id) {
-    case "champagne":
-      return ["#fbfaf6", "#f4f1eb", "#a3855e"];
-    case "stone":
-      return ["#25221e", "#38332d", "#d4b896"];
-    case "onyx":
-    default:
-      return ["#0a0a0a", "#1a1a1a", "#c4a574"];
-  }
 }
