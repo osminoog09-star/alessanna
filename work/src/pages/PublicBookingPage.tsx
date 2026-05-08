@@ -60,6 +60,7 @@ export function PublicBookingPage() {
   const [clientPhone, setClientPhone] = useState("");
   const [pickedStart, setPickedStart] = useState<Date | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const isReceptionMode = location.pathname === "/reception";
@@ -250,6 +251,11 @@ export function PublicBookingPage() {
     void loadMonthCalendarData();
   }, [loadMonthCalendarData]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const svc = services.find((s) => s.id === serviceId);
   const durationMin = svc ? svc.duration_min + svc.buffer_after_min : 60;
 
@@ -264,7 +270,7 @@ export function PublicBookingPage() {
           start_time: s.start_time,
           end_time: s.end_time,
         }));
-      const slots = generateAvailableSlots({
+      const rawSlots = generateAvailableSlots({
         schedule: memberSchedule,
         appointments,
         timeOff,
@@ -273,10 +279,11 @@ export function PublicBookingPage() {
         stepMinutes: 15,
         staffId: member.id,
       });
+      const slots = rawSlots.filter((s) => s.start.getTime() >= nowTick);
       out.set(member.id, slots);
     }
     return out;
-  }, [appointments, day, durationMin, eligibleStaff, schedules, svc, timeOff]);
+  }, [appointments, day, durationMin, eligibleStaff, schedules, svc, timeOff, nowTick]);
 
   const slotCoverage = useMemo(() => {
     const coverage = new Map<string, number>();
@@ -331,7 +338,7 @@ export function PublicBookingPage() {
           }));
         if (!memberSchedule.length) continue;
         working++;
-        const slotsForDay = generateAvailableSlots({
+        const rawSlotsForDay = generateAvailableSlots({
           schedule: memberSchedule,
           appointments: monthAppointments,
           timeOff: monthTimeOff,
@@ -340,6 +347,9 @@ export function PublicBookingPage() {
           stepMinutes: 15,
           staffId: m.id,
         });
+        const slotsForDay = rawSlotsForDay.filter((s) =>
+          isSameDay(d, new Date()) ? s.start.getTime() >= nowTick : true
+        );
         if (slotsForDay.length > 0) free++;
       }
 
@@ -355,6 +365,7 @@ export function PublicBookingPage() {
     monthTimeOff,
     schedules,
     svc,
+    nowTick,
   ]);
 
   const masterDayLoad = useMemo(() => {
@@ -404,7 +415,8 @@ export function PublicBookingPage() {
   }, [staff, upcomingAppointments]);
 
   async function confirmBook() {
-    if (!svc || !pickedStart || !clientName.trim()) {
+    const normalizedClientName = clientName.trim();
+    if (!svc || !pickedStart || (!isReceptionMode && !normalizedClientName)) {
       setMsg(t("publicBook.fillAll"));
       return;
     }
@@ -425,13 +437,19 @@ export function PublicBookingPage() {
       setMsg("На выбранное время нет свободного мастера. Выберите другое время.");
       return;
     }
+    if (pickedStart.getTime() < Date.now()) {
+      setBooking(false);
+      setMsg("Это время уже прошло. Выберите актуальный слот.");
+      void loadDayData();
+      return;
+    }
     const end = new Date(pickedStart.getTime() + durationMin * 60 * 1000);
     /* Колонок `source`/`notes` нет в актуальной схеме `appointments`. Отправляем
      *  только реально существующие — иначе PostgREST вернёт ошибку schema cache. */
     const { error } = await supabase.from("appointments").insert({
       staff_id: finalStaffId,
       service_id: svc.id,
-      client_name: clientName.trim(),
+      client_name: normalizedClientName || "Клиент (ресепшен)",
       client_phone: clientPhone.trim() || null,
       start_time: pickedStart.toISOString(),
       end_time: end.toISOString(),
@@ -722,13 +740,13 @@ export function PublicBookingPage() {
                     {pickedStart.toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" })}
                   </p>
                   <input
-                    placeholder={t("modal.client") as string}
+                    placeholder={isReceptionMode ? "Имя клиента (необязательно)" : (t("modal.client") as string)}
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm"
                   />
                   <input
-                    placeholder={t("modal.phone") as string}
+                    placeholder={isReceptionMode ? "Телефон (необязательно)" : (t("modal.phone") as string)}
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm"

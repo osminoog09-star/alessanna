@@ -39,6 +39,8 @@ export function BookingModal({
   /* `services.id` приходит и как UUID (service_listings), и как bigint (services).
    * Поэтому serviceId — `string | number`, чтобы fallback-цепочки не ломались. */
   const [serviceId, setServiceId] = useState<string | number>(0);
+  const [manualServiceNote, setManualServiceNote] = useState("");
+  const [extraBlockMin, setExtraBlockMin] = useState(0);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -63,6 +65,8 @@ export function BookingModal({
     setStaffId(initialStaffId);
     setClientName("");
     setClientPhone("");
+    setManualServiceNote("");
+    setExtraBlockMin(0);
     setError("");
     const firstSvc = eligibleServices[0]?.id ?? services.find((s) => s.active)?.id ?? 0;
     setServiceId(firstSvc);
@@ -88,10 +92,6 @@ export function BookingModal({
       setError(t("modal.pickService"));
       return;
     }
-    if (!clientName.trim()) {
-      setError(t("modal.fillAll"));
-      return;
-    }
     if (lockStaff) {
       const allowed = servicesEligibleForStaff(services, links, initialStaffId, initialStaffRow);
       if (!allowed.some((s) => s.id === serviceId)) {
@@ -106,7 +106,13 @@ export function BookingModal({
     }
     setSaving(true);
     const start = initialStart;
-    const end = addMinutes(start, svc.duration_min + svc.buffer_after_min);
+    if (start.getTime() < Date.now()) {
+      setSaving(false);
+      setError("Нельзя создать запись в прошедшее время. Выберите актуальный слот.");
+      return;
+    }
+    const safeExtraBlockMin = Number.isFinite(extraBlockMin) ? Math.max(0, Math.min(240, extraBlockMin)) : 0;
+    const end = addMinutes(start, svc.duration_min + svc.buffer_after_min + safeExtraBlockMin);
 
     const { data: existingRows, error: loadErr } = await supabase
       .from("appointments")
@@ -129,9 +135,16 @@ export function BookingModal({
      *  030/031). Если включить их в payload — PostgREST падает с «Could not find
      *  the 'source' column of 'appointments' in the schema cache» и запись не
      *  создаётся. Поэтому отправляем только реально существующие колонки. */
+    const normalizedClientName = clientName.trim() || "Клиент (CRM)";
+    const normalizedManualService = manualServiceNote.trim();
+    const noteParts = [
+      normalizedManualService ? `Услуга вручную: ${normalizedManualService}` : null,
+      safeExtraBlockMin > 0 ? `Доп. блок после услуги: ${safeExtraBlockMin} мин` : null,
+    ].filter(Boolean);
     const { error: insErr } = await supabase.from("appointments").insert({
-      client_name: clientName.trim(),
+      client_name: normalizedClientName,
       client_phone: clientPhone.trim() || null,
+      note: noteParts.length ? noteParts.join("\n") : null,
       staff_id: staffId,
       service_id: serviceId,
       start_time: start.toISOString(),
@@ -151,6 +164,8 @@ export function BookingModal({
     onClose();
     setClientName("");
     setClientPhone("");
+    setManualServiceNote("");
+    setExtraBlockMin(0);
   }
 
   const shell =
@@ -174,6 +189,27 @@ export function BookingModal({
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
             <label className="text-xs text-zinc-500">{t("modal.service")}</label>
+            {eligibleServices.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {eligibleServices.slice(0, 8).map((s) => {
+                  const active = s.id === serviceId;
+                  return (
+                    <button
+                      key={`quick-${s.id}`}
+                      type="button"
+                      onClick={() => setServiceId(s.id)}
+                      className={`rounded-md border px-2 py-1 text-[11px] transition ${
+                        active
+                          ? "border-sky-500 bg-sky-950/50 text-sky-100"
+                          : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-zinc-500"
+                      }`}
+                    >
+                      {s.name_et}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <select
               value={serviceId || ""}
               onChange={(e) => {
@@ -223,9 +259,9 @@ export function BookingModal({
           <div>
             <label className="text-xs text-zinc-500">{t("modal.client")}</label>
             <input
-              required
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
+              placeholder="Необязательно"
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
             />
           </div>
@@ -234,8 +270,34 @@ export function BookingModal({
             <input
               value={clientPhone}
               onChange={(e) => setClientPhone(e.target.value)}
+              placeholder="Необязательно"
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
             />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500">Описание услуги вручную (необязательно)</label>
+            <textarea
+              value={manualServiceNote}
+              onChange={(e) => setManualServiceNote(e.target.value)}
+              rows={2}
+              placeholder="Например: сложное окрашивание + уход"
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500">Закрыть время после услуги (мин)</label>
+            <input
+              type="number"
+              min={0}
+              max={240}
+              step={5}
+              value={extraBlockMin}
+              onChange={(e) => setExtraBlockMin(Number(e.target.value || 0))}
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+            />
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Добавляет дополнительный блок после услуги, чтобы следующий слот был позже.
+            </p>
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">

@@ -11,6 +11,8 @@ import {
   eachDayOfInterval,
   isSameDay,
   parseISO,
+  setHours,
+  setMinutes,
 } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -36,6 +38,8 @@ import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
 import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import { BookingModal } from "../components/BookingModal";
 import { ProCalendar } from "../components/calendar/ProCalendar";
+import { staffHueFromId } from "../lib/staffHue";
+import { generateAvailableSlots } from "../lib/slots";
 
 type View = "day" | "week" | "month";
 
@@ -208,6 +212,64 @@ export function CalendarPage() {
     });
   }, [timeOff, view, cursor]);
 
+  const staffHueMap = useMemo(() => {
+    const out = new Map<string, number>();
+    for (const member of staff) out.set(member.id, staffHueFromId(member.id));
+    return out;
+  }, [staff]);
+
+  const monthMasterAvailability = useMemo(() => {
+    const out = new Map<string, { free: number; working: number; fullyClosed: boolean }>();
+    if (view !== "month") return out;
+    const pool = activeStaffForCalendar;
+    for (const d of monthDays) {
+      const weekday = d.getDay();
+      const key = format(d, "yyyy-MM-dd");
+      let working = 0;
+      let free = 0;
+      for (const member of pool) {
+        const memberSchedule = schedules
+          .filter((s) => s.staff_id === member.id && s.day_of_week === weekday)
+          .map((s) => ({
+            day_of_week: s.day_of_week,
+            start_time: s.start_time,
+            end_time: s.end_time,
+          }));
+        if (!memberSchedule.length) continue;
+        working++;
+        const slots = generateAvailableSlots({
+          schedule: memberSchedule,
+          appointments: filteredAppointments,
+          timeOff,
+          duration: durationMin,
+          day: d,
+          stepMinutes: 15,
+          staffId: member.id,
+        });
+        if (slots.length > 0) free++;
+      }
+      out.set(key, {
+        free,
+        working,
+        fullyClosed: working > 0 && free === 0,
+      });
+    }
+    return out;
+  }, [activeStaffForCalendar, durationMin, filteredAppointments, monthDays, schedules, timeOff, view]);
+
+  function openQuickBooking() {
+    if (!canUseCalendar) return;
+    const targetStaffId = staffId ?? activeStaffForCalendar[0]?.id;
+    if (!targetStaffId) return;
+    const base = startOfDay(cursor);
+    const now = new Date();
+    const sameDay = isSameDay(base, now);
+    const hour = sameDay ? now.getHours() : 10;
+    const mins = sameDay ? (now.getMinutes() <= 30 ? 30 : 0) : 0;
+    const start = setMinutes(setHours(base, hour), mins);
+    setModal({ start, staffId: targetStaffId });
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -335,6 +397,15 @@ export function CalendarPage() {
               ? format(cursor, "LLLL yyyy")
               : format(cursor, "EEEE d MMMM yyyy")}
         </span>
+        {canUseCalendar && (
+          <button
+            type="button"
+            onClick={openQuickBooking}
+            className="rounded-lg border border-emerald-700/60 bg-emerald-950/40 px-3 py-2 text-sm font-medium text-emerald-200 transition hover:bg-emerald-900/50"
+          >
+            {t("calendar.createBooking", { defaultValue: "Сделать запись" })}
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -363,6 +434,15 @@ export function CalendarPage() {
           {monthDays.map((day) => {
             const blocks = appointmentBlocks(day, false);
             const inCurrentMonth = day >= monthStart && day <= monthEnd;
+            const availability = monthMasterAvailability.get(format(day, "yyyy-MM-dd"));
+            const badgeTone =
+              !availability || availability.working === 0
+                ? "text-zinc-500 border-zinc-700"
+                : availability.fullyClosed
+                  ? "text-rose-300 border-rose-700/50 bg-rose-950/30"
+                  : availability.free >= Math.ceil(availability.working / 2)
+                    ? "text-emerald-300 border-emerald-700/50 bg-emerald-950/30"
+                    : "text-amber-300 border-amber-700/50 bg-amber-950/30";
             return (
               <div
                 key={day.toISOString()}
@@ -376,16 +456,31 @@ export function CalendarPage() {
                   <p className="text-sm font-semibold text-white">{format(day, "d")}</p>
                   <p className="text-[11px] text-zinc-500">{blocks.length}</p>
                 </div>
+                {availability && (
+                  <p className={`mb-2 inline-flex rounded-full border px-1.5 py-0.5 text-[10px] ${badgeTone}`}>
+                    {availability.working > 0
+                      ? availability.fullyClosed
+                        ? "День закрыт"
+                        : `Свободно мастеров: ${availability.free}/${availability.working}`
+                      : "Выходной"}
+                  </p>
+                )}
                 <div className="space-y-1">
                   {blocks.slice(0, 4).map((b) => {
                     const svc = services.find((s) => s.id === b.service_id);
+                    const hue = staffHueMap.get(b.staff_id) ?? 200;
                     return (
                       <div
                         key={b.id}
-                        className="rounded-md border border-sky-900/50 bg-sky-950/40 px-2 py-1 text-xs text-sky-100"
+                        className="rounded-md border px-2 py-1 text-xs"
+                        style={{
+                          borderColor: `hsl(${hue} 80% 45% / 0.45)`,
+                          backgroundColor: `hsl(${hue} 80% 18% / 0.45)`,
+                          color: `hsl(${hue} 90% 88%)`,
+                        }}
                       >
                         <p className="truncate font-medium">{format(parseISO(b.start_time), "HH:mm")} · {b.client_name}</p>
-                        <p className="truncate text-sky-200/80">{svc?.name_et ?? t("common.service")}</p>
+                        <p className="truncate opacity-85">{svc?.name_et ?? t("common.service")}</p>
                       </div>
                     );
                   })}
@@ -406,6 +501,7 @@ export function CalendarPage() {
               slots={slotsForDay(day)}
               blocks={appointmentBlocks(day)}
               services={services}
+              staffHueMap={staffHueMap}
               onBookSlot={(start) => setModal({ start, staffId })}
               canClick={canUseCalendar}
             />
@@ -436,6 +532,7 @@ function DayColumn({
   slots,
   blocks,
   services,
+  staffHueMap,
   onBookSlot,
   canClick,
 }: {
@@ -443,6 +540,7 @@ function DayColumn({
   slots: Slot[];
   blocks: AppointmentRow[];
   services: ServiceRow[];
+  staffHueMap: Map<string, number>;
   onBookSlot: (d: Date) => void;
   canClick: boolean;
 }) {
@@ -457,13 +555,19 @@ function DayColumn({
       <div className="max-h-[480px] flex-1 overflow-y-auto p-2">
         {blocks.map((b) => {
           const svc = services.find((s) => s.id === b.service_id);
+          const hue = staffHueMap.get(b.staff_id) ?? 200;
           return (
             <div
               key={b.id}
-              className="mb-1 rounded-lg border border-sky-900/50 bg-sky-950/40 px-2 py-1.5 text-xs text-sky-100"
+              className="mb-1 rounded-lg border px-2 py-1.5 text-xs"
+              style={{
+                borderColor: `hsl(${hue} 80% 45% / 0.45)`,
+                backgroundColor: `hsl(${hue} 80% 18% / 0.45)`,
+                color: `hsl(${hue} 90% 88%)`,
+              }}
             >
               <p className="font-medium">{b.client_name}</p>
-              <p className="text-sky-200/80">
+              <p className="opacity-85">
                 {format(parseISO(b.start_time), "HH:mm")} · {svc?.name_et ?? t("common.service")}
               </p>
             </div>
