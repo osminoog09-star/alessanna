@@ -18,6 +18,7 @@ export function LoginPage() {
   const { staffMember, login, hasDeviceToken, loading } = useAuth();
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
+  const [showTrustedHint, setShowTrustedHint] = useState(false);
   const [step, setStep] = useState<Step>("phone");
   const [staffName, setStaffName] = useState<string>("");
   const [error, setError] = useState("");
@@ -113,6 +114,7 @@ export function LoginPage() {
   }
 
   function focusPhoneInput() {
+    setShowTrustedHint(true);
     const el = document.getElementById("phone");
     if (el && "focus" in el) {
       (el as HTMLInputElement).focus();
@@ -177,7 +179,7 @@ export function LoginPage() {
           </p>
         )}
 
-        {step === "phone" && hasDeviceToken && (
+        {step === "phone" && hasDeviceToken && showTrustedHint && (
           <p className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-2.5 text-xs text-emerald-200/80">
             {t("login.trustedDeviceHint", {
               defaultValue: "Это устройство добавлено в доверенные — войдёте без PIN",
