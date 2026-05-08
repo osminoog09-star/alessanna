@@ -23,7 +23,7 @@
     "title": "Staff sign-in",
     "subtitle": "Use your registered staff phone number.",
     "phone": "Phone",
-    "placeholder": "e.g. 55686845",
+    "placeholder": "Enter phone number",
     "hint": "Enter number without country code",
     "button": "Log in",
     "signingIn": "Signing in…",

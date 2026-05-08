@@ -18,7 +18,7 @@
     "title": "Henkilökunnan kirjautuminen",
     "subtitle": "Käytä profiilissa olevaa puhelinnumeroa.",
     "phone": "Puhelin",
-    "placeholder": "Esim. 55686845",
+    "placeholder": "Syötä numero",
     "hint": "Syötä numero ilman maakoodia",
     "button": "Kirjaudu",
     "signingIn": "Kirjaudutaan…",

@@ -2924,6 +2924,19 @@
       return d.toISOString();
     }
 
+    function resolveSubmitStaffId(item, totalItems) {
+      var pickedMaster = String((item && item.selectedMaster) || "").trim();
+      if (pickedMaster && pickedMaster !== ANY_MASTER_ID) return pickedMaster;
+      /* Режим «одна услуга»: если пользователь выбрал мастера в форме, но
+       * в picked[] по гонке осталось пусто/"any", отправляем явный выбор. */
+      if (Number(totalItems) === 1 && masterSelect) {
+        var formMaster = String(masterSelect.value || "").trim();
+        if (formMaster && formMaster !== ANY_MASTER_ID) return formMaster;
+      }
+      if (pickedMaster === ANY_MASTER_ID) return ANY_MASTER_ID;
+      return ANY_MASTER_ID;
+    }
+
     function chainBookingPayload(items, startIso, nameVal, phoneVal, noteVal) {
       return {
         p_client_name: nameVal || "",
@@ -2933,7 +2946,7 @@
         p_items: items.map(function (it) {
           return {
             service_id: it.serviceId,
-            staff_id: it.selectedMaster || "any",
+            staff_id: resolveSubmitStaffId(it, items.length),
           };
         }),
       };

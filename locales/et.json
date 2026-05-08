@@ -18,7 +18,7 @@
     "title": "Töötaja sisselogimine",
     "subtitle": "Kasuta profiilis olevat telefoninumbrit.",
     "phone": "Telefon",
-    "placeholder": "Nt 55686845",
+    "placeholder": "Sisesta number",
     "hint": "Sisesta number ilma riigikoodita",
     "button": "Logi sisse",
     "signingIn": "Sisselogimine…",
