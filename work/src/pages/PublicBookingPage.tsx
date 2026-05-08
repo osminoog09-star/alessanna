@@ -551,7 +551,12 @@ export function PublicBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-200 md:px-6 md:py-10">
+    <div
+      className={
+        "min-h-screen bg-zinc-950 px-4 py-8 text-zinc-200 md:px-6 md:py-10 " +
+        (isReceptionMode && pickedStart ? "pb-28 md:pb-32" : "")
+      }
+    >
       <div className="mx-auto w-full max-w-5xl">
         <h1 className="text-2xl font-semibold text-white md:text-3xl">{t("publicBook.title")}</h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -856,25 +861,14 @@ export function PublicBookingPage() {
                     onChange={(e) => setClientPhone(e.target.value)}
                     className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm"
                   />
-                  <button
-                    type="button"
-                    disabled={booking}
-                    onClick={() => void confirmBook()}
-                    className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  >
-                    {t("publicBook.confirm")}
-                  </button>
-                  {isReceptionMode && (
+                  {!isReceptionMode && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setPickedStart(null);
-                        setClientName("");
-                        setClientPhone("");
-                      }}
-                      className="w-full rounded-lg border border-zinc-700 py-2 text-sm font-medium text-zinc-300 hover:border-zinc-500 hover:text-white"
+                      disabled={booking}
+                      onClick={() => void confirmBook()}
+                      className="w-full rounded-lg bg-sky-600 py-2 text-sm font-medium text-white disabled:opacity-50"
                     >
-                      Очистить выбор
+                      {t("publicBook.confirm")}
                     </button>
                   )}
                 </div>
