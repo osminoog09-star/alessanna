@@ -254,11 +254,11 @@ function injectStyles() {
   --ssc-gold-strong: #e9c57a;
   --ssc-gold-deep:   #8a6a2a;
   --ssc-bg:          #0b0b0e;
-  --ssc-panel:       #14141b;
-  --ssc-panel-2:     #1c1c25;
-  --ssc-line:        rgba(217, 178, 106, 0.22);
-  --ssc-text:        #f4efe3;
-  --ssc-muted:       #98938a;
+  --ssc-panel:       #1a1822;
+  --ssc-panel-2:     #262233;
+  --ssc-line:        rgba(217, 178, 106, 0.36);
+  --ssc-text:        #fff7e8;
+  --ssc-muted:       #c4b9a3;
   --ssc-green:       #52d89a;
   position: fixed; inset: auto auto 0 0; z-index: 9998;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -439,9 +439,9 @@ function injectStyles() {
   width: min(400px, calc(100vw - 32px));
   max-height: min(680px, calc(100vh - 140px));
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(217, 178, 106, 0.10) 0%, transparent 55%),
-    linear-gradient(180deg, #221d2e 0%, #181421 45%, #131019 100%);
-  border: 1px solid rgba(217, 178, 106, 0.42);
+    radial-gradient(120% 140% at 0% 0%, rgba(217, 178, 106, 0.14) 0%, transparent 58%),
+    linear-gradient(180deg, #2b2638 0%, #201b2b 45%, #171320 100%);
+  border: 1px solid rgba(217, 178, 106, 0.56);
   border-radius: 20px;
   box-shadow:
     /* основная глубина — на любом фоне */
@@ -591,8 +591,8 @@ function injectStyles() {
 }
 .ssc-input, .ssc-textarea {
   width: 100%;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.16);
   border-radius: 10px;
   padding: 10px 12px;
   color: var(--ssc-text);
@@ -610,8 +610,8 @@ function injectStyles() {
 .ssc-topic {
   display: flex; flex-direction: column; gap: 2px;
   padding: 10px 11px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.16);
   border-radius: 10px;
   cursor: pointer;
   transition: border-color .15s ease, background .15s ease, transform .15s ease;
@@ -619,8 +619,9 @@ function injectStyles() {
 }
 .ssc-topic:hover { border-color: rgba(198,167,90,0.4); }
 .ssc-topic.ssc-selected {
-  border-color: var(--ssc-gold);
-  background: rgba(198,167,90,0.08);
+  border-color: var(--ssc-gold-soft);
+  background: rgba(198,167,90,0.20);
+  box-shadow: 0 0 0 1px rgba(243, 217, 138, 0.35) inset;
 }
 .ssc-topic-title { font-size: 12.5px; font-weight: 600; color: var(--ssc-text); }
 .ssc-topic-sub { font-size: 10.5px; color: var(--ssc-muted); }

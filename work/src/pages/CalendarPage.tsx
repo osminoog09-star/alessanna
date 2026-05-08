@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { addDays, format, startOfDay, startOfWeek, endOfWeek, isSameDay, parseISO } from "date-fns";
+import {
+  addDays,
+  addMonths,
+  format,
+  startOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  parseISO,
+} from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
@@ -25,7 +37,7 @@ import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import { BookingModal } from "../components/BookingModal";
 import { ProCalendar } from "../components/calendar/ProCalendar";
 
-type View = "day" | "week";
+type View = "day" | "week" | "month";
 
 export function CalendarPage() {
   const { t } = useTranslation();
@@ -146,6 +158,11 @@ export function CalendarPage() {
 
   const weekStart = startOfWeek(cursor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(cursor, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(cursor);
+  const monthEnd = endOfMonth(cursor);
+  const monthGridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const monthGridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const monthDays = eachDayOfInterval({ start: monthGridStart, end: monthGridEnd });
   const days =
     view === "day"
       ? [startOfDay(cursor)]
@@ -165,10 +182,10 @@ export function CalendarPage() {
     return buildSlotsForDay(day, wd, sched, existing, durationMin, 30);
   }
 
-  function appointmentBlocks(day: Date) {
-    if (staffId == null) return [];
+  function appointmentBlocks(day: Date, allStaff = false) {
+    if (!allStaff && staffId == null) return [];
     return filteredAppointments.filter((b) => {
-      if (b.staff_id !== staffId) return false;
+      if (!allStaff && b.staff_id !== staffId) return false;
       try {
         return isSameDay(parseISO(b.start_time), day);
       } catch {
@@ -218,10 +235,23 @@ export function CalendarPage() {
             >
               {t("calendar.week")}
             </button>
+            <button
+              type="button"
+              onClick={() => setView("month")}
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                view === "month" ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {t("calendar.month", { defaultValue: "Месяц" })}
+            </button>
           </div>
           <button
             type="button"
-            onClick={() => setCursor(addDays(cursor, view === "day" ? -1 : -7))}
+            onClick={() =>
+              setCursor(
+                view === "day" ? addDays(cursor, -1) : view === "week" ? addDays(cursor, -7) : addMonths(cursor, -1)
+              )
+            }
             className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-900"
           >
             ←
@@ -235,7 +265,11 @@ export function CalendarPage() {
           </button>
           <button
             type="button"
-            onClick={() => setCursor(addDays(cursor, view === "day" ? 1 : 7))}
+            onClick={() =>
+              setCursor(
+                view === "day" ? addDays(cursor, 1) : view === "week" ? addDays(cursor, 7) : addMonths(cursor, 1)
+              )
+            }
             className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-900"
           >
             →
@@ -264,7 +298,7 @@ export function CalendarPage() {
             </select>
           </label>
         )}
-        {staffMember && !isWorkerOnlyEffective && view === "week" && (
+        {staffMember && !isWorkerOnlyEffective && (view === "week" || view === "month") && (
           <label className="flex items-center gap-2 text-sm text-zinc-400">
             {t("calendar.staff")}
             <select
@@ -297,7 +331,9 @@ export function CalendarPage() {
         <span className="text-sm text-zinc-600">
           {view === "week"
             ? `${format(weekStart, "d MMM")} – ${format(weekEnd, "d MMM yyyy")}`
-            : format(cursor, "EEEE d MMMM yyyy")}
+            : view === "month"
+              ? format(cursor, "LLLL yyyy")
+              : format(cursor, "EEEE d MMMM yyyy")}
         </span>
       </div>
 
@@ -322,6 +358,45 @@ export function CalendarPage() {
         />
       ) : staffId == null ? (
         <p className="text-zinc-500">{t("common.loading")}</p>
+      ) : view === "month" ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
+          {monthDays.map((day) => {
+            const blocks = appointmentBlocks(day, false);
+            const inCurrentMonth = day >= monthStart && day <= monthEnd;
+            return (
+              <div
+                key={day.toISOString()}
+                className={`min-h-[150px] rounded-xl border p-2 ${
+                  inCurrentMonth
+                    ? "border-zinc-800 bg-zinc-950"
+                    : "border-zinc-900 bg-zinc-950/40 opacity-60"
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-white">{format(day, "d")}</p>
+                  <p className="text-[11px] text-zinc-500">{blocks.length}</p>
+                </div>
+                <div className="space-y-1">
+                  {blocks.slice(0, 4).map((b) => {
+                    const svc = services.find((s) => s.id === b.service_id);
+                    return (
+                      <div
+                        key={b.id}
+                        className="rounded-md border border-sky-900/50 bg-sky-950/40 px-2 py-1 text-xs text-sky-100"
+                      >
+                        <p className="truncate font-medium">{format(parseISO(b.start_time), "HH:mm")} · {b.client_name}</p>
+                        <p className="truncate text-sky-200/80">{svc?.name_et ?? t("common.service")}</p>
+                      </div>
+                    );
+                  })}
+                  {blocks.length > 4 && (
+                    <p className="text-[11px] text-zinc-500">+{blocks.length - 4}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-7">
           {days.map((day) => (

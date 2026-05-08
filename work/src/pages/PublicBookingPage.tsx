@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, startOfDay } from "date-fns";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { generateAvailableSlots, formatSlotRange } from "../lib/slots";
 import {
@@ -23,6 +23,7 @@ type PublicService = {
 
 export function PublicBookingPage() {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const [services, setServices] = useState<PublicService[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [links, setLinks] = useState<StaffServiceRow[]>([]);
@@ -41,6 +42,7 @@ export function PublicBookingPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
+  const isReceptionMode = location.pathname === "/reception";
 
   const loadBase = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -230,7 +232,11 @@ export function PublicBookingPage() {
     <div className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-200">
       <div className="mx-auto max-w-lg">
         <h1 className="text-2xl font-semibold text-white">{t("publicBook.title")}</h1>
-        <p className="mt-1 text-sm text-zinc-500">{t("publicBook.subtitle")}</p>
+        <p className="mt-1 text-sm text-zinc-500">
+          {isReceptionMode
+            ? "Режим ресепшен: быстрая запись клиента без входа в CRM."
+            : t("publicBook.subtitle")}
+        </p>
         <Link to="/login" className="mt-2 inline-block text-sm text-sky-400">
           {t("publicBook.staffLogin")}
         </Link>

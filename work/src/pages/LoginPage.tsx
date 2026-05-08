@@ -1,11 +1,17 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth, type LoginResult } from "../context/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 
 type Step = "phone" | "pin";
+
+function publicSiteUrl(): string {
+  const fromEnv = (import.meta as unknown as { env?: { VITE_PUBLIC_SITE_URL?: string } }).env
+    ?.VITE_PUBLIC_SITE_URL;
+  return (fromEnv || "https://alessannailu.com").replace(/\/+$/, "");
+}
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -122,6 +128,31 @@ export function LoginPage() {
                 name: staffName,
               })}
         </p>
+
+        {step === "phone" && (
+          <div className="mt-4 grid grid-cols-1 gap-2">
+            <Link
+              to="/reception"
+              className="rounded-lg border border-amber-700/60 bg-amber-950/30 px-3 py-2 text-sm text-amber-100 hover:bg-amber-900/40"
+            >
+              Ресепшен (быстрый вход)
+              <span className="mt-0.5 block text-xs text-amber-200/70">
+                Открыть планшетный режим записи без логина
+              </span>
+            </Link>
+            <a
+              href={publicSiteUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-zinc-700 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800/60"
+            >
+              Рабочий чат
+              <span className="mt-0.5 block text-xs text-zinc-400">
+                Открыть сайт с виджетом чата в новой вкладке
+              </span>
+            </a>
+          </div>
+        )}
 
         {!isSupabaseConfigured() && (
           <p className="mt-4 rounded-lg border border-amber-900/50 bg-amber-950/30 p-3 text-sm text-amber-200/90">

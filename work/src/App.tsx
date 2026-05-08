@@ -48,6 +48,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/book" element={<PublicBookingPage />} />
+      <Route path="/reception" element={<PublicBookingPage />} />
       <Route path="/invite/:token" element={<PublicInvitePage />} />
       <Route
         path="/"
