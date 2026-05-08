@@ -1150,6 +1150,23 @@ body.site-ilusalong #hero.hero {
   margin-bottom: 0;
 }
 
+.services-list-open .tabs-bar {
+  margin-bottom: 1.35rem;
+}
+
+.services-list-open .tab-panel {
+  margin-bottom: 1.4rem;
+}
+
+.services-list-open .tab-panel:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Режим "Услуги": показываем полный список без цен. */
+.services-list-open .menu-list .price {
+  display: none;
+}
+
 .price-panel-title {
   margin: 0 0 1rem;
   font-family: var(--font-sans);

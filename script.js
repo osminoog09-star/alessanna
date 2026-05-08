@@ -202,7 +202,10 @@
     var targetId = btn.getAttribute("aria-controls");
     if (!targetId) return;
     var teenused = document.getElementById("teenused");
-    if (teenused) teenused.classList.remove("price-list-open");
+    if (teenused) {
+      teenused.classList.remove("price-list-open");
+      teenused.classList.remove("services-list-open");
+    }
 
     var mount = btn.closest("#teenused-supabase-mount");
     var scope = mount || teenused;
@@ -287,6 +290,7 @@
       var teenused = document.getElementById("teenused");
       if (!teenused) return;
       teenused.classList.add("price-list-open");
+      teenused.classList.remove("services-list-open");
 
       teenused.querySelectorAll(".tab-btn").forEach(function (tab) {
         tab.classList.remove("is-active");
@@ -313,8 +317,20 @@
     btn.addEventListener("click", function () {
       var teenused = document.getElementById("teenused");
       if (!teenused) return;
-      var firstTab = teenused.querySelector(".tab-btn");
-      if (firstTab) firstTab.click();
+      teenused.classList.add("services-list-open");
+      teenused.classList.remove("price-list-open");
+
+      teenused.querySelectorAll(".tab-btn").forEach(function (tab) {
+        tab.classList.remove("is-active");
+        tab.setAttribute("aria-selected", "false");
+      });
+
+      teenused.querySelectorAll(".tab-panel").forEach(function (panel) {
+        panel.hidden = false;
+        panel.classList.add("is-active");
+      });
+
+      applyTeamFilterForActiveTab();
     });
   });
 
