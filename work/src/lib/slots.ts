@@ -166,9 +166,10 @@ export type GenerateSlotsParams = {
 };
 
 /**
- * Build available slots from weekly schedule, excluding overlaps with appointments and time off.
+ * Все слоты дня по графику мастера: `available: false` — пересечение с записью или time off
+ * (закрытое время), либо окно уже занято другой услугой на этот интервал.
  */
-export function generateAvailableSlots(params: GenerateSlotsParams): Slot[] {
+export function generateDaySlots(params: GenerateSlotsParams): Slot[] {
   const {
     schedule,
     appointments,
@@ -187,12 +188,19 @@ export function generateAvailableSlots(params: GenerateSlotsParams): Slot[] {
     ];
     return buildSlotsForDay(salonDayStartUtc, salonWeekdaySun0, schedule, busy, duration, stepMinutes, {
       absoluteDayStart: true,
-    }).filter((s) => s.available);
+    });
   }
   const weekday = day.getDay();
   const busy: { start: Date; end: Date }[] = [
     ...appointmentsForStaffOnDay(appointments, staffId, day),
     ...appointmentsForStaffOnDay(timeOff as Array<AppointmentLike & { staff_id: string }>, staffId, day),
   ];
-  return buildSlotsForDay(day, weekday, schedule, busy, duration, stepMinutes).filter((s) => s.available);
+  return buildSlotsForDay(day, weekday, schedule, busy, duration, stepMinutes);
+}
+
+/**
+ * Build available slots from weekly schedule, excluding overlaps with appointments and time off.
+ */
+export function generateAvailableSlots(params: GenerateSlotsParams): Slot[] {
+  return generateDaySlots(params).filter((s) => s.available);
 }

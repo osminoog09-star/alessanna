@@ -12,7 +12,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { supabase } from "../../lib/supabase";
-import { generateAvailableSlots, type Slot } from "../../lib/slots";
+import { generateDaySlots, type Slot } from "../../lib/slots";
 import {
   compareSalonYmd,
   isSalonBookableYmd,
@@ -146,7 +146,8 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
 
   const salonDayStart = useMemo(() => salonDayStartUtc(bookYmdNorm), [bookYmdNorm]);
 
-  const slotsByStaff = useMemo(() => {
+  /** Все слоты по графику: `available: false` = запись или time off на этот интервал. */
+  const allSlotsByStaff = useMemo(() => {
     if (!svc) return new Map<string, Slot[]>();
     const out = new Map<string, Slot[]>();
     for (const member of eligibleStaff) {
@@ -157,7 +158,7 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
           start_time: s.start_time,
           end_time: s.end_time,
         }));
-      const rawSlots = generateAvailableSlots({
+      const raw = generateDaySlots({
         schedule: memberSchedule,
         appointments,
         timeOff,
@@ -168,26 +169,41 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
         stepMinutes: 15,
         staffId: member.id,
       });
-      const slots = rawSlots.filter((s) => s.start.getTime() >= nowTick);
-      out.set(member.id, slots);
+      out.set(member.id, raw);
     }
     return out;
-  }, [appointments, bookYmdNorm, durationMin, eligibleStaff, schedules, salonDayStart, svc, timeOff, nowTick]);
+  }, [appointments, bookYmdNorm, durationMin, eligibleStaff, schedules, salonDayStart, svc, timeOff]);
 
-  const slots = useMemo(() => {
+  /** Только свободные и не в прошлом — для автоподбора и подтверждения. */
+  const slotsByStaff = useMemo(() => {
+    const out = new Map<string, Slot[]>();
+    for (const [id, arr] of allSlotsByStaff) {
+      out.set(
+        id,
+        arr.filter((s) => s.available && s.start.getTime() >= nowTick),
+      );
+    }
+    return out;
+  }, [allSlotsByStaff, nowTick]);
+
+  /** Сетка времени: свободные + занятые (и прошедшие), чтобы видеть «дыры» из записей / выходных. */
+  const scheduleDisplaySlots = useMemo(() => {
     if (!svc) return [];
     if (staffId && staffId !== ANY_MASTER_ID) {
-      return slotsByStaff.get(staffId) || [];
+      const arr = allSlotsByStaff.get(staffId) || [];
+      return [...arr].sort((a, b) => a.start.getTime() - b.start.getTime());
     }
     const byStart = new Map<string, Slot>();
-    for (const staffSlots of slotsByStaff.values()) {
-      for (const s of staffSlots) {
+    for (const arr of allSlotsByStaff.values()) {
+      for (const s of arr) {
         const key = s.start.toISOString();
-        if (!byStart.has(key)) byStart.set(key, s);
+        const ex = byStart.get(key);
+        if (!ex) byStart.set(key, { ...s });
+        else ex.available = ex.available || s.available;
       }
     }
     return Array.from(byStart.values()).sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [slotsByStaff, staffId, svc]);
+  }, [allSlotsByStaff, staffId, svc]);
 
   const earliestAcrossMastersSlot = useMemo(() => {
     let best: Slot | null = null;
@@ -667,20 +683,61 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
             </div>
           )}
 
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/90" aria-hidden />
+              {t("quickBook.slotLegendFree")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-zinc-600" aria-hidden />
+              {t("quickBook.slotLegendBusy")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-zinc-800 ring-1 ring-zinc-600" aria-hidden />
+              {t("quickBook.slotLegendPast")}
+            </span>
+          </p>
+
           <div className="grid max-h-[50vh] gap-2 overflow-y-auto sm:grid-cols-2">
-            {slots.length === 0 ? (
+            {scheduleDisplaySlots.length === 0 ? (
               <p className="text-lg text-zinc-500">{t("quickBook.noSlotsThisDay")}</p>
             ) : (
-              slots.map((s) => {
+              scheduleDisplaySlots.map((s) => {
                 const sel = pickedStart?.getTime() === s.start.getTime();
+                const isPast = s.start.getTime() < nowTick;
+                const clickable = s.available && !isPast;
+                const title = isPast
+                  ? t("quickBook.slotPastTitle")
+                  : !s.available
+                    ? t("quickBook.slotBusyTitle")
+                    : undefined;
+                const cellClass = clickable
+                  ? bigBtnClass(sel)
+                  : [
+                      "flex min-h-[56px] w-full flex-col items-center justify-center rounded-2xl border px-3 py-2 text-lg font-semibold transition",
+                      isPast
+                        ? "cursor-not-allowed border-zinc-800 bg-zinc-950/80 text-zinc-600 opacity-50"
+                        : "cursor-not-allowed border-zinc-700/80 bg-zinc-900/60 text-zinc-500 opacity-80",
+                    ].join(" ");
                 return (
                   <button
                     key={s.start.toISOString()}
                     type="button"
-                    onClick={() => setPickedStart(s.start)}
-                    className={bigBtnClass(sel)}
+                    disabled={!clickable}
+                    title={title}
+                    aria-disabled={!clickable}
+                    onClick={() => {
+                      if (clickable) setPickedStart(s.start);
+                    }}
+                    className={cellClass}
                   >
-                    {format(s.start, "HH:mm", { locale: undefined })}
+                    <span>{format(s.start, "HH:mm", { locale: undefined })}</span>
+                    {!clickable && !isPast && (
+                      <span className="mt-0.5 text-xs font-normal text-zinc-600">{t("quickBook.slotBusyShort")}</span>
+                    )}
+                    {isPast && (
+                      <span className="mt-0.5 text-xs font-normal text-zinc-600">{t("quickBook.slotPastShort")}</span>
+                    )}
                   </button>
                 );
               })

@@ -341,7 +341,14 @@
     "noPanelStaff": "Vastuvõtu paneelil pole meistreid. Kontrolli «Meistrid»-bloki seadeid.",
     "noStaffForSlot": "Sellele ajale ei õnnestunud meistrit määrata.",
     "pastSlot": "See aeg on juba möödas. Värskenda aegu.",
-    "noSlotsThisDay": "Sellel päeval pole vabu aegu."
+    "noSlotsThisDay": "Sellel päeval pole graafikus aknaid (puhkus või pole vahetust).",
+    "slotLegendFree": "Saab broneerida",
+    "slotLegendBusy": "Hõivatud (broneering või blokk)",
+    "slotLegendPast": "Juba möödunud",
+    "slotBusyTitle": "Aeg on hõivatud: broneering või meistri blokk. Vali teine.",
+    "slotPastTitle": "Aeg on minevikus — pole saadaval.",
+    "slotBusyShort": "hõivatud",
+    "slotPastShort": "möödunud"
   },
   "reception": {
     "loginTitle": "Töötaja sisselogimine",
