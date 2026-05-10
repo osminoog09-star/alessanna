@@ -39,7 +39,8 @@ import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import { BookingModal } from "../components/BookingModal";
 import { CalendarSidePanels } from "../components/CalendarSidePanels";
 import { ProCalendar } from "../components/calendar/ProCalendar";
-import { staffHueFromId } from "../lib/staffHue";
+import { buildStaffHueMap } from "../lib/staffHue";
+import { staffCrmAppointmentBlockStyle } from "../lib/staffCalendarColors";
 import { generateAvailableSlots } from "../lib/slots";
 
 type View = "day" | "week" | "month";
@@ -213,11 +214,7 @@ export function CalendarPage() {
     });
   }, [timeOff, view, cursor]);
 
-  const staffHueMap = useMemo(() => {
-    const out = new Map<string, number>();
-    for (const member of staff) out.set(member.id, staffHueFromId(member.id));
-    return out;
-  }, [staff]);
+  const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
 
   const monthMasterAvailability = useMemo(() => {
     const out = new Map<string, { free: number; working: number; fullyClosed: boolean }>();
@@ -487,16 +484,11 @@ export function CalendarPage() {
                       <div className="space-y-1">
                         {blocks.slice(0, 4).map((b) => {
                           const svc = services.find((s) => s.id === b.service_id);
-                          const hue = staffHueMap.get(b.staff_id) ?? 200;
                           return (
                             <div
                               key={b.id}
                               className="rounded-md border px-2 py-1 text-xs"
-                              style={{
-                                borderColor: `hsl(${hue} 80% 45% / 0.45)`,
-                                backgroundColor: `hsl(${hue} 80% 18% / 0.45)`,
-                                color: `hsl(${hue} 90% 88%)`,
-                              }}
+                              style={staffCrmAppointmentBlockStyle(b.staff_id, staff, staffHueMap)}
                             >
                               <p className="truncate font-medium">
                                 {format(parseISO(b.start_time), "HH:mm")} · {b.client_name}
@@ -522,6 +514,7 @@ export function CalendarPage() {
                     slots={slotsForDay(day)}
                     blocks={appointmentBlocks(day)}
                     services={services}
+                    staff={staff}
                     staffHueMap={staffHueMap}
                     onBookSlot={(start) => setModal({ start, staffId })}
                     canClick={canUseCalendar}
@@ -565,6 +558,7 @@ function DayColumn({
   slots,
   blocks,
   services,
+  staff,
   staffHueMap,
   onBookSlot,
   canClick,
@@ -573,6 +567,7 @@ function DayColumn({
   slots: Slot[];
   blocks: AppointmentRow[];
   services: ServiceRow[];
+  staff: StaffMember[];
   staffHueMap: Map<string, number>;
   onBookSlot: (d: Date) => void;
   canClick: boolean;
@@ -588,16 +583,11 @@ function DayColumn({
       <div className="max-h-[480px] flex-1 overflow-y-auto p-2">
         {blocks.map((b) => {
           const svc = services.find((s) => s.id === b.service_id);
-          const hue = staffHueMap.get(b.staff_id) ?? 200;
           return (
             <div
               key={b.id}
               className="mb-1 rounded-lg border px-2 py-1.5 text-xs"
-              style={{
-                borderColor: `hsl(${hue} 80% 45% / 0.45)`,
-                backgroundColor: `hsl(${hue} 80% 18% / 0.45)`,
-                color: `hsl(${hue} 90% 88%)`,
-              }}
+              style={staffCrmAppointmentBlockStyle(b.staff_id, staff, staffHueMap)}
             >
               <p className="font-medium">{b.client_name}</p>
               <p className="opacity-85">

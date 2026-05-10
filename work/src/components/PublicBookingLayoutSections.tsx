@@ -13,6 +13,7 @@ import {
 } from "date-fns";
 import type { TFunction } from "i18next";
 import type { i18n } from "i18next";
+import { useTranslation } from "react-i18next";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type {
   ReceptionMastersDensity,
@@ -21,11 +22,13 @@ import type {
   ReceptionUpcomingContentWidth,
 } from "../lib/receptionLayout";
 import type { PublicCalendarScope } from "../lib/publicCalendarRange";
+import type { StaffCalendarColor } from "../lib/staffCalendarColors";
+import { resolveStaffPublicPastelCard } from "../lib/staffCalendarColors";
 import { formatSlotRange, type Slot } from "../lib/slots";
 import type { AppointmentRow, StaffMember } from "../types/database";
+import { PublicBookingDayTimeline } from "./PublicBookingDayTimeline";
 import {
   CalendarStaffLegend,
-  PublicCalendarDayAgenda,
   PublicCalendarWeekAgenda,
 } from "./PublicCalendarAgendaViews";
 
@@ -41,6 +44,8 @@ export type MasterDayRow = {
   busyItems: number;
   timeOffItems: number;
   status: "free" | "busy" | "off";
+  /** Ближайшее свободное окно сегодня (HH:mm) или null. */
+  earliestFreeLabel: string | null;
 };
 
 type CalendarProps = {
@@ -51,6 +56,10 @@ type CalendarProps = {
   viewMonth: Date;
   setViewMonth: Dispatch<SetStateAction<Date>>;
   selectedDay: Date;
+  /** yyyy-MM-dd (Europe/Tallinn), совпадает с днём записи. */
+  selectedDayYmd: string;
+  /** Не раньше этого дня можно выбрать дату (завтра по Таллину). */
+  minSelectableYmd: string;
   onSelectCalendarDay: (d: Date) => void;
   monthStart: Date;
   calendarDays: Date[];
@@ -60,8 +69,11 @@ type CalendarProps = {
   onNavigateNext: () => void;
   renderDayButtons: (gridDays: Date[], anchorMonth: Date, compact: boolean) => ReactNode;
   calendarRangeAppointments: AppointmentRow[];
+  staffColorAssignments: ReadonlyMap<string, StaffCalendarColor>;
   staffById: Map<string, StaffMember>;
   services: PublicServiceMini[];
+  /** Колонки в дневной сетке (как в классических программах): обычно все мастера панели. */
+  timelineStaff: StaffMember[];
 };
 
 function scopeButtonClass(active: boolean): string {
@@ -78,6 +90,8 @@ export function PublicBookingCalendarSection({
   viewMonth,
   setViewMonth,
   selectedDay,
+  selectedDayYmd,
+  minSelectableYmd,
   onSelectCalendarDay,
   monthStart,
   calendarDays,
@@ -87,8 +101,10 @@ export function PublicBookingCalendarSection({
   onNavigateNext,
   renderDayButtons,
   calendarRangeAppointments,
+  staffColorAssignments,
   staffById,
   services,
+  timelineStaff,
 }: CalendarProps) {
   const appointmentStaffIds = [
     ...new Set(
@@ -143,7 +159,8 @@ export function PublicBookingCalendarSection({
           <p className="mt-1 text-xs text-zinc-500">
             {calendarScope === "year" || calendarScope === "quarter"
               ? t("publicBook.yearHint")
-              : t("publicBook.calendarColorHint")}
+              : t("publicBook.calendarColorHint")}{" "}
+            {t("publicBook.bookingTimezoneHint")}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -185,13 +202,19 @@ export function PublicBookingCalendarSection({
       </div>
 
       {calendarScope === "day" && (
-        <PublicCalendarDayAgenda
-          day={selectedDay}
-          appointments={calendarRangeAppointments}
-          staffById={staffById}
-          services={services}
-          i18n={i18n}
-        />
+        <div className="space-y-2">
+          <p className="text-xs text-zinc-500">{t("publicBook.dayTimelineHint")}</p>
+          <PublicBookingDayTimeline
+            day={selectedDay}
+            appointments={calendarRangeAppointments}
+            timelineStaff={timelineStaff}
+            staffById={staffById}
+            services={services}
+            staffColorAssignments={staffColorAssignments}
+            startHour={8}
+            endHour={20}
+          />
+        </div>
       )}
 
       {calendarScope === "week" && (
@@ -201,8 +224,10 @@ export function PublicBookingCalendarSection({
           staffById={staffById}
           services={services}
           i18n={i18n}
-          selectedDay={selectedDay}
+          selectedDayYmd={selectedDayYmd}
+          minSelectableYmd={minSelectableYmd}
           onSelectDay={onSelectCalendarDay}
+          staffColorAssignments={staffColorAssignments}
         />
       )}
 
@@ -222,7 +247,11 @@ export function PublicBookingCalendarSection({
 
       {calendarScope === "year" && miniMonthGrid(startOfYear(viewMonth), endOfYear(viewMonth), true)}
 
-      <CalendarStaffLegend appointmentStaffIds={appointmentStaffIds} staffById={staffById} />
+      <CalendarStaffLegend
+        appointmentStaffIds={appointmentStaffIds}
+        staffById={staffById}
+        staffColorAssignments={staffColorAssignments}
+      />
     </section>
   );
 }
@@ -318,6 +347,8 @@ type MastersProps = {
   onPickMaster: (staffId: string) => void;
   density?: ReceptionMastersDensity;
   mastersLayout?: ReceptionMastersLayoutMode;
+  staffById: Map<string, StaffMember>;
+  staffColorAssignments: ReadonlyMap<string, StaffCalendarColor>;
 };
 
 function cardDensityClass(d: ReceptionMastersDensity | undefined): {
@@ -352,23 +383,30 @@ function MasterDayCard({
   selected,
   onPick,
   density,
+  staffById,
+  staffColorAssignments,
 }: {
   m: MasterDayRow;
   selected: boolean;
   onPick: () => void;
   density?: ReceptionMastersDensity;
+  staffById: Map<string, StaffMember>;
+  staffColorAssignments: ReadonlyMap<string, StaffCalendarColor>;
 }) {
+  const { t } = useTranslation();
   const dc = cardDensityClass(density);
+  const pastel = resolveStaffPublicPastelCard(m.id, staffById, staffColorAssignments);
   return (
     <button
       type="button"
       onClick={onPick}
       className={
-        `w-full rounded-lg border text-left text-zinc-300 transition ${dc.btn} ` +
+        `w-full rounded-lg border border-l-4 text-left text-zinc-300 transition ${dc.btn} ` +
         (selected
           ? "border-sky-500/80 bg-sky-950/35 text-white ring-1 ring-sky-500/40"
           : "border-zinc-800 bg-zinc-950/70 hover:border-sky-700/70 hover:text-white")
       }
+      style={{ borderLeftColor: pastel.borderColor }}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate font-medium text-zinc-100">{m.name}</span>
@@ -382,11 +420,31 @@ function MasterDayCard({
                 : "border-amber-700/60 bg-amber-950/40 text-amber-200")
           }
         >
-          {m.status === "free" ? "Есть окна" : m.status === "off" ? "Выходной" : "Занят"}
+          {m.status === "free"
+            ? t("publicBook.masterStatusFree")
+            : m.status === "off"
+              ? t("publicBook.masterStatusOff")
+              : t("publicBook.masterStatusBusy")}
         </span>
       </div>
       <div className={dc.meta}>
-        {m.workTime} · свободных: {m.freeSlots}
+        {m.workTime}
+        {m.status === "free" && m.earliestFreeLabel && (
+          <>
+            {" · "}
+            <span className="text-emerald-400/95">
+              {t("publicBook.masterEarliestSlot", { time: m.earliestFreeLabel })}
+            </span>
+            {" · "}
+            {t("publicBook.masterFreeSlotsCount", { count: m.freeSlots })}
+          </>
+        )}
+        {m.status === "busy" && (
+          <span className="text-zinc-600">
+            {" · "}
+            {t("publicBook.masterNoSlotsToday")}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -400,6 +458,8 @@ export function PublicBookingMastersSection({
   onPickMaster,
   density = "compact",
   mastersLayout = "two_columns",
+  staffById,
+  staffColorAssignments,
 }: MastersProps) {
   const emptyBoth = hairMasters.length === 0 && nailMasters.length === 0;
   const sectionPad =
@@ -436,6 +496,8 @@ export function PublicBookingMastersSection({
                     selected={selectedStaffId === m.id}
                     onPick={() => onPickMaster(m.id)}
                     density={density}
+                    staffById={staffById}
+                    staffColorAssignments={staffColorAssignments}
                   />
                 ))
               ) : (
@@ -456,6 +518,8 @@ export function PublicBookingMastersSection({
                     selected={selectedStaffId === m.id}
                     onPick={() => onPickMaster(m.id)}
                     density={density}
+                    staffById={staffById}
+                    staffColorAssignments={staffColorAssignments}
                   />
                 ))
               ) : (
@@ -491,6 +555,12 @@ type BookingProps = {
   confirmBook: () => void;
   eligibleStaff: StaffMember[];
   highlightServiceIds: Set<string>;
+  /** Объединение услуг всех мастеров панели — в списке услуг не показываем весь салон. */
+  panelServiceIds: Set<string>;
+  /** Подпись к слоту: кто свободен в это время (для «любой мастер»). */
+  slotStaffLabelsByStart: Map<string, string>;
+  onPickEarliestAcrossMasters: () => void;
+  earliestAcrossMastersLabel: string | null;
 };
 
 export function PublicBookingBookingSection({
@@ -515,9 +585,28 @@ export function PublicBookingBookingSection({
   confirmBook,
   eligibleStaff,
   highlightServiceIds,
+  panelServiceIds,
+  slotStaffLabelsByStart,
+  onPickEarliestAcrossMasters,
+  earliestAcrossMastersLabel,
 }: BookingProps) {
-  const showMasterServiceHint =
-    staffId !== ANY_MASTER_ID && staffId != null && highlightServiceIds.size > 0;
+  const activeServices = services.filter((s) => s.active);
+  const salonWidePool =
+    panelServiceIds.size > 0 ? activeServices.filter((s) => panelServiceIds.has(s.id)) : activeServices;
+  const masterChosen = staffId !== ANY_MASTER_ID && staffId != null;
+  const masterHasLinks = masterChosen && highlightServiceIds.size > 0;
+  const narrowedForMaster = masterHasLinks
+    ? salonWidePool.filter((s) => highlightServiceIds.has(s.id))
+    : null;
+  const canFilter = narrowedForMaster != null && narrowedForMaster.length > 0;
+  let selectServices = canFilter ? narrowedForMaster : salonWidePool;
+  let listIsFiltered = canFilter;
+  if (serviceId && !selectServices.some((s) => s.id === serviceId)) {
+    selectServices = salonWidePool;
+    listIsFiltered = false;
+  }
+  const showStarInOption = masterHasLinks && !listIsFiltered;
+
   return (
     <div className="space-y-4">
       <label className="block text-sm">
@@ -532,8 +621,8 @@ export function PublicBookingBookingSection({
           className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white md:py-2.5"
         >
           <option value="">{t("modal.pickService")}</option>
-          {services.filter((s) => s.active).map((s) => {
-            const mark = highlightServiceIds.has(s.id);
+          {selectServices.map((s) => {
+            const mark = showStarInOption && highlightServiceIds.has(s.id);
             return (
               <option key={s.id} value={s.id}>
                 {mark ? `★ ${s.name}` : s.name}
@@ -541,35 +630,57 @@ export function PublicBookingBookingSection({
             );
           })}
         </select>
-        {showMasterServiceHint && (
+        {listIsFiltered && (
+          <p className="mt-1 text-xs text-emerald-400/85">{t("publicBook.masterServicesFiltered")}</p>
+        )}
+        {masterHasLinks && !listIsFiltered && (
           <p className="mt-1 text-xs text-emerald-400/85">{t("publicBook.masterServicesMarked")}</p>
+        )}
+        {panelServiceIds.size > 0 && !masterChosen && (
+          <p className="mt-1 text-xs text-zinc-500">{t("publicBook.servicesLimitedToPanel")}</p>
         )}
       </label>
 
       <div>
         <p className="text-sm text-zinc-400">{t("publicBook.slots")}</p>
         {staffId === ANY_MASTER_ID && (
-          <p className="mt-1 text-xs text-zinc-500">
-            Показаны слоты, где есть хотя бы один свободный мастер.
-          </p>
+          <p className="mt-1 text-xs text-zinc-500">{t("publicBook.slotsAnyMasterHint")}</p>
+        )}
+        {staffId === ANY_MASTER_ID && earliestAcrossMastersLabel && (
+          <button
+            type="button"
+            onClick={() => onPickEarliestAcrossMasters()}
+            className="mt-2 rounded-lg border border-emerald-700/50 bg-emerald-950/35 px-3 py-2 text-left text-xs font-medium text-emerald-100 transition hover:border-emerald-500/60 hover:bg-emerald-950/50"
+          >
+            {t("publicBook.pickEarliestSlot", { time: earliestAcrossMastersLabel })}
+          </button>
         )}
         <div className="mt-2 flex flex-wrap gap-2">
           {slots.map((s) => {
             const key = s.start.toISOString();
             const freeCount = slotCoverage.get(key) || 0;
+            const who = slotStaffLabelsByStart.get(key) || "";
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => setPickedStart(s.start)}
-                className={`rounded-lg border px-3 py-2 text-sm md:px-4 md:py-2.5 ${
+                className={`max-w-[min(100%,20rem)] rounded-lg border px-3 py-2 text-left text-sm md:px-4 md:py-2.5 ${
                   pickedStart?.getTime() === s.start.getTime()
                     ? "border-sky-500 bg-sky-950/50 text-white"
                     : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
                 }`}
               >
-                {formatSlotRange(s)}
-                {staffId === ANY_MASTER_ID && freeCount > 0 ? ` · свободно: ${freeCount}` : ""}
+                <span className="block font-medium">{formatSlotRange(s)}</span>
+                {staffId === ANY_MASTER_ID && freeCount > 0 && who ? (
+                  <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
+                    {t("publicBook.slotWhoFree", { names: who, count: freeCount })}
+                  </span>
+                ) : staffId === ANY_MASTER_ID && freeCount > 0 ? (
+                  <span className="mt-0.5 block text-[11px] text-zinc-500">
+                    {t("publicBook.slotFreeCount", { count: freeCount })}
+                  </span>
+                ) : null}
               </button>
             );
           })}

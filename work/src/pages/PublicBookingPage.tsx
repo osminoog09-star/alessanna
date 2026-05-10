@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  addDays,
   addMonths,
-  addWeeks,
   addYears,
   eachDayOfInterval,
   endOfDay,
   endOfMonth,
   endOfWeek,
   format,
-  isSameDay,
   isSameMonth,
-  isToday,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -21,6 +17,17 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import {
+  compareSalonYmd,
+  gregorianAddDays,
+  isSalonBookableYmd,
+  salonCalendarYmd,
+  salonDayStartUtc,
+  salonFirstBookableYmd,
+  salonWeekdaySun0,
+  salonYmdFromAnyDate,
+  SALON_TIME_ZONE,
+} from "../lib/bookingSalonTz";
 import { generateAvailableSlots, type Slot } from "../lib/slots";
 import {
   applyPublicStaffVisibility,
@@ -36,7 +43,7 @@ import {
   publicServiceIdsForStaff,
   splitStaffIntoHairAndNails,
 } from "../lib/publicMasterPanel";
-import { getStaffCalendarColor } from "../lib/staffCalendarColors";
+import { buildStaffColorAssignments, resolveStaffPublicCalendarLook } from "../lib/staffCalendarColors";
 import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow } from "../types/database";
 import {
   DEFAULT_RECEPTION_MASTERS_PANEL,
@@ -106,8 +113,12 @@ export function PublicBookingPage() {
 
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(ANY_MASTER_ID);
-  const [dayStr, setDayStr] = useState(() => format(new Date(), "yyyy-MM-dd"));
-  const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
+  const [dayStr, setDayStr] = useState(() => salonFirstBookableYmd());
+  const [viewMonth, setViewMonth] = useState(() => {
+    const fb = salonFirstBookableYmd();
+    const [y, m] = fb.split("-").map(Number);
+    return new Date(y, m - 1, 1);
+  });
   const [calendarScope, setCalendarScope] = useState<PublicCalendarScope>("month");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -235,8 +246,10 @@ export function PublicBookingPage() {
     void loadBase();
   }, [loadBase]);
 
-  const day = useMemo(() => startOfDay(new Date(dayStr + "T12:00:00")), [dayStr]);
-  const selectedDay = useMemo(() => startOfDay(new Date(dayStr + "T12:00:00")), [dayStr]);
+  const salonDayStart = useMemo(() => salonDayStartUtc(dayStr), [dayStr]);
+  const selectedDay = salonDayStart;
+
+  const firstBookableYmd = useMemo(() => salonFirstBookableYmd(new Date(nowTick)), [nowTick]);
   const monthStart = useMemo(() => startOfMonth(viewMonth), [viewMonth]);
   const monthLabel = useMemo(() => format(monthStart, "LLLL yyyy"), [monthStart]);
   const calendarDays = useMemo(() => {
@@ -288,8 +301,26 @@ export function PublicBookingPage() {
     const base = staffEligibleForService(staffDirectory, links, serviceId);
     const afterPublic = isReceptionMode ? base : applyPublicStaffVisibility(base, links, serviceId);
     const panel = new Set(mastersPanelStaff.map((m) => m.id));
-    return afterPublic.filter((m) => panel.has(m.id));
+    const filtered = afterPublic.filter((m) => panel.has(m.id));
+    const order = new Map(mastersPanelStaff.map((m, i) => [m.id, i]));
+    return filtered.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
   }, [staffDirectory, links, serviceId, isReceptionMode, mastersPanelStaff]);
+
+  const panelServiceIds = useMemo(() => {
+    const out = new Set<string>();
+    for (const m of mastersPanelStaff) {
+      const ids = isReceptionMode
+        ? crmServiceIdsForStaff(m, links, services)
+        : publicServiceIdsForStaff(m, links, services);
+      for (const id of ids) out.add(id);
+    }
+    return out;
+  }, [mastersPanelStaff, links, services, isReceptionMode]);
+
+  const masterPanelColorAssignments = useMemo(
+    () => buildStaffColorAssignments(mastersPanelStaff.map((m) => m.id)),
+    [mastersPanelStaff],
+  );
 
   const loadDayData = useCallback(async () => {
     if (!isSupabaseConfigured() || serviceId == null) return;
@@ -299,17 +330,15 @@ export function PublicBookingPage() {
       setTimeOff([]);
       return;
     }
-    const start = new Date(day);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(day);
-    end.setHours(23, 59, 59, 999);
+    const start = salonDayStartUtc(dayStr);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
     const [ap, to] = await Promise.all([
       supabase
         .from("appointments")
         .select("*")
         .in("staff_id", eligibleIds)
         .gte("start_time", start.toISOString())
-        .lte("start_time", end.toISOString())
+        .lt("start_time", end.toISOString())
         .neq("status", "cancelled"),
       supabase
         .from("staff_time_off")
@@ -328,7 +357,7 @@ export function PublicBookingPage() {
         }))
       );
     }
-  }, [day, mastersPanelStaff, serviceId]);
+  }, [dayStr, mastersPanelStaff, serviceId]);
 
   useEffect(() => {
     void loadDayData();
@@ -402,6 +431,16 @@ export function PublicBookingPage() {
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    const min = salonFirstBookableYmd(new Date(nowTick));
+    if (compareSalonYmd(dayStr, min) < 0) {
+      setDayStr(min);
+      const [y, m] = min.split("-").map(Number);
+      setViewMonth(new Date(y, m - 1, 1));
+      setPickedStart(null);
+    }
+  }, [nowTick, dayStr]);
+
   const svc = services.find((s) => s.id === serviceId);
   const durationMin = svc ? svc.duration_min + svc.buffer_after_min : 60;
 
@@ -421,7 +460,9 @@ export function PublicBookingPage() {
         appointments,
         timeOff,
         duration: durationMin,
-        day,
+        day: salonDayStart,
+        salonDayStartUtc: salonDayStart,
+        salonWeekdaySun0: salonWeekdaySun0(dayStr),
         stepMinutes: 15,
         staffId: member.id,
       });
@@ -429,7 +470,7 @@ export function PublicBookingPage() {
       out.set(member.id, slots);
     }
     return out;
-  }, [appointments, day, durationMin, eligibleStaff, schedules, svc, timeOff, nowTick]);
+  }, [appointments, dayStr, durationMin, eligibleStaff, schedules, salonDayStart, svc, timeOff, nowTick]);
 
   const slotCoverage = useMemo(() => {
     const coverage = new Map<string, number>();
@@ -457,6 +498,46 @@ export function PublicBookingPage() {
     return Array.from(byStart.values()).sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [slotsByStaff, staffId, svc]);
 
+  const slotStaffLabelsByStart = useMemo(() => {
+    const out = new Map<string, string>();
+    const maxShown = 2;
+    for (const iso of slotCoverage.keys()) {
+      const names: string[] = [];
+      for (const m of eligibleStaff) {
+        const staffSlots = slotsByStaff.get(m.id);
+        if (staffSlots?.some((s) => s.start.toISOString() === iso)) names.push(m.name);
+      }
+      if (!names.length) continue;
+      const label =
+        names.length <= maxShown
+          ? names.join(", ")
+          : `${names.slice(0, maxShown).join(", ")} +${names.length - maxShown}`;
+      out.set(iso, label);
+    }
+    return out;
+  }, [slotCoverage, slotsByStaff, eligibleStaff]);
+
+  const earliestAcrossMastersSlot = useMemo(() => {
+    let best: Slot | null = null;
+    for (const m of eligibleStaff) {
+      const arr = slotsByStaff.get(m.id);
+      if (!arr?.length) continue;
+      const first = arr[0];
+      if (!best || first.start.getTime() < best.start.getTime()) best = first;
+    }
+    return best;
+  }, [eligibleStaff, slotsByStaff]);
+
+  const earliestAcrossMastersLabel = earliestAcrossMastersSlot
+    ? format(earliestAcrossMastersSlot.start, "HH:mm")
+    : null;
+
+  const pickEarliestAcrossMasters = useCallback(() => {
+    if (!earliestAcrossMastersSlot) return;
+    setStaffId(ANY_MASTER_ID);
+    setPickedStart(earliestAcrossMastersSlot.start);
+  }, [earliestAcrossMastersSlot]);
+
   const dayAvailabilityBadge = useMemo(() => {
     const out = new Map<
       string,
@@ -468,9 +549,11 @@ export function PublicBookingPage() {
     if (!svc || !eligibleStaff.length) return out;
 
     const daysInRange = eachDayInDataRange(calendarScope, viewMonth, selectedDay);
+    const tallinnTodayYmd = salonCalendarYmd(new Date(nowTick));
     for (const d of daysInRange) {
-      const weekday = d.getDay();
-      const key = format(d, "yyyy-MM-dd");
+      const key = salonYmdFromAnyDate(d);
+      const weekday = salonWeekdaySun0(key);
+      const dayStart = salonDayStartUtc(key);
       let working = 0;
       let free = 0;
 
@@ -489,12 +572,14 @@ export function PublicBookingPage() {
           appointments: calendarRangeAppointments,
           timeOff: calendarRangeTimeOff,
           duration: durationMin,
-          day: d,
+          day: dayStart,
+          salonDayStartUtc: dayStart,
+          salonWeekdaySun0: weekday,
           stepMinutes: 15,
           staffId: m.id,
         });
         const slotsForDay = rawSlotsForDay.filter((s) =>
-          isSameDay(d, new Date()) ? s.start.getTime() >= nowTick : true
+          key === tallinnTodayYmd ? s.start.getTime() >= nowTick : true
         );
         if (slotsForDay.length > 0) free++;
       }
@@ -519,7 +604,7 @@ export function PublicBookingPage() {
     const m = new Map<string, AppointmentRow[]>();
     for (const ap of calendarRangeAppointments) {
       if (ap.status === "cancelled") continue;
-      const k = format(new Date(ap.start_time), "yyyy-MM-dd");
+      const k = salonYmdFromAnyDate(new Date(ap.start_time));
       const arr = m.get(k) ?? [];
       arr.push(ap);
       m.set(k, arr);
@@ -527,22 +612,47 @@ export function PublicBookingPage() {
     return m;
   }, [calendarRangeAppointments]);
 
+  const staffColorAssignments = useMemo(
+    () =>
+      buildStaffColorAssignments(
+        calendarRangeAppointments.filter((a) => a.status !== "cancelled").map((a) => a.staff_id),
+      ),
+    [calendarRangeAppointments],
+  );
+
   const staffById = useMemo(() => new Map(staffDirectory.map((s) => [s.id, s])), [staffDirectory]);
 
   const calendarWeekDays = useMemo(() => {
-    const a = startOfWeek(selectedDay, { weekStartsOn: 1 });
-    const b = endOfWeek(selectedDay, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start: a, end: b });
-  }, [selectedDay]);
+    const wd = salonWeekdaySun0(dayStr);
+    const fromMonday = (wd + 6) % 7;
+    const weekStartYmd = gregorianAddDays(dayStr, -fromMonday);
+    return Array.from({ length: 7 }, (_, i) => salonDayStartUtc(gregorianAddDays(weekStartYmd, i)));
+  }, [dayStr]);
 
   const calendarRangeTitle = useMemo(() => {
     switch (calendarScope) {
       case "day":
-        return format(selectedDay, "d MMMM yyyy");
+        return new Intl.DateTimeFormat(i18n.language, {
+          timeZone: SALON_TIME_ZONE,
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(salonDayStartUtc(dayStr));
       case "week": {
-        const a = startOfWeek(selectedDay, { weekStartsOn: 1 });
-        const b = endOfWeek(selectedDay, { weekStartsOn: 1 });
-        return `${format(a, "d MMM")} – ${format(b, "d MMM yyyy")}`;
+        const a = calendarWeekDays[0];
+        const b = calendarWeekDays[6];
+        const fa = new Intl.DateTimeFormat(i18n.language, {
+          timeZone: SALON_TIME_ZONE,
+          day: "numeric",
+          month: "short",
+        });
+        const fb = new Intl.DateTimeFormat(i18n.language, {
+          timeZone: SALON_TIME_ZONE,
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        return `${fa.format(a)} – ${fb.format(b)}`;
       }
       case "month":
         return monthLabel;
@@ -551,21 +661,27 @@ export function PublicBookingPage() {
       case "year":
         return format(startOfYear(viewMonth), "yyyy");
     }
-  }, [calendarScope, selectedDay, monthLabel, viewMonth]);
+  }, [calendarScope, calendarWeekDays, dayStr, i18n.language, monthLabel, viewMonth]);
 
   const navigateCalendar = useCallback(
     (dir: -1 | 1) => {
       const d = dir;
       if (calendarScope === "day") {
-        const next = addDays(selectedDay, d);
-        setDayStr(format(next, "yyyy-MM-dd"));
-        setViewMonth(startOfMonth(next));
+        const next = gregorianAddDays(dayStr, d);
+        const min = salonFirstBookableYmd();
+        if (compareSalonYmd(next, min) < 0) return;
+        setDayStr(next);
+        const [y, m] = next.split("-").map(Number);
+        setViewMonth(new Date(y, m - 1, 1));
         return;
       }
       if (calendarScope === "week") {
-        const next = addWeeks(selectedDay, d);
-        setDayStr(format(next, "yyyy-MM-dd"));
-        setViewMonth(startOfMonth(next));
+        const next = gregorianAddDays(dayStr, d * 7);
+        const min = salonFirstBookableYmd();
+        const clamped = compareSalonYmd(next, min) < 0 ? min : next;
+        setDayStr(clamped);
+        const [y, m] = clamped.split("-").map(Number);
+        setViewMonth(new Date(y, m - 1, 1));
         return;
       }
       if (calendarScope === "month") {
@@ -578,17 +694,20 @@ export function PublicBookingPage() {
       }
       setViewMonth((v) => addYears(v, d));
     },
-    [calendarScope, selectedDay],
+    [calendarScope, dayStr],
   );
 
   const onSelectCalendarDay = useCallback((d: Date) => {
-    setDayStr(format(d, "yyyy-MM-dd"));
-    setViewMonth(startOfMonth(d));
+    const ymd = salonYmdFromAnyDate(d);
+    if (!isSalonBookableYmd(ymd)) return;
+    setDayStr(ymd);
+    const [y, m] = ymd.split("-").map(Number);
+    setViewMonth(new Date(y, m - 1, 1));
     setPickedStart(null);
   }, []);
 
   const mastersByColumn = useMemo(() => {
-    const weekday = day.getDay();
+    const weekday = salonWeekdaySun0(dayStr);
     const mapRow = (m: StaffMember): MasterDayRow => {
       const daySchedule = schedules
         .filter((s) => s.staff_id === m.id && s.day_of_week === weekday)
@@ -599,7 +718,10 @@ export function PublicBookingPage() {
               daySchedule[daySchedule.length - 1].end_time || ""
             ).slice(0, 5)}`
           : "выходной";
-      const freeSlots = (slotsByStaff.get(m.id) || []).length;
+      const staffSlots = slotsByStaff.get(m.id);
+      const freeSlots = staffSlots?.length ?? 0;
+      const earliest = staffSlots?.[0]?.start ?? null;
+      const earliestFreeLabel = earliest ? format(earliest, "HH:mm") : null;
       const busyItems = appointments.filter((a) => a.staff_id === m.id).length;
       const timeOffItems = timeOff.filter((t) => t.staff_id === m.id).length;
       let status: "free" | "busy" | "off" = "busy";
@@ -613,13 +735,25 @@ export function PublicBookingPage() {
         busyItems,
         timeOffItems,
         status,
+        earliestFreeLabel,
       };
     };
+    const hairRows = mastersSplitResolved.hair.map(mapRow);
+    const nailsRows = mastersSplitResolved.nails.map(mapRow);
+    const manual = receptionMastersConfig.assignment === "manual";
     return {
-      hair: mastersSplitResolved.hair.map(mapRow).sort(sortMasterDayRows),
-      nails: mastersSplitResolved.nails.map(mapRow).sort(sortMasterDayRows),
+      hair: manual ? hairRows : [...hairRows].sort(sortMasterDayRows),
+      nails: manual ? nailsRows : [...nailsRows].sort(sortMasterDayRows),
     };
-  }, [appointments, day, mastersSplitResolved, schedules, slotsByStaff, timeOff]);
+  }, [
+    appointments,
+    dayStr,
+    mastersSplitResolved,
+    receptionMastersConfig.assignment,
+    schedules,
+    slotsByStaff,
+    timeOff,
+  ]);
 
   const highlightServiceIds = useMemo(() => {
     if (!staffId || staffId === ANY_MASTER_ID) return new Set<string>();
@@ -658,6 +792,10 @@ export function PublicBookingPage() {
     const normalizedClientName = clientName.trim();
     if (!svc || !pickedStart || (!isReceptionMode && !normalizedClientName)) {
       setMsg(t("publicBook.fillAll"));
+      return;
+    }
+    if (!isSalonBookableYmd(dayStr)) {
+      setMsg(t("publicBook.dayNotBookable"));
       return;
     }
     setBooking(true);
@@ -717,10 +855,12 @@ export function PublicBookingPage() {
 
   function renderDayButtons(gridDays: Date[], anchorMonth: Date, compact: boolean) {
     return gridDays.map((d) => {
-      const selected = isSameDay(d, selectedDay);
-      const today = isToday(d);
+      const cellYmd = salonYmdFromAnyDate(d);
+      const selected = cellYmd === dayStr;
+      const todayTallinn = salonCalendarYmd(new Date(nowTick));
+      const isTodayCell = cellYmd === todayTallinn;
       const inMonth = isSameMonth(d, anchorMonth);
-      const cov = dayAvailabilityBadge.get(format(d, "yyyy-MM-dd"));
+      const cov = dayAvailabilityBadge.get(cellYmd);
       const isWorkingDay = !!(cov && cov.working > 0);
       const ratio = cov && cov.working > 0 ? cov.free / cov.working : 0;
       const tone =
@@ -735,13 +875,17 @@ export function PublicBookingPage() {
         ? "min-h-[2.25rem] px-0.5 py-0.5 text-[10px] sm:min-h-10 sm:text-[11px]"
         : "px-2 py-2 text-xs md:min-h-[54px] md:text-sm";
 
+      const disabled = compareSalonYmd(cellYmd, firstBookableYmd) < 0;
+
       let stateClass: string;
-      if (selected && today) {
+      if (disabled) {
+        stateClass = "cursor-not-allowed border-zinc-900/80 bg-zinc-950/80 text-zinc-600 opacity-50";
+      } else if (selected && isTodayCell) {
         stateClass =
           "border-sky-500 bg-sky-950/50 text-white ring-2 ring-emerald-400/45 ring-offset-2 ring-offset-zinc-950";
       } else if (selected) {
         stateClass = "border-sky-500 bg-sky-950/50 text-white";
-      } else if (today) {
+      } else if (isTodayCell) {
         stateClass =
           "border-emerald-500/75 bg-emerald-950/30 text-zinc-100 hover:border-emerald-400 hover:bg-emerald-950/45";
       } else if (inMonth) {
@@ -754,9 +898,19 @@ export function PublicBookingPage() {
         <button
           key={d.toISOString()}
           type="button"
-          aria-current={today ? "date" : undefined}
-          title={today ? t("publicBook.todayMarker") : undefined}
-          onClick={() => onSelectCalendarDay(d)}
+          disabled={disabled}
+          aria-disabled={disabled}
+          aria-current={isTodayCell ? "date" : undefined}
+          title={
+            disabled
+              ? t("publicBook.pastDayNotSelectable")
+              : isTodayCell
+                ? t("publicBook.todayMarker")
+                : undefined
+          }
+          onClick={() => {
+            if (!disabled) onSelectCalendarDay(d);
+          }}
           className={`rounded-md border transition ${sizeClass} ${stateClass}`}
         >
           <span className="block">{format(d, "d")}</span>
@@ -766,19 +920,23 @@ export function PublicBookingPage() {
             </span>
           )}
           {(() => {
-            const dk = format(d, "yyyy-MM-dd");
+            const dk = cellYmd;
             const apList = appointmentsByDateKey.get(dk) ?? [];
             const staffIds = [...new Set(apList.map((a) => a.staff_id))].slice(0, 6);
             if (staffIds.length === 0) return null;
             return (
               <div className="mt-0.5 flex flex-wrap justify-center gap-0.5">
-                {staffIds.map((id) => (
-                  <span
-                    key={id}
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${getStaffCalendarColor(id).dot}`}
-                    title={staffById.get(id)?.name ?? ""}
-                  />
-                ))}
+                {staffIds.map((id) => {
+                  const look = resolveStaffPublicCalendarLook(id, staffById, staffColorAssignments);
+                  return (
+                    <span
+                      key={id}
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${look.kind === "palette" ? look.palette.dot : ""}`}
+                      style={look.kind === "google" ? { backgroundColor: look.bg } : undefined}
+                      title={staffById.get(id)?.name ?? ""}
+                    />
+                  );
+                })}
               </div>
             );
           })()}
@@ -825,6 +983,8 @@ export function PublicBookingPage() {
         viewMonth={viewMonth}
         setViewMonth={setViewMonth}
         selectedDay={selectedDay}
+        selectedDayYmd={dayStr}
+        minSelectableYmd={firstBookableYmd}
         onSelectCalendarDay={onSelectCalendarDay}
         monthStart={monthStart}
         calendarDays={calendarDays}
@@ -834,8 +994,10 @@ export function PublicBookingPage() {
         onNavigateNext={() => navigateCalendar(1)}
         renderDayButtons={renderDayButtons}
         calendarRangeAppointments={calendarRangeAppointments}
+        staffColorAssignments={staffColorAssignments}
         staffById={staffById}
         services={services}
+        timelineStaff={mastersPanelStaff}
       />
     ),
     upcoming: (
@@ -859,6 +1021,8 @@ export function PublicBookingPage() {
           onPickMaster={pickMaster}
           density={receptionMastersConfig.density}
           mastersLayout={receptionMastersConfig.mastersLayout}
+          staffById={staffById}
+          staffColorAssignments={masterPanelColorAssignments}
         />
       ) : null,
     booking:
@@ -885,6 +1049,10 @@ export function PublicBookingPage() {
           confirmBook={confirmBook}
           eligibleStaff={eligibleStaff}
           highlightServiceIds={highlightServiceIds}
+          panelServiceIds={panelServiceIds}
+          slotStaffLabelsByStart={slotStaffLabelsByStart}
+          onPickEarliestAcrossMasters={pickEarliestAcrossMasters}
+          earliestAcrossMastersLabel={earliestAcrossMastersLabel}
         />
       ) : null,
   };

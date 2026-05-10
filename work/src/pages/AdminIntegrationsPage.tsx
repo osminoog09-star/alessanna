@@ -93,6 +93,14 @@ type ImportSummary = {
   from: string;
   to: string;
   calendarId: string;
+  staffColorsMatched?: number;
+  staffColorsUpdated?: number;
+};
+
+type StaffColorsSyncResult = {
+  staffColorsOnly: true;
+  staffColorsMatched: number;
+  staffColorsUpdated: number;
 };
 
 /** Простейшая клиентская валидация — глубокую делает CHECK-constraint в БД. */
@@ -587,6 +595,7 @@ export function AdminIntegrationsPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importDryResult, setImportDryResult] = useState<ImportSummary | null>(null);
   const [importApplyResult, setImportApplyResult] = useState<ImportSummary | null>(null);
+  const [staffColorsSyncResult, setStaffColorsSyncResult] = useState<StaffColorsSyncResult | null>(null);
 
   const loadSettings = useCallback(async () => {
     setSettingsError(null);
@@ -833,8 +842,30 @@ export function AdminIntegrationsPage() {
     }
     if (dryRun) setImportDryResult(summary);
     else setImportApplyResult(summary);
+    void loadStaff();
     void loadOutbox();
     return summary;
+  }
+
+  async function runSyncStaffColorsFromGoogle() {
+    setActionBusy("google-staff-colors");
+    setImportError(null);
+    setStaffColorsSyncResult(null);
+    const { data, error } = await supabase.functions.invoke("google-calendar-import", {
+      body: { staffColorsOnly: true },
+    });
+    setActionBusy(null);
+    if (error) {
+      setImportError(error.message);
+      return;
+    }
+    const res = data as StaffColorsSyncResult | null;
+    if (!res?.staffColorsOnly) {
+      setImportError("Неожиданный ответ функции (цвета).");
+      return;
+    }
+    setStaffColorsSyncResult(res);
+    void loadStaff();
   }
 
   async function runOneTapImport() {
@@ -1036,7 +1067,14 @@ export function AdminIntegrationsPage() {
           <p className="mt-1 text-xs text-zinc-500">
             Запуск с планшета: сначала <strong>Проверить (dry-run)</strong>, затем{" "}
             <strong>Импортировать</strong>. Дубли не создаются: повторный запуск
-            пропускает уже импортированные события.
+            пропускает уже импортированные события. После{" "}
+            <strong>реального импорта</strong> (не dry-run) цвета мастеров в CRM подтягиваются из
+            списка календарей Google — или нажмите отдельную кнопку ниже.
+          </p>
+          <p className="mt-2 text-[11px] text-zinc-600">
+            Сопоставление календаря с мастером: поле <code className="text-zinc-400">google_calendar_id</code>{" "}
+            у сотрудника, затем <code className="text-zinc-400">calendar_email</code> (как id календаря), затем
+            точное совпадение названия календаря с именем мастера.
           </p>
         </header>
 
@@ -1097,6 +1135,21 @@ export function AdminIntegrationsPage() {
           >
             {actionBusy === "google-import-apply" ? "Импортируем…" : "Импортировать в CRM"}
           </button>
+          <button
+            type="button"
+            onClick={() => void runSyncStaffColorsFromGoogle()}
+            disabled={
+              actionBusy === "google-staff-colors" ||
+              actionBusy === "google-import-all" ||
+              actionBusy === "google-import-dry" ||
+              actionBusy === "google-import-apply"
+            }
+            className="rounded-md border border-amber-700/50 bg-amber-950/30 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-900/40 disabled:opacity-40"
+          >
+            {actionBusy === "google-staff-colors"
+              ? "Тянем цвета из Google…"
+              : "Цвета мастеров из Google"}
+          </button>
         </div>
 
         {importError && (
@@ -1116,6 +1169,18 @@ export function AdminIntegrationsPage() {
           <p className="mt-1 text-xs text-emerald-300">
             Импорт завершён: добавлено {importApplyResult.inserted}, пропущено как дубли{" "}
             {importApplyResult.skippedAlreadyLinked}, ошибок {importApplyResult.failed}.
+            {importApplyResult.staffColorsUpdated != null && importApplyResult.staffColorsUpdated > 0 ? (
+              <span className="ml-1 text-amber-200/90">
+                Цвета в CRM обновлены у {importApplyResult.staffColorsUpdated} мастер(ов).
+              </span>
+            ) : null}
+          </p>
+        )}
+
+        {staffColorsSyncResult && (
+          <p className="mt-2 text-xs text-amber-200/90">
+            Цвета из Google: совпало календарей с мастерами — {staffColorsSyncResult.staffColorsMatched},
+            записано в базу — {staffColorsSyncResult.staffColorsUpdated}.
           </p>
         )}
       </section>

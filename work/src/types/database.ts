@@ -14,6 +14,8 @@ export type StaffMember = {
   roles: StaffRole[];
   /** false = hidden from marketing site + public booking (CRM still sees the person). */
   show_on_marketing_site?: boolean;
+  calendar_color_hex?: string | null;
+  calendar_foreground_hex?: string | null;
 };
 
 /** How the salon pays an employee (finance / payouts). */
@@ -43,6 +45,9 @@ export type StaffTableRow = {
   google_calendar_id?: string | null;
   google_calendar_last_sync_at?: string | null;
   google_calendar_last_error?: string | null;
+  /** Из Google Calendar calendarList (импорт). */
+  calendar_color_hex?: string | null;
+  calendar_foreground_hex?: string | null;
 };
 
 export type CategoryRow = {

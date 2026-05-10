@@ -47,6 +47,24 @@ export function ReceptionMastersPanelEditor({
     onChange({ ...config, nailsStaffIds: toggleId(config.nailsStaffIds, id, checked) });
   }
 
+  function moveInList(ids: string[], id: string, dir: -1 | 1): string[] {
+    const i = ids.indexOf(id);
+    if (i < 0) return ids;
+    const j = i + dir;
+    if (j < 0 || j >= ids.length) return ids;
+    const next = [...ids];
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  }
+
+  function moveHair(id: string, dir: -1 | 1) {
+    onChange({ ...config, hairStaffIds: moveInList(config.hairStaffIds, id, dir) });
+  }
+
+  function moveNails(id: string, dir: -1 | 1) {
+    onChange({ ...config, nailsStaffIds: moveInList(config.nailsStaffIds, id, dir) });
+  }
+
   return (
     <div className="space-y-4 rounded-xl border border-zinc-700/80 bg-zinc-950/40 p-3 md:p-4">
       <div>
@@ -83,7 +101,9 @@ export function ReceptionMastersPanelEditor({
       </div>
 
       {config.assignment === "manual" && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <p className="text-[11px] text-zinc-600">{t("reception.layout.masters.orderHint")}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
           <fieldset className="min-w-0 rounded-lg border border-zinc-800 p-2.5">
             <legend className="px-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
               {t("publicBook.mastersHair")}
@@ -101,7 +121,39 @@ export function ReceptionMastersPanelEditor({
                     onChange={(e) => toggleHair(m.id, e.target.checked)}
                     className="h-3.5 w-3.5 shrink-0 accent-amber-500"
                   />
-                  <span className="truncate">{m.name}</span>
+                  <span className="min-w-0 flex-1 truncate">{m.name}</span>
+                  {config.hairStaffIds.includes(m.id) ? (
+                    <span className="flex shrink-0 gap-0.5">
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        title={t("reception.layout.moveUp")}
+                        aria-label={t("reception.layout.moveUp")}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveHair(m.id, -1);
+                        }}
+                        className="rounded border border-zinc-700 px-1 py-px text-[10px] text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-40"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        title={t("reception.layout.moveDown")}
+                        aria-label={t("reception.layout.moveDown")}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveHair(m.id, 1);
+                        }}
+                        className="rounded border border-zinc-700 px-1 py-px text-[10px] text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-40"
+                      >
+                        ↓
+                      </button>
+                    </span>
+                  ) : null}
                 </label>
               ))}
             </div>
@@ -123,11 +175,44 @@ export function ReceptionMastersPanelEditor({
                     onChange={(e) => toggleNails(m.id, e.target.checked)}
                     className="h-3.5 w-3.5 shrink-0 accent-amber-500"
                   />
-                  <span className="truncate">{m.name}</span>
+                  <span className="min-w-0 flex-1 truncate">{m.name}</span>
+                  {config.nailsStaffIds.includes(m.id) ? (
+                    <span className="flex shrink-0 gap-0.5">
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        title={t("reception.layout.moveUp")}
+                        aria-label={t("reception.layout.moveUp")}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveNails(m.id, -1);
+                        }}
+                        className="rounded border border-zinc-700 px-1 py-px text-[10px] text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-40"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        title={t("reception.layout.moveDown")}
+                        aria-label={t("reception.layout.moveDown")}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          moveNails(m.id, 1);
+                        }}
+                        className="rounded border border-zinc-700 px-1 py-px text-[10px] text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-40"
+                      >
+                        ↓
+                      </button>
+                    </span>
+                  ) : null}
                 </label>
               ))}
             </div>
           </fieldset>
+          </div>
         </div>
       )}
 

@@ -101,6 +101,20 @@ export function appointmentsForStaffOnDay(
     .filter(({ start }) => isWithinInterval(start, { start: d0, end: d1 }));
 }
 
+/** Границы суток как [dayStartUtc, dayStartUtc + 24h) — для зоны салона без startOfDay браузера. */
+export function appointmentsForStaffOnUtcDay(
+  appointments: Array<AppointmentLike & { staff_id: string }>,
+  staffId: string,
+  dayStartUtc: Date,
+): { start: Date; end: Date }[] {
+  const dayEnd = new Date(dayStartUtc.getTime() + 24 * 60 * 60 * 1000);
+  return appointments
+    .filter((b) => b.staff_id === staffId)
+    .map((b) => appointmentInterval(b))
+    .filter((x): x is { start: Date; end: Date } => x !== null)
+    .filter(({ start }) => start >= dayStartUtc && start < dayEnd);
+}
+
 export type Slot = {
   start: Date;
   end: Date;
@@ -113,11 +127,12 @@ export function buildSlotsForDay(
   schedule: WeeklyScheduleLike[],
   existing: { start: Date; end: Date }[],
   durationMin: number,
-  stepMin: number
+  stepMin: number,
+  opts?: { absoluteDayStart?: boolean },
 ): Slot[] {
   const windows = workingWindowsForWeekday(schedule, weekday);
   const slots: Slot[] = [];
-  const base = startOfDay(day);
+  const base = opts?.absoluteDayStart ? day : startOfDay(day);
 
   for (const w of windows) {
     for (let m = w.start; m + durationMin <= w.end; m += stepMin) {
@@ -144,6 +159,10 @@ export type GenerateSlotsParams = {
   /** Slot step (minutes). Default 15. */
   stepMinutes?: number;
   staffId: string;
+  /** Начало суток в UTC (Europe/Tallinn midnight). Если задано вместе с salonWeekdaySun0 — игнорируется локальный startOfDay(day). */
+  salonDayStartUtc?: Date;
+  /** 0–6 вс–сб в зоне салона; вместе с salonDayStartUtc. */
+  salonWeekdaySun0?: number;
 };
 
 /**
@@ -158,7 +177,18 @@ export function generateAvailableSlots(params: GenerateSlotsParams): Slot[] {
     day,
     stepMinutes = 15,
     staffId,
+    salonDayStartUtc,
+    salonWeekdaySun0,
   } = params;
+  if (salonDayStartUtc != null && salonWeekdaySun0 != null) {
+    const busy: { start: Date; end: Date }[] = [
+      ...appointmentsForStaffOnUtcDay(appointments, staffId, salonDayStartUtc),
+      ...appointmentsForStaffOnUtcDay(timeOff as Array<AppointmentLike & { staff_id: string }>, staffId, salonDayStartUtc),
+    ];
+    return buildSlotsForDay(salonDayStartUtc, salonWeekdaySun0, schedule, busy, duration, stepMinutes, {
+      absoluteDayStart: true,
+    }).filter((s) => s.available);
+  }
   const weekday = day.getDay();
   const busy: { start: Date; end: Date }[] = [
     ...appointmentsForStaffOnDay(appointments, staffId, day),

@@ -109,12 +109,15 @@ function isJunkCalendarId(id: string): boolean {
   return false;
 }
 
-async function fetchCalendarIds(accessToken: string): Promise<{
-  ids: string[];
-  skippedJunk: string[];
-}> {
-  const ids: string[] = [];
-  const skippedJunk: string[] = [];
+type CalListEntry = {
+  id: string;
+  summary?: string;
+  backgroundColor?: string;
+  foregroundColor?: string;
+};
+
+async function fetchCalendarListEntries(accessToken: string): Promise<CalListEntry[]> {
+  const out: CalListEntry[] = [];
   let pageToken: string | null = null;
   do {
     const qs = new URLSearchParams();
@@ -126,17 +129,87 @@ async function fetchCalendarIds(accessToken: string): Promise<{
     const json = await res.json();
     if (!res.ok) throw new Error(`Google calendarList fetch failed (${res.status})`);
     for (const item of (json.items ?? []) as Array<Record<string, unknown>>) {
-      const id = String(item.id || "").trim();
-      if (!id) continue;
-      if (isJunkCalendarId(id)) {
-        skippedJunk.push(id);
-        continue;
-      }
-      ids.push(id);
+      out.push({
+        id: String(item.id || "").trim(),
+        summary: typeof item.summary === "string" ? item.summary : undefined,
+        backgroundColor: typeof item.backgroundColor === "string" ? item.backgroundColor : undefined,
+        foregroundColor: typeof item.foregroundColor === "string" ? item.foregroundColor : undefined,
+      });
     }
     pageToken = typeof json.nextPageToken === "string" ? json.nextPageToken : null;
   } while (pageToken);
+  return out;
+}
+
+function calendarIdsFromList(entries: CalListEntry[]): { ids: string[]; skippedJunk: string[] } {
+  const ids: string[] = [];
+  const skippedJunk: string[] = [];
+  for (const e of entries) {
+    if (!e.id) continue;
+    if (isJunkCalendarId(e.id)) {
+      skippedJunk.push(e.id);
+      continue;
+    }
+    ids.push(e.id);
+  }
   return { ids: Array.from(new Set(ids)), skippedJunk: Array.from(new Set(skippedJunk)) };
+}
+
+type StaffColorRow = {
+  id: string;
+  name: string;
+  calendar_email: string | null;
+  google_calendar_id: string | null;
+};
+
+const HEX6 = /^#[0-9a-f]{6}$/i;
+
+function resolveStaffIdForCalendarListEntry(staff: StaffColorRow[], entry: CalListEntry): string | null {
+  const calId = entry.id;
+  if (!calId) return null;
+  const byGid = staff.find((s) => s.google_calendar_id && String(s.google_calendar_id).trim() === calId);
+  if (byGid) return byGid.id;
+  const calLower = calId.toLowerCase();
+  const byEmail = staff.find((s) => {
+    const em = s.calendar_email ? String(s.calendar_email).trim().toLowerCase() : "";
+    return em && em === calLower;
+  });
+  if (byEmail) return byEmail.id;
+  const summary = (entry.summary || "").trim().toLowerCase();
+  if (!summary) return null;
+  const nameHits = staff.filter((s) => String(s.name || "").trim().toLowerCase() === summary);
+  if (nameHits.length === 1) return nameHits[0]!.id;
+  return null;
+}
+
+async function syncStaffCalendarColorsFromGoogleList(
+  sb: ReturnType<typeof createClient>,
+  entries: CalListEntry[],
+  staffRows: StaffColorRow[],
+  skipDbWrites: boolean,
+): Promise<{ staffColorsMatched: number; staffColorsUpdated: number }> {
+  let staffColorsMatched = 0;
+  let staffColorsUpdated = 0;
+  for (const entry of entries) {
+    if (!entry.id || isJunkCalendarId(entry.id)) continue;
+    const bg = String(entry.backgroundColor || "").trim();
+    if (!HEX6.test(bg)) continue;
+    const staffId = resolveStaffIdForCalendarListEntry(staffRows, entry);
+    if (!staffId) continue;
+    staffColorsMatched++;
+    const fgRaw = String(entry.foregroundColor || "").trim();
+    const fg = HEX6.test(fgRaw) ? fgRaw.toLowerCase() : null;
+    if (skipDbWrites) continue;
+    const { error } = await sb
+      .from("staff")
+      .update({
+        calendar_color_hex: bg.toLowerCase(),
+        calendar_foreground_hex: fg,
+      })
+      .eq("id", staffId);
+    if (!error) staffColorsUpdated++;
+  }
+  return { staffColorsMatched, staffColorsUpdated };
 }
 
 // Event types we never want as CRM appointments. "default" stays.
@@ -179,9 +252,14 @@ Deno.serve(async (req: Request) => {
       to?: string;
       calendarId?: string;
       includeAllSelectedCalendars?: boolean;
+      /** Только обновить calendar_color_hex у мастеров из Google calendarList (без импорта событий). */
+      staffColorsOnly?: boolean;
+      /** false — не писать цвета в staff (по умолчанию пишем). */
+      syncStaffColors?: boolean;
     };
 
     const dryRun = payload.dryRun !== false;
+    const staffColorsOnly = payload.staffColorsOnly === true;
     const from = String(payload.from || "2026-01-01");
     const to = String(payload.to || new Date().toISOString().slice(0, 10));
     const calendarId = String(payload.calendarId || DEFAULT_CALENDAR_ID || "primary");
@@ -192,10 +270,57 @@ Deno.serve(async (req: Request) => {
 
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
     const accessToken = await refreshAccessToken();
+
+    const { data: staffRowsRaw, error: staffErr } = await sb
+      .from("staff")
+      .select("id,name,calendar_email,google_calendar_id")
+      .eq("is_active", true);
+    if (staffErr) throw new Error(staffErr.message);
+    const staffColorRows: StaffColorRow[] = (staffRowsRaw ?? []).map((r) => ({
+      id: String(r.id),
+      name: String(r.name || ""),
+      calendar_email: r.calendar_email != null ? String(r.calendar_email) : null,
+      google_calendar_id: r.google_calendar_id != null ? String(r.google_calendar_id) : null,
+    }));
+    if (!staffColorRows.length) throw new Error("No active staff in DB");
+
+    const listEntries = await fetchCalendarListEntries(accessToken);
+
+    if (staffColorsOnly) {
+      const colorSync = await syncStaffCalendarColorsFromGoogleList(
+        sb,
+        listEntries,
+        staffColorRows,
+        payload.syncStaffColors === false,
+      );
+      return new Response(
+        JSON.stringify({
+          staffColorsOnly: true,
+          staffColorsMatched: colorSync.staffColorsMatched,
+          staffColorsUpdated: colorSync.staffColorsUpdated,
+        }),
+        { status: 200, headers: { ...corsHeaders, "content-type": "application/json" } },
+      );
+    }
+
+    const skipStaffColorWrites = payload.syncStaffColors === false || dryRun;
+    const colorSync = await syncStaffCalendarColorsFromGoogleList(
+      sb,
+      listEntries,
+      staffColorRows,
+      skipStaffColorWrites,
+    );
+
+    const staff = staffColorRows.map((s) => ({
+      id: s.id,
+      name: s.name.trim().toLowerCase(),
+      email: s.calendar_email ? s.calendar_email.trim().toLowerCase() : "",
+    }));
+
     let targetCalendars: string[] = [];
     let skippedJunkCalendars: string[] = [];
     if (includeAllSelectedCalendars) {
-      const list = await fetchCalendarIds(accessToken);
+      const list = calendarIdsFromList(listEntries);
       targetCalendars = list.ids;
       skippedJunkCalendars = list.skippedJunk;
     } else {
@@ -232,19 +357,9 @@ Deno.serve(async (req: Request) => {
       calendarId: includeAllSelectedCalendars ? "all-selected" : calendarId,
       calendarsScanned: targetCalendars.length,
       skippedJunkCalendars,
+      staffColorsMatched: colorSync.staffColorsMatched,
+      staffColorsUpdated: colorSync.staffColorsUpdated,
     };
-
-    const { data: staffRows, error: staffErr } = await sb
-      .from("staff")
-      .select("id,name,calendar_email")
-      .eq("is_active", true);
-    if (staffErr) throw new Error(staffErr.message);
-    const staff = (staffRows ?? []).map((r) => ({
-      id: String(r.id),
-      name: String(r.name || "").trim().toLowerCase(),
-      email: r.calendar_email ? String(r.calendar_email).trim().toLowerCase() : "",
-    }));
-    if (!staff.length) throw new Error("No active staff in DB");
 
     // Build color->staff mapping from events where staff is explicitly detectable.
     const colorVotes = new Map<string, Map<string, number>>();
