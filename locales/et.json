@@ -37,7 +37,7 @@
   },
   "siteSettings": {
     "receptionLayoutTitle": "Broneeringu plokkide järjekord",
-    "receptionLayoutSubtitle": "Sama järjekord avalikul broneeringu lehel ja vastuvõtu ekraanil (/reception). Salvestatakse serverisse.",
+    "receptionLayoutSubtitle": "Read üksteise all; reas üks või kaks blokki (laias ekraanis veerud). Broneeringu leht ja /reception. Salvestatakse serverisse.",
     "saveReceptionLayout": "Salvesta serverisse",
     "receptionLayoutSaved": "Järjekord salvestatud",
     "receptionLayoutSaveError": "Salvestamine ebaõnnestus: {{message}}"
@@ -277,9 +277,16 @@
       "edit": "Kohanda blokke",
       "done": "Valmis",
       "reset": "Vaikimisi",
-      "hint": "Ainult administraatoritele. Nooled muudavad järjekorda ülevalt alla. Järjestikused «Kalender» ja «Tulekul» laias ekraanil ühes reas. Järjekord on serveris; täielik redaktor — CRM-is «Saidi seaded».",
+      "hint": "Ainult administraatoritele. Redaktor: ridade lohistamine, plokkide ühendamine ja lahutamine. Järjekord serveris; koopia «Saidi seaded».",
       "moveUp": "Üles",
       "moveDown": "Alla",
+      "editor": {
+        "intro": "Lohista rida vasakul oleva käepidemega. «Ühenda järgmisega» teeb kahest üherealisest reast ühe kahe veeruga laial ekraanil (suvalised kaks blokki). «Tee kaks rida» ja «Vaheta veerge» — paaride jaoks.",
+        "dragHandle": "Lohista rida",
+        "mergeWithNext": "Ühenda järgmise reaga",
+        "splitRow": "Tee kaks rida",
+        "swapColumns": "Vaheta veerge"
+      },
       "block": {
         "calendar": "Kalender (kuupäev)",
         "upcoming": "Tulevased broneeringud",

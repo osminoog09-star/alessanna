@@ -27,16 +27,15 @@ import {
 } from "../lib/roles";
 import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow } from "../types/database";
 import {
-  DEFAULT_RECEPTION_SECTION_ORDER,
+  DEFAULT_RECEPTION_ROWS,
+  type ReceptionRows,
   type ReceptionSectionId,
-  loadReceptionSectionOrder,
-  persistReceptionSectionOrder,
+  loadReceptionLayoutRows,
+  persistReceptionLayoutRows,
 } from "../lib/receptionLayout";
-import {
-  fetchReceptionSectionOrderFromServer,
-  saveReceptionSectionOrderToServer,
-} from "../lib/receptionLayoutRemote";
-import { renderReceptionSectionOrder } from "../lib/receptionSectionOrderRender";
+import { fetchReceptionLayoutFromServer, saveReceptionLayoutToServer } from "../lib/receptionLayoutRemote";
+import { renderReceptionRows } from "../lib/receptionSectionOrderRender";
+import { ReceptionLayoutEditor } from "../components/ReceptionLayoutEditor";
 import {
   PublicBookingBookingSection,
   PublicBookingCalendarSection,
@@ -85,9 +84,9 @@ export function PublicBookingPage() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const isReceptionMode = location.pathname === "/reception";
-  const [receptionSectionOrder, setReceptionSectionOrder] = useState<ReceptionSectionId[]>([
-    ...DEFAULT_RECEPTION_SECTION_ORDER,
-  ]);
+  const [receptionRows, setReceptionRows] = useState<ReceptionRows>(() =>
+    DEFAULT_RECEPTION_ROWS.map((r) => [...r]),
+  );
   const [receptionLayoutEditing, setReceptionLayoutEditing] = useState(false);
   const [receptionRemoteSaveError, setReceptionRemoteSaveError] = useState<string | null>(null);
 
@@ -100,11 +99,11 @@ export function PublicBookingPage() {
       setLoading(false);
       return;
     }
-    const [st, lk, sc, remoteOrder] = await Promise.all([
+    const [st, lk, sc, remoteLayout] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
-      fetchReceptionSectionOrderFromServer(),
+      fetchReceptionLayoutFromServer(),
     ]);
     /* Fallback по `select(...)`: каждая ветка возвращает свой shape, поэтому
      * для TS ниже всегда `as typeof sv`. На рантайме всё равно нормализуем. */
@@ -154,11 +153,11 @@ export function PublicBookingPage() {
     }
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
     if (sc.data) setSchedules(sc.data as StaffScheduleRow[]);
-    if (remoteOrder) {
-      setReceptionSectionOrder(remoteOrder);
-      persistReceptionSectionOrder(remoteOrder);
+    if (remoteLayout) {
+      setReceptionRows(remoteLayout);
+      persistReceptionLayoutRows(remoteLayout);
     } else {
-      setReceptionSectionOrder(loadReceptionSectionOrder());
+      setReceptionRows(loadReceptionLayoutRows());
     }
     setLoading(false);
   }, []);
@@ -564,23 +563,11 @@ export function PublicBookingPage() {
     });
   }
 
-  function moveReceptionSection(index: number, delta: number) {
-    setReceptionSectionOrder((prev) => {
-      const j = index + delta;
-      if (j < 0 || j >= prev.length) return prev;
-      const next = [...prev];
-      const a = next[index]!;
-      const b = next[j]!;
-      next[index] = b;
-      next[j] = a;
-      if (location.pathname === "/reception" && isAdmin) {
-        setReceptionRemoteSaveError(null);
-        persistReceptionSectionOrder(next);
-        void saveReceptionSectionOrderToServer(next).then(({ error: saveErr }) => {
-          setReceptionRemoteSaveError(saveErr);
-        });
-      }
-      return next;
+  function persistReceptionLayoutFromReception(next: ReceptionRows) {
+    setReceptionRemoteSaveError(null);
+    persistReceptionLayoutRows(next);
+    void saveReceptionLayoutToServer(next).then(({ error: saveErr }) => {
+      setReceptionRemoteSaveError(saveErr);
     });
   }
 
@@ -660,7 +647,7 @@ export function PublicBookingPage() {
       ) : null,
   };
 
-  const mainContent = renderReceptionSectionOrder(receptionSectionOrder, receptionSections);
+  const mainContent = renderReceptionRows(receptionRows, receptionSections);
 
   return (
     <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-200 md:px-6 md:py-10">
@@ -704,15 +691,9 @@ export function PublicBookingPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const next = [...DEFAULT_RECEPTION_SECTION_ORDER];
-                    setReceptionSectionOrder(next);
-                    if (isAdmin) {
-                      setReceptionRemoteSaveError(null);
-                      persistReceptionSectionOrder(next);
-                      void saveReceptionSectionOrderToServer(next).then(({ error: saveErr }) => {
-                        setReceptionRemoteSaveError(saveErr);
-                      });
-                    }
+                    const next = DEFAULT_RECEPTION_ROWS.map((r) => [...r]);
+                    setReceptionRows(next);
+                    if (isAdmin) persistReceptionLayoutFromReception(next);
                   }}
                   className="rounded-lg border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
                 >
@@ -729,33 +710,16 @@ export function PublicBookingPage() {
               </p>
             )}
             {receptionLayoutEditing && (
-              <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-300">
-                {receptionSectionOrder.map((sid, idx) => (
-                  <li key={sid} className="marker:text-zinc-500">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span>{t(`reception.layout.block.${sid}`)}</span>
-                      <button
-                        type="button"
-                        disabled={idx === 0}
-                        onClick={() => moveReceptionSection(idx, -1)}
-                        className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800 disabled:opacity-30"
-                        aria-label={t("reception.layout.moveUp")}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        disabled={idx === receptionSectionOrder.length - 1}
-                        onClick={() => moveReceptionSection(idx, 1)}
-                        className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800 disabled:opacity-30"
-                        aria-label={t("reception.layout.moveDown")}
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+              <div className="mt-3">
+                <ReceptionLayoutEditor
+                  variant="compact"
+                  rows={receptionRows}
+                  onChange={(next) => {
+                    setReceptionRows(next);
+                    if (isReceptionMode && isAdmin) persistReceptionLayoutFromReception(next);
+                  }}
+                />
+              </div>
             )}
           </div>
         )}

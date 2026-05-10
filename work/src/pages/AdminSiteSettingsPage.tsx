@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ReceptionLayoutEditor } from "../components/ReceptionLayoutEditor";
 import { useAuth } from "../context/AuthContext";
 import {
-  DEFAULT_RECEPTION_SECTION_ORDER,
-  type ReceptionSectionId,
-  normalizeReceptionSectionOrder,
+  DEFAULT_RECEPTION_ROWS,
+  type ReceptionRows,
+  normalizeReceptionRows,
 } from "../lib/receptionLayout";
-import { saveReceptionSectionOrderToServer } from "../lib/receptionLayoutRemote";
+import { saveReceptionLayoutToServer } from "../lib/receptionLayoutRemote";
 import { supabase } from "../lib/supabase";
 
 function parseBoolSetting(v: string | null | undefined, fallback = true): boolean {
@@ -25,9 +26,9 @@ export function AdminSiteSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [siteBookingCartEnabled, setSiteBookingCartEnabled] = useState(true);
 
-  const [receptionOrder, setReceptionOrder] = useState<ReceptionSectionId[]>([
-    ...DEFAULT_RECEPTION_SECTION_ORDER,
-  ]);
+  const [receptionRows, setReceptionRows] = useState<ReceptionRows>(() =>
+    DEFAULT_RECEPTION_ROWS.map((r) => [...r]),
+  );
   const [receptionDirty, setReceptionDirty] = useState(false);
   const [receptionSaving, setReceptionSaving] = useState(false);
   const [receptionFeedback, setReceptionFeedback] = useState<{
@@ -53,12 +54,12 @@ export function AdminSiteSettingsPage() {
     setSiteBookingCartEnabled(parseBoolSetting(cartRow?.value, true));
     if (recvRow?.value) {
       try {
-        setReceptionOrder(normalizeReceptionSectionOrder(JSON.parse(recvRow.value)));
+        setReceptionRows(normalizeReceptionRows(JSON.parse(recvRow.value)));
       } catch {
-        setReceptionOrder([...DEFAULT_RECEPTION_SECTION_ORDER]);
+        setReceptionRows(DEFAULT_RECEPTION_ROWS.map((r) => [...r]));
       }
     } else {
-      setReceptionOrder([...DEFAULT_RECEPTION_SECTION_ORDER]);
+      setReceptionRows(DEFAULT_RECEPTION_ROWS.map((r) => [...r]));
     }
     setReceptionDirty(false);
     setReceptionFeedback(null);
@@ -83,26 +84,11 @@ export function AdminSiteSettingsPage() {
     setSiteBookingCartEnabled(nextEnabled);
   }
 
-  function moveReceptionBlock(index: number, delta: number) {
-    setReceptionOrder((prev) => {
-      const j = index + delta;
-      if (j < 0 || j >= prev.length) return prev;
-      const next = [...prev];
-      const a = next[index]!;
-      const b = next[j]!;
-      next[index] = b;
-      next[j] = a;
-      return next;
-    });
-    setReceptionDirty(true);
-    setReceptionFeedback(null);
-  }
-
   async function saveReceptionLayout() {
     setReceptionSaving(true);
     setReceptionFeedback(null);
     setError(null);
-    const { error: saveErr } = await saveReceptionSectionOrderToServer(receptionOrder);
+    const { error: saveErr } = await saveReceptionLayoutToServer(receptionRows);
     setReceptionSaving(false);
     if (saveErr) {
       setReceptionFeedback({
@@ -116,7 +102,7 @@ export function AdminSiteSettingsPage() {
   }
 
   function resetReceptionLayoutLocal() {
-    setReceptionOrder([...DEFAULT_RECEPTION_SECTION_ORDER]);
+    setReceptionRows(DEFAULT_RECEPTION_ROWS.map((r) => [...r]));
     setReceptionDirty(true);
     setReceptionFeedback(null);
   }
@@ -178,33 +164,18 @@ export function AdminSiteSettingsPage() {
             </p>
           )}
 
-          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-zinc-300">
-            {receptionOrder.map((sid, idx) => (
-              <li key={sid} className="marker:text-zinc-500">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span>{t(`reception.layout.block.${sid}`)}</span>
-                  <button
-                    type="button"
-                    disabled={idx === 0 || loading}
-                    onClick={() => moveReceptionBlock(idx, -1)}
-                    className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800 disabled:opacity-30"
-                    aria-label={t("reception.layout.moveUp")}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    disabled={idx === receptionOrder.length - 1 || loading}
-                    onClick={() => moveReceptionBlock(idx, 1)}
-                    className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800 disabled:opacity-30"
-                    aria-label={t("reception.layout.moveDown")}
-                  >
-                    ↓
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <div className="mt-4">
+            <ReceptionLayoutEditor
+              variant="full"
+              rows={receptionRows}
+              disabled={loading || receptionSaving}
+              onChange={(next) => {
+                setReceptionRows(next);
+                setReceptionDirty(true);
+                setReceptionFeedback(null);
+              }}
+            />
+          </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button
