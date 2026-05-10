@@ -862,6 +862,238 @@ async function startWatch(sb: ReturnType<typeof createClient>, body: Record<stri
   return json(200, { ok: true, scope, calendarId, channelId });
 }
 
+async function deleteGoogleCalendarEvent(accessToken: string, calendarId: string, eventId: string) {
+  await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+}
+
+/**
+ * Simple website flow: Google Calendar events.insert → then CRM row (no outbox).
+ * Requires master OAuth + staff.google_calendar_id.
+ */
+async function websiteBookingToGoogle(sb: ReturnType<typeof createClient>, body: Record<string, unknown>) {
+  const staffId = String(body.staffId ?? "").trim();
+  const serviceId = String(body.serviceId ?? "").trim();
+  const clientName = String(body.clientName ?? "").trim();
+  const clientPhone = body.clientPhone != null ? String(body.clientPhone).trim() : "";
+  const startTime = String(body.startTime ?? "").trim();
+  const endTime = String(body.endTime ?? "").trim();
+  const note = body.note != null ? String(body.note).trim() : "";
+
+  if (!staffId || !serviceId || !clientName || !startTime || !endTime) {
+    return json(200, {
+      ok: false,
+      error: "Missing required fields: staffId, serviceId, clientName, startTime, endTime",
+    });
+  }
+
+  const scope = `staff:${staffId}`;
+  const scopeKey = scope;
+
+  const { data: staffRow, error: staffErr } = await sb
+    .from("staff")
+    .select(
+      "id,name,is_active,google_calendar_status,google_calendar_id,calendar_email,google_calendar_account_email,google_calendar_sync_enabled",
+    )
+    .eq("id", staffId)
+    .maybeSingle();
+  if (staffErr) throw new Error(staffErr.message);
+  if (!staffRow?.id) return json(200, { ok: false, error: "Master not found" });
+  if (staffRow.is_active === false) {
+    return json(200, { ok: false, error: "This master is not accepting bookings" });
+  }
+  if (staffRow.google_calendar_sync_enabled === false) {
+    return json(200, { ok: false, error: "Google Calendar sync is disabled for this master" });
+  }
+  if (String(staffRow.google_calendar_status ?? "") !== "connected") {
+    return json(200, {
+      ok: false,
+      error: "Master Google Calendar is not connected. Complete OAuth in CRM Integrations.",
+    });
+  }
+
+  let calendarId: string;
+  try {
+    calendarId = calendarIdForScope(scope, staffRow.google_calendar_id as string | null, null);
+  } catch (e) {
+    return json(200, { ok: false, error: e instanceof Error ? e.message : String(e) });
+  }
+
+  const { data: svcRow, error: svcErr } = await sb
+    .from("service_listings")
+    .select("id,name,duration,is_active")
+    .eq("id", serviceId)
+    .maybeSingle();
+  if (svcErr) throw new Error(svcErr.message);
+  if (!svcRow?.id) return json(200, { ok: false, error: "Service not found" });
+  if (svcRow.is_active === false) return json(200, { ok: false, error: "Service is not available" });
+
+  const { data: doesSvc, error: linkErr } = await sb.rpc("public_staff_does_service", {
+    p_staff_id: staffId,
+    p_service_id: serviceId,
+  });
+  if (linkErr) throw new Error(linkErr.message);
+  if (doesSvc !== true) {
+    return json(200, { ok: false, error: "Selected master does not offer this service" });
+  }
+
+  const { data: busy, error: busyErr } = await sb.rpc("public_staff_busy_during", {
+    p_staff_id: staffId,
+    p_start: startTime,
+    p_end: endTime,
+  });
+  if (busyErr) throw new Error(busyErr.message);
+  if (busy === true) {
+    return json(200, { ok: false, error: "This time slot is no longer available" });
+  }
+
+  const accessToken = await getScopeTokens(sb, scopeKey);
+
+  const staffName = String(staffRow.name ?? "").trim();
+  const serviceName = String(svcRow.name ?? "").trim();
+  const title = `${clientName} — ${serviceName}`;
+  const description = [
+    `Client: ${clientName}`,
+    clientPhone ? `Phone: ${clientPhone}` : null,
+    `Service: ${serviceName}`,
+    note ? `Comment: ${note}` : null,
+    `Source: website`,
+    staffName ? `Master: ${staffName}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const eventPayload: Record<string, unknown> = {
+    summary: title,
+    description,
+    start: { dateTime: startTime, timeZone: "Europe/Tallinn" },
+    end: { dateTime: endTime, timeZone: "Europe/Tallinn" },
+  };
+  const staffEmail = String(
+    (staffRow.calendar_email as string | null) ?? (staffRow.google_calendar_account_email as string | null) ?? "",
+  ).trim();
+  if (staffEmail && !calendarId.toLowerCase().includes(staffEmail.toLowerCase())) {
+    eventPayload.attendees = [{ email: staffEmail }];
+  }
+
+  console.log(
+    JSON.stringify({
+      msg: "website_booking_google_insert_start",
+      staff_id: staffId,
+      calendar_id: calendarId,
+      start_time: startTime,
+      end_time: endTime,
+    }),
+  );
+
+  const gUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+  const gRes = await fetch(gUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(eventPayload),
+  });
+  const gJson = await gRes.json().catch(() => ({}));
+  const gErr = gJson && typeof gJson === "object" && "error" in gJson
+    ? (gJson as { error?: { message?: string } }).error
+    : undefined;
+  console.log(
+    JSON.stringify({
+      msg: "website_booking_google_insert_response",
+      ok: gRes.ok,
+      http_status: gRes.status,
+      event_id: (gJson as { id?: string })?.id ?? null,
+      error: gErr ?? null,
+    }),
+  );
+
+  if (!gRes.ok || !(gJson as { id?: string })?.id) {
+    const msg =
+      typeof gErr?.message === "string" ? gErr.message : JSON.stringify(gJson).slice(0, 600);
+    return json(200, { ok: false, error: `Google Calendar: ${msg}` });
+  }
+
+  const eventId = String((gJson as { id: string }).id);
+  const etag = (gJson as { etag?: string }).etag ? String((gJson as { etag: string }).etag) : null;
+
+  const { data: insRows, error: insErr } = await sb
+    .from("appointments")
+    .insert({
+      staff_id: staffId,
+      service_id: serviceId,
+      client_name: clientName,
+      client_phone: clientPhone || null,
+      start_time: startTime,
+      end_time: endTime,
+      status: "confirmed",
+      source: "public_site",
+      note: note || null,
+      google_event_id: eventId,
+      google_calendar_scope: scope,
+      google_event_etag: etag,
+      google_last_synced_at: new Date().toISOString(),
+      google_sync_source: "website",
+    })
+    .select("id")
+    .limit(1);
+
+  if (insErr || !insRows?.[0]?.id) {
+    console.log(
+      JSON.stringify({
+        msg: "website_booking_rollback_google_event",
+        event_id: eventId,
+        db_error: insErr?.message ?? "no row",
+      }),
+    );
+    await deleteGoogleCalendarEvent(accessToken, calendarId, eventId);
+    return json(200, {
+      ok: false,
+      error: insErr?.message ?? "Failed to save booking after Google event was created",
+    });
+  }
+
+  const appointmentId = String(insRows[0].id);
+
+  const { error: asErr } = await sb.from("appointment_services").insert({
+    appointment_id: appointmentId,
+    service_id: serviceId,
+    staff_id: staffId,
+    start_time: startTime,
+    end_time: endTime,
+  });
+  if (asErr) {
+    console.log(
+      JSON.stringify({
+        msg: "website_booking_rollback_after_appointment_services_failed",
+        appointment_id: appointmentId,
+        error: asErr.message,
+      }),
+    );
+    await sb.from("appointments").delete().eq("id", appointmentId);
+    await deleteGoogleCalendarEvent(accessToken, calendarId, eventId);
+    return json(200, { ok: false, error: asErr.message });
+  }
+
+  console.log(
+    JSON.stringify({
+      msg: "website_booking_complete",
+      appointment_id: appointmentId,
+      google_event_id: eventId,
+    }),
+  );
+
+  return json(200, {
+    ok: true,
+    mode: "website_booking",
+    appointmentId,
+    googleEventId: eventId,
+  });
+}
+
 async function testEvent(sb: ReturnType<typeof createClient>, body: Record<string, unknown>) {
   const scope = String(body.scope ?? "salon");
   const title = String(body.title ?? "CRM test event");
@@ -943,6 +1175,9 @@ Deno.serve(async (req: Request) => {
     }
     if (mode === "test_event") {
       return await testEvent(sb, body);
+    }
+    if (mode === "website_booking") {
+      return await websiteBookingToGoogle(sb, body);
     }
     const appointmentId = body.appointmentId ? String(body.appointmentId) : null;
     const result = await processOutbox(sb, { appointmentId });

@@ -355,20 +355,26 @@ export function BookingsPage() {
     return t("bookings.filterCancelled");
   }
 
-  function syncMeta(id: string): { label: string; tone: string; error?: string | null } | null {
-    const s = syncByAppointment[id];
-    if (!s) return null;
-    if (s.status === "pending") {
-      return { label: "sync pending", tone: "border-amber-800/60 bg-amber-950/40 text-amber-200" };
+  function syncMeta(row: AppointmentRow): { label: string; tone: string; error?: string | null } | null {
+    const s = syncByAppointment[row.id];
+    if (s) {
+      if (s.status === "pending") {
+        return { label: "sync pending", tone: "border-amber-800/60 bg-amber-950/40 text-amber-200" };
+      }
+      if (s.status === "error") {
+        return {
+          label: "sync failed",
+          tone: "border-red-800/60 bg-red-950/40 text-red-200",
+          error: s.last_error,
+        };
+      }
+      return { label: "synced", tone: "border-emerald-800/60 bg-emerald-950/40 text-emerald-200" };
     }
-    if (s.status === "error") {
-      return {
-        label: "sync failed",
-        tone: "border-red-800/60 bg-red-950/40 text-red-200",
-        error: s.last_error,
-      };
+    const src = String(row.source ?? "").toLowerCase();
+    if (src === "public_site" && row.google_event_id) {
+      return { label: "synced", tone: "border-emerald-800/60 bg-emerald-950/40 text-emerald-200" };
     }
-    return { label: "synced", tone: "border-emerald-800/60 bg-emerald-950/40 text-emerald-200" };
+    return null;
   }
 
   return (
@@ -519,7 +525,7 @@ export function BookingsPage() {
                 const em = staffNames.find((x) => x.id === b.staff_id);
                 const sv = services.find((x) => x.id === String(b.service_id));
                 const src = sourceMeta(b.source);
-                const sync = syncMeta(b.id);
+                const sync = syncMeta(b);
                 const acceptedBy = b.created_by_staff_id
                   ? staffNames.find((x) => x.id === b.created_by_staff_id)
                   : null;

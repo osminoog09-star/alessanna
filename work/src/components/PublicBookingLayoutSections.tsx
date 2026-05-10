@@ -856,6 +856,8 @@ type BookingProps = {
   setClientName: Dispatch<SetStateAction<string>>;
   clientPhone: string;
   setClientPhone: Dispatch<SetStateAction<string>>;
+  clientNote: string;
+  setClientNote: Dispatch<SetStateAction<string>>;
   booking: boolean;
   confirmBook: () => void;
   eligibleStaff: StaffMember[];
@@ -886,6 +888,8 @@ export function PublicBookingBookingSection({
   setClientName,
   clientPhone,
   setClientPhone,
+  clientNote,
+  setClientNote,
   booking,
   confirmBook,
   eligibleStaff,
@@ -1041,6 +1045,16 @@ export function PublicBookingBookingSection({
             onChange={(e) => setClientPhone(e.target.value)}
             className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm"
           />
+          <label className="block text-sm text-zinc-400">
+            Комментарий
+            <textarea
+              placeholder="Пожелания по записи (необязательно)"
+              value={clientNote}
+              onChange={(e) => setClientNote(e.target.value)}
+              rows={2}
+              className="mt-1 w-full resize-y rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600"
+            />
+          </label>
           <button
             type="button"
             disabled={booking}

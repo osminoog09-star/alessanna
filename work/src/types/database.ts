@@ -101,6 +101,7 @@ export type AppointmentRow = {
   created_by_staff_id?: string | null;
   client_id?: string | null;
   created_at?: string;
+  google_event_id?: string | null;
 };
 
 export type StaffScheduleRow = {

@@ -134,6 +134,7 @@ export function PublicBookingPage() {
   const [calendarScope, setCalendarScope] = useState<PublicCalendarScope>("month");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [clientNote, setClientNote] = useState("");
   const [pickedStart, setPickedStart] = useState<Date | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -841,64 +842,45 @@ export function PublicBookingPage() {
       return;
     }
     const end = new Date(pickedStart.getTime() + durationMin * 60 * 1000);
-    /* Колонок `source`/`notes` нет в актуальной схеме `appointments`. Отправляем
-     *  только реально существующие — иначе PostgREST вернёт ошибку schema cache. */
-    const { data: insertedRows, error } = await supabase
-      .from("appointments")
-      .insert({
-        staff_id: finalStaffId,
-        service_id: svc.id,
-        client_name: normalizedClientName || "Клиент (ресепшен)",
-        client_phone: clientPhone.trim() || null,
-        start_time: pickedStart.toISOString(),
-        end_time: end.toISOString(),
-        status: "confirmed",
-        source: "public_site",
-      })
-      .select("id")
-      .limit(1);
-    setBooking(false);
-    if (error) {
-      if (error.code === "23P01" || /overlap|занят/i.test(String(error.message || ""))) {
-        setMsg("Это время уже занято. Выберите другой слот.");
-        void loadDayData();
-        void loadCalendarRangeData();
-        return;
-      }
-      setMsg(error.message);
-      return;
-    }
-    const newAppointmentId = insertedRows?.[0]?.id != null ? String(insertedRows[0].id) : null;
+    const noteTrim = clientNote.trim();
     try {
-      const syncRes = await supabase.functions.invoke("google-calendar-sync", {
+      const { data, error: fnError } = await supabase.functions.invoke("google-calendar-sync", {
         body: {
-          mode: "drain",
-          ...(newAppointmentId ? { appointmentId: newAppointmentId } : {}),
+          mode: "website_booking",
+          staffId: finalStaffId,
+          serviceId: svc.id,
+          clientName: normalizedClientName || "Клиент",
+          clientPhone: clientPhone.trim() || "",
+          startTime: pickedStart.toISOString(),
+          endTime: end.toISOString(),
+          ...(noteTrim ? { note: noteTrim } : {}),
         },
       });
-      const syncData = (syncRes.data ?? {}) as { processed?: number; failed?: number; total?: number };
-      const processed = Number(syncData.processed ?? 0);
-      const total = Number(syncData.total ?? 0);
-      if (syncRes.error) {
-        setMsg(
-          "Запись сохранена, но sync с Google Calendar не запущен. Проверьте Integrations -> Two-way sync engine.",
-        );
-      } else if (total > 0 && processed === 0) {
-        setMsg(
-          "Запись сохранена, но в Google пока не отправлена (scope отключен или очередь с ошибкой). Проверьте Integrations и статус sync в CRM.",
-        );
-      } else {
-        setMsg(t("publicBook.success"));
+      setBooking(false);
+      if (fnError) {
+        setMsg(fnError.message || "Не удалось связаться с сервером записи.");
+        return;
       }
+      const payload = (data ?? {}) as { ok?: boolean; error?: string };
+      if (payload.ok !== true) {
+        const errText = String(payload.error ?? "Запись не создана.");
+        setMsg(errText);
+        if (/slot|занят|no longer available/i.test(errText)) {
+          void loadDayData();
+          void loadCalendarRangeData();
+        }
+        return;
+      }
+      setMsg(t("publicBook.success"));
     } catch {
-      // Never fail website booking if function invocation/network is unavailable.
-      setMsg(
-        "Запись сохранена. Sync с Google Calendar будет выполнен автоматически при восстановлении соединения.",
-      );
+      setBooking(false);
+      setMsg("Ошибка сети. Проверьте подключение и попробуйте снова.");
+      return;
     }
     setPickedStart(null);
     setClientName("");
     setClientPhone("");
+    setClientNote("");
     void loadDayData();
     void loadCalendarRangeData();
     void loadUpcomingData();
@@ -1094,6 +1076,8 @@ export function PublicBookingPage() {
           setClientName={setClientName}
           clientPhone={clientPhone}
           setClientPhone={setClientPhone}
+          clientNote={clientNote}
+          setClientNote={setClientNote}
           booking={booking}
           confirmBook={confirmBook}
           eligibleStaff={eligibleStaff}
