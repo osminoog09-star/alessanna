@@ -8,6 +8,7 @@ import {
   format,
   isSameDay,
   isSameMonth,
+  isToday,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -519,6 +520,7 @@ export function PublicBookingPage() {
   function renderDayButtons(gridDays: Date[], anchorMonth: Date, compact: boolean) {
     return gridDays.map((d) => {
       const selected = isSameDay(d, selectedDay);
+      const today = isToday(d);
       const inMonth = isSameMonth(d, anchorMonth);
       const cov = dayAvailabilityBadge.get(format(d, "yyyy-MM-dd"));
       const isWorkingDay = !!(cov && cov.working > 0);
@@ -534,23 +536,34 @@ export function PublicBookingPage() {
       const sizeClass = compact
         ? "min-h-[2.25rem] px-0.5 py-0.5 text-[10px] sm:min-h-10 sm:text-[11px]"
         : "px-2 py-2 text-xs md:min-h-[54px] md:text-sm";
+
+      let stateClass: string;
+      if (selected && today) {
+        stateClass =
+          "border-sky-500 bg-sky-950/50 text-white ring-2 ring-emerald-400/45 ring-offset-2 ring-offset-zinc-950";
+      } else if (selected) {
+        stateClass = "border-sky-500 bg-sky-950/50 text-white";
+      } else if (today) {
+        stateClass =
+          "border-emerald-500/75 bg-emerald-950/30 text-zinc-100 hover:border-emerald-400 hover:bg-emerald-950/45";
+      } else if (inMonth) {
+        stateClass = "border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-white";
+      } else {
+        stateClass = "border-zinc-900 text-zinc-600 hover:border-zinc-800";
+      }
+
       return (
         <button
           key={d.toISOString()}
           type="button"
+          aria-current={today ? "date" : undefined}
+          title={today ? t("publicBook.todayMarker") : undefined}
           onClick={() => {
             setDayStr(format(d, "yyyy-MM-dd"));
             setViewMonth(startOfMonth(d));
             setPickedStart(null);
           }}
-          className={
-            `rounded-md border transition ${sizeClass} ` +
-            (selected
-              ? "border-sky-500 bg-sky-950/50 text-white"
-              : inMonth
-                ? "border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-white"
-                : "border-zinc-900 text-zinc-600 hover:border-zinc-800")
-          }
+          className={`rounded-md border transition ${sizeClass} ${stateClass}`}
         >
           <span className="block">{format(d, "d")}</span>
           {inMonth && cov && (

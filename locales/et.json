@@ -258,6 +258,7 @@
     "yearView": "Aasta",
     "yearHint": "Kogu aasta kuud: roheline — palju vabu meistreid, kollane — vähe, punane — vabu aegu pole. Klõpsa päeval ja vali aeg allpool.",
     "day": "Kuupäev",
+    "todayMarker": "Täna",
     "slots": "Vabad ajad",
     "noSlots": "Sellel päeval vabu aegu pole.",
     "confirm": "Broneeri",
