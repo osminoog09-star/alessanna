@@ -35,7 +35,7 @@
   var mobileBookLink = mobileBar ? mobileBar.querySelector("a") : null;
   var reduceMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
   /** Совпадает с ссылками tel: в index.html */
-  var SALON_BOOKING_PHONE_DISPLAY = "+372 439 8384";
+  var SALON_BOOKING_PHONE_DISPLAY = "+372 529 8225";
 
   /* ─── Toast (замена window.alert) ──────────────────────────────────────
    * Минималистичный аналог alert() для подтверждения записи и ошибок.

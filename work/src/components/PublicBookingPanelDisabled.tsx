@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-const SALON_PHONE_E164 = "+3724398384";
-const SALON_PHONE_DISPLAY = "+372 439 8384";
+const SALON_PHONE_E164 = "+3725298225";
+const SALON_PHONE_DISPLAY = "+372 529 8225";
 
 /** Страницы `/book` и `/book/simple`, когда панель выключена в CRM. */
 export function PublicBookingPanelDisabled() {
