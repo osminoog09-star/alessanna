@@ -35,6 +35,13 @@
       "accessDenied": "Juurdepääs keelatud"
     }
   },
+  "siteSettings": {
+    "receptionLayoutTitle": "Broneeringu plokkide järjekord",
+    "receptionLayoutSubtitle": "Sama järjekord avalikul broneeringu lehel ja vastuvõtu ekraanil (/reception). Salvestatakse serverisse.",
+    "saveReceptionLayout": "Salvesta serverisse",
+    "receptionLayoutSaved": "Järjekord salvestatud",
+    "receptionLayoutSaveError": "Salvestamine ebaõnnestus: {{message}}"
+  },
   "nav": {
     "dashboard": "Töölaud",
     "calendar": "Kalender",
@@ -270,7 +277,7 @@
       "edit": "Kohanda blokke",
       "done": "Valmis",
       "reset": "Vaikimisi",
-      "hint": "Paneel on nähtav ainult administraatoritele (vaja CRM seanssi selles brauseris). Nooled muudavad järjekorda ülevalt alla. Järjestikused «Kalender» ja «Tulekul» jäävad laias ekraanil ühte ritta. Seaded salvestuvad seadmes kohapeal.",
+      "hint": "Ainult administraatoritele. Nooled muudavad järjekorda ülevalt alla. Järjestikused «Kalender» ja «Tulekul» laias ekraanil ühes reas. Järjekord on serveris; täielik redaktor — CRM-is «Saidi seaded».",
       "moveUp": "Üles",
       "moveDown": "Alla",
       "block": {

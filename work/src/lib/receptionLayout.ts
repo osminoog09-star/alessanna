@@ -1,4 +1,7 @@
-/** Порядок блоков на странице ресепшена (/reception). Хранится в localStorage на устройстве. */
+/**
+ * Порядок блоков страницы записи (/book) и ресепшена (/reception).
+ * Источник истины — salon_settings.reception_section_order; localStorage — кэш офлайн.
+ */
 
 export const RECEPTION_LAYOUT_STORAGE_KEY = "alesanna-reception-section-order-v1";
 

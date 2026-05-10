@@ -32,6 +32,10 @@ import {
   loadReceptionSectionOrder,
   persistReceptionSectionOrder,
 } from "../lib/receptionLayout";
+import {
+  fetchReceptionSectionOrderFromServer,
+  saveReceptionSectionOrderToServer,
+} from "../lib/receptionLayoutRemote";
 import { renderReceptionSectionOrder } from "../lib/receptionSectionOrderRender";
 import {
   PublicBookingBookingSection,
@@ -85,11 +89,7 @@ export function PublicBookingPage() {
     ...DEFAULT_RECEPTION_SECTION_ORDER,
   ]);
   const [receptionLayoutEditing, setReceptionLayoutEditing] = useState(false);
-
-  useEffect(() => {
-    if (location.pathname !== "/reception") return;
-    setReceptionSectionOrder(loadReceptionSectionOrder());
-  }, [location.pathname]);
+  const [receptionRemoteSaveError, setReceptionRemoteSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) setReceptionLayoutEditing(false);
@@ -100,10 +100,11 @@ export function PublicBookingPage() {
       setLoading(false);
       return;
     }
-    const [st, lk, sc] = await Promise.all([
+    const [st, lk, sc, remoteOrder] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
+      fetchReceptionSectionOrderFromServer(),
     ]);
     /* Fallback по `select(...)`: каждая ветка возвращает свой shape, поэтому
      * для TS ниже всегда `as typeof sv`. На рантайме всё равно нормализуем. */
@@ -153,6 +154,12 @@ export function PublicBookingPage() {
     }
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
     if (sc.data) setSchedules(sc.data as StaffScheduleRow[]);
+    if (remoteOrder) {
+      setReceptionSectionOrder(remoteOrder);
+      persistReceptionSectionOrder(remoteOrder);
+    } else {
+      setReceptionSectionOrder(loadReceptionSectionOrder());
+    }
     setLoading(false);
   }, []);
 
@@ -566,7 +573,13 @@ export function PublicBookingPage() {
       const b = next[j]!;
       next[index] = b;
       next[j] = a;
-      if (location.pathname === "/reception" && isAdmin) persistReceptionSectionOrder(next);
+      if (location.pathname === "/reception" && isAdmin) {
+        setReceptionRemoteSaveError(null);
+        persistReceptionSectionOrder(next);
+        void saveReceptionSectionOrderToServer(next).then(({ error: saveErr }) => {
+          setReceptionRemoteSaveError(saveErr);
+        });
+      }
       return next;
     });
   }
@@ -647,10 +660,7 @@ export function PublicBookingPage() {
       ) : null,
   };
 
-  const mainContent = renderReceptionSectionOrder(
-    isReceptionMode ? receptionSectionOrder : DEFAULT_RECEPTION_SECTION_ORDER,
-    receptionSections,
-  );
+  const mainContent = renderReceptionSectionOrder(receptionSectionOrder, receptionSections);
 
   return (
     <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-200 md:px-6 md:py-10">
@@ -696,7 +706,13 @@ export function PublicBookingPage() {
                   onClick={() => {
                     const next = [...DEFAULT_RECEPTION_SECTION_ORDER];
                     setReceptionSectionOrder(next);
-                    if (isAdmin) persistReceptionSectionOrder(next);
+                    if (isAdmin) {
+                      setReceptionRemoteSaveError(null);
+                      persistReceptionSectionOrder(next);
+                      void saveReceptionSectionOrderToServer(next).then(({ error: saveErr }) => {
+                        setReceptionRemoteSaveError(saveErr);
+                      });
+                    }
                   }}
                   className="rounded-lg border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
                 >
@@ -706,6 +722,11 @@ export function PublicBookingPage() {
             </div>
             {receptionLayoutEditing && (
               <p className="mt-2 text-xs text-zinc-500">{t("reception.layout.hint")}</p>
+            )}
+            {receptionRemoteSaveError && (
+              <p className="mt-2 text-xs text-rose-400">
+                {t("siteSettings.receptionLayoutSaveError", { message: receptionRemoteSaveError })}
+              </p>
             )}
             {receptionLayoutEditing && (
               <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-300">
