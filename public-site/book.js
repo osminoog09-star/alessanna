@@ -103,25 +103,12 @@ function buildSlots(day, staffId, durationMin) {
   return slots;
 }
 
-function parsePublicBookingPanelEnabled(v) {
-  const raw = String(v ?? "").trim().toLowerCase();
-  if (raw === "false" || raw === "0" || raw === "no" || raw === "off") return false;
-  return true;
-}
-
 async function load() {
   if (!supabase) return;
-  const { data: panelRow, error: panelErr } = await supabase
-    .from("salon_settings")
-    .select("value")
-    .eq("key", "public_booking_panel_enabled")
-    .maybeSingle();
-  if (!panelErr && !parsePublicBookingPanelEnabled(panelRow?.value)) {
+  const { data: panelOn, error: panelErr } = await supabase.rpc("public_site_booking_panel_enabled");
+  if (!panelErr && panelOn === false) {
     const root = document.querySelector("main") || document.body;
-    if (root) {
-      root.innerHTML =
-        "<p class=\"muted\" style=\"padding:2rem;text-align:center;max-width:28rem;margin:0 auto;\">Online broneering on ajutiselt kinni. Võtke salongiga telefoni teel ühendust või kirjutage meile.</p>";
-    }
+    if (root) root.innerHTML = "";
     return;
   }
   try {

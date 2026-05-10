@@ -390,42 +390,93 @@
     return fallback;
   }
 
+  function applyBookingPanelDomVisibility(panelEnabled) {
+    var el = document.getElementById("broneeri");
+    if (el) {
+      el.classList.remove("booking-panel--awaiting-flag");
+      if (panelEnabled) {
+        el.classList.remove("booking-panel--off");
+        el.removeAttribute("hidden");
+        el.setAttribute("aria-hidden", "false");
+        el.style.removeProperty("display");
+      } else {
+        el.classList.add("booking-panel--off");
+        el.setAttribute("hidden", "");
+        el.setAttribute("aria-hidden", "true");
+        el.style.display = "none";
+      }
+    }
+    document.querySelectorAll('a[href="#broneeri"]').forEach(function (a) {
+      a.hidden = !panelEnabled;
+      a.setAttribute("aria-hidden", panelEnabled ? "false" : "true");
+      if (!panelEnabled) {
+        a.setAttribute("tabindex", "-1");
+      } else {
+        a.removeAttribute("tabindex");
+      }
+    });
+    if (mobileBar) {
+      if (!panelEnabled) {
+        mobileBar.hidden = true;
+        mobileBar.setAttribute("aria-hidden", "true");
+      } else {
+        mobileBar.hidden = false;
+        mobileBar.setAttribute("aria-hidden", "false");
+      }
+    }
+  }
+
   function loadSalonSitePublicFeatureFlags() {
     if (salonSitePublicFlagsPromise) return salonSitePublicFlagsPromise;
     var cfg = getSalonSupabaseAnonCfg();
     if (!cfg.url || !cfg.key) {
-      salonSitePublicFlagsPromise = Promise.resolve({ cart: true, bookingPanel: true });
+      salonSitePublicFlagsPromise = Promise.resolve({ cart: true, bookingPanel: true }).then(function (flags) {
+        applyBookingPanelDomVisibility(true);
+        return flags;
+      });
       return salonSitePublicFlagsPromise;
     }
-    salonSitePublicFlagsPromise = fetch(
-      cfg.url +
-        "/rest/v1/salon_settings?select=key,value&key=in.(site_booking_cart_enabled,public_booking_panel_enabled)",
-      {
+    salonSitePublicFlagsPromise = Promise.all([
+      fetch(
+        cfg.url + "/rest/v1/salon_settings?select=key,value&key=eq.site_booking_cart_enabled&limit=1",
+        {
+          headers: {
+            apikey: cfg.key,
+            Authorization: "Bearer " + cfg.key,
+          },
+        }
+      ).then(function (r) {
+        if (!r.ok) throw new Error("settings-cart");
+        return r.json();
+      }),
+      fetch(cfg.url + "/rest/v1/rpc/public_site_booking_panel_enabled", {
+        method: "POST",
         headers: {
           apikey: cfg.key,
           Authorization: "Bearer " + cfg.key,
+          "Content-Type": "application/json",
         },
-      }
-    )
-      .then(function (r) {
-        if (!r.ok) throw new Error("settings-http");
+        body: "{}",
+      }).then(function (r) {
+        if (!r.ok) throw new Error("rpc-panel");
         return r.json();
-      })
-      .then(function (rows) {
+      }),
+    ])
+      .then(function (pair) {
+        var cartRows = pair[0];
+        var panelJson = pair[1];
         var cart = true;
-        var panel = true;
-        if (rows && rows.length) {
-          for (var i = 0; i < rows.length; i++) {
-            var row = rows[i];
-            if (row.key === "site_booking_cart_enabled") cart = parseSalonSiteBoolSetting(row.value, true);
-            if (row.key === "public_booking_panel_enabled") panel = parseSalonSiteBoolSetting(row.value, true);
-          }
+        if (cartRows && cartRows[0] && cartRows[0].value != null) {
+          cart = parseSalonSiteBoolSetting(cartRows[0].value, true);
         }
+        var panel = panelJson !== false;
         salonPublicBookingPanelEnabled = panel;
+        applyBookingPanelDomVisibility(panel);
         return { cart: cart, bookingPanel: panel };
       })
       .catch(function () {
         salonPublicBookingPanelEnabled = true;
+        applyBookingPanelDomVisibility(true);
         return { cart: true, bookingPanel: true };
       });
     return salonSitePublicFlagsPromise;
@@ -2030,8 +2081,6 @@
   if (bookingSection && gridEl && titleEl && prevBtn && nextBtn && masterSelect && dateInput && timeSelect && bookingForm && serviceSelectEl) {
     void loadSalonSitePublicFeatureFlags().then(function () {
       if (!salonPublicBookingPanelEnabled) {
-        bookingSection.hidden = true;
-        if (mobileBar) mobileBar.hidden = true;
         return;
       }
     /* Язык: <html lang> с /ru /et /fi /en + подписи календаря и mailto */

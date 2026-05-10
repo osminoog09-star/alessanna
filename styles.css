@@ -2086,6 +2086,12 @@ body.selection-dock-active.selection-dock-panel-collapsed #main {
 }
 
 /* ---------- Бронирование + календарь ---------- */
+/* До ответа API панель скрыта — нет «мигания» выключенной записи */
+#broneeri.booking-panel--awaiting-flag,
+#broneeri.booking-panel--off {
+  display: none !important;
+}
+
 .section--booking {
   border-top: 1px solid var(--line);
 }
