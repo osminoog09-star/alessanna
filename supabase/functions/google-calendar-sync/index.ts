@@ -34,6 +34,7 @@ type AppointmentSnapshot = Record<string, unknown> & {
   google_event_id: string | null;
   staff_name?: string | null;
   staff_calendar_email?: string | null;
+  staff_google_account_email?: string | null;
   service_name?: string | null;
   service_duration_min?: number | null;
 };
@@ -122,7 +123,7 @@ async function loadAppointmentSnapshot(
   const [staffRes, serviceRes] = await Promise.all([
     sb
       .from("staff")
-      .select("name,calendar_email")
+      .select("name,calendar_email,google_calendar_account_email")
       .eq("id", row.staff_id)
       .maybeSingle(),
     sb
@@ -133,6 +134,8 @@ async function loadAppointmentSnapshot(
   ]);
   row.staff_name = (staffRes.data?.name as string | undefined) ?? null;
   row.staff_calendar_email = (staffRes.data?.calendar_email as string | undefined) ?? null;
+  row.staff_google_account_email =
+    (staffRes.data?.google_calendar_account_email as string | undefined) ?? null;
   row.service_name = (serviceRes.data?.name as string | undefined) ?? null;
   row.service_duration_min =
     serviceRes.data?.duration != null ? Number(serviceRes.data.duration) : null;
@@ -154,7 +157,10 @@ async function upsertGoogleEvent(
   const phone = String(payload.client_phone ?? "");
   const note = String(payload.note ?? "");
   const source = String(payload.source ?? "");
-  const staffEmail = String(payload.staff_calendar_email ?? "").trim();
+  const targetScope = String(payload.target_scope ?? "");
+  const staffEmail = String(
+    payload.staff_calendar_email ?? payload.staff_google_account_email ?? "",
+  ).trim();
   const operation = String(payload.operation ?? "upsert");
 
   if (operation === "delete" && existingEventId) {
@@ -168,12 +174,16 @@ async function upsertGoogleEvent(
     return { eventId: existingEventId, etag: null };
   }
 
-  const title = serviceName ? `${name} — ${serviceName}` : name;
+  const baseTitle = serviceName ? `${name} — ${serviceName}` : name;
+  const assignmentTag =
+    targetScope === "salon" && staffName ? ` [${staffName}]` : "";
+  const title = `${baseTitle}${assignmentTag}`;
   const body: Record<string, unknown> = {
     summary: title,
     description: [
       serviceName ? `Service: ${serviceName}` : null,
       staffName ? `Master: ${staffName}` : null,
+      targetScope === "salon" && staffName ? `Assigned via salon calendar: ${staffName}` : null,
       phone ? `Phone: ${phone}` : null,
       durationMin > 0 ? `Duration: ${durationMin} min` : null,
       source ? `Source: ${source}` : null,
@@ -183,6 +193,14 @@ async function upsertGoogleEvent(
       .join("\n"),
     start: { dateTime: start },
     end: { dateTime: end },
+    extendedProperties: {
+      private: {
+        assigned_master_name: staffName || "",
+        assigned_master_email: staffEmail || "",
+        routing_scope: targetScope || "",
+        sync_source: source || "",
+      },
+    },
   };
   if (staffEmail && !calendarId.includes(staffEmail)) {
     body.attendees = [{ email: staffEmail }];
@@ -318,7 +336,9 @@ async function processOutbox(sb: ReturnType<typeof createClient>) {
       if (!payload.appointment_id && row.appointment_id) payload.appointment_id = row.appointment_id;
       const appointmentId = String(payload.appointment_id ?? "");
       const snapshot = appointmentId ? await loadAppointmentSnapshot(sb, appointmentId) : null;
-      const sourcePayload = snapshot ? { ...payload, ...snapshot } : payload;
+      const sourcePayload = snapshot
+        ? { ...payload, ...snapshot, target_scope: scope }
+        : { ...payload, target_scope: scope };
 
       let existingEventId = (sourcePayload.google_event_id as string | undefined) ?? null;
       if (!existingEventId && appointmentId) {
@@ -482,7 +502,7 @@ async function incrementalPullScope(
 
   const { data: staffRows } = await sb
     .from("staff")
-    .select("id,name,calendar_email,google_calendar_id,is_active")
+    .select("id,name,calendar_email,google_calendar_account_email,google_calendar_id,is_active")
     .eq("is_active", true);
   const { data: serviceRows } = await sb
     .from("service_listings")
@@ -538,7 +558,7 @@ async function incrementalPullScope(
         const email = String(a.email ?? "").toLowerCase();
         const matched = (staffRows ?? []).find(
           (s: Record<string, unknown>) =>
-            String(s.calendar_email ?? "").toLowerCase() === email,
+            String(s.calendar_email ?? s.google_calendar_account_email ?? "").toLowerCase() === email,
         );
         if (matched?.id) {
           staffId = String(matched.id);

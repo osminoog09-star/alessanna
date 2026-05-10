@@ -23,7 +23,7 @@ import type { AppointmentRow } from "../types/database";
 
 type StaffName = { id: string; name: string };
 type ServiceName = { id: string; name: string };
-type SyncStatus = { status: "pending" | "sent" | "error"; last_error: string | null };
+type SyncStatus = { status: "pending" | "sent" | "error" | "skipped"; last_error: string | null };
 
 type StatusFilter = "all" | "active" | "pending" | "confirmed" | "cancelled";
 type SourceSort = "none" | "asc" | "desc";
@@ -81,7 +81,7 @@ export function BookingsPage() {
           .from("notifications_outbox")
           .select("appointment_id,status,last_error,created_at")
           .eq("kind", "google_calendar_event")
-          .in("status", ["pending", "sent", "error"])
+          .in("status", ["pending", "sent", "error", "skipped"])
           .order("created_at", { ascending: false })
           .limit(1500),
       ]);
@@ -104,7 +104,7 @@ export function BookingsPage() {
         const map: Record<string, SyncStatus> = {};
         for (const r of outbox.data as Array<{
           appointment_id: string | null;
-          status: "pending" | "sent" | "error";
+          status: "pending" | "sent" | "error" | "skipped";
           last_error: string | null;
         }>) {
           if (!r.appointment_id) continue;
@@ -312,6 +312,13 @@ export function BookingsPage() {
         label: "sync failed",
         tone: "border-red-800/60 bg-red-950/40 text-red-200",
         error: s.last_error,
+      };
+    }
+    if (s.status === "skipped") {
+      return {
+        label: "sync skipped",
+        tone: "border-zinc-700 bg-zinc-900 text-zinc-300",
+        error: s.last_error ?? "Google calendar is disconnected for this scope.",
       };
     }
     return { label: "synced", tone: "border-emerald-800/60 bg-emerald-950/40 text-emerald-200" };

@@ -865,9 +865,16 @@ export function PublicBookingPage() {
       return;
     }
     const syncRes = await supabase.functions.invoke("google-calendar-sync", { body: { mode: "drain" } });
+    const syncData = (syncRes.data ?? {}) as { processed?: number; failed?: number; total?: number };
+    const processed = Number(syncData.processed ?? 0);
+    const total = Number(syncData.total ?? 0);
     if (syncRes.error) {
       setMsg(
         "Запись сохранена, но sync с Google Calendar не запущен. Проверьте Integrations -> Two-way sync engine.",
+      );
+    } else if (total > 0 && processed === 0) {
+      setMsg(
+        "Запись сохранена, но в Google пока не отправлена (scope отключен или очередь с ошибкой). Проверьте Integrations и статус sync в CRM.",
       );
     } else {
       setMsg(t("publicBook.success"));
