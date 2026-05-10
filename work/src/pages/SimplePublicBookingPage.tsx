@@ -19,6 +19,8 @@ import {
   staffEligibleForService,
 } from "../lib/roles";
 import type { AppointmentRow, StaffMember, StaffScheduleRow, StaffServiceRow } from "../types/database";
+import { fetchPublicBookingPanelEnabled } from "../lib/salonSettingsParse";
+import { PublicBookingPanelDisabled } from "../components/PublicBookingPanelDisabled";
 
 type PublicService = {
   id: string;
@@ -63,8 +65,8 @@ export function SimplePublicBookingPage() {
       setLoading(false);
       return;
     }
-    const { data: panelOn, error: panelRpcErr } = await supabase.rpc("public_site_booking_panel_enabled");
-    if (!panelRpcErr && panelOn === false) {
+    const panelOn = await fetchPublicBookingPanelEnabled(supabase);
+    if (!panelOn) {
       setBookingPanelDisabledByAdmin(true);
       setLoading(false);
       return;
@@ -284,7 +286,7 @@ export function SimplePublicBookingPage() {
   }
 
   if (bookingPanelDisabledByAdmin) {
-    return <div className="min-h-screen bg-zinc-950" aria-hidden="true" />;
+    return <PublicBookingPanelDisabled />;
   }
 
   return (

@@ -333,7 +333,11 @@
     "confirm": "Broneeri",
     "fillAll": "Lisa nimi ja vali aeg.",
     "success": "Broneering loodud!",
-    "successPriceDisclaimer": "Hinnakirja summa on orientiir: lõplik hind võib sõltuda töö mahust, ajast, materjalikulust ja täpsustustest kohapeal. Täpse hinna lepime kokku broneeringu kinnitamisel või pärast konsultatsiooni meistriga."
+    "successPriceDisclaimer": "Hinnakirja summa on orientiir: lõplik hind võib sõltuda töö mahust, ajast, materjalikulust ja täpsustustest kohapeal. Täpse hinna lepime kokku broneeringu kinnitamisel või pärast konsultatsiooni meistriga.",
+    "panelDisabledTitle": "Veebibroneering pole hetkel saadaval",
+    "panelDisabledP1": "Salong on ajutiselt selle lehe vormi välja lülitanud. Broneerida saate siiski teistmoodi.",
+    "panelDisabledP2": "Tulge Härma keskusesse (Tallinna mnt 70, Pärnu) või helistage — number on ka kodulehe jaluses.",
+    "panelDisabledBackHome": "Avalehele"
   },
   "quickBook": {
     "openTabletFlow": "Kiire broneering (tahvel)",

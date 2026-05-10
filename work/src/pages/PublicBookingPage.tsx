@@ -63,6 +63,8 @@ import {
   CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY,
   parseStaffIdJsonList,
 } from "../lib/calendarWorkingStaff";
+import { fetchPublicBookingPanelEnabled } from "../lib/salonSettingsParse";
+import { PublicBookingPanelDisabled } from "../components/PublicBookingPanelDisabled";
 import { fetchReceptionLayoutFromServer } from "../lib/receptionLayoutRemote";
 import { renderReceptionRows } from "../lib/receptionSectionOrderRender";
 import {
@@ -161,8 +163,8 @@ export function PublicBookingPage() {
       setLoading(false);
       return;
     }
-    const { data: panelOn, error: panelRpcErr } = await supabase.rpc("public_site_booking_panel_enabled");
-    if (!panelRpcErr && panelOn === false) {
+    const panelOn = await fetchPublicBookingPanelEnabled(supabase);
+    if (!panelOn) {
       setBookingPanelDisabledByAdmin(true);
       setLoading(false);
       return;
@@ -1010,9 +1012,8 @@ export function PublicBookingPage() {
     );
   }
 
-  /* Панель выключена в CRM — маршрут остаётся, контента нет (как «полностью пропала»). */
   if (bookingPanelDisabledByAdmin) {
-    return <div className="min-h-screen bg-zinc-950" aria-hidden="true" />;
+    return <PublicBookingPanelDisabled />;
   }
 
   const receptionSections: Record<ReceptionSectionId, ReactNode | null> = {
