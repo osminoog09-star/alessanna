@@ -18,6 +18,24 @@ type OutboxRow = {
   attempts: number;
 };
 
+type AppointmentSnapshot = Record<string, unknown> & {
+  id: string;
+  staff_id: string;
+  service_id: string | number;
+  client_name: string;
+  client_phone: string | null;
+  start_time: string;
+  end_time: string;
+  status: string;
+  note: string | null;
+  source: string | null;
+  google_event_id: string | null;
+  staff_name?: string | null;
+  staff_calendar_email?: string | null;
+  service_name?: string | null;
+  service_duration_min?: number | null;
+};
+
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -86,14 +104,37 @@ async function getScopeTokens(sb: ReturnType<typeof createClient>, scope: string
   return refreshed.accessToken;
 }
 
-async function loadAppointmentSnapshot(sb: ReturnType<typeof createClient>, appointmentId: string) {
+async function loadAppointmentSnapshot(
+  sb: ReturnType<typeof createClient>,
+  appointmentId: string,
+): Promise<AppointmentSnapshot | null> {
   const { data, error } = await sb
     .from("appointments")
-    .select("id,staff_id,service_id,client_name,client_phone,start_time,end_time,status,note,google_event_id")
+    .select("id,staff_id,service_id,client_name,client_phone,start_time,end_time,status,note,source,google_event_id")
     .eq("id", appointmentId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data as Record<string, unknown> | null;
+  if (!data) return null;
+
+  const row = data as AppointmentSnapshot;
+  const [staffRes, serviceRes] = await Promise.all([
+    sb
+      .from("staff")
+      .select("name,calendar_email")
+      .eq("id", row.staff_id)
+      .maybeSingle(),
+    sb
+      .from("service_listings")
+      .select("name,duration")
+      .eq("id", row.service_id)
+      .maybeSingle(),
+  ]);
+  row.staff_name = (staffRes.data?.name as string | undefined) ?? null;
+  row.staff_calendar_email = (staffRes.data?.calendar_email as string | undefined) ?? null;
+  row.service_name = (serviceRes.data?.name as string | undefined) ?? null;
+  row.service_duration_min =
+    serviceRes.data?.duration != null ? Number(serviceRes.data.duration) : null;
+  return row;
 }
 
 async function upsertGoogleEvent(
@@ -105,8 +146,13 @@ async function upsertGoogleEvent(
   const start = String(payload.start_time ?? "");
   const end = String(payload.end_time ?? "");
   const name = String(payload.client_name ?? "Клиент");
+  const serviceName = String(payload.service_name ?? "").trim();
+  const staffName = String(payload.staff_name ?? "").trim();
+  const durationMin = Number(payload.service_duration_min ?? 0);
   const phone = String(payload.client_phone ?? "");
   const note = String(payload.note ?? "");
+  const source = String(payload.source ?? "");
+  const staffEmail = String(payload.staff_calendar_email ?? "").trim();
   const operation = String(payload.operation ?? "upsert");
 
   if (operation === "delete" && existingEventId) {
@@ -120,14 +166,25 @@ async function upsertGoogleEvent(
     return { eventId: existingEventId, etag: null };
   }
 
-  const body = {
-    summary: name,
-    description: [phone ? `Phone: ${phone}` : null, note ? `Note: ${note}` : null]
+  const title = serviceName ? `${name} — ${serviceName}` : name;
+  const body: Record<string, unknown> = {
+    summary: title,
+    description: [
+      serviceName ? `Service: ${serviceName}` : null,
+      staffName ? `Master: ${staffName}` : null,
+      phone ? `Phone: ${phone}` : null,
+      durationMin > 0 ? `Duration: ${durationMin} min` : null,
+      source ? `Source: ${source}` : null,
+      note ? `Note: ${note}` : null,
+    ]
       .filter(Boolean)
       .join("\n"),
     start: { dateTime: start },
     end: { dateTime: end },
   };
+  if (staffEmail && !calendarId.includes(staffEmail)) {
+    body.attendees = [{ email: staffEmail }];
+  }
   const hasId = !!existingEventId;
   const url = hasId
     ? `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(existingEventId)}`
@@ -149,6 +206,36 @@ async function upsertGoogleEvent(
     eventId: String(jsonBody.id),
     etag: jsonBody.etag ? String(jsonBody.etag) : null,
   };
+}
+
+async function hasGoogleConflict(
+  accessToken: string,
+  calendarId: string,
+  startIso: string,
+  endIso: string,
+  ignoreEventId: string | null,
+): Promise<boolean> {
+  const qs = new URLSearchParams({
+    singleEvents: "true",
+    showDeleted: "false",
+    timeMin: startIso,
+    timeMax: endIso,
+    maxResults: "10",
+  });
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${qs.toString()}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Google availability check failed (${res.status})`);
+  const events = Array.isArray(body.items) ? (body.items as Array<Record<string, unknown>>) : [];
+  return events.some((e) => {
+    const eid = String(e.id ?? "");
+    const status = String(e.status ?? "");
+    if (!eid || status === "cancelled") return false;
+    if (ignoreEventId && eid === ignoreEventId) return false;
+    return true;
+  });
 }
 
 async function processOutbox(sb: ReturnType<typeof createClient>) {
@@ -206,6 +293,22 @@ async function processOutbox(sb: ReturnType<typeof createClient>) {
           .eq("appointment_id", appointmentId)
           .maybeSingle();
         existingEventId = (linkRow?.google_event_id as string | undefined) ?? null;
+      }
+
+      const op = String(sourcePayload.operation ?? "upsert");
+      const startIso = String(sourcePayload.start_time ?? "");
+      const endIso = String(sourcePayload.end_time ?? "");
+      if (op !== "delete" && startIso && endIso) {
+        const conflict = await hasGoogleConflict(
+          accessToken,
+          calendarId,
+          startIso,
+          endIso,
+          existingEventId,
+        );
+        if (conflict) {
+          throw new Error("Google calendar conflict: target slot is already occupied.");
+        }
       }
 
       const up = await upsertGoogleEvent(accessToken, calendarId, sourcePayload, existingEventId);
