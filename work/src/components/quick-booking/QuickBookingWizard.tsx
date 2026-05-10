@@ -32,6 +32,8 @@ import {
 import { resolveClientIdForVisit } from "../../lib/clientLink";
 import { useQuickBookingResources } from "../../hooks/useQuickBookingResources";
 import { buildQuickCategories } from "./buildQuickCategories";
+import { QuickBookingSchedulePanel } from "./QuickBookingSchedulePanel";
+import { ServiceListPicker } from "../service-picker/ServiceListPicker";
 import type { AppointmentRow, StaffMember } from "../../types/database";
 
 const ANY_MASTER_ID = "any";
@@ -80,6 +82,7 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     nowTick,
     loadDayData,
     eligibleStaffForService,
+    mastersPanelStaff,
   } = useQuickBookingResources();
 
   const [history, setHistory] = useState<WizardStep[]>(["intro"]);
@@ -148,6 +151,18 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     return services.filter((s) => idset.has(s.id) && s.active);
   }, [selectedCategory, services]);
 
+  const quickServicePickRows = useMemo(
+    () =>
+      categoryServices.map((s) => ({
+        id: s.id,
+        name: s.name,
+        durationMin: s.duration_min,
+        priceEur: s.priceEur,
+        categoryName: selectedCategory?.title ?? null,
+      })),
+    [categoryServices, selectedCategory?.title],
+  );
+
   const svc = useMemo(() => services.find((s) => s.id === serviceId) ?? null, [services, serviceId]);
 
   const durationMin = svc ? svc.duration_min + svc.buffer_after_min : 60;
@@ -156,6 +171,14 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     () => (serviceId ? eligibleStaffForService(serviceId) : []),
     [eligibleStaffForService, serviceId],
   );
+
+  /** Нижняя панель: все мастера ресепшена до выбора услуги; после — только по услуге. */
+  const panelRowStaff = useMemo(
+    () => (serviceId ? eligibleStaff : mastersPanelStaff),
+    [eligibleStaff, mastersPanelStaff, serviceId],
+  );
+
+  const panelDurationMin = svc ? durationMin : 60;
 
   const eligibleStaffIdsKey = useMemo(() => eligibleStaff.map((m) => m.id).sort().join(","), [eligibleStaff]);
 
@@ -233,12 +256,6 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
       cancelled = true;
     };
   }, [step, timeMode, svc?.id, monthStart, eligibleStaffIdsKey, eligibleStaff.length]);
-
-  useEffect(() => {
-    if (step === "schedule" && timeMode === "pick_day") {
-      userPickedCalendarDayRef.current = false;
-    }
-  }, [step, timeMode]);
 
   const scheduleBaseParams = useMemo(
     () => ({
@@ -318,6 +335,12 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     }
     return Array.from(byStart.values()).sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [allSlotsByStaff, staffId, svc]);
+
+  /** Пока месяц для «выбрать день» ещё грузится — не рисуем сетку (без данных не бывает «все занято» из пустого списка аппоинтов). */
+  const scheduleDisplaySlotsSafe = useMemo(() => {
+    if (step === "schedule" && timeMode === "pick_day" && !rangeReady) return [];
+    return scheduleDisplaySlots;
+  }, [step, timeMode, rangeReady, scheduleDisplaySlots]);
 
   const earliestAcrossMastersSlot = useMemo(() => {
     let best: Slot | null = null;
@@ -399,8 +422,9 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
       const first = firstFreeSlotOnDay(slots, nowTick);
       if (first) {
         setPickedStart((prev) => (prev?.getTime() === first.start.getTime() ? prev : first.start));
+        return;
       }
-      return;
+      /* День помечен как «есть окна», но ближайший слот не найден (например все окна уже в прошлом) — ищем следующий день. */
     }
 
     const found = findFirstQuickBookableYmd({
@@ -427,6 +451,49 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     scheduleBaseParams,
     svc,
     eligibleStaff.length,
+  ]);
+
+  /**
+   * «Ближайшее время»: после догрузки записей пересчитываем слот; если выбранное время перестало быть свободным — снова ближайшее.
+   * Если на текущем дне окон нет — переключаемся на выбор дня с автопоиском первого свободного.
+   */
+  useEffect(() => {
+    if (step !== "schedule" || timeMode !== "soonest" || !svc || eligibleStaff.length === 0) return;
+
+    const best = soonestForMasterMode;
+    if (!best) {
+      setTimeMode("pick_day");
+      setPickedStart(null);
+      setMsg(t("quickBook.noSlotsTodayPickDay"));
+      return;
+    }
+
+    const ymd = normalizePublicBookingDayStr(salonYmdFromAnyDate(best.start));
+    if (ymd !== bookYmdNorm) {
+      setBookYmd(ymd);
+    }
+
+    setPickedStart((prev) => {
+      if (prev == null) return best.start;
+      const stillOk = scheduleDisplaySlots.some(
+        (s) =>
+          s.start.getTime() === prev.getTime() &&
+          s.available &&
+          s.start.getTime() >= nowTick,
+      );
+      return stillOk ? prev : best.start;
+    });
+  }, [
+    step,
+    timeMode,
+    svc,
+    eligibleStaff.length,
+    soonestForMasterMode,
+    scheduleDisplaySlots,
+    nowTick,
+    bookYmdNorm,
+    setBookYmd,
+    t,
   ]);
 
   /** Фиксированные фазы: один экран — одна «ступень» прогресса (без скачков в середину). */
@@ -474,20 +541,39 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     return () => window.clearTimeout(h);
   }, [clientQuery]);
 
+  const onPanelPickSlot = useCallback(
+    (p: { ymd: string; staffId: string; start: Date }) => {
+      if (!svc) return;
+      userPickedCalendarDayRef.current = true;
+      setMsg(null);
+      setBookYmd(normalizePublicBookingDayStr(p.ymd));
+      setStaffId(p.staffId);
+      setMasterMode("specific");
+      setTimeMode("pick_day");
+      setPickedStart(p.start);
+      setHistory(["intro", "category", "service", "masterMode", "masterPick", "timeMode", "schedule"]);
+      void loadDayData();
+    },
+    [loadDayData, setBookYmd, svc],
+  );
+
   const applyNearest = useCallback(() => {
     if (!svc) return;
     if (!soonestForMasterMode) {
       setTimeMode("pick_day");
       setPickedStart(null);
+      userPickedCalendarDayRef.current = false;
       push("schedule");
       setMsg(t("quickBook.noSlotsTodayPickDay"));
       return;
     }
     setStaffId(ANY_MASTER_ID);
-    setPickedStart(soonestForMasterMode.start);
+    const start = soonestForMasterMode.start;
+    setPickedStart(start);
+    setBookYmd(normalizePublicBookingDayStr(salonYmdFromAnyDate(start)));
     setTimeMode("soonest");
     push("schedule");
-  }, [push, soonestForMasterMode, svc, t]);
+  }, [push, soonestForMasterMode, svc, t, setBookYmd]);
 
   const confirmBook = useCallback(async () => {
     if (!svc || !pickedStart) {
@@ -591,7 +677,7 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-3 pb-16 pt-6 sm:px-4">
+    <div className="mx-auto w-full max-w-5xl px-3 pb-8 pt-6 sm:px-4 xl:max-w-7xl">
       <header className="mb-6 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -679,24 +765,21 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
       {step === "service" && selectedCategory && (
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold text-white">{t("quickBook.pickService")}</h2>
-          <div className="grid gap-3">
-            {categoryServices.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  setServiceId(s.id);
-                  push("masterMode");
-                }}
-                className="flex min-h-[64px] flex-col items-start justify-center rounded-2xl border border-white/10 bg-white/[0.07] px-5 py-4 text-left backdrop-blur-md transition hover:border-violet-400/35"
-              >
-                <span className="text-xl font-semibold text-white">{s.name}</span>
-                <span className="mt-1 text-base text-zinc-400">
-                  {s.duration_min} {t("quickBook.min")} ·{" "}
-                  {s.priceEur != null ? `€${s.priceEur}` : t("quickBook.priceOnConfirm")}
-                </span>
-              </button>
-            ))}
+          <div className="rounded-2xl border border-white/10 bg-black/25 p-3 backdrop-blur-md sm:p-4">
+            <ServiceListPicker
+              items={quickServicePickRows}
+              selectedId={serviceId ?? ""}
+              onSelect={(id) => {
+                setServiceId(id);
+                push("masterMode");
+              }}
+              t={t}
+              storageKey="quick_book_service_pick_v1"
+              groupByCategory={false}
+              priceUnknownLabel={t("quickBook.priceOnConfirm")}
+              minLabel={t("quickBook.min")}
+              listMaxClassName="max-h-[min(56vh,520px)]"
+            />
           </div>
         </div>
       )}
@@ -774,7 +857,9 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
             onClick={() => {
               setTimeMode("soonest");
               if (soonestForMasterMode) {
-                setPickedStart(soonestForMasterMode.start);
+                const start = soonestForMasterMode.start;
+                setPickedStart(start);
+                setBookYmd(normalizePublicBookingDayStr(salonYmdFromAnyDate(start)));
                 if (masterMode === "any") setStaffId(ANY_MASTER_ID);
               } else setPickedStart(null);
               push("schedule");
@@ -788,6 +873,7 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
             onClick={() => {
               setTimeMode("pick_day");
               setPickedStart(null);
+              userPickedCalendarDayRef.current = false;
               push("schedule");
             }}
             className={bigBtnClass()}
@@ -950,10 +1036,12 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
                 : t("quickBook.schedulePanelTitleSoonest")}
             </p>
             <div className="grid max-h-[50vh] gap-2 overflow-y-auto sm:grid-cols-2">
-            {scheduleDisplaySlots.length === 0 ? (
+            {timeMode === "pick_day" && !rangeReady ? (
+              <p className="col-span-full py-6 text-center text-lg text-zinc-500">{t("common.loading")}</p>
+            ) : scheduleDisplaySlotsSafe.length === 0 ? (
               <p className="text-lg text-zinc-500">{t("quickBook.noSlotsThisDay")}</p>
             ) : (
-              scheduleDisplaySlots.map((s) => {
+              scheduleDisplaySlotsSafe.map((s) => {
                 const sel = pickedStart?.getTime() === s.start.getTime();
                 const isPast = s.start.getTime() < nowTick;
                 const clickable = s.available && !isPast;
@@ -1128,6 +1216,20 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
           </div>
         </div>
       )}
+
+      <QuickBookingSchedulePanel
+        t={t}
+        i18n={i18n}
+        schedules={schedules}
+        nowTick={nowTick}
+        firstBookableYmd={firstBookableYmd}
+        rowStaff={panelRowStaff}
+        durationMin={panelDurationMin}
+        canApplySlot={!!svc && panelRowStaff.length > 0}
+        highlightYmd={bookYmdNorm}
+        onPickSlot={onPanelPickSlot}
+        onNeedServiceFirst={() => setMsg(t("quickBook.panelNeedServiceFirst"))}
+      />
     </div>
   );
 }

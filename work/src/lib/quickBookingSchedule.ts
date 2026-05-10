@@ -137,6 +137,36 @@ export function firstFreeSlotOnDay(
   return null;
 }
 
+/** Статистика слотов одного мастера за день (для панели расписания Quick Booking). */
+export function quickBookSlotStatsForMasterDay(params: {
+  ymd: string;
+  master: StaffMember;
+  schedules: StaffScheduleRow[];
+  appointments: AppointmentRow[];
+  timeOff: QuickBookTimeOffRow[];
+  durationMin: number;
+  nowTick: number;
+  anyMasterToken: string;
+}): { workingSlots: number; freeFuture: number; isClosed: boolean } {
+  const slots = slotsForQuickBookSalonDay({
+    ymd: params.ymd,
+    eligibleStaff: [params.master],
+    schedules: params.schedules,
+    appointments: params.appointments,
+    timeOff: params.timeOff,
+    durationMin: params.durationMin,
+    staffId: params.master.id,
+    anyMasterToken: params.anyMasterToken,
+  });
+  if (slots.length === 0) {
+    return { workingSlots: 0, freeFuture: 0, isClosed: true };
+  }
+  const freeFuture = slots.filter(
+    (s) => s.available && s.start.getTime() >= params.nowTick,
+  ).length;
+  return { workingSlots: slots.length, freeFuture, isClosed: false };
+}
+
 /** Сканировать ymd подряд от firstBookable, максимум maxDays. */
 export function findFirstQuickBookableYmd(params: {
   firstBookableYmd: string;

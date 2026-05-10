@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { GuestHelpPanel } from "./GuestHelpPanel";
 
 /**
  * Личная техподдержка для сотрудника салона.
@@ -99,7 +101,19 @@ function statusTone(status: Status): string {
 
 export function MyHelpPage() {
   const { t } = useTranslation();
-  const { staffMember } = useAuth();
+  const { staffMember, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+        {t("common.loading")}
+      </div>
+    );
+  }
+
+  if (!staffMember) {
+    return <GuestHelpPanel />;
+  }
 
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -289,7 +303,15 @@ export function MyHelpPage() {
   const visibleThreads = useMemo(() => threads, [threads]);
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] max-w-[1200px] flex-col gap-3 text-zinc-200">
+    <div className="mx-auto flex min-h-screen max-w-[1200px] flex-col gap-3 px-4 py-6 text-zinc-200 md:px-6">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Link
+          to="/"
+          className="inline-flex min-h-[40px] items-center rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 text-sm text-sky-300 hover:border-zinc-500"
+        >
+          ← {t("nav.backToCrm")}
+        </Link>
+      </div>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{t("myHelp.pageTitle")}</h1>

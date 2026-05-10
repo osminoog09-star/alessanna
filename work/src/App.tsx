@@ -48,6 +48,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/help" element={<MyHelpPage />} />
       <Route path="/book" element={<PublicBookingPage />} />
       <Route path="/reception" element={<PublicBookingPage />} />
       <Route path="/quick-booking" element={<QuickBookingPage />} />
@@ -151,7 +152,6 @@ export default function App() {
             </RequireManage>
           }
         />
-        <Route path="help" element={<MyHelpPage />} />
         <Route path="profile/security" element={<ProfileSecurityPage />} />
         <Route path="services" element={<Navigate to="/admin/services" replace />} />
       </Route>

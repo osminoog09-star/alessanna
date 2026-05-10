@@ -5,8 +5,8 @@ import { supabase } from "../lib/supabase";
 import type { StaffMember, StaffServiceRow, ServiceRow } from "../types/database";
 import { staffEligibleForService, servicesEligibleForStaff } from "../lib/roles";
 import { restrictAndOrderStaffByServiceHall, serviceRowToPublicCatalogEntry } from "../lib/publicMasterPanel";
-import { eurFromCents } from "../lib/format";
 import { overlapsExistingAppointments } from "../lib/slots";
+import { ServiceListPicker } from "./service-picker/ServiceListPicker";
 
 type Props = {
   open: boolean;
@@ -72,6 +72,18 @@ export function BookingModal({
       mastersHallFullPanel,
     );
   }, [staffList, links, serviceId, services, mastersHallSplit, mastersHallFullPanel]);
+
+  const modalServiceRows = useMemo(
+    () =>
+      eligibleServices.map((s) => ({
+        id: String(s.id),
+        name: s.name_et,
+        durationMin: s.duration_min,
+        priceEur: Number.isFinite(s.price_cents) ? s.price_cents / 100 : null,
+        categoryName: s.category,
+      })),
+    [eligibleServices],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -202,49 +214,25 @@ export function BookingModal({
         <form onSubmit={submit} className="mt-4 space-y-3">
           <div>
             <label className="text-xs text-zinc-500">{t("modal.service")}</label>
-            {eligibleServices.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {eligibleServices.slice(0, 8).map((s) => {
-                  const active = s.id === serviceId;
-                  return (
-                    <button
-                      key={`quick-${s.id}`}
-                      type="button"
-                      onClick={() => setServiceId(s.id)}
-                      className={`rounded-md border px-2 py-1 text-[11px] transition ${
-                        active
-                          ? "border-sky-500 bg-sky-950/50 text-sky-100"
-                          : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-zinc-500"
-                      }`}
-                    >
-                      {s.name_et}
-                    </button>
-                  );
-                })}
+            {eligibleServices.length > 0 ? (
+              <div className="mt-2 rounded-xl border border-zinc-800 bg-black/40 p-2">
+                <ServiceListPicker
+                  items={modalServiceRows}
+                  selectedId={String(serviceId)}
+                  onSelect={(id) => {
+                    const row = eligibleServices.find((s) => String(s.id) === id);
+                    if (row) setServiceId(row.id);
+                  }}
+                  t={t}
+                  storageKey="crm_booking_modal_service_v1"
+                  groupByCategory
+                  priceUnknownLabel={t("quickBook.priceOnConfirm")}
+                  minLabel={t("quickBook.min")}
+                  listMaxClassName="max-h-[min(40vh,320px)]"
+                  compact
+                />
               </div>
-            )}
-            <select
-              value={serviceId || ""}
-              onChange={(e) => {
-                /* UUID-id (service_listings) → строкой; bigint-id (services) → числом. */
-                const v = e.target.value;
-                const n = Number(v);
-                setServiceId(Number.isFinite(n) && String(n) === v ? n : v);
-              }}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
-              disabled={!eligibleServices.length}
-            >
-              {eligibleServices.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name_et} · {eurFromCents(s.price_cents)}
-                </option>
-              ))}
-            </select>
-            {!eligibleServices.length && (
-              /* Раньше тут просто был пустой dropdown — ни клиент, ни менеджер
-               *  не понимали, что делать. Показываем явное сообщение со ссылкой
-               *  на источник проблемы (нет привязок мастер↔услуга в /admin/staff
-               *  или нет активных услуг в /admin/services). */
+            ) : (
               <p className="mt-1 text-xs text-amber-500/90">{t("modal.noServices")}</p>
             )}
           </div>

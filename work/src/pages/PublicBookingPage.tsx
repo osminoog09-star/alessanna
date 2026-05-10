@@ -83,6 +83,7 @@ type PublicService = {
   buffer_after_min: number;
   active: boolean;
   categoryName: string | null;
+  price_eur: number | null;
 };
 
 const ANY_MASTER_ID = "any";
@@ -185,13 +186,19 @@ export function PublicBookingPage() {
      * для TS ниже всегда `as typeof sv`. На рантайме всё равно нормализуем. */
     let sv = await supabase
       .from("service_listings")
-      .select("id,name,duration,buffer_after_min,is_active,category_id,service_categories(name)")
+      .select("id,name,duration,buffer_after_min,is_active,category_id,price,service_categories(name)")
       .order("name");
     if (sv.error) {
       sv = (await supabase
         .from("service_listings")
-        .select("id,name,duration,buffer_after_min,is_active")
+        .select("id,name,duration,buffer_after_min,is_active,price")
         .order("name")) as typeof sv;
+      if (sv.error) {
+        sv = (await supabase
+          .from("service_listings")
+          .select("id,name,duration,buffer_after_min,is_active")
+          .order("name")) as typeof sv;
+      }
       if (sv.error) {
         sv = (await supabase
           .from("service_listings")
@@ -218,10 +225,14 @@ export function PublicBookingPage() {
         duration?: number;
         buffer_after_min?: number;
         is_active?: boolean;
+        price?: number | null;
         service_categories?: { name?: string | null } | null;
       };
       const normalized = (sv.data as SvRow[]).map((s) => {
         const catName = String(s.service_categories?.name || "").trim();
+        const priceRaw = s.price;
+        const price_eur =
+          priceRaw != null && Number.isFinite(Number(priceRaw)) ? Number(priceRaw) : null;
         return {
           id: String(s.id),
           name: String(s.name || "").trim(),
@@ -229,6 +240,7 @@ export function PublicBookingPage() {
           buffer_after_min: Number(s.buffer_after_min ?? 10),
           active: s.is_active !== false,
           categoryName: catName || null,
+          price_eur,
         };
       });
       setServices(normalized);
@@ -1111,7 +1123,7 @@ export function PublicBookingPage() {
           </Link>
           {isReceptionMode && !staffMember && (
             <Link
-              to="/login?next=/help"
+              to="/help"
               className="inline-block text-sm font-medium text-violet-300 hover:text-violet-200"
             >
               {t("publicBook.receptionSupportLoginCta")}

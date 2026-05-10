@@ -22,7 +22,7 @@ export function QuickBookingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-zinc-950 to-black text-zinc-100">
       <div className="border-b border-white/5 bg-black/20 px-3 py-3 backdrop-blur-md sm:px-4">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
           <Link
             to="/reception"
             className="min-h-[48px] rounded-xl px-3 py-3 text-base text-sky-300 hover:text-sky-200"

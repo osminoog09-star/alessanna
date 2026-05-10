@@ -23,6 +23,13 @@ import type {
   ReceptionUpcomingContentWidth,
 } from "../lib/receptionLayout";
 import type { PublicCalendarScope } from "../lib/publicCalendarRange";
+import {
+  gregorianAddDays,
+  SALON_TIME_ZONE,
+  salonCalendarYmd,
+  salonDayStartUtc,
+  salonYmdFromAnyDate,
+} from "../lib/bookingSalonTz";
 import type { StaffCalendarColor } from "../lib/staffCalendarColors";
 import { resolveStaffPublicCalendarLook, resolveStaffPublicPastelCard } from "../lib/staffCalendarColors";
 import { formatSlotRange, type Slot } from "../lib/slots";
@@ -32,8 +39,16 @@ import {
   CalendarStaffLegend,
   PublicCalendarWeekAgenda,
 } from "./PublicCalendarAgendaViews";
+import { ServiceListPicker, type ServicePickRow } from "./service-picker/ServiceListPicker";
 
-type PublicServiceMini = { id: string; name: string; active: boolean };
+export type PublicServiceMini = {
+  id: string;
+  name: string;
+  active: boolean;
+  duration_min: number;
+  categoryName?: string | null;
+  price_eur?: number | null;
+};
 
 const WEEKDAY_MON_FIRST = ["1", "2", "3", "4", "5", "6", "0"] as const;
 
@@ -292,14 +307,67 @@ function upcomingSectionPadding(d: ReceptionUpcomingDensity | undefined): string
   }
 }
 
-function upcomingCardClass(d: ReceptionUpcomingDensity | undefined): string {
+function salonTimeHm(iso: string, locale: string): string {
+  return new Date(iso).toLocaleTimeString(locale, {
+    timeZone: SALON_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+}
+
+function upcomingRowTimeClass(d: ReceptionUpcomingDensity | undefined): string {
   switch (d) {
     case "comfortable":
-      return "rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2.5 text-sm text-zinc-300";
+      return "text-lg font-semibold tabular-nums tracking-tight text-white sm:text-xl";
     case "dense":
-      return "rounded-md border border-zinc-800/90 bg-zinc-950/70 px-2 py-1.5 text-[11px] leading-snug text-zinc-300";
+      return "text-sm font-semibold tabular-nums text-white";
     default:
-      return "rounded-lg border border-zinc-800 bg-zinc-950/70 px-2.5 py-1.5 text-xs text-zinc-300";
+      return "text-base font-semibold tabular-nums tracking-tight text-white sm:text-[17px]";
+  }
+}
+
+function upcomingRowServiceClass(d: ReceptionUpcomingDensity | undefined): string {
+  switch (d) {
+    case "comfortable":
+      return "text-[15px] font-semibold leading-snug text-zinc-100 sm:text-base";
+    case "dense":
+      return "text-[11px] font-semibold leading-snug text-zinc-100";
+    default:
+      return "text-sm font-semibold leading-snug text-zinc-100";
+  }
+}
+
+function upcomingRowMetaClass(d: ReceptionUpcomingDensity | undefined): string {
+  switch (d) {
+    case "comfortable":
+      return "mt-1.5 text-[13px]";
+    case "dense":
+      return "mt-0.5 text-[10px] leading-snug";
+    default:
+      return "mt-1 text-xs";
+  }
+}
+
+function upcomingRowPadY(d: ReceptionUpcomingDensity | undefined): string {
+  switch (d) {
+    case "comfortable":
+      return "py-3";
+    case "dense":
+      return "py-1.5";
+    default:
+      return "py-2";
+  }
+}
+
+function upcomingTimeColClass(d: ReceptionUpcomingDensity | undefined): string {
+  switch (d) {
+    case "comfortable":
+      return "w-[4.75rem] px-2.5 sm:w-[5.25rem] sm:px-3";
+    case "dense":
+      return "w-[3.75rem] px-1.5";
+    default:
+      return "w-[4.25rem] px-2 sm:w-[4.75rem]";
   }
 }
 
@@ -338,6 +406,42 @@ export function PublicBookingUpcomingSection({
     return receptionUpcoming.filter((a) => a.staff_id === upcomingStaffFilter);
   }, [receptionUpcoming, upcomingStaffFilter]);
 
+  const sortedFilteredUpcoming = useMemo(() => {
+    return [...filteredUpcoming].sort((a, b) =>
+      String(a.start_time || "").localeCompare(String(b.start_time || "")),
+    );
+  }, [filteredUpcoming]);
+
+  const groupedUpcomingByDay = useMemo(() => {
+    const groups: { ymd: string; items: AppointmentRow[] }[] = [];
+    for (const ap of sortedFilteredUpcoming) {
+      const ymd = ap.start_time ? salonYmdFromAnyDate(new Date(ap.start_time)) : "";
+      const prev = groups[groups.length - 1];
+      if (!prev || prev.ymd !== ymd) {
+        groups.push({ ymd, items: [ap] });
+      } else {
+        prev.items.push(ap);
+      }
+    }
+    return groups;
+  }, [sortedFilteredUpcoming]);
+
+  const salonTodayYmd = salonCalendarYmd();
+  const salonTomorrowYmd = gregorianAddDays(salonTodayYmd, 1);
+
+  const daySectionTitle = (ymd: string): string => {
+    if (!ymd) return "—";
+    if (ymd === salonTodayYmd) return t("publicBook.todayMarker");
+    if (ymd === salonTomorrowYmd) return t("publicBook.upcomingDayTomorrow");
+    const anchor = salonDayStartUtc(ymd);
+    return anchor.toLocaleDateString(i18n.language, {
+      timeZone: SALON_TIME_ZONE,
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  };
+
   const widthCls =
     contentWidth === "full"
       ? "w-full"
@@ -358,9 +462,14 @@ export function PublicBookingUpcomingSection({
       className={`rounded-xl border border-zinc-800 bg-black/30 ${upcomingSectionPadding(density)} ${widthCls}`}
     >
       <h2 className="text-sm font-semibold text-white">{t("publicBook.upcomingWorksTitle")}</h2>
-      <p className="mt-1 text-xs text-zinc-500">{t("publicBook.upcomingWorksHint")}</p>
-      <p className="mt-2 text-xs text-zinc-500">{t("publicBook.upcomingWorksFilterHint")}</p>
-      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+        {t("publicBook.upcomingWorksHint")}
+        <span className="mx-1.5 text-zinc-700" aria-hidden="true">
+          ·
+        </span>
+        {t("publicBook.upcomingWorksFilterHint")}
+      </p>
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
         <button
           type="button"
           className={tabBtn(upcomingStaffFilter === "all")}
@@ -399,47 +508,119 @@ export function PublicBookingUpcomingSection({
           );
         })}
       </div>
-      <div className={density === "dense" ? "mt-2 space-y-1.5" : "mt-2.5 space-y-2"}>
+      <div
+        className={`mt-3 ${density === "dense" ? "max-h-[min(28rem,65vh)]" : "max-h-[min(32rem,70vh)]"} overflow-y-auto overflow-x-hidden rounded-lg border border-zinc-800/40 bg-zinc-950/20 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]`}
+      >
         {filteredUpcoming.length > 0 ? (
-          filteredUpcoming.map((ap) => {
-            const master = staffById.get(ap.staff_id);
-            const svcName = services.find((s) => String(s.id) === String(ap.service_id))?.name || "—";
-            const look = resolveStaffPublicCalendarLook(ap.staff_id, staffById, staffColorAssignments);
-            const cardBase = upcomingCardClass(density);
-            const cardExtra =
-              look.kind === "google"
-                ? " pl-0"
-                : ` pl-0 ${look.palette.strip}`;
-            const cardStyle: CSSProperties | undefined =
-              look.kind === "google"
-                ? {
-                    borderLeftWidth: 4,
-                    borderLeftStyle: "solid",
-                    borderLeftColor: look.bg,
-                    backgroundColor: look.soft,
-                  }
-                : undefined;
-            return (
-              <div key={ap.id} className={`${cardBase}${cardExtra}`} style={cardStyle}>
-                <div className={`font-medium pl-2 ${look.kind === "palette" ? look.palette.text : "text-zinc-100"}`}>
-                  {ap.start_time
-                    ? new Date(ap.start_time).toLocaleString(i18n.language, {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "—"}
+          <div className={density === "dense" ? "space-y-3 p-1.5" : "space-y-4 p-2"}>
+            {groupedUpcomingByDay.map(({ ymd, items }) => (
+              <div key={ymd || "undated"} className="space-y-2">
+                <div className="sticky top-0 z-[1] flex items-baseline justify-between gap-2 border-b border-zinc-800/70 bg-zinc-950/90 px-1 py-1.5 backdrop-blur-md">
+                  <span className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                    {daySectionTitle(ymd)}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-[11px] text-zinc-600">{items.length}</span>
                 </div>
-                <div
-                  className={`mt-0.5 pl-2 ${look.kind === "palette" ? look.palette.text : "text-zinc-200"} opacity-90`}
-                >
-                  {master?.name || "—"} · {svcName}
-                </div>
-                <div className="mt-0.5 pl-2 text-zinc-500">{ap.client_name || ap.note || "—"}</div>
+                <ul className="space-y-2">
+                  {items.map((ap) => {
+                    const master = staffById.get(ap.staff_id);
+                    const masterName = master?.name?.trim() || "";
+                    const svcName =
+                      services.find((s) => String(s.id) === String(ap.service_id))?.name || "—";
+                    const look = resolveStaffPublicCalendarLook(
+                      ap.staff_id,
+                      staffById,
+                      staffColorAssignments,
+                    );
+                    const rawClientName = ap.client_name?.trim() || "";
+                    const rawNote = ap.note?.trim() || "";
+                    const nameDuplicatesMaster =
+                      !!masterName &&
+                      !!rawClientName &&
+                      rawClientName.toLowerCase() === masterName.toLowerCase();
+                    const showMasterChip = upcomingStaffFilter === "all";
+                    const showClientName = !!rawClientName && !(nameDuplicatesMaster && showMasterChip);
+                    const noteAsideFromName =
+                      !!rawNote &&
+                      (!rawClientName || rawNote.toLowerCase() !== rawClientName.toLowerCase());
+                    const showNoteOnly = !rawClientName && !!rawNote;
+
+                    const stripClass =
+                      look.kind === "google" ? "" : `${look.palette.strip} border-y border-r border-zinc-800/80`;
+                    const cardStyle: CSSProperties | undefined =
+                      look.kind === "google"
+                        ? {
+                            borderLeftWidth: 4,
+                            borderLeftStyle: "solid",
+                            borderLeftColor: look.bg,
+                            backgroundColor: look.soft,
+                          }
+                        : undefined;
+
+                    const hm = ap.start_time ? salonTimeHm(ap.start_time, i18n.language) : "—";
+
+                    return (
+                      <li key={ap.id} className="list-none">
+                        <div
+                          className={`flex min-h-0 overflow-hidden rounded-xl border border-zinc-800/85 bg-gradient-to-r from-zinc-950/90 to-zinc-950/70 shadow-[0_1px_0_rgba(255,255,255,0.04)] ${stripClass}`}
+                          style={cardStyle}
+                        >
+                          <div
+                            className={`flex shrink-0 flex-col items-center justify-center border-r border-zinc-800/70 bg-black/30 ${upcomingTimeColClass(density)} ${upcomingRowPadY(density)}`}
+                          >
+                            <span className={upcomingRowTimeClass(density)}>{hm}</span>
+                          </div>
+                          <div className={`min-w-0 flex-1 pl-3 pr-3 ${upcomingRowPadY(density)}`}>
+                            <p className={`${upcomingRowServiceClass(density)} line-clamp-2`}>{svcName}</p>
+                            <div
+                              className={`${upcomingRowMetaClass(density)} flex flex-wrap items-center gap-x-2 gap-y-1 text-zinc-500`}
+                            >
+                              {showMasterChip && masterName ? (
+                                <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-zinc-700/50 bg-zinc-900/50 px-1.5 py-0.5 font-medium text-zinc-300">
+                                  {look.kind === "google" ? (
+                                    <span
+                                      className="h-2 w-2 shrink-0 rounded-full ring-1 ring-zinc-600"
+                                      style={{ backgroundColor: look.bg }}
+                                      aria-hidden
+                                    />
+                                  ) : (
+                                    <span
+                                      className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-zinc-600 ${look.palette.dot}`}
+                                      aria-hidden
+                                    />
+                                  )}
+                                  <span className="min-w-0 truncate">{masterName}</span>
+                                </span>
+                              ) : null}
+                              {showClientName ? (
+                                <span className="min-w-0 text-zinc-400">
+                                  <span className="font-normal text-zinc-600">
+                                    {t("publicBook.upcomingClientLabel")}
+                                  </span>{" "}
+                                  <span className="font-medium text-zinc-300">{rawClientName}</span>
+                                  {noteAsideFromName ? (
+                                    <span className="mt-0.5 block font-normal text-zinc-500">
+                                      · {rawNote}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              ) : showNoteOnly ? (
+                                <span className="line-clamp-2 text-zinc-400">{rawNote}</span>
+                              ) : noteAsideFromName && !showClientName ? (
+                                <span className="line-clamp-2 text-zinc-400">{rawNote}</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-            );
-          })
+            ))}
+          </div>
         ) : (
-          <p className="text-xs text-zinc-600">
+          <p className="p-3 text-xs text-zinc-600">
             {receptionUpcoming.length === 0
               ? t("publicBook.upcomingWorksEmpty")
               : t("publicBook.upcomingWorksEmptyForMaster")}
@@ -718,39 +899,50 @@ export function PublicBookingBookingSection({
   }
   const showStarInOption = masterHasLinks && !listIsFiltered;
 
+  const servicePickRows: ServicePickRow[] = useMemo(
+    () =>
+      selectServices.map((s) => ({
+        id: s.id,
+        name: s.name,
+        durationMin: s.duration_min,
+        priceEur: s.price_eur ?? null,
+        categoryName: s.categoryName ?? null,
+      })),
+    [selectServices],
+  );
+
   return (
     <div className="space-y-4">
-      <label className="block text-sm">
-        <span className="text-zinc-400">{t("modal.service")}</span>
-        <select
-          value={serviceId}
-          onChange={(e) => {
-            setServiceId(e.target.value ? String(e.target.value) : null);
-            setStaffId(ANY_MASTER_ID);
-            setPickedStart(null);
-          }}
-          className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white md:py-2.5"
-        >
-          <option value="">{t("modal.pickService")}</option>
-          {selectServices.map((s) => {
-            const mark = showStarInOption && highlightServiceIds.has(s.id);
-            return (
-              <option key={s.id} value={s.id}>
-                {mark ? `★ ${s.name}` : s.name}
-              </option>
-            );
-          })}
-        </select>
+      <div className="block">
+        <span className="text-sm text-zinc-400">{t("modal.service")}</span>
+        <div className="mt-2 rounded-2xl border border-white/10 bg-black/30 p-3 shadow-inner backdrop-blur-sm md:p-4">
+          <ServiceListPicker
+            items={servicePickRows}
+            selectedId={serviceId}
+            onSelect={(id) => {
+              setServiceId(id);
+              setStaffId(ANY_MASTER_ID);
+              setPickedStart(null);
+            }}
+            t={t}
+            storageKey="reception_service_pick_v1"
+            markedIds={showStarInOption ? highlightServiceIds : undefined}
+            groupByCategory
+            priceUnknownLabel={t("quickBook.priceOnConfirm")}
+            minLabel={t("quickBook.min")}
+            listMaxClassName="max-h-[min(52vh,480px)]"
+          />
+        </div>
         {listIsFiltered && (
-          <p className="mt-1 text-xs text-emerald-400/85">{t("publicBook.masterServicesFiltered")}</p>
+          <p className="mt-2 text-xs text-emerald-400/85">{t("publicBook.masterServicesFiltered")}</p>
         )}
         {masterHasLinks && !listIsFiltered && (
-          <p className="mt-1 text-xs text-emerald-400/85">{t("publicBook.masterServicesMarked")}</p>
+          <p className="mt-2 text-xs text-emerald-400/85">{t("publicBook.masterServicesMarked")}</p>
         )}
         {panelServiceIds.size > 0 && !masterChosen && (
-          <p className="mt-1 text-xs text-zinc-500">{t("publicBook.servicesLimitedToPanel")}</p>
+          <p className="mt-2 text-xs text-zinc-500">{t("publicBook.servicesLimitedToPanel")}</p>
         )}
-      </label>
+      </div>
 
       <div>
         <p className="text-sm text-zinc-400">{t("publicBook.slots")}</p>
