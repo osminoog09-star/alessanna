@@ -178,9 +178,11 @@ async function upsertGoogleEvent(
   const assignmentTag =
     targetScope === "salon" && staffName ? ` [${staffName}]` : "";
   const title = `${baseTitle}${assignmentTag}`;
+  const bookingId = String(payload.appointment_id ?? "");
   const body: Record<string, unknown> = {
     summary: title,
     description: [
+      bookingId ? `Booking ID: ${bookingId}` : null,
       serviceName ? `Service: ${serviceName}` : null,
       staffName ? `Master: ${staffName}` : null,
       targetScope === "salon" && staffName ? `Assigned via salon calendar: ${staffName}` : null,
@@ -191,8 +193,8 @@ async function upsertGoogleEvent(
     ]
       .filter(Boolean)
       .join("\n"),
-    start: { dateTime: start },
-    end: { dateTime: end },
+    start: { dateTime: start, timeZone: "Europe/Tallinn" },
+    end: { dateTime: end, timeZone: "Europe/Tallinn" },
     extendedProperties: {
       private: {
         assigned_master_name: staffName || "",
@@ -258,7 +260,10 @@ async function hasGoogleConflict(
   });
 }
 
-async function processOutbox(sb: ReturnType<typeof createClient>) {
+async function processOutbox(
+  sb: ReturnType<typeof createClient>,
+  opts?: { appointmentId?: string | null },
+) {
   const { data: settingsRows } = await sb
     .from("salon_settings")
     .select("key,value")
@@ -277,7 +282,9 @@ async function processOutbox(sb: ReturnType<typeof createClient>) {
   if (error) throw new Error(error.message);
 
   const now = Date.now();
+  const onlyAppointment = opts?.appointmentId ? String(opts.appointmentId) : "";
   const outboxRows = ((rows ?? []) as OutboxRow[]).filter((row) => {
+    if (onlyAppointment && String(row.appointment_id ?? "") !== onlyAppointment) return false;
     if (row.status === "pending") return true;
     // automatic retry queue for failed deliveries (max 6 attempts, progressive backoff)
     if (row.attempts >= 6) return false;
@@ -323,6 +330,17 @@ async function processOutbox(sb: ReturnType<typeof createClient>) {
       const calendarId = detectScopeCalendarId(scope, staffCalendarId, salonCalendarId);
       console.log(
         JSON.stringify({
+          msg: "sync_master_resolved",
+          outbox_id: row.id,
+          staff_id: staffId,
+          staff_calendar_id: staffCalendarId,
+        }),
+      );
+      if (!calendarId || calendarId === "primary") {
+        throw new Error(`Missing calendarId for scope ${scope}`);
+      }
+      console.log(
+        JSON.stringify({
           msg: "sync_calendar_selected",
           outbox_id: row.id,
           scope,
@@ -330,7 +348,9 @@ async function processOutbox(sb: ReturnType<typeof createClient>) {
           calendar_id: calendarId,
         }),
       );
+      console.log(JSON.stringify({ msg: "sync_auth_check_started", outbox_id: row.id, scope_key: scopeKey }));
       const accessToken = await getScopeTokens(sb, scopeKey);
+      console.log(JSON.stringify({ msg: "sync_auth_check_ok", outbox_id: row.id, scope_key: scopeKey }));
 
       const payload = { ...(row.payload ?? {}) };
       if (!payload.appointment_id && row.appointment_id) payload.appointment_id = row.appointment_id;
@@ -380,6 +400,7 @@ async function processOutbox(sb: ReturnType<typeof createClient>) {
             client_name: sourcePayload.client_name ?? null,
             staff_id: sourcePayload.staff_id ?? null,
             service_id: sourcePayload.service_id ?? null,
+            calendar_id: calendarId,
           },
         }),
       );
@@ -744,6 +765,51 @@ async function startWatch(sb: ReturnType<typeof createClient>, body: Record<stri
   return json(200, { ok: true, scope, calendarId, channelId });
 }
 
+async function testEvent(sb: ReturnType<typeof createClient>, body: Record<string, unknown>) {
+  const scope = String(body.scope ?? "salon");
+  const title = String(body.title ?? "CRM test event");
+  const scopeKey = scope === "salon" ? "salon" : scope;
+  const accessToken = await getScopeTokens(sb, scopeKey);
+  const { data: settingsRows } = await sb
+    .from("salon_settings")
+    .select("key,value")
+    .in("key", ["google_calendar_id"]);
+  const salonCalendarId =
+    settingsRows?.find((r: { key: string; value: string | null }) => r.key === "google_calendar_id")
+      ?.value ?? "primary";
+  let staffCalendarId: string | null = null;
+  if (scope.startsWith("staff:")) {
+    const sid = scope.slice("staff:".length);
+    const { data: staffRow } = await sb.from("staff").select("google_calendar_id").eq("id", sid).maybeSingle();
+    staffCalendarId = (staffRow?.google_calendar_id as string | null) ?? null;
+  }
+  const calendarId = detectScopeCalendarId(scope, staffCalendarId, salonCalendarId);
+  if (!calendarId || calendarId === "primary") {
+    throw new Error(`Missing calendarId for test_event scope ${scope}`);
+  }
+  const start = new Date(Date.now() + 10 * 60 * 1000);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        summary: title,
+        description: "Created by google-calendar-sync test_event",
+        start: { dateTime: start.toISOString(), timeZone: "Europe/Tallinn" },
+        end: { dateTime: end.toISOString(), timeZone: "Europe/Tallinn" },
+      }),
+    },
+  );
+  const bodyJson = await res.json().catch(() => ({}));
+  if (!res.ok || !bodyJson?.id) throw new Error(`Google test event failed (${res.status})`);
+  return json(200, { ok: true, scope, calendarId, eventId: String(bodyJson.id) });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -774,8 +840,11 @@ Deno.serve(async (req: Request) => {
       const result = await incrementalPullScope(sb, scope, calendarId, accessToken);
       return json(200, { ok: true, mode, result });
     }
-
-    const result = await processOutbox(sb);
+    if (mode === "test_event") {
+      return await testEvent(sb, body);
+    }
+    const appointmentId = body.appointmentId ? String(body.appointmentId) : null;
+    const result = await processOutbox(sb, { appointmentId });
     return json(200, { ok: true, mode: "drain", ...result });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : String(e) });
