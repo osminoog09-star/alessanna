@@ -17,6 +17,12 @@ import {
   slotsForQuickBookSalonDay,
 } from "../../lib/quickBookingSchedule";
 import { useQuickBookingPanelData } from "../../hooks/useQuickBookingPanelData";
+import {
+  buildStaffColorAssignments,
+  staffQuickPanelAvatarStyle,
+  type StaffCalendarColorFields,
+} from "../../lib/staffCalendarColors";
+import { buildStaffHueMap } from "../../lib/staffHue";
 import type { StaffMember, StaffScheduleRow } from "../../types/database";
 
 const ANY_TOKEN = "__panel_any__";
@@ -122,6 +128,18 @@ export function QuickBookingSchedulePanel({
   const { fromYmd, toYmd } = useMemo(() => panelRange(scope, anchorYmd), [scope, anchorYmd]);
 
   const staffIds = useMemo(() => rowStaff.map((m) => m.id), [rowStaff]);
+  const staffByIdForColors = useMemo(() => {
+    const map = new Map<string, StaffCalendarColorFields>();
+    for (const m of rowStaff) {
+      map.set(m.id, {
+        calendar_color_hex: m.calendar_color_hex,
+        calendar_foreground_hex: m.calendar_foreground_hex,
+      });
+    }
+    return map;
+  }, [rowStaff]);
+  const staffColorAssignments = useMemo(() => buildStaffColorAssignments(staffIds), [staffIds]);
+  const staffHueMap = useMemo(() => buildStaffHueMap(staffIds), [staffIds]);
 
   const { appointments, timeOff, ready, error, bumpReload } = useQuickBookingPanelData(
     staffIds,
@@ -254,7 +272,15 @@ export function QuickBookingSchedulePanel({
               {rowStaff.map((m) => (
                 <th key={m.id} className="p-2 text-lg font-semibold text-white">
                   <span className="flex items-center gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-base font-bold">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold"
+                      style={staffQuickPanelAvatarStyle(
+                        m.id,
+                        staffByIdForColors,
+                        staffHueMap,
+                        staffColorAssignments,
+                      )}
+                    >
                       {m.name.slice(0, 1).toUpperCase()}
                     </span>
                     <span className="truncate">{m.name}</span>
@@ -492,7 +518,15 @@ export function QuickBookingSchedulePanel({
               <tr key={m.id}>
                 <td className="p-2 align-middle">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/30 to-sky-500/30 text-xl font-bold text-white">
+                    <span
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl font-bold"
+                      style={staffQuickPanelAvatarStyle(
+                        m.id,
+                        staffByIdForColors,
+                        staffHueMap,
+                        staffColorAssignments,
+                      )}
+                    >
                       {m.name.slice(0, 1).toUpperCase()}
                     </span>
                     <span className="text-lg font-medium text-white">{m.name}</span>

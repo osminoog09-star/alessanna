@@ -187,6 +187,31 @@ export type StaffPublicPastelCard = {
   color: string;
 };
 
+/**
+ * Круг с инициалом мастера в тёмной панели (быстрая запись): цвет фона из Google Calendar или fallback HSL.
+ */
+export function staffQuickPanelAvatarStyle(
+  staffId: string,
+  staffById: Map<string, StaffCalendarColorFields>,
+  hueMap: ReadonlyMap<string, number>,
+  assignments?: ReadonlyMap<string, StaffCalendarColor>,
+): CSSProperties {
+  const look = resolveStaffPublicCalendarLook(staffId, staffById, assignments);
+  if (look.kind === "google") {
+    return {
+      backgroundColor: look.bg,
+      color: look.fg,
+      boxShadow: `inset 0 0 0 1px ${look.border}`,
+    };
+  }
+  const hue = staffHueFromMap(staffId, hueMap);
+  return {
+    backgroundColor: `hsl(${hue} 58% 38%)`,
+    color: `hsl(${hue} 90% 94%)`,
+    boxShadow: `inset 0 0 0 1px hsl(${hue} 70% 50% / 0.45)`,
+  };
+}
+
 export function resolveStaffPublicPastelCard(
   staffId: string,
   staffById: Map<string, { calendar_color_hex?: string | null; calendar_foreground_hex?: string | null }>,
