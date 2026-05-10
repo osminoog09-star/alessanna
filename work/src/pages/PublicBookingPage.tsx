@@ -1122,12 +1122,20 @@ export function PublicBookingPage() {
             {t("publicBook.staffLogin")}
           </Link>
           {isReceptionMode && !staffMember && (
-            <Link
-              to="/help"
-              className="inline-block text-sm font-medium text-violet-300 hover:text-violet-200"
-            >
-              {t("publicBook.receptionSupportLoginCta")}
-            </Link>
+            <>
+              <Link
+                to="/help"
+                className="inline-block text-sm font-medium text-violet-300 hover:text-violet-200"
+              >
+                {t("publicBook.receptionSupportLoginCta")}
+              </Link>
+              <Link
+                to="/quick-booking"
+                className="inline-block text-sm font-medium text-emerald-300 hover:text-emerald-200"
+              >
+                ⚡ {t("quickBook.openTabletFlow")}
+              </Link>
+            </>
           )}
         </div>
 

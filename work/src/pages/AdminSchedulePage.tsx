@@ -1,11 +1,23 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
 import { supabase } from "../lib/supabase";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { isStaffRowAdmin } from "../lib/roles";
 import type { StaffScheduleRow, StaffTableRow } from "../types/database";
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
+const WEEK_HEADER_DOW = [1, 2, 3, 4, 5, 6, 0] as const;
 
 /** Выбор в списке: применить график ко всем активным сотрудникам */
 const ALL_STAFF_VALUE = "__all_staff__";
@@ -16,6 +28,10 @@ function emptyWeek(): DayRow[] {
   return DAYS.map((d) => ({ day_of_week: d, start: "09:00", end: "17:00", working: true }));
 }
 
+function rowForWeekday(rows: DayRow[], dow: number): DayRow | undefined {
+  return rows.find((r) => r.day_of_week === dow);
+}
+
 export function AdminSchedulePage() {
   const { t } = useTranslation();
   const [staffList, setStaffList] = useState<StaffTableRow[]>([]);
@@ -24,6 +40,8 @@ export function AdminSchedulePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [viewMonth, setViewMonth] = useState(() => startOfMonth(new Date()));
+  const [focusedDow, setFocusedDow] = useState<number | null>(null);
 
   const loadStaff = useCallback(async () => {
     const { data, error } = await supabase.from("staff").select("*").eq("is_active", true).order("name");
@@ -32,8 +50,6 @@ export function AdminSchedulePage() {
       setLoading(false);
       return;
     }
-    /* Админы (техподдержка сайта) не являются сотрудниками салона и не должны
-     * появляться в графиках/назначениях/публичных списках — фильтруем по ролям. */
     const list = ((data ?? []) as StaffTableRow[]).filter((row) => !isStaffRowAdmin(row));
     setStaffList(list);
     setStaffId((prev) => {
@@ -72,7 +88,7 @@ export function AdminSchedulePage() {
           end: "17:00",
           working: !hasAnySaved,
         };
-      })
+      }),
     );
   }, []);
 
@@ -81,10 +97,8 @@ export function AdminSchedulePage() {
   }, [loadStaff]);
 
   useEffect(() => {
+    setFocusedDow(null);
     if (staffId === ALL_STAFF_VALUE) {
-      /* Чтобы пользователь не сохранил случайно последний загруженный шаблон
-       * одного мастера ДЛЯ ВСЕХ. При переключении на «ко всем» начинаем с
-       * чистого недельного шаблона 09:00–17:00. */
       setRows(emptyWeek());
       return;
     }
@@ -108,6 +122,34 @@ export function AdminSchedulePage() {
         start_time: r.start.length === 5 ? `${r.start}:00` : r.start,
         end_time: r.end.length === 5 ? `${r.end}:00` : r.end,
       }));
+  }
+
+  const calendarDays = useMemo(() => {
+    const from = startOfWeek(startOfMonth(viewMonth), { weekStartsOn: 1 });
+    const to = endOfWeek(endOfMonth(viewMonth), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: from, end: to });
+  }, [viewMonth]);
+
+  const today = useMemo(() => new Date(), []);
+
+  function focusWeekdayFromDate(d: Date) {
+    const dow = d.getDay();
+    setFocusedDow(dow);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`schedule-day-${dow}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
+  function onCalendarDayClick(d: Date) {
+    focusWeekdayFromDate(d);
+  }
+
+  function onCalendarDayDoubleClick(d: Date) {
+    const dow = d.getDay();
+    const row = rowForWeekday(rows, dow);
+    if (!row) return;
+    setDayWorking(dow, !row.working);
+    setFocusedDow(dow);
   }
 
   async function onSave(e: FormEvent) {
@@ -145,8 +187,6 @@ export function AdminSchedulePage() {
       return;
     }
 
-    /* Валидация интервалов: start < end. Без неё в БД попадают мусорные
-     * записи и в календаре день рисуется пустым без понятной ошибки. */
     const bad = rows.find((r) => r.working && r.start >= r.end);
     if (bad) {
       setSaving(false);
@@ -176,7 +216,7 @@ export function AdminSchedulePage() {
   if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
 
   return (
-    <div className="max-w-xl space-y-6 text-zinc-200">
+    <div className="max-w-5xl space-y-6 text-zinc-200">
       <header>
         <h1 className="text-xl font-semibold text-white">{t("nav.adminSchedule")}</h1>
         <p className="mt-1 text-sm text-zinc-500">{t("adminSchedule.subtitle")}</p>
@@ -187,7 +227,7 @@ export function AdminSchedulePage() {
         <select
           value={staffId}
           onChange={(e) => setStaffId(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
+          className="mt-1 block w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
         >
           {staffList.length > 0 ? <option value={ALL_STAFF_VALUE}>{t("adminSchedule.allStaff")}</option> : null}
           {staffList.map((s) => (
@@ -200,51 +240,140 @@ export function AdminSchedulePage() {
       {staffId === ALL_STAFF_VALUE && (
         <p className="text-xs text-amber-200/90">{t("adminSchedule.allStaffHint")}</p>
       )}
-      <p className="text-xs text-zinc-500">
-        Снимите галочку «работает в этот день», чтобы пометить выходной: строка в графике не сохраняется, в календаре в
-        этот день слоты не строятся.
-      </p>
-      <form onSubmit={onSave} className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-        {rows.map((r) => {
-          const k = String(r.day_of_week) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
-          return (
-            <div key={r.day_of_week} className="flex flex-wrap items-center gap-3 text-sm">
-              <div className="flex w-48 shrink-0 items-center gap-2 text-zinc-300">
-                <ToggleSwitch
-                  size="sm"
-                  checked={r.working}
-                  onCheckedChange={(v) => setDayWorking(r.day_of_week, v)}
-                  aria-label={`${t(`weekday.${k}`)}: рабочий день`}
-                />
-                <span className="w-24 text-zinc-400">{t(`weekday.${k}`)}</span>
-              </div>
-              <input
-                type="time"
-                value={r.start}
-                disabled={!r.working}
-                onChange={(e) => setDayField(r.day_of_week, "start", e.target.value)}
-                className="rounded border border-zinc-700 bg-black px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
-              />
-              <span className="text-zinc-600">–</span>
-              <input
-                type="time"
-                value={r.end}
-                disabled={!r.working}
-                onChange={(e) => setDayField(r.day_of_week, "end", e.target.value)}
-                className="rounded border border-zinc-700 bg-black px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
-              />
-              {!r.working && <span className="text-xs text-zinc-600">выходной</span>}
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(300px,420px)] lg:items-start">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-4 shadow-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-white">{t("adminSchedule.calendarTitle")}</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setViewMonth((m) => addMonths(m, -1))}
+                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+                aria-label={t("adminSchedule.prevMonth")}
+              >
+                ←
+              </button>
+              <span className="min-w-[10rem] text-center text-sm font-medium text-zinc-100">
+                {format(viewMonth, "LLLL yyyy")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setViewMonth((m) => addMonths(m, 1))}
+                className="rounded-lg border border-zinc-700 bg-black/50 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+                aria-label={t("adminSchedule.nextMonth")}
+              >
+                →
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMonth(startOfMonth(new Date()))}
+                className="rounded-lg border border-emerald-800/60 bg-emerald-950/40 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-950/60"
+              >
+                {t("adminSchedule.today")}
+              </button>
             </div>
-          );
-        })}
-        <button
-          type="submit"
-          disabled={saving || !staffId || (staffId === ALL_STAFF_VALUE && staffList.length === 0)}
-          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {staffId === ALL_STAFF_VALUE ? t("adminSchedule.saveForAll") : t("common.save")}
-        </button>
-      </form>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-zinc-500">{t("adminSchedule.calendarHint")}</p>
+
+          <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            {WEEK_HEADER_DOW.map((d) => (
+              <div key={d} className="py-1">
+                {t(`weekday.${d}`)}
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 grid grid-cols-7 gap-1.5">
+            {calendarDays.map((d) => {
+              const inMonth = isSameMonth(d, viewMonth);
+              const dow = d.getDay();
+              const row = rowForWeekday(rows, dow);
+              const working = row?.working ?? false;
+              const isToday = isSameDay(d, today);
+              const isFocused = focusedDow === dow;
+              const focusRing = isFocused
+                ? "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-zinc-950"
+                : isToday
+                  ? "ring-2 ring-sky-500/70 ring-offset-2 ring-offset-zinc-950"
+                  : "";
+              return (
+                <button
+                  key={d.toISOString()}
+                  type="button"
+                  onClick={() => onCalendarDayClick(d)}
+                  onDoubleClick={() => onCalendarDayDoubleClick(d)}
+                  className={[
+                    "flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl border-2 px-1 py-2 text-center transition",
+                    inMonth ? "opacity-100" : "opacity-35",
+                    working
+                      ? "border-emerald-800/50 bg-emerald-950/25 text-emerald-50 hover:border-emerald-600/60"
+                      : "border-zinc-800 bg-zinc-900/40 text-zinc-500 hover:border-zinc-600",
+                    focusRing,
+                  ].join(" ")}
+                >
+                  <span className="text-base font-bold tabular-nums">{format(d, "d")}</span>
+                  <span className="mt-0.5 line-clamp-2 text-[10px] font-medium leading-tight text-zinc-400">
+                    {working && row ? `${row.start}–${row.end}` : "—"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <div className="space-y-3">
+          <p className="text-xs text-zinc-500">{t("adminSchedule.weekTemplateHint")}</p>
+          <form onSubmit={onSave} className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+            {rows.map((r) => {
+              const k = String(r.day_of_week) as "0" | "1" | "2" | "3" | "4" | "5" | "6";
+              const isFocused = focusedDow === r.day_of_week;
+              return (
+                <div
+                  id={`schedule-day-${r.day_of_week}`}
+                  key={r.day_of_week}
+                  className={[
+                    "flex flex-wrap items-center gap-3 rounded-lg p-2 text-sm transition",
+                    isFocused ? "bg-sky-950/35 ring-1 ring-sky-500/40" : "",
+                  ].join(" ")}
+                >
+                  <div className="flex w-48 shrink-0 items-center gap-2 text-zinc-300">
+                    <ToggleSwitch
+                      size="sm"
+                      checked={r.working}
+                      onCheckedChange={(v) => setDayWorking(r.day_of_week, v)}
+                      aria-label={`${t(`weekday.${k}`)}: рабочий день`}
+                    />
+                    <span className="w-24 text-zinc-400">{t(`weekday.${k}`)}</span>
+                  </div>
+                  <input
+                    type="time"
+                    value={r.start}
+                    disabled={!r.working}
+                    onChange={(e) => setDayField(r.day_of_week, "start", e.target.value)}
+                    className="rounded border border-zinc-700 bg-black px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
+                  />
+                  <span className="text-zinc-600">–</span>
+                  <input
+                    type="time"
+                    value={r.end}
+                    disabled={!r.working}
+                    onChange={(e) => setDayField(r.day_of_week, "end", e.target.value)}
+                    className="rounded border border-zinc-700 bg-black px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
+                  />
+                  {!r.working && <span className="text-xs text-zinc-600">{t("calendar.dayOff")}</span>}
+                </div>
+              );
+            })}
+            <button
+              type="submit"
+              disabled={saving || !staffId || (staffId === ALL_STAFF_VALUE && staffList.length === 0)}
+              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {staffId === ALL_STAFF_VALUE ? t("adminSchedule.saveForAll") : t("common.save")}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

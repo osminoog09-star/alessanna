@@ -1,4 +1,4 @@
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { QuickBookingWizard } from "../components/quick-booking/QuickBookingWizard";
@@ -13,10 +13,6 @@ export function QuickBookingPage() {
         {t("common.loading")}
       </div>
     );
-  }
-
-  if (!staffMember) {
-    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -36,13 +32,19 @@ export function QuickBookingPage() {
             >
               {t("publicBook.receptionSupport")}
             </Link>
-            <Link to="/" className="min-h-[48px] rounded-xl px-3 py-3 text-sm text-zinc-500 hover:text-zinc-300">
+            <Link
+              to={staffMember ? "/" : "/login"}
+              className="min-h-[48px] rounded-xl px-3 py-3 text-sm text-zinc-500 hover:text-zinc-300"
+            >
               CRM
             </Link>
           </div>
         </div>
       </div>
-      <QuickBookingWizard createdByStaffId={staffMember.id} />
+      {!staffMember ? (
+        <p className="mx-auto max-w-7xl px-3 pt-4 text-base text-zinc-400 sm:px-4">{t("quickBook.tabletKioskHint")}</p>
+      ) : null}
+      <QuickBookingWizard createdByStaffId={staffMember?.id ?? null} />
     </div>
   );
 }

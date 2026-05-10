@@ -54,7 +54,8 @@ type MasterMode = "specific" | "any" | "nearest";
 type TimeMode = "soonest" | "pick_day";
 
 type Props = {
-  createdByStaffId: string;
+  /** Если null (планшет ресепшена без входа) — запись всё равно с source=reception, без created_by_staff_id. */
+  createdByStaffId: string | null;
 };
 
 type ClientHit = { id: string; name: string; phone: string | null };
@@ -618,9 +619,11 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
       end_time: end.toISOString(),
       status: "confirmed",
       source: "reception",
-      created_by_staff_id: createdByStaffId,
       note: clientNote.trim() || null,
     };
+    if (createdByStaffId) {
+      row.created_by_staff_id = createdByStaffId;
+    }
     const cid = await resolveClientIdForVisit(normalizedClientName, clientPhone);
     if (cid) row.client_id = cid;
 
@@ -1098,6 +1101,48 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
       {step === "client" && svc && (
         <div className="space-y-5">
           <h2 className="text-2xl font-semibold text-white">{t("quickBook.clientStep")}</h2>
+          {pickedStart ? (
+            <div className="rounded-2xl border border-emerald-500/35 bg-emerald-950/25 px-4 py-4 shadow-[0_0_32px_rgba(16,185,129,0.08)]">
+              <p className="text-sm font-semibold uppercase tracking-wide text-emerald-200/90">
+                {t("quickBook.clientReadbackTitle")}
+              </p>
+              <dl className="mt-3 space-y-3 text-base sm:text-lg">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-zinc-500">{t("modal.service")}</dt>
+                  <dd className="font-medium text-white">{svc.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-zinc-500">{t("modal.staff")}</dt>
+                  <dd className="font-medium text-white">{masterForConfirm?.name ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-zinc-500">{t("quickBook.when")}</dt>
+                  <dd className="font-medium text-white">
+                    {new Intl.DateTimeFormat(i18n.language, {
+                      timeZone: SALON_TIME_ZONE,
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }).format(pickedStart)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-zinc-500">{t("quickBook.duration")}</dt>
+                  <dd className="font-medium text-white">
+                    {durationMin} {t("quickBook.min")}
+                  </dd>
+                </div>
+                {svc.priceEur != null ? (
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-zinc-500">{t("quickBook.price")}</dt>
+                    <dd className="font-medium text-emerald-200">€{svc.priceEur}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+          ) : null}
           <input
             type="search"
             value={clientQuery}

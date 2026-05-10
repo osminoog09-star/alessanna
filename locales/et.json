@@ -248,7 +248,13 @@
     "allStaffHint": "Praegune nädalaplaan salvestatakse iga aktiivse töötaja jaoks — individuaalsed graafikud asendatakse.",
     "saveAllConfirm": "Asendada kõigi aktiivsete töötajate nädala graafik alloleva plaaniga? Ühe nupuga tagasi ei pöörata.",
     "saveForAll": "Salvesta kõigile",
-    "invalidInterval": "Algusaeg peab olema lõpuajast varasem. Kontrolli päevi."
+    "invalidInterval": "Algusaeg peab olema lõpuajast varasem. Kontrolli päevi.",
+    "calendarTitle": "Kalendri mall",
+    "calendarHint": "Iga lahter on kuupäev; värv ja aeg tulevad nädalapäevast (mall kordub iga nädal). Üksikklõps — kerib vastava nädalapäeva reani. Topeltklõps — lülita see nädalapäev kiirelt tööle/puhkepäevale.",
+    "weekTemplateHint": "Lülita «töötab sel päeval» välja puhkepäeva jaoks: rida ei salvestata ja kalendris sel nädalapäeval aegu ei ehitata.",
+    "prevMonth": "Eelmine kuu",
+    "nextMonth": "Järgmine kuu",
+    "today": "Täna"
   },
   "finance": {
     "title": "Rahandus",
@@ -325,6 +331,7 @@
   },
   "quickBook": {
     "openTabletFlow": "Kiire broneering (tahvel)",
+    "tabletKioskHint": "Salongi tahvel: CRM-i sisselogimine pole vajalik. Broneering luuakse nagu vastuvõtul; kui vajad, logi oma kontoga sisse — siis näeb CRM-is, kes kirje sisestas.",
     "backToReception": "Tagasi vastuvõtule",
     "title": "Kiire broneering",
     "subtitle": "Sama salong ja CRM — suured sammud tahvlile.",
@@ -346,6 +353,7 @@
     "pickSlot": "Kellaaeg",
     "continueClient": "Edasi — klient",
     "clientStep": "Klient",
+    "clientReadbackTitle": "Ütle kliendile",
     "searchClient": "Otsi nime või telefoni järgi",
     "comment": "Kommentaar",
     "review": "Ülevaade",
