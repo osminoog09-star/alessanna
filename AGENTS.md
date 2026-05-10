@@ -64,6 +64,9 @@ SQL-патчи руками — только через миграцию + git.
 - `index.html`, `script.js`, `style.css` — публичный сайт салона
   (`alessannailu.com`, статика, GitHub Pages).
 - `work/` — React-приложение CRM (Vite + Tailwind, i18n: ru/et).
+- `.npmrc` в корне репо, в `work/` и `work-crm/` — `node-options=--use-system-ca`,
+  чтобы npm ходил в registry за корпоративным прокси (CA из ОС). Нужен **Node 20.12+**;
+  на более старом Node удалите строку или обновите Node.
 - `supabase/migrations/NNN_*.sql` — миграции БД, нумерация по порядку.
   Все DDL только через миграцию.
 - `locales/{ru,et,en,fi}.json` — переводы. CRM использует только
