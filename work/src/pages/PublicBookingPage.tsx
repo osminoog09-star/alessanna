@@ -1104,6 +1104,12 @@ export function PublicBookingPage() {
             {t("publicBook.staffLogin")}
           </Link>
           <Link
+            to="/book/simple"
+            className="inline-block text-sm text-zinc-400 hover:text-sky-400"
+          >
+            {t("simpleBook.shortFormLink", { defaultValue: "Короткая форма записи" })}
+          </Link>
+          <Link
             to="/calendar"
             className="inline-block text-sm font-medium text-emerald-300 hover:text-emerald-200"
           >
