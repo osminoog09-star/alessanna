@@ -20,6 +20,7 @@ import { AdminSiteSettingsPage } from "./pages/AdminSiteSettingsPage";
 import { MyHelpPage } from "./pages/MyHelpPage";
 import { ProfileSecurityPage } from "./pages/ProfileSecurityPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
+import { QuickBookingPage } from "./pages/QuickBookingPage";
 import { PublicInvitePage } from "./pages/PublicInvitePage";
 import { AdminInvitesPage } from "./pages/AdminInvitesPage";
 
@@ -49,6 +50,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/book" element={<PublicBookingPage />} />
       <Route path="/reception" element={<PublicBookingPage />} />
+      <Route path="/quick-booking" element={<QuickBookingPage />} />
       <Route path="/invite/:token" element={<PublicInvitePage />} />
       <Route
         path="/"

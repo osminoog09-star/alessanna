@@ -1097,7 +1097,15 @@ export function PublicBookingPage() {
             <span className="hidden text-zinc-600 sm:inline" aria-hidden="true">
               ·
             </span>
-            <span className="text-xs text-zinc-500">{t("nav.receptionHint")}</span>
+            <span className="min-w-0 flex-1 text-xs text-zinc-500">{t("nav.receptionHint")}</span>
+            {!isAdmin && (
+              <Link
+                to="/quick-booking"
+                className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-950/50 px-4 text-sm font-semibold text-emerald-50 shadow-[0_8px_28px_rgba(16,185,129,0.15)] transition hover:border-emerald-400/60 hover:bg-emerald-950/65"
+              >
+                ⚡ {t("quickBook.openTabletFlow")}
+              </Link>
+            )}
           </div>
         )}
 
@@ -1111,6 +1119,14 @@ export function PublicBookingPage() {
               >
                 {receptionLayoutEditing ? t("reception.layout.done") : t("reception.layout.edit")}
               </button>
+              {staffMember && (
+                <Link
+                  to="/quick-booking"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-emerald-500/45 bg-emerald-950/45 px-4 text-sm font-semibold text-emerald-50 shadow-[0_8px_28px_rgba(16,185,129,0.18)] transition hover:border-emerald-400/65 hover:bg-emerald-950/60"
+                >
+                  ⚡ {t("quickBook.openTabletFlow")}
+                </Link>
+              )}
               {receptionLayoutEditing && (
                 <button
                   type="button"
