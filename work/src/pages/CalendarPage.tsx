@@ -51,6 +51,11 @@ import { BookingModal } from "../components/BookingModal";
 import { CalendarSidePanels } from "../components/CalendarSidePanels";
 import { ProCalendar } from "../components/calendar/ProCalendar";
 import { buildStaffHueMap } from "../lib/staffHue";
+import {
+  CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY,
+  panelStaffWorkingOnDate,
+  parseStaffIdJsonList,
+} from "../lib/calendarWorkingStaff";
 import { staffCrmAppointmentBlockStyle } from "../lib/staffCalendarColors";
 import { generateAvailableSlots } from "../lib/slots";
 
@@ -78,13 +83,14 @@ export function CalendarPage() {
   const [receptionMastersConfig, setReceptionMastersConfig] = useState<ReceptionMastersPanelConfig>(() => ({
     ...DEFAULT_RECEPTION_MASTERS_PANEL,
   }));
+  const [implicitWeekExceptSundayStaffIds, setImplicitWeekExceptSundayStaffIds] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     let apQuery = supabase.from("appointments").select("*").neq("status", "cancelled");
     if (isWorkerOnlyEffective && staffMember) {
       apQuery = apQuery.eq("staff_id", staffMember.id);
     }
-    const [st, sch, to, ap, svCatalog, ss, remoteLayout] = await Promise.all([
+    const [st, sch, to, ap, svCatalog, ss, remoteLayout, implicitSetting] = await Promise.all([
       supabase.from("staff").select("*").order("name"),
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
@@ -97,6 +103,7 @@ export function CalendarPage() {
       loadServicesCatalog({ activeOnly: true }),
       supabase.from("staff_services").select("*"),
       fetchReceptionLayoutFromServer(),
+      supabase.from("salon_settings").select("value").eq("key", CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY).maybeSingle(),
     ]);
     if (st.data) {
       /* Тех-поддержка (роль admin) не принимает клиентов — не занимает колонку в календаре. */
@@ -116,6 +123,11 @@ export function CalendarPage() {
     } else {
       setReceptionMastersConfig(loadReceptionLayoutStore().masters);
     }
+    setImplicitWeekExceptSundayStaffIds(
+      parseStaffIdJsonList(
+        implicitSetting.data?.value != null ? String(implicitSetting.data.value) : undefined,
+      ),
+    );
     setLoading(false);
   }, [isWorkerOnlyEffective, staffMember]);
 
@@ -277,6 +289,11 @@ export function CalendarPage() {
   }, [timeOff, view, cursor]);
 
   const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
+
+  const implicitWeekStaffSet = useMemo(
+    () => new Set(implicitWeekExceptSundayStaffIds),
+    [implicitWeekExceptSundayStaffIds],
+  );
 
   const monthMasterAvailability = useMemo(() => {
     const out = new Map<string, { free: number; working: number; fullyClosed: boolean }>();
@@ -578,6 +595,7 @@ export function CalendarPage() {
                     services={services}
                     staff={staff}
                     staffHueMap={staffHueMap}
+                    workingStaff={panelStaffWorkingOnDate(staff, schedules, day, implicitWeekStaffSet)}
                     onBookSlot={(start) => setModal({ start, staffId })}
                     canClick={canUseCalendar}
                   />
@@ -624,6 +642,7 @@ function DayColumn({
   services,
   staff,
   staffHueMap,
+  workingStaff,
   onBookSlot,
   canClick,
 }: {
@@ -633,6 +652,7 @@ function DayColumn({
   services: ServiceRow[];
   staff: StaffMember[];
   staffHueMap: Map<string, number>;
+  workingStaff: StaffMember[];
   onBookSlot: (d: Date) => void;
   canClick: boolean;
 }) {
@@ -643,6 +663,24 @@ function DayColumn({
       <div className="border-b border-zinc-800 px-3 py-2 text-center">
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{t(`weekday.${wd}`)}</p>
         <p className="text-lg font-semibold text-white">{format(day, "d")}</p>
+        {workingStaff.length > 0 && (
+          <div className="mt-2 flex flex-wrap justify-center gap-1">
+            {workingStaff.map((m) => {
+              const style = staffCrmAppointmentBlockStyle(m.id, staff, staffHueMap);
+              const short = m.name?.trim().split(/\s+/)[0] || "—";
+              return (
+                <span
+                  key={m.id}
+                  title={m.name}
+                  className="inline-flex max-w-[5.5rem] items-center truncate rounded-md border px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={style}
+                >
+                  {short}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
       <div className="max-h-[480px] flex-1 overflow-y-auto p-2">
         {blocks.map((b) => {

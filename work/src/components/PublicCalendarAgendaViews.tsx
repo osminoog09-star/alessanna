@@ -1,8 +1,9 @@
 import { format } from "date-fns";
 import type { i18n } from "i18next";
 import { compareSalonYmd, salonYmdFromAnyDate } from "../lib/bookingSalonTz";
+import { panelStaffWorkingOnDate } from "../lib/calendarWorkingStaff";
 import { resolveStaffPublicCalendarLook, type StaffCalendarColor } from "../lib/staffCalendarColors";
-import type { AppointmentRow, StaffMember } from "../types/database";
+import type { AppointmentRow, StaffMember, StaffScheduleRow } from "../types/database";
 
 type MiniSvc = { id: string; name: string };
 
@@ -99,6 +100,9 @@ export function PublicCalendarWeekAgenda({
   minSelectableYmd,
   onSelectDay,
   staffColorAssignments,
+  schedules,
+  timelineStaff,
+  implicitWeekExceptSundayStaffIds,
 }: {
   weekDays: Date[];
   appointments: AppointmentRow[];
@@ -109,8 +113,12 @@ export function PublicCalendarWeekAgenda({
   minSelectableYmd: string;
   onSelectDay: (d: Date) => void;
   staffColorAssignments: ReadonlyMap<string, StaffCalendarColor>;
+  schedules: StaffScheduleRow[];
+  timelineStaff: StaffMember[];
+  implicitWeekExceptSundayStaffIds: readonly string[];
 }) {
   const svcName = (id: string) => services.find((s) => String(s.id) === String(id))?.name || "—";
+  const implicitSet = new Set(implicitWeekExceptSundayStaffIds);
 
   return (
     <div className="-mx-1 overflow-x-auto pb-1 sm:mx-0">
@@ -120,6 +128,7 @@ export function PublicCalendarWeekAgenda({
           const ymd = salonYmdFromAnyDate(d);
           const sel = ymd === selectedDayYmd;
           const disabled = compareSalonYmd(ymd, minSelectableYmd) < 0;
+          const workingToday = panelStaffWorkingOnDate(timelineStaff, schedules, d, implicitSet);
           return (
             <div
               key={d.toISOString()}
@@ -133,7 +142,7 @@ export function PublicCalendarWeekAgenda({
                 onClick={() => {
                   if (!disabled) onSelectDay(d);
                 }}
-                className={`mb-2 w-full rounded-lg px-1.5 py-1 text-left text-xs font-semibold tracking-tight sm:text-sm ${
+                className={`mb-1.5 w-full rounded-lg px-1.5 py-1 text-left text-xs font-semibold tracking-tight sm:text-sm ${
                   disabled
                     ? "cursor-not-allowed text-zinc-600"
                     : sel
@@ -143,36 +152,85 @@ export function PublicCalendarWeekAgenda({
               >
                 {format(d, "EEE d", { locale: undefined })}
               </button>
+              {!disabled && workingToday.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {workingToday.map((m) => {
+                    const look = resolveStaffPublicCalendarLook(m.id, staffById, staffColorAssignments);
+                    const short = m.name?.trim().split(/\s+/)[0] || "—";
+                    return (
+                      <span
+                        key={m.id}
+                        title={m.name}
+                        className={`inline-flex max-w-[5.5rem] items-center gap-1 rounded-md border px-1 py-0.5 text-[10px] font-semibold leading-tight shadow-sm sm:max-w-[6.5rem] sm:text-[11px] ${
+                          look.kind === "palette" ? `${look.palette.soft} ${look.palette.border} ${look.palette.text}` : ""
+                        }`}
+                        style={
+                          look.kind === "google"
+                            ? {
+                                backgroundColor: look.soft,
+                                borderColor: look.border,
+                                color: look.fg,
+                              }
+                            : undefined
+                        }
+                      >
+                        {look.kind === "google" ? (
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20"
+                            style={{ backgroundColor: look.bg }}
+                          />
+                        ) : (
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/20 ${look.palette.dot}`} />
+                        )}
+                        <span className="min-w-0 truncate">{short}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-0.5">
                 {list.map((ap) => {
                   const look = resolveStaffPublicCalendarLook(ap.staff_id, staffById, staffColorAssignments);
                   const master = staffById.get(ap.staff_id);
                   const start = new Date(ap.start_time);
                   const firstName = master?.name?.split(" ")[0] || "—";
-                  const paletteStrip = look.kind === "palette" ? look.palette.strip : "";
                   return (
                     <div
                       key={ap.id}
                       title={`${master?.name} · ${svcName(String(ap.service_id))}`}
-                      className={`rounded-lg border border-zinc-700/70 bg-zinc-900/95 py-2 pl-0 pr-2 text-left text-xs leading-snug text-zinc-100 shadow-sm sm:text-[13px] sm:leading-snug ${paletteStrip}`}
+                      className={
+                        look.kind === "google"
+                          ? "rounded-lg border py-2 pl-0 pr-2 text-left text-xs leading-snug shadow-sm sm:text-[13px] sm:leading-snug"
+                          : `rounded-lg border py-2 pl-0 pr-2 text-left text-xs leading-snug shadow-sm sm:text-[13px] sm:leading-snug ${look.palette.soft} ${look.palette.border} ${look.palette.strip}`
+                      }
                       style={
                         look.kind === "google"
                           ? {
                               backgroundColor: look.soft,
-                              borderColor: "rgba(63, 63, 70, 0.65)",
+                              borderColor: look.border,
                               borderLeftWidth: 4,
                               borderLeftStyle: "solid",
                               borderLeftColor: look.bg,
-                              color: "#fafafa",
+                              color: look.fg,
                             }
                           : undefined
                       }
                     >
                       <div className="min-w-0 pl-2">
-                        <div className="font-semibold tabular-nums text-white">
+                        <div
+                          className={
+                            look.kind === "google" ? "font-semibold tabular-nums" : `font-semibold tabular-nums ${look.palette.text}`
+                          }
+                        >
                           {start.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
                         </div>
-                        <div className="mt-0.5 break-words font-medium text-zinc-100">{firstName}</div>
+                        <div
+                          className={`mt-0.5 break-words font-medium ${
+                            look.kind === "google" ? "" : look.palette.text
+                          }`}
+                        >
+                          {firstName}
+                        </div>
                       </div>
                     </div>
                   );
@@ -188,24 +246,29 @@ export function PublicCalendarWeekAgenda({
 
 export function CalendarStaffLegend({
   appointmentStaffIds,
+  legendStaffIds,
   staffById,
   staffColorAssignments,
 }: {
   appointmentStaffIds: string[];
+  /** Порядок и состав легенды (например все мастера панели); иначе только те, у кого есть записи в диапазоне. */
+  legendStaffIds?: string[];
   staffById: Map<string, StaffMember>;
   staffColorAssignments: ReadonlyMap<string, StaffCalendarColor>;
 }) {
-  const uniq = [...new Set(appointmentStaffIds)];
-  if (uniq.length === 0) return null;
-  const byName = [...uniq].sort((a, b) =>
-    (staffById.get(a)?.name || a).localeCompare(staffById.get(b)?.name || b, "et", {
-      sensitivity: "base",
-    }),
-  );
+  const orderedIds =
+    legendStaffIds && legendStaffIds.length > 0
+      ? legendStaffIds.filter((id) => staffById.has(id))
+      : [...new Set(appointmentStaffIds)].sort((a, b) =>
+          (staffById.get(a)?.name || a).localeCompare(staffById.get(b)?.name || b, "et", {
+            sensitivity: "base",
+          }),
+        );
+  if (orderedIds.length === 0) return null;
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-800/80 pt-4">
       <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Мастера</span>
-      {byName.map((id) => {
+      {orderedIds.map((id) => {
         const m = staffById.get(id);
         const look = resolveStaffPublicCalendarLook(id, staffById, staffColorAssignments);
         return (

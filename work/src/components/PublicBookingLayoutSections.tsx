@@ -25,7 +25,7 @@ import type { PublicCalendarScope } from "../lib/publicCalendarRange";
 import type { StaffCalendarColor } from "../lib/staffCalendarColors";
 import { resolveStaffPublicPastelCard } from "../lib/staffCalendarColors";
 import { formatSlotRange, type Slot } from "../lib/slots";
-import type { AppointmentRow, StaffMember } from "../types/database";
+import type { AppointmentRow, StaffMember, StaffScheduleRow } from "../types/database";
 import { PublicBookingDayTimeline } from "./PublicBookingDayTimeline";
 import {
   CalendarStaffLegend,
@@ -74,6 +74,9 @@ type CalendarProps = {
   services: PublicServiceMini[];
   /** Колонки в дневной сетке (как в классических программах): обычно все мастера панели. */
   timelineStaff: StaffMember[];
+  schedules: StaffScheduleRow[];
+  /** UUID мастеров: пн–сб, если у них нет строк в `staff_schedule` (настройка salon_settings). */
+  implicitWeekExceptSundayStaffIds: string[];
 };
 
 function scopeButtonClass(active: boolean): string {
@@ -105,6 +108,8 @@ export function PublicBookingCalendarSection({
   staffById,
   services,
   timelineStaff,
+  schedules,
+  implicitWeekExceptSundayStaffIds,
 }: CalendarProps) {
   const appointmentStaffIds = [
     ...new Set(
@@ -228,6 +233,9 @@ export function PublicBookingCalendarSection({
           minSelectableYmd={minSelectableYmd}
           onSelectDay={onSelectCalendarDay}
           staffColorAssignments={staffColorAssignments}
+          schedules={schedules}
+          timelineStaff={timelineStaff}
+          implicitWeekExceptSundayStaffIds={implicitWeekExceptSundayStaffIds}
         />
       )}
 
@@ -252,6 +260,7 @@ export function PublicBookingCalendarSection({
 
       <CalendarStaffLegend
         appointmentStaffIds={appointmentStaffIds}
+        legendStaffIds={timelineStaff.map((m) => m.id)}
         staffById={staffById}
         staffColorAssignments={staffColorAssignments}
       />

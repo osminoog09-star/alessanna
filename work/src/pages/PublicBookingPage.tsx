@@ -59,6 +59,10 @@ import {
   loadReceptionLayoutStore,
   persistReceptionLayoutStore,
 } from "../lib/receptionLayout";
+import {
+  CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY,
+  parseStaffIdJsonList,
+} from "../lib/calendarWorkingStaff";
 import { fetchReceptionLayoutFromServer, saveReceptionLayoutToServer } from "../lib/receptionLayoutRemote";
 import { renderReceptionRows } from "../lib/receptionSectionOrderRender";
 import { ReceptionLayoutEditor } from "../components/ReceptionLayoutEditor";
@@ -150,6 +154,8 @@ export function PublicBookingPage() {
   }));
   const [receptionLayoutEditing, setReceptionLayoutEditing] = useState(false);
   const [receptionRemoteSaveError, setReceptionRemoteSaveError] = useState<string | null>(null);
+  /** Мастера пн–сб без строк в staff_schedule — uuid из salon_settings. */
+  const [implicitWeekExceptSundayStaffIds, setImplicitWeekExceptSundayStaffIds] = useState<string[]>([]);
 
   const pushReceptionPayload = useCallback((payload: ReceptionLayoutFilePayload) => {
     setReceptionRemoteSaveError(null);
@@ -168,11 +174,12 @@ export function PublicBookingPage() {
       setLoading(false);
       return;
     }
-    const [st, lk, sc, remoteLayout] = await Promise.all([
+    const [st, lk, sc, remoteLayout, implicitSetting] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
       supabase.from("staff_schedule").select("*"),
       fetchReceptionLayoutFromServer(),
+      supabase.from("salon_settings").select("value").eq("key", CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY).maybeSingle(),
     ]);
     /* Fallback по `select(...)`: каждая ветка возвращает свой shape, поэтому
      * для TS ниже всегда `as typeof sv`. На рантайме всё равно нормализуем. */
@@ -239,6 +246,11 @@ export function PublicBookingPage() {
     }
     if (lk.data) setLinks(lk.data as StaffServiceRow[]);
     if (sc.data) setSchedules(sc.data as StaffScheduleRow[]);
+    setImplicitWeekExceptSundayStaffIds(
+      parseStaffIdJsonList(
+        implicitSetting.data?.value != null ? String(implicitSetting.data.value) : undefined,
+      ),
+    );
     if (remoteLayout) {
       setReceptionRows(remoteLayout.rows);
       setReceptionMastersConfig(remoteLayout.masters);
@@ -1017,6 +1029,8 @@ export function PublicBookingPage() {
         staffById={staffById}
         services={services}
         timelineStaff={mastersPanelStaff}
+        schedules={schedules}
+        implicitWeekExceptSundayStaffIds={implicitWeekExceptSundayStaffIds}
       />
     ),
     upcoming: (

@@ -86,8 +86,8 @@ function googleHexToCrmBlockStyle(bgHex: string, fgHex: string | null | undefine
         ? "rgba(17,24,39,0.92)"
         : "rgba(250,250,252,0.95)";
   return {
-    borderColor: hexToRgba(bgHex, 0.5),
-    backgroundColor: hexToRgba(bgHex, 0.28),
+    borderColor: hexToRgba(bgHex, 0.55),
+    backgroundColor: hexToRgba(bgHex, 0.4),
     color: fg,
   };
 }
@@ -110,9 +110,9 @@ export function staffCrmAppointmentBlockStyle(
   }
   const hue = staffHueFromMap(staffId, hueMap);
   return {
-    borderColor: `hsl(${hue} 80% 45% / 0.45)`,
-    backgroundColor: `hsl(${hue} 80% 18% / 0.45)`,
-    color: `hsl(${hue} 90% 88%)`,
+    borderColor: `hsl(${hue} 75% 50% / 0.55)`,
+    backgroundColor: `hsl(${hue} 70% 24% / 0.58)`,
+    color: `hsl(${hue} 85% 92%)`,
   };
 }
 
