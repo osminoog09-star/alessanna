@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -23,10 +23,16 @@ import {
   salonYmdFromAnyDate,
   SALON_TIME_ZONE,
 } from "../../lib/bookingSalonTz";
+import {
+  findFirstQuickBookableYmd,
+  firstFreeSlotOnDay,
+  markQuickBookSalonDay,
+  slotsForQuickBookSalonDay,
+} from "../../lib/quickBookingSchedule";
 import { resolveClientIdForVisit } from "../../lib/clientLink";
 import { useQuickBookingResources } from "../../hooks/useQuickBookingResources";
 import { buildQuickCategories } from "./buildQuickCategories";
-import type { StaffMember } from "../../types/database";
+import type { AppointmentRow, StaffMember } from "../../types/database";
 
 const ANY_MASTER_ID = "any";
 
@@ -67,8 +73,8 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     services,
     staffDirectory,
     schedules,
-    appointments,
-    timeOff,
+    appointments: hookAppointments,
+    timeOff: hookTimeOff,
     setBookYmd,
     bookYmdNorm,
     nowTick,
@@ -93,6 +99,13 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
   const [clientSearchLoading, setClientSearchLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
+  /** Записи и выходы за видимый месяц — для меток в календаре и слотов в режиме «выбрать день». */
+  const [rangeAppointments, setRangeAppointments] = useState<AppointmentRow[]>([]);
+  const [rangeTimeOff, setRangeTimeOff] = useState<
+    Array<{ staff_id: string; start_time: string; end_time: string }>
+  >([]);
+  const [rangeReady, setRangeReady] = useState(false);
+  const userPickedCalendarDayRef = useRef(false);
 
   const push = useCallback((s: WizardStep) => {
     setHistory((h) => [...h, s]);
@@ -144,7 +157,99 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     [eligibleStaffForService, serviceId],
   );
 
+  const eligibleStaffIdsKey = useMemo(() => eligibleStaff.map((m) => m.id).sort().join(","), [eligibleStaff]);
+
+  const firstBookableYmd = useMemo(() => salonFirstBookableYmd(new Date(nowTick)), [nowTick]);
+
+  const monthStart = useMemo(() => {
+    const [y, m] = bookYmdNorm.split("-").map(Number);
+    return new Date(y, m - 1, 1);
+  }, [bookYmdNorm]);
+
+  const appointmentsForSlots = useMemo(() => {
+    if (step === "schedule" && timeMode === "pick_day") {
+      return rangeAppointments.filter(
+        (a) =>
+          a.status !== "cancelled" && salonYmdFromAnyDate(new Date(a.start_time)) === bookYmdNorm,
+      );
+    }
+    return hookAppointments;
+  }, [step, timeMode, rangeAppointments, hookAppointments, bookYmdNorm]);
+
+  const timeOffForSlots = useMemo(() => {
+    if (step === "schedule" && timeMode === "pick_day") {
+      const salonDayStart = salonDayStartUtc(bookYmdNorm);
+      const d0 = salonDayStart.getTime();
+      const d1 = d0 + 24 * 60 * 60 * 1000;
+      return rangeTimeOff.filter((t) => {
+        const ts = new Date(t.start_time).getTime();
+        const te = new Date(t.end_time).getTime();
+        return ts < d1 && te > d0;
+      });
+    }
+    return hookTimeOff;
+  }, [step, timeMode, rangeTimeOff, hookTimeOff, bookYmdNorm]);
+
   const salonDayStart = useMemo(() => salonDayStartUtc(bookYmdNorm), [bookYmdNorm]);
+
+  useEffect(() => {
+    if (step !== "schedule" || timeMode !== "pick_day" || !svc || eligibleStaff.length === 0) {
+      setRangeAppointments([]);
+      setRangeTimeOff([]);
+      setRangeReady(false);
+      return;
+    }
+    setRangeReady(false);
+    const staffIds = eligibleStaff.map((m) => m.id);
+    const fromYmd = salonYmdFromAnyDate(startOfMonth(monthStart));
+    const toYmd = salonYmdFromAnyDate(endOfMonth(monthStart));
+    const startUtc = salonDayStartUtc(fromYmd);
+    const endUtc = new Date(salonDayStartUtc(toYmd).getTime() + 24 * 60 * 60 * 1000);
+    let cancelled = false;
+    void (async () => {
+      const [ap, to] = await Promise.all([
+        supabase
+          .from("appointments")
+          .select("*")
+          .in("staff_id", staffIds)
+          .gte("start_time", startUtc.toISOString())
+          .lt("start_time", endUtc.toISOString())
+          .neq("status", "cancelled"),
+        supabase
+          .from("staff_time_off")
+          .select("*")
+          .in("staff_id", staffIds)
+          .lt("start_time", endUtc.toISOString())
+          .gt("end_time", startUtc.toISOString()),
+      ]);
+      if (cancelled) return;
+      setRangeAppointments((ap.data ?? []) as AppointmentRow[]);
+      setRangeTimeOff(
+        (to.data ?? []) as Array<{ staff_id: string; start_time: string; end_time: string }>,
+      );
+      setRangeReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, timeMode, svc?.id, monthStart, eligibleStaffIdsKey, eligibleStaff.length]);
+
+  useEffect(() => {
+    if (step === "schedule" && timeMode === "pick_day") {
+      userPickedCalendarDayRef.current = false;
+    }
+  }, [step, timeMode]);
+
+  const scheduleBaseParams = useMemo(
+    () => ({
+      eligibleStaff,
+      schedules,
+      durationMin,
+      staffId,
+      anyMasterToken: ANY_MASTER_ID,
+    }),
+    [eligibleStaff, schedules, durationMin, staffId],
+  );
 
   /** Все слоты по графику: `available: false` = запись или time off на этот интервал. */
   const allSlotsByStaff = useMemo(() => {
@@ -160,8 +265,8 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
         }));
       const raw = generateDaySlots({
         schedule: memberSchedule,
-        appointments,
-        timeOff,
+        appointments: appointmentsForSlots,
+        timeOff: timeOffForSlots,
         duration: durationMin,
         day: salonDayStart,
         salonDayStartUtc: salonDayStart,
@@ -172,7 +277,16 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
       out.set(member.id, raw);
     }
     return out;
-  }, [appointments, bookYmdNorm, durationMin, eligibleStaff, schedules, salonDayStart, svc, timeOff]);
+  }, [
+    appointmentsForSlots,
+    bookYmdNorm,
+    durationMin,
+    eligibleStaff,
+    schedules,
+    salonDayStart,
+    svc,
+    timeOffForSlots,
+  ]);
 
   /** Только свободные и не в прошлом — для автоподбора и подтверждения. */
   const slotsByStaff = useMemo(() => {
@@ -224,18 +338,96 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
     return earliestAcrossMastersSlot;
   }, [earliestAcrossMastersSlot, masterMode, slotsByStaff, staffId]);
 
-  const firstBookableYmd = useMemo(() => salonFirstBookableYmd(new Date(nowTick)), [nowTick]);
-
-  const monthStart = useMemo(() => {
-    const [y, m] = bookYmdNorm.split("-").map(Number);
-    return new Date(y, m - 1, 1);
-  }, [bookYmdNorm]);
-
   const calendarDays = useMemo(() => {
     const from = startOfWeek(startOfMonth(monthStart), { weekStartsOn: 1 });
     const to = endOfWeek(endOfMonth(monthStart), { weekStartsOn: 1 });
     return eachDayOfInterval({ start: from, end: to });
   }, [monthStart]);
+
+  const dayMarks = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof markQuickBookSalonDay>>();
+    if (step !== "schedule" || timeMode !== "pick_day" || !rangeReady || !svc) return map;
+    for (const d of calendarDays) {
+      const ymd = salonYmdFromAnyDate(d);
+      map.set(
+        ymd,
+        markQuickBookSalonDay({
+          ymd,
+          firstBookableYmd,
+          nowTick,
+          appointments: rangeAppointments,
+          timeOff: rangeTimeOff,
+          ...scheduleBaseParams,
+        }),
+      );
+    }
+    return map;
+  }, [
+    calendarDays,
+    step,
+    timeMode,
+    rangeReady,
+    svc,
+    rangeAppointments,
+    rangeTimeOff,
+    firstBookableYmd,
+    nowTick,
+    scheduleBaseParams,
+  ]);
+
+  useEffect(() => {
+    if (step !== "schedule" || timeMode !== "pick_day" || !svc || eligibleStaff.length === 0) return;
+    if (!rangeReady) return;
+    if (userPickedCalendarDayRef.current) return;
+
+    const mark = markQuickBookSalonDay({
+      ymd: bookYmdNorm,
+      firstBookableYmd,
+      nowTick,
+      appointments: rangeAppointments,
+      timeOff: rangeTimeOff,
+      ...scheduleBaseParams,
+    });
+
+    if (mark === "free") {
+      const slots = slotsForQuickBookSalonDay({
+        ymd: bookYmdNorm,
+        appointments: rangeAppointments,
+        timeOff: rangeTimeOff,
+        ...scheduleBaseParams,
+      });
+      const first = firstFreeSlotOnDay(slots, nowTick);
+      if (first) {
+        setPickedStart((prev) => (prev?.getTime() === first.start.getTime() ? prev : first.start));
+      }
+      return;
+    }
+
+    const found = findFirstQuickBookableYmd({
+      firstBookableYmd,
+      maxDays: 120,
+      nowTick,
+      appointments: rangeAppointments,
+      timeOff: rangeTimeOff,
+      ...scheduleBaseParams,
+    });
+    if (found) {
+      setBookYmd(found.ymd);
+      setPickedStart(found.slot.start);
+    }
+  }, [
+    step,
+    timeMode,
+    rangeReady,
+    bookYmdNorm,
+    firstBookableYmd,
+    nowTick,
+    rangeAppointments,
+    rangeTimeOff,
+    scheduleBaseParams,
+    svc,
+    eligibleStaff.length,
+  ]);
 
   /** Фиксированные фазы: один экран — одна «ступень» прогресса (без скачков в середину). */
   const stepPhase = useMemo(() => {
@@ -616,6 +808,7 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
                   type="button"
                   className="rounded-lg border border-white/15 px-3 py-2 text-zinc-200"
                   onClick={() => {
+                    userPickedCalendarDayRef.current = false;
                     const prev = addMonths(monthStart, -1);
                     const y = prev.getFullYear();
                     const mo = prev.getMonth() + 1;
@@ -631,6 +824,7 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
                   type="button"
                   className="rounded-lg border border-white/15 px-3 py-2 text-zinc-200"
                   onClick={() => {
+                    userPickedCalendarDayRef.current = false;
                     const next = addMonths(monthStart, 1);
                     const y = next.getFullYear();
                     const mo = next.getMonth() + 1;
@@ -640,46 +834,87 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
                   →
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-500">
-                {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
-                  <div key={d}>
-                    {d}
+              {!rangeReady ? (
+                <p className="py-8 text-center text-sm text-zinc-500">{t("common.loading")}</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-7 gap-1 text-center text-xs text-zinc-500">
+                    {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
+                      <div key={d}>
+                        {d}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="mt-2 grid grid-cols-7 gap-1">
-                {calendarDays.map((d) => {
-                  const ymd = salonYmdFromAnyDate(d);
-                  const sel = ymd === bookYmdNorm;
-                  const inMonth = isSameMonth(d, monthStart);
-                  const disabled = compareSalonYmd(ymd, firstBookableYmd) < 0 || !isSalonBookableYmd(ymd);
-                  return (
-                    <button
-                      key={ymd}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => {
-                        if (!disabled) {
-                          setBookYmd(ymd);
-                          setPickedStart(null);
-                        }
-                      }}
-                      className={[
-                        "min-h-[44px] rounded-lg border text-sm",
-                        disabled
-                          ? "cursor-not-allowed border-transparent text-zinc-700"
-                          : sel
-                            ? "border-sky-400 bg-sky-500/25 text-white"
-                            : inMonth
-                              ? "border-white/10 text-zinc-200 hover:border-white/25"
-                              : "border-transparent text-zinc-600",
-                      ].join(" ")}
-                    >
-                      {format(d, "d")}
-                    </button>
-                  );
-                })}
-              </div>
+                  <div className="mt-2 grid grid-cols-7 gap-1">
+                    {calendarDays.map((d) => {
+                      const ymd = salonYmdFromAnyDate(d);
+                      const sel = ymd === bookYmdNorm;
+                      const inMonth = isSameMonth(d, monthStart);
+                      const disabled =
+                        compareSalonYmd(ymd, firstBookableYmd) < 0 || !isSalonBookableYmd(ymd);
+                      const mark = dayMarks.get(ymd) ?? "past";
+                      const dot =
+                        disabled || mark === "past" ? (
+                          <span
+                            className="mx-auto mt-0.5 block h-2 w-2 rounded-full bg-zinc-800 ring-1 ring-zinc-600"
+                            aria-hidden
+                          />
+                        ) : mark === "free" ? (
+                          <span
+                            className="mx-auto mt-0.5 block h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                            aria-hidden
+                          />
+                        ) : mark === "busy" ? (
+                          <span className="mx-auto mt-0.5 block h-2 w-2 rounded-full bg-zinc-500" aria-hidden />
+                        ) : (
+                          <span className="mx-auto mt-0.5 block h-0.5 w-2 rounded-full bg-zinc-700" aria-hidden />
+                        );
+                      return (
+                        <button
+                          key={ymd}
+                          type="button"
+                          disabled={disabled || !rangeReady}
+                          title={
+                            mark === "free"
+                              ? t("quickBook.dayMarkFreeTitle")
+                              : mark === "busy"
+                                ? t("quickBook.dayMarkBusyTitle")
+                                : mark === "closed"
+                                  ? t("quickBook.dayMarkClosedTitle")
+                                  : undefined
+                          }
+                          onClick={() => {
+                            if (disabled || !rangeReady) return;
+                            userPickedCalendarDayRef.current = true;
+                            setBookYmd(ymd);
+                            const slots = slotsForQuickBookSalonDay({
+                              ymd,
+                              appointments: rangeAppointments,
+                              timeOff: rangeTimeOff,
+                              ...scheduleBaseParams,
+                            });
+                            const first = firstFreeSlotOnDay(slots, nowTick);
+                            setPickedStart(first?.start ?? null);
+                          }}
+                          className={[
+                            "flex min-h-[48px] flex-col justify-center rounded-lg border py-1 text-sm",
+                            disabled || !rangeReady
+                              ? "cursor-not-allowed border-transparent text-zinc-700"
+                              : sel
+                                ? "border-sky-400 bg-sky-500/25 text-white shadow-[0_0_20px_rgba(56,189,248,0.2)]"
+                                : inMonth
+                                  ? "border-white/10 text-zinc-200 hover:border-white/25"
+                                  : "border-transparent text-zinc-600",
+                          ].join(" ")}
+                        >
+                          <span>{format(d, "d")}</span>
+                          {dot}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -689,16 +924,32 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
               {t("quickBook.slotLegendFree")}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-zinc-600" aria-hidden />
+              <span className="h-2.5 w-2.5 rounded-full bg-zinc-500" aria-hidden />
               {t("quickBook.slotLegendBusy")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-zinc-800 ring-1 ring-zinc-600" aria-hidden />
               {t("quickBook.slotLegendPast")}
             </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-0.5 w-3 rounded-full bg-zinc-700" aria-hidden />
+              {t("quickBook.slotLegendClosed")}
+            </span>
           </p>
 
-          <div className="grid max-h-[50vh] gap-2 overflow-y-auto sm:grid-cols-2">
+          {timeMode === "pick_day" && rangeReady && (
+            <p className="text-sm text-sky-200/90">{t("quickBook.nearestDayHint")}</p>
+          )}
+
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-black/30 p-4 shadow-inner backdrop-blur-md sm:p-5">
+            <p className="mb-3 text-base font-semibold text-white">
+              {timeMode === "pick_day"
+                ? t("quickBook.schedulePanelTitle", {
+                    date: format(salonDayStartUtc(bookYmdNorm), "EEEE, d MMMM", { locale: undefined }),
+                  })
+                : t("quickBook.schedulePanelTitleSoonest")}
+            </p>
+            <div className="grid max-h-[50vh] gap-2 overflow-y-auto sm:grid-cols-2">
             {scheduleDisplaySlots.length === 0 ? (
               <p className="text-lg text-zinc-500">{t("quickBook.noSlotsThisDay")}</p>
             ) : (
@@ -742,6 +993,7 @@ export function QuickBookingWizard({ createdByStaffId }: Props) {
                 );
               })
             )}
+            </div>
           </div>
 
           <button
