@@ -112,7 +112,8 @@ function serviceIdsForHallSplit(
   return publicServiceIdsForStaff(member, links, services);
 }
 
-function classifyServiceHall(entry: PublicServiceCatalogEntry | undefined): "hair" | "nail" | null {
+/** Парикмахерский зал vs маникюр/педикюр — по категории и названию услуги из CRM. */
+export function classifyServiceHall(entry: PublicServiceCatalogEntry | undefined): "hair" | "nail" | null {
   if (!entry) return null;
   const cat = String(entry.categoryName ?? "").trim();
   const svcName = String(entry.name ?? "").trim();

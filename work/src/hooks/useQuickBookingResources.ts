@@ -6,7 +6,11 @@ import {
   normalizeStaffMember,
   staffEligibleForService,
 } from "../lib/roles";
-import { publicBookableStaffMembers } from "../lib/publicMasterPanel";
+import {
+  classifyServiceHall,
+  publicBookableStaffMembers,
+  splitStaffIntoHairAndNails,
+} from "../lib/publicMasterPanel";
 import {
   DEFAULT_RECEPTION_MASTERS_PANEL,
   loadReceptionLayoutStore,
@@ -142,6 +146,20 @@ export function useQuickBookingResources() {
     return publicBookableStaffMembers(staff, links, services);
   }, [receptionMastersConfig, staffDirectory, staff, links, services]);
 
+  /** Колонки «парикмахерский зал» / «маникюр» — как на /reception. */
+  const mastersSplitResolved = useMemo(() => {
+    if (receptionMastersConfig.assignment === "manual") {
+      const byId = new Map(staffDirectory.map((m) => [m.id, m]));
+      const pick = (ids: string[]) =>
+        ids.map((id) => byId.get(id)).filter((m): m is StaffMember => m != null);
+      return {
+        hair: pick(receptionMastersConfig.hairStaffIds),
+        nails: pick(receptionMastersConfig.nailsStaffIds),
+      };
+    }
+    return splitStaffIntoHairAndNails(mastersPanelStaff, links, services);
+  }, [receptionMastersConfig, staffDirectory, mastersPanelStaff, links, services]);
+
   const loadDayData = useCallback(async () => {
     if (!isSupabaseConfigured()) return;
     const eligibleIds = mastersPanelStaff.map((s) => s.id);
@@ -186,13 +204,25 @@ export function useQuickBookingResources() {
   const eligibleStaffForService = useCallback(
     (serviceId: string | null) => {
       if (serviceId == null) return [];
+      const svcEntry = services.find((s) => s.id === serviceId);
+      const hall = classifyServiceHall(svcEntry);
+      const hairIds = new Set(mastersSplitResolved.hair.map((m) => m.id));
+      const nailIds = new Set(mastersSplitResolved.nails.map((m) => m.id));
+      const panelIds =
+        hall === "hair" ? hairIds : hall === "nail" ? nailIds : new Set(mastersPanelStaff.map((m) => m.id));
+
       const base = staffEligibleForService(staffDirectory, links, serviceId);
-      const panel = new Set(mastersPanelStaff.map((m) => m.id));
-      const filtered = base.filter((m) => panel.has(m.id));
-      const order = new Map(mastersPanelStaff.map((m, i) => [m.id, i]));
+      const filtered = base.filter((m) => panelIds.has(m.id));
+      const orderList =
+        hall === "hair"
+          ? mastersSplitResolved.hair
+          : hall === "nail"
+            ? mastersSplitResolved.nails
+            : mastersPanelStaff;
+      const order = new Map(orderList.map((m, i) => [m.id, i]));
       return filtered.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
     },
-    [staffDirectory, links, mastersPanelStaff],
+    [staffDirectory, links, mastersPanelStaff, mastersSplitResolved, services],
   );
 
   return {

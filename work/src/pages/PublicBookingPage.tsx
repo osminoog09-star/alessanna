@@ -39,6 +39,7 @@ import {
 } from "../lib/roles";
 import { eachDayInDataRange, getCalendarDataRange, type PublicCalendarScope } from "../lib/publicCalendarRange";
 import {
+  classifyServiceHall,
   crmServiceIdsForStaff,
   publicBookableStaffMembers,
   publicServiceIdsForStaff,
@@ -308,13 +309,33 @@ export function PublicBookingPage() {
 
   const eligibleStaff = useMemo(() => {
     if (serviceId == null) return [];
+    const svcEntry = services.find((s) => s.id === serviceId);
+    const hall = classifyServiceHall(svcEntry);
+    const hairIds = new Set(mastersSplitResolved.hair.map((m) => m.id));
+    const nailIds = new Set(mastersSplitResolved.nails.map((m) => m.id));
+    const panelIds =
+      hall === "hair" ? hairIds : hall === "nail" ? nailIds : new Set(mastersPanelStaff.map((m) => m.id));
+
     const base = staffEligibleForService(staffDirectory, links, serviceId);
     const afterPublic = isReceptionMode ? base : applyPublicStaffVisibility(base, links, serviceId);
-    const panel = new Set(mastersPanelStaff.map((m) => m.id));
-    const filtered = afterPublic.filter((m) => panel.has(m.id));
-    const order = new Map(mastersPanelStaff.map((m, i) => [m.id, i]));
+    const filtered = afterPublic.filter((m) => panelIds.has(m.id));
+    const orderList =
+      hall === "hair"
+        ? mastersSplitResolved.hair
+        : hall === "nail"
+          ? mastersSplitResolved.nails
+          : mastersPanelStaff;
+    const order = new Map(orderList.map((m, i) => [m.id, i]));
     return filtered.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
-  }, [staffDirectory, links, serviceId, isReceptionMode, mastersPanelStaff]);
+  }, [
+    staffDirectory,
+    links,
+    serviceId,
+    isReceptionMode,
+    mastersPanelStaff,
+    mastersSplitResolved,
+    services,
+  ]);
 
   const panelServiceIds = useMemo(() => {
     const out = new Set<string>();
