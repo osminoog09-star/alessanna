@@ -816,7 +816,7 @@ export function PublicBookingPage() {
     const allowedStaffIds = new Set(mastersPanelStaff.map((s) => s.id));
     return upcomingAppointments
       .filter((a) => allowedStaffIds.has(a.staff_id))
-      .slice(0, 8);
+      .slice(0, 48);
   }, [mastersPanelStaff, upcomingAppointments]);
 
   async function confirmBook() {
@@ -1036,7 +1036,9 @@ export function PublicBookingPage() {
     upcoming: (
       <PublicBookingUpcomingSection
         receptionUpcoming={receptionUpcoming}
-        staff={staffDirectory}
+        mastersPanelStaff={mastersPanelStaff}
+        staffById={staffById}
+        staffColorAssignments={masterPanelColorAssignments}
         services={services}
         i18n={i18n}
         t={t}

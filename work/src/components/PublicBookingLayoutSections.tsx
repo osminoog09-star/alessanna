@@ -14,7 +14,8 @@ import {
 import type { TFunction } from "i18next";
 import type { i18n } from "i18next";
 import { useTranslation } from "react-i18next";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   ReceptionMastersDensity,
   ReceptionMastersLayoutMode,
@@ -23,7 +24,7 @@ import type {
 } from "../lib/receptionLayout";
 import type { PublicCalendarScope } from "../lib/publicCalendarRange";
 import type { StaffCalendarColor } from "../lib/staffCalendarColors";
-import { resolveStaffPublicPastelCard } from "../lib/staffCalendarColors";
+import { resolveStaffPublicCalendarLook, resolveStaffPublicPastelCard } from "../lib/staffCalendarColors";
 import { formatSlotRange, type Slot } from "../lib/slots";
 import type { AppointmentRow, StaffMember, StaffScheduleRow } from "../types/database";
 import { PublicBookingDayTimeline } from "./PublicBookingDayTimeline";
@@ -270,7 +271,9 @@ export function PublicBookingCalendarSection({
 
 type UpcomingProps = {
   receptionUpcoming: AppointmentRow[];
-  staff: StaffMember[];
+  mastersPanelStaff: StaffMember[];
+  staffById: Map<string, StaffMember>;
+  staffColorAssignments: ReadonlyMap<string, StaffCalendarColor>;
   services: PublicServiceMini[];
   i18n: i18n;
   t: TFunction;
@@ -302,33 +305,123 @@ function upcomingCardClass(d: ReceptionUpcomingDensity | undefined): string {
 
 export function PublicBookingUpcomingSection({
   receptionUpcoming,
-  staff,
+  mastersPanelStaff,
+  staffById,
+  staffColorAssignments,
   services,
   i18n,
   t,
   density = "compact",
   contentWidth = "narrow",
 }: UpcomingProps) {
+  const [upcomingStaffFilter, setUpcomingStaffFilter] = useState<string | "all">("all");
+
+  useEffect(() => {
+    if (
+      upcomingStaffFilter !== "all" &&
+      !mastersPanelStaff.some((m) => m.id === upcomingStaffFilter)
+    ) {
+      setUpcomingStaffFilter("all");
+    }
+  }, [mastersPanelStaff, upcomingStaffFilter]);
+
+  const countsByStaff = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const ap of receptionUpcoming) {
+      m.set(ap.staff_id, (m.get(ap.staff_id) ?? 0) + 1);
+    }
+    return m;
+  }, [receptionUpcoming]);
+
+  const filteredUpcoming = useMemo(() => {
+    if (upcomingStaffFilter === "all") return receptionUpcoming;
+    return receptionUpcoming.filter((a) => a.staff_id === upcomingStaffFilter);
+  }, [receptionUpcoming, upcomingStaffFilter]);
+
   const widthCls =
     contentWidth === "full"
       ? "w-full"
       : contentWidth === "medium"
         ? "w-full max-w-xl"
         : "w-full max-w-md";
+
+  const tabBtn = (active: boolean) =>
+    [
+      "shrink-0 rounded-lg border px-2.5 py-1.5 text-left text-xs font-medium transition sm:text-[13px]",
+      active
+        ? "border-sky-500/60 bg-sky-500/15 text-sky-100"
+        : "border-zinc-700/80 bg-zinc-900/40 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800/50",
+    ].join(" ");
+
   return (
     <section
       className={`rounded-xl border border-zinc-800 bg-black/30 ${upcomingSectionPadding(density)} ${widthCls}`}
     >
       <h2 className="text-sm font-semibold text-white">{t("publicBook.upcomingWorksTitle")}</h2>
       <p className="mt-1 text-xs text-zinc-500">{t("publicBook.upcomingWorksHint")}</p>
+      <p className="mt-2 text-xs text-zinc-500">{t("publicBook.upcomingWorksFilterHint")}</p>
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button
+          type="button"
+          className={tabBtn(upcomingStaffFilter === "all")}
+          onClick={() => setUpcomingStaffFilter("all")}
+        >
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-zinc-500 ring-1 ring-zinc-600" aria-hidden />
+            {t("publicBook.upcomingFilterAll")}
+            <span className="tabular-nums text-zinc-500">({receptionUpcoming.length})</span>
+          </span>
+        </button>
+        {mastersPanelStaff.map((m) => {
+          const n = countsByStaff.get(m.id) ?? 0;
+          const look = resolveStaffPublicCalendarLook(m.id, staffById, staffColorAssignments);
+          return (
+            <button
+              key={m.id}
+              type="button"
+              className={tabBtn(upcomingStaffFilter === m.id)}
+              onClick={() => setUpcomingStaffFilter(m.id)}
+            >
+              <span className="flex max-w-[10rem] items-center gap-2 sm:max-w-[14rem]">
+                {look.kind === "google" ? (
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full ring-1 ring-zinc-600"
+                    style={{ backgroundColor: look.bg }}
+                    aria-hidden
+                  />
+                ) : (
+                  <span className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-zinc-600 ${look.palette.dot}`} aria-hidden />
+                )}
+                <span className="min-w-0 truncate">{m.name}</span>
+                <span className="shrink-0 tabular-nums text-zinc-500">({n})</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
       <div className={density === "dense" ? "mt-2 space-y-1.5" : "mt-2.5 space-y-2"}>
-        {receptionUpcoming.length > 0 ? (
-          receptionUpcoming.map((ap) => {
-            const master = staff.find((s) => s.id === ap.staff_id);
+        {filteredUpcoming.length > 0 ? (
+          filteredUpcoming.map((ap) => {
+            const master = staffById.get(ap.staff_id);
             const svcName = services.find((s) => String(s.id) === String(ap.service_id))?.name || "—";
+            const look = resolveStaffPublicCalendarLook(ap.staff_id, staffById, staffColorAssignments);
+            const cardBase = upcomingCardClass(density);
+            const cardExtra =
+              look.kind === "google"
+                ? " pl-0"
+                : ` pl-0 ${look.palette.strip}`;
+            const cardStyle: CSSProperties | undefined =
+              look.kind === "google"
+                ? {
+                    borderLeftWidth: 4,
+                    borderLeftStyle: "solid",
+                    borderLeftColor: look.bg,
+                    backgroundColor: look.soft,
+                  }
+                : undefined;
             return (
-              <div key={ap.id} className={upcomingCardClass(density)}>
-                <div className="font-medium text-zinc-100">
+              <div key={ap.id} className={`${cardBase}${cardExtra}`} style={cardStyle}>
+                <div className={`font-medium pl-2 ${look.kind === "palette" ? look.palette.text : "text-zinc-100"}`}>
                   {ap.start_time
                     ? new Date(ap.start_time).toLocaleString(i18n.language, {
                         dateStyle: "short",
@@ -336,15 +429,21 @@ export function PublicBookingUpcomingSection({
                       })
                     : "—"}
                 </div>
-                <div className="mt-0.5 text-zinc-400">
+                <div
+                  className={`mt-0.5 pl-2 ${look.kind === "palette" ? look.palette.text : "text-zinc-200"} opacity-90`}
+                >
                   {master?.name || "—"} · {svcName}
                 </div>
-                <div className="mt-0.5 text-zinc-500">{ap.client_name || "—"}</div>
+                <div className="mt-0.5 pl-2 text-zinc-500">{ap.client_name || ap.note || "—"}</div>
               </div>
             );
           })
         ) : (
-          <p className="text-xs text-zinc-600">{t("publicBook.upcomingWorksEmpty")}</p>
+          <p className="text-xs text-zinc-600">
+            {receptionUpcoming.length === 0
+              ? t("publicBook.upcomingWorksEmpty")
+              : t("publicBook.upcomingWorksEmptyForMaster")}
+          </p>
         )}
       </div>
     </section>
