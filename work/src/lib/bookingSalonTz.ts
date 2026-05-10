@@ -84,29 +84,58 @@ function zonedParts(date: Date, timeZone: string) {
   };
 }
 
+function ymdFromZonedParts(p: ReturnType<typeof zonedParts>): string {
+  return `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+}
+
+/** Кэш: до 2880×Intl на каждый день убивали FPS на /book и /reception. */
+const salonDayStartUtcCache = new Map<string, Date>();
+
 /**
  * UTC-момент начала календарного дня ymd в Europe/Tallinn (00:00 местного времени).
  *
- * Важно: нельзя начинать поиск с «вечера (d−1) по UTC» — для зон восточнее UTC
- * (EET/EEST) это уже следующий календарный день локально, и одноминутный проход
- * вперёд никогда не попадёт в локальную полночь (см. could not resolve 2026-05-11).
+ * Ищем минуту off ∈ [0, 48×60] от (d−1) 00:00 UTC бинарным поиском (~12×Intl вместо тысяч).
  */
 export function salonDayStartUtc(ymd: string): Date {
+  const cached = salonDayStartUtcCache.get(ymd);
+  if (cached) return new Date(cached.getTime());
+
   const [y, mo, d] = ymd.split("-").map((x) => parseInt(x, 10));
   if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) {
     throw new Error(`salonDayStartUtc: invalid ymd ${ymd}`);
   }
-  let t = Date.UTC(y, mo - 1, d - 1, 0, 0, 0);
-  const maxSteps = 48 * 60;
-  for (let i = 0; i < maxSteps; i++) {
-    const p = zonedParts(new Date(t), SALON_TIME_ZONE);
-    const cur = `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
-    if (cur === ymd && p.hour === 0 && p.minute === 0) {
-      return new Date(t);
-    }
-    t += 60_000;
+
+  const t0 = Date.UTC(y, mo - 1, d - 1, 0, 0, 0);
+  const maxOff = 48 * 60;
+
+  const cmpLocal = (tMs: number): number => {
+    const p = zonedParts(new Date(tMs), SALON_TIME_ZONE);
+    const cur = ymdFromZonedParts(p);
+    if (cur !== ymd) return cur.localeCompare(ymd);
+    return p.hour * 60 + p.minute;
+  };
+
+  if (cmpLocal(t0 + maxOff * 60_000) < 0) {
+    throw new Error(`salonDayStartUtc: could not resolve ${ymd}`);
   }
-  throw new Error(`salonDayStartUtc: could not resolve ${ymd}`);
+
+  let lo = 0;
+  let hi = maxOff;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (cmpLocal(t0 + mid * 60_000) < 0) lo = mid + 1;
+    else hi = mid;
+  }
+
+  const t = t0 + lo * 60_000;
+  const p = zonedParts(new Date(t), SALON_TIME_ZONE);
+  if (ymdFromZonedParts(p) !== ymd || p.hour !== 0 || p.minute !== 0) {
+    throw new Error(`salonDayStartUtc: could not resolve ${ymd}`);
+  }
+
+  const out = new Date(t);
+  salonDayStartUtcCache.set(ymd, out);
+  return out;
 }
 
 /**
