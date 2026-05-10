@@ -34,6 +34,8 @@
   var mobileBar = document.querySelector(".mobile-book-bar");
   var mobileBookLink = mobileBar ? mobileBar.querySelector("a") : null;
   var reduceMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  /** Совпадает с ссылками tel: в index.html */
+  var SALON_BOOKING_PHONE_DISPLAY = "+372 439 8384";
 
   /* ─── Toast (замена window.alert) ──────────────────────────────────────
    * Минималистичный аналог alert() для подтверждения записи и ошибок.
@@ -134,6 +136,46 @@
       else navBackdrop.setAttribute("hidden", "");
     }
   }
+
+  function bookingPhoneOnlyToastMessage() {
+    var lang = (document.documentElement.getAttribute("lang") || "ru").toLowerCase().slice(0, 2);
+    if (lang === "et") {
+      return (
+        "Online broneering on hetkel välja lülitatud.\n\n" +
+        "Aja saamiseks helistage palun salongi või tulge kohapeale — leiame teile sobiva aja.\n\n" +
+        "Telefon: " +
+        SALON_BOOKING_PHONE_DISPLAY
+      );
+    }
+    if (lang === "en") {
+      return (
+        "Online booking is temporarily turned off.\n\n" +
+        "Please call the salon or visit us in person — we’ll find a time that suits you.\n\n" +
+        "Phone: " +
+        SALON_BOOKING_PHONE_DISPLAY
+      );
+    }
+    return (
+      "Онлайн-запись сейчас недоступна — мы с радостью запишем вас по телефону или при визите в салон.\n\n" +
+      "Позвоните: " +
+      SALON_BOOKING_PHONE_DISPLAY +
+      "\n\n" +
+      "Подберём удобное время и ответим на все вопросы."
+    );
+  }
+
+  document.body.addEventListener(
+    "click",
+    function (ev) {
+      var a = ev.target.closest('a[href="#broneeri"]');
+      if (!a || a.getAttribute("data-booking-phone-only") !== "true") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      showToast(bookingPhoneOnlyToastMessage(), "ok");
+      closeNav();
+    },
+    true
+  );
 
   function closeNav() {
     if (!nav || !navToggle) return;
@@ -407,22 +449,19 @@
       }
     }
     document.querySelectorAll('a[href="#broneeri"]').forEach(function (a) {
-      a.hidden = !panelEnabled;
-      a.setAttribute("aria-hidden", panelEnabled ? "false" : "true");
-      if (!panelEnabled) {
-        a.setAttribute("tabindex", "-1");
+      a.hidden = false;
+      a.removeAttribute("aria-hidden");
+      if (panelEnabled) {
+        a.removeAttribute("data-booking-phone-only");
+        a.removeAttribute("tabindex");
       } else {
+        a.setAttribute("data-booking-phone-only", "true");
         a.removeAttribute("tabindex");
       }
     });
     if (mobileBar) {
-      if (!panelEnabled) {
-        mobileBar.hidden = true;
-        mobileBar.setAttribute("aria-hidden", "true");
-      } else {
-        mobileBar.hidden = false;
-        mobileBar.setAttribute("aria-hidden", "false");
-      }
+      mobileBar.hidden = false;
+      mobileBar.setAttribute("aria-hidden", "false");
     }
   }
 
