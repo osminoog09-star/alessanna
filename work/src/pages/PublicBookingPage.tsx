@@ -117,9 +117,6 @@ export function PublicBookingPage() {
   const [dayStr, setDayStr] = useState(() => salonFirstBookableYmd());
   /** Всегда валидная ymd для TZ-математики (иначе salonDayStartUtc/salonWeekdaySun0 роняют рендер). */
   const bookYmd = useMemo(() => normalizePublicBookingDayStr(dayStr), [dayStr]);
-  useEffect(() => {
-    if (bookYmd !== dayStr) setDayStr(bookYmd);
-  }, [bookYmd, dayStr]);
   const [viewMonth, setViewMonth] = useState(() => {
     const fb = salonFirstBookableYmd();
     const [y, m] = fb.split("-").map(Number);

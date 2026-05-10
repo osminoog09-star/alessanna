@@ -55,20 +55,6 @@ export function compareSalonYmd(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
-/**
- * Защита от битого localStorage/состояния: иначе salonDayStartUtc / salonWeekdaySun0
- * бросают и весь /book и /reception остаются чёрным экраном (body bg-black, пустой #root).
- */
-export function normalizePublicBookingDayStr(ymd: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return salonFirstBookableYmd();
-  try {
-    salonDayStartUtc(ymd);
-    return ymd;
-  } catch {
-    return salonFirstBookableYmd();
-  }
-}
-
 export function isSalonBookableYmd(ymd: string, now: Date = new Date()): boolean {
   return compareSalonYmd(ymd, salonFirstBookableYmd(now)) >= 0;
 }
@@ -113,6 +99,20 @@ export function salonDayStartUtc(ymd: string): Date {
     t += 60_000;
   }
   throw new Error(`salonDayStartUtc: could not resolve ${ymd}`);
+}
+
+/**
+ * Защита от битой даты в состоянии: иначе salonDayStartUtc / salonWeekdaySun0 роняют рендер.
+ * Объявлено после salonDayStartUtc, чтобы порядок в бандле был однозначным.
+ */
+export function normalizePublicBookingDayStr(ymd: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return salonFirstBookableYmd();
+  try {
+    salonDayStartUtc(ymd);
+    return ymd;
+  } catch {
+    return salonFirstBookableYmd();
+  }
 }
 
 /** День недели 0–6 (вс–сб) для календарного дня ymd в Таллине. */
