@@ -13,14 +13,10 @@ import {
 } from "../lib/receptionLayout";
 import { saveReceptionLayoutToServer } from "../lib/receptionLayoutRemote";
 import { supabase } from "../lib/supabase";
-
-function parseBoolSetting(v: string | null | undefined, fallback = true): boolean {
-  const raw = String(v ?? "").trim().toLowerCase();
-  if (!raw) return fallback;
-  if (raw === "true" || raw === "1" || raw === "yes" || raw === "on") return true;
-  if (raw === "false" || raw === "0" || raw === "no" || raw === "off") return false;
-  return fallback;
-}
+import {
+  parseSalonBoolSetting,
+  SALON_SETTING_PUBLIC_BOOKING_PANEL_ENABLED,
+} from "../lib/salonSettingsParse";
 
 export function AdminSiteSettingsPage() {
   const { t } = useTranslation();
@@ -29,6 +25,7 @@ export function AdminSiteSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [siteBookingCartEnabled, setSiteBookingCartEnabled] = useState(true);
+  const [publicBookingPanelEnabled, setPublicBookingPanelEnabled] = useState(true);
 
   const [receptionRows, setReceptionRows] = useState<ReceptionRows>(() =>
     DEFAULT_RECEPTION_ROWS.map((r) => [...r]),
@@ -52,7 +49,11 @@ export function AdminSiteSettingsPage() {
     const { data, error: loadError } = await supabase
       .from("salon_settings")
       .select("key,value")
-      .in("key", ["site_booking_cart_enabled", "reception_section_order"]);
+      .in("key", [
+        "site_booking_cart_enabled",
+        SALON_SETTING_PUBLIC_BOOKING_PANEL_ENABLED,
+        "reception_section_order",
+      ]);
     setLoading(false);
     if (loadError) {
       setError(loadError.message);
@@ -60,8 +61,10 @@ export function AdminSiteSettingsPage() {
     }
     const rows = (data ?? []) as { key: string; value: string | null }[];
     const cartRow = rows.find((r) => r.key === "site_booking_cart_enabled");
+    const panelRow = rows.find((r) => r.key === SALON_SETTING_PUBLIC_BOOKING_PANEL_ENABLED);
     const recvRow = rows.find((r) => r.key === "reception_section_order");
-    setSiteBookingCartEnabled(parseBoolSetting(cartRow?.value, true));
+    setSiteBookingCartEnabled(parseSalonBoolSetting(cartRow?.value, true));
+    setPublicBookingPanelEnabled(parseSalonBoolSetting(panelRow?.value, true));
     if (recvRow?.value) {
       try {
         const parsed = parseReceptionLayoutFile(JSON.parse(recvRow.value) as unknown);
@@ -99,6 +102,21 @@ export function AdminSiteSettingsPage() {
       return;
     }
     setSiteBookingCartEnabled(nextEnabled);
+  }
+
+  async function savePublicBookingPanelEnabled(nextEnabled: boolean) {
+    const next = nextEnabled ? "true" : "false";
+    setSaving(true);
+    setError(null);
+    const { error: saveError } = await supabase
+      .from("salon_settings")
+      .upsert({ key: SALON_SETTING_PUBLIC_BOOKING_PANEL_ENABLED, value: next }, { onConflict: "key" });
+    setSaving(false);
+    if (saveError) {
+      setError(saveError.message);
+      return;
+    }
+    setPublicBookingPanelEnabled(nextEnabled);
   }
 
   async function saveReceptionLayout() {
@@ -160,6 +178,25 @@ export function AdminSiteSettingsPage() {
               checked={siteBookingCartEnabled}
               disabled={loading || saving}
               onChange={(e) => void saveSiteBookingCartEnabled(e.target.checked)}
+            />
+          </label>
+        </div>
+        <div className="mt-3 rounded-lg border border-zinc-800 bg-black/40 p-3">
+          <label className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-zinc-100">Панель онлайн-записи</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Страница <code className="text-zinc-400">/book</code>, короткая{" "}
+                <code className="text-zinc-400">/book/simple</code> и блок записи на главной сайта
+                (календарь + форма). Выключите, чтобы временно закрыть запись без деплоя.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 accent-emerald-500"
+              checked={publicBookingPanelEnabled}
+              disabled={loading || saving}
+              onChange={(e) => void savePublicBookingPanelEnabled(e.target.checked)}
             />
           </label>
         </div>

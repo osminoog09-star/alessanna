@@ -19,6 +19,10 @@ import { useAuth } from "../context/AuthContext";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { formatGoogleCalendarFnError } from "../lib/formatGoogleCalendarFnError";
 import {
+  parseSalonBoolSetting,
+  SALON_SETTING_PUBLIC_BOOKING_PANEL_ENABLED,
+} from "../lib/salonSettingsParse";
+import {
   compareSalonYmd,
   gregorianAddDays,
   isSalonBookableYmd,
@@ -141,6 +145,8 @@ export function PublicBookingPage() {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
+  /** Выключено в CRM (Настройки сайта). */
+  const [bookingPanelDisabledByAdmin, setBookingPanelDisabledByAdmin] = useState(false);
   const [receptionRows, setReceptionRows] = useState<ReceptionRows>(() =>
     DEFAULT_RECEPTION_ROWS.map((r) => [...r]),
   );
@@ -159,6 +165,17 @@ export function PublicBookingPage() {
       setLoading(false);
       return;
     }
+    const { data: panelRow } = await supabase
+      .from("salon_settings")
+      .select("value")
+      .eq("key", SALON_SETTING_PUBLIC_BOOKING_PANEL_ENABLED)
+      .maybeSingle();
+    if (!parseSalonBoolSetting(panelRow?.value, true)) {
+      setBookingPanelDisabledByAdmin(true);
+      setLoading(false);
+      return;
+    }
+    setBookingPanelDisabledByAdmin(false);
     const [st, lk, sc, remoteLayout, implicitSetting] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
       supabase.from("staff_services").select("*"),
@@ -997,6 +1014,27 @@ export function PublicBookingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
         {t("common.loading")}
+      </div>
+    );
+  }
+
+  if (bookingPanelDisabledByAdmin) {
+    return (
+      <div className="min-h-screen bg-zinc-950 px-4 py-16 text-zinc-200">
+        <div className="mx-auto max-w-lg rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
+          <h1 className="text-xl font-semibold text-white">
+            {t("publicBook.panelDisabledTitle", { defaultValue: "Онлайн-запись временно недоступна" })}
+          </h1>
+          <p className="mt-3 text-sm text-zinc-400">
+            {t("publicBook.panelDisabledBody", {
+              defaultValue:
+                "Запишитесь по телефону салона или напишите нам — мы подскажем свободное время.",
+            })}
+          </p>
+          <Link to="/" className="mt-6 inline-block text-sm text-sky-400 hover:text-sky-300">
+            {t("publicBook.panelDisabledHome", { defaultValue: "На главную" })}
+          </Link>
+        </div>
       </div>
     );
   }

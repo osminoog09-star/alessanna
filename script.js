@@ -371,6 +371,66 @@
     });
   });
 
+  /* Флаги публичного сайта из salon_settings (anon): корзина + панель записи #broneeri */
+  var salonPublicBookingPanelEnabled = true;
+  var salonSitePublicFlagsPromise = null;
+
+  function getSalonSupabaseAnonCfg() {
+    var sc = globalThis.SUPABASE_CONFIG || {};
+    var url = String(sc.url || globalThis.SALON_SUPABASE_URL || "").trim().replace(/\/+$/, "");
+    var key = String(sc.anonKey || globalThis.SALON_SUPABASE_ANON_KEY || "").trim();
+    return { url: url, key: key };
+  }
+
+  function parseSalonSiteBoolSetting(raw, fallback) {
+    var v = String(raw == null ? "" : raw).trim().toLowerCase();
+    if (!v) return fallback;
+    if (v === "true" || v === "1" || v === "yes" || v === "on") return true;
+    if (v === "false" || v === "0" || v === "no" || v === "off") return false;
+    return fallback;
+  }
+
+  function loadSalonSitePublicFeatureFlags() {
+    if (salonSitePublicFlagsPromise) return salonSitePublicFlagsPromise;
+    var cfg = getSalonSupabaseAnonCfg();
+    if (!cfg.url || !cfg.key) {
+      salonSitePublicFlagsPromise = Promise.resolve({ cart: true, bookingPanel: true });
+      return salonSitePublicFlagsPromise;
+    }
+    salonSitePublicFlagsPromise = fetch(
+      cfg.url +
+        "/rest/v1/salon_settings?select=key,value&key=in.(site_booking_cart_enabled,public_booking_panel_enabled)",
+      {
+        headers: {
+          apikey: cfg.key,
+          Authorization: "Bearer " + cfg.key,
+        },
+      }
+    )
+      .then(function (r) {
+        if (!r.ok) throw new Error("settings-http");
+        return r.json();
+      })
+      .then(function (rows) {
+        var cart = true;
+        var panel = true;
+        if (rows && rows.length) {
+          for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (row.key === "site_booking_cart_enabled") cart = parseSalonSiteBoolSetting(row.value, true);
+            if (row.key === "public_booking_panel_enabled") panel = parseSalonSiteBoolSetting(row.value, true);
+          }
+        }
+        salonPublicBookingPanelEnabled = panel;
+        return { cart: cart, bookingPanel: panel };
+      })
+      .catch(function () {
+        salonPublicBookingPanelEnabled = true;
+        return { cart: true, bookingPanel: true };
+      });
+    return salonSitePublicFlagsPromise;
+  }
+
   /* =============================================================================
    * Teenused + meistrid → nimekiri ja vorm (klõps praisil / nimel)
    * ============================================================================= */
@@ -534,51 +594,8 @@
       }
     }
 
-    function parseBoolSetting(raw, fallback) {
-      var v = String(raw == null ? "" : raw).trim().toLowerCase();
-      if (!v) return fallback;
-      if (v === "true" || v === "1" || v === "yes" || v === "on") return true;
-      if (v === "false" || v === "0" || v === "no" || v === "off") return false;
-      return fallback;
-    }
-
-    function getSalonSupabaseCfgForSiteSettings() {
-      var sc = globalThis.SUPABASE_CONFIG || {};
-      var url = String(sc.url || globalThis.SALON_SUPABASE_URL || "").trim().replace(/\/+$/, "");
-      var key = String(sc.anonKey || globalThis.SALON_SUPABASE_ANON_KEY || "").trim();
-      return { url: url, key: key };
-    }
-
     function applyBookingCartVisibility() {
       if (summary) summary.hidden = !bookingCartEnabled;
-    }
-
-    function loadBookingCartFeatureFlag() {
-      var cfg = getSalonSupabaseCfgForSiteSettings();
-      if (!cfg.url || !cfg.key) {
-        applyBookingCartVisibility();
-        return Promise.resolve();
-      }
-      var q = "/rest/v1/salon_settings?select=value&key=eq.site_booking_cart_enabled&limit=1";
-      return fetch(cfg.url + q, {
-        headers: {
-          apikey: cfg.key,
-          Authorization: "Bearer " + cfg.key,
-        },
-      })
-        .then(function (r) {
-          if (!r.ok) throw new Error("settings-http");
-          return r.json();
-        })
-        .then(function (rows) {
-          var value = rows && rows[0] ? rows[0].value : null;
-          bookingCartEnabled = parseBoolSetting(value, true);
-          applyBookingCartVisibility();
-        })
-        .catch(function () {
-          bookingCartEnabled = true;
-          applyBookingCartVisibility();
-        });
     }
 
     function currentTeamGroupKey() {
@@ -1979,7 +1996,10 @@
     };
 
     renderList();
-    void loadBookingCartFeatureFlag();
+    void loadSalonSitePublicFeatureFlags().then(function (flags) {
+      bookingCartEnabled = flags.cart;
+      applyBookingCartVisibility();
+    });
   })();
 
   /* =============================================================================
@@ -2008,6 +2028,12 @@
 
   /* Если чего-то не хватает в DOM — весь блок календаря не инициализируется */
   if (bookingSection && gridEl && titleEl && prevBtn && nextBtn && masterSelect && dateInput && timeSelect && bookingForm && serviceSelectEl) {
+    void loadSalonSitePublicFeatureFlags().then(function () {
+      if (!salonPublicBookingPanelEnabled) {
+        bookingSection.hidden = true;
+        if (mobileBar) mobileBar.hidden = true;
+        return;
+      }
     /* Язык: <html lang> с /ru /et /fi /en + подписи календаря и mailto */
     var pageLang = (document.documentElement.getAttribute("lang") || "et").toLowerCase().slice(0, 2);
     if (pageLang !== "ru" && pageLang !== "et" && pageLang !== "fi" && pageLang !== "en") pageLang = "et";
@@ -3344,6 +3370,7 @@
       var body = encodeURIComponent(lines.join("\n"));
       window.location.href = "mailto:alessanna.ilusalong@gmail.com?subject=" + subject + "&body=" + body;
       } /* end continueLegacySubmit */
+    });
     });
   }
 
