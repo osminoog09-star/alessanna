@@ -479,8 +479,19 @@
     return fallback;
   }
 
+  /** Ответ POST …/rpc/public_site_booking_panel_enabled — обычно JSON true/false. */
+  function normalizeBookingPanelRpcResult(body) {
+    if (body === false || body === 0) return false;
+    if (body === true || body === 1) return true;
+    var s = String(body == null ? "" : body).trim().toLowerCase();
+    if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+    if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+    return true;
+  }
+
   function applyBookingPanelDomVisibility(panelEnabled) {
     var el = document.getElementById("broneeri");
+    var fb = document.querySelector("[data-booking-panel-fallback]");
     if (el) {
       el.classList.remove("booking-panel--awaiting-flag");
       if (panelEnabled) {
@@ -488,11 +499,20 @@
         el.removeAttribute("hidden");
         el.setAttribute("aria-hidden", "false");
         el.style.removeProperty("display");
+        if (fb) {
+          fb.hidden = true;
+          fb.setAttribute("aria-hidden", "true");
+        }
       } else {
         el.classList.add("booking-panel--off");
-        el.setAttribute("hidden", "");
-        el.setAttribute("aria-hidden", "true");
-        el.style.display = "none";
+        el.removeAttribute("hidden");
+        el.setAttribute("aria-hidden", "false");
+        el.style.removeProperty("display");
+        if (fb) {
+          fb.hidden = false;
+          fb.setAttribute("aria-hidden", "false");
+          fb.classList.add("is-visible");
+        }
       }
     }
     document.querySelectorAll('a[href="#broneeri"]').forEach(function (a) {
@@ -561,9 +581,33 @@
         return { cart: cart, bookingPanel: panel };
       })
       .catch(function () {
-        salonPublicBookingPanelEnabled = true;
-        applyBookingPanelDomVisibility(true);
-        return { cart: true, bookingPanel: true };
+        return fetch(
+          cfg.url + "/rest/v1/salon_settings?select=value&key=eq.public_booking_panel_enabled&limit=1",
+          {
+            headers: {
+              apikey: cfg.key,
+              Authorization: "Bearer " + cfg.key,
+            },
+          }
+        )
+          .then(function (r) {
+            if (!r.ok) throw new Error("settings-panel");
+            return r.json();
+          })
+          .then(function (rows) {
+            var panel = true;
+            if (rows && rows[0] && rows[0].value != null) {
+              panel = parseSalonSiteBoolSetting(rows[0].value, true);
+            }
+            salonPublicBookingPanelEnabled = panel;
+            applyBookingPanelDomVisibility(panel);
+            return { cart: true, bookingPanel: panel };
+          })
+          .catch(function () {
+            salonPublicBookingPanelEnabled = true;
+            applyBookingPanelDomVisibility(true);
+            return { cart: true, bookingPanel: true };
+          });
       });
     return salonSitePublicFlagsPromise;
   }
