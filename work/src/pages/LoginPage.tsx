@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth, type LoginResult } from "../context/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabase";
@@ -165,22 +165,13 @@ export function LoginPage() {
                 Стандартный вход по телефону ниже
               </span>
             </button>
-            <Link
-              to="/calendar"
-              className="rounded-lg border border-amber-700/60 bg-amber-950/30 px-3 py-2 text-sm text-amber-100 hover:bg-amber-900/40"
-            >
-              2. Открыть календарь
-              <span className="mt-0.5 block text-xs text-amber-200/70">
-                Единый synced календарный workflow
-              </span>
-            </Link>
             <a
               href={publicSiteUrl()}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg border border-zinc-700 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800/60"
             >
-              3. Сайт
+              2. Сайт
               <span className="mt-0.5 block text-xs text-zinc-400">
                 Открыть публичный сайт в новой вкладке
               </span>

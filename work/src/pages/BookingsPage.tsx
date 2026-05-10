@@ -54,6 +54,9 @@ export function BookingsPage() {
   /* фильтры/поиск */
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [siteAlerts, setSiteAlerts] = useState<
+    Array<{ id: string; client: string; when: string; staffId: string }>
+  >([]);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -98,6 +101,31 @@ export function BookingsPage() {
   }, [load]);
 
   useBookingsRealtime(load);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("crm-bookings-site-alerts")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "appointments" },
+        (payload) => {
+          const row = payload.new as Partial<AppointmentRow>;
+          const source = String(row.source ?? "").toLowerCase();
+          if (source !== "public_site") return;
+          const id = String(row.id ?? "");
+          if (!id) return;
+          const client = String(row.client_name ?? "Новый клиент");
+          const when = String(row.start_time ?? "");
+          const staffId = String(row.staff_id ?? "");
+          setSiteAlerts((prev) => [{ id, client, when, staffId }, ...prev].slice(0, 5));
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   /* Подготовка отфильтрованного списка. */
   const visible = useMemo(() => {
@@ -155,6 +183,23 @@ export function BookingsPage() {
         t("bookings.deleteFailed", {
           defaultValue: "Не удалось удалить запись. Проверьте права и попробуйте снова.",
         })
+      );
+      return;
+    }
+    await load();
+  }
+
+  async function updateBookingSource(id: string, source: "public_site" | "reception" | "crm") {
+    let q = supabase.from("appointments").update({ source }).eq("id", id);
+    if (!canManage && isWorkerOnlyEffective && staffMember) {
+      q = q.eq("staff_id", staffMember.id);
+    }
+    const { error } = await q;
+    if (error) {
+      window.alert(
+        t("bookings.sourceUpdateFailed", {
+          defaultValue: "Не удалось изменить источник записи. Проверьте права и попробуйте снова.",
+        }),
       );
       return;
     }
@@ -278,6 +323,29 @@ export function BookingsPage() {
       </div>
 
       {/* ── Состояния ── */}
+      {siteAlerts.length > 0 && (
+        <div className="space-y-2">
+          {siteAlerts.map((a) => {
+            const staff = staffNames.find((s) => s.id === a.staffId);
+            const whenLabel = a.when ? format(parseISO(a.when), "yyyy-MM-dd HH:mm") : t("common.dash");
+            return (
+              <div
+                key={a.id}
+                className="rounded-lg border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-sm text-sky-100"
+              >
+                {t("bookings.siteBookingAlert", {
+                  defaultValue:
+                    "Новая запись с сайта: {{client}}, {{when}}{{staff}}. Проверьте, что событие появилось в Google Calendar.",
+                  client: a.client,
+                  when: whenLabel,
+                  staff: staff ? `, ${staff.name}` : "",
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {loadError ? (
         <div className="rounded-lg border border-red-900/50 bg-red-950/40 p-4 text-sm text-red-200">
           <p className="font-medium">{t("bookings.loadError")}</p>
@@ -359,7 +427,26 @@ export function BookingsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {src ? (
+                      {canManage ? (
+                        <select
+                          value={String((b.source ?? "crm").toLowerCase())}
+                          onChange={(e) =>
+                            void updateBookingSource(
+                              b.id,
+                              e.target.value as "public_site" | "reception" | "crm",
+                            )
+                          }
+                          className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 focus:border-emerald-600/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+                        >
+                          <option value="public_site">
+                            {t("bookings.sourceSite", { defaultValue: "Сайт" })}
+                          </option>
+                          <option value="reception">
+                            {t("bookings.sourceReception", { defaultValue: "Ресепшен" })}
+                          </option>
+                          <option value="crm">{t("bookings.sourceCrm", { defaultValue: "CRM" })}</option>
+                        </select>
+                      ) : src ? (
                         <span
                           className={
                             "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide " +
