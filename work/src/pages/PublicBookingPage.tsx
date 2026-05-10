@@ -21,6 +21,7 @@ import {
   compareSalonYmd,
   gregorianAddDays,
   isSalonBookableYmd,
+  normalizePublicBookingDayStr,
   salonCalendarYmd,
   salonDayStartUtc,
   salonFirstBookableYmd,
@@ -114,11 +115,23 @@ export function PublicBookingPage() {
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(ANY_MASTER_ID);
   const [dayStr, setDayStr] = useState(() => salonFirstBookableYmd());
+  /** Всегда валидная ymd для TZ-математики (иначе salonDayStartUtc/salonWeekdaySun0 роняют рендер). */
+  const bookYmd = useMemo(() => normalizePublicBookingDayStr(dayStr), [dayStr]);
+  useEffect(() => {
+    if (bookYmd !== dayStr) setDayStr(bookYmd);
+  }, [bookYmd, dayStr]);
   const [viewMonth, setViewMonth] = useState(() => {
     const fb = salonFirstBookableYmd();
     const [y, m] = fb.split("-").map(Number);
     return new Date(y, m - 1, 1);
   });
+  useEffect(() => {
+    if (!Number.isFinite(viewMonth.getTime())) {
+      const fb = salonFirstBookableYmd();
+      const [y, m] = fb.split("-").map(Number);
+      setViewMonth(new Date(y, m - 1, 1));
+    }
+  }, [viewMonth]);
   const [calendarScope, setCalendarScope] = useState<PublicCalendarScope>("month");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -246,7 +259,7 @@ export function PublicBookingPage() {
     void loadBase();
   }, [loadBase]);
 
-  const salonDayStart = useMemo(() => salonDayStartUtc(dayStr), [dayStr]);
+  const salonDayStart = useMemo(() => salonDayStartUtc(bookYmd), [bookYmd]);
   const selectedDay = salonDayStart;
 
   const firstBookableYmd = useMemo(() => salonFirstBookableYmd(new Date(nowTick)), [nowTick]);
@@ -330,7 +343,7 @@ export function PublicBookingPage() {
       setTimeOff([]);
       return;
     }
-    const start = salonDayStartUtc(dayStr);
+    const start = salonDayStartUtc(bookYmd);
     const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
     const [ap, to] = await Promise.all([
       supabase
@@ -357,7 +370,7 @@ export function PublicBookingPage() {
         }))
       );
     }
-  }, [dayStr, mastersPanelStaff, serviceId]);
+  }, [bookYmd, mastersPanelStaff, serviceId]);
 
   useEffect(() => {
     void loadDayData();
@@ -433,13 +446,13 @@ export function PublicBookingPage() {
 
   useEffect(() => {
     const min = salonFirstBookableYmd(new Date(nowTick));
-    if (compareSalonYmd(dayStr, min) < 0) {
+    if (compareSalonYmd(bookYmd, min) < 0) {
       setDayStr(min);
       const [y, m] = min.split("-").map(Number);
       setViewMonth(new Date(y, m - 1, 1));
       setPickedStart(null);
     }
-  }, [nowTick, dayStr]);
+  }, [nowTick, bookYmd]);
 
   const svc = services.find((s) => s.id === serviceId);
   const durationMin = svc ? svc.duration_min + svc.buffer_after_min : 60;
@@ -462,7 +475,7 @@ export function PublicBookingPage() {
         duration: durationMin,
         day: salonDayStart,
         salonDayStartUtc: salonDayStart,
-        salonWeekdaySun0: salonWeekdaySun0(dayStr),
+        salonWeekdaySun0: salonWeekdaySun0(bookYmd),
         stepMinutes: 15,
         staffId: member.id,
       });
@@ -470,7 +483,7 @@ export function PublicBookingPage() {
       out.set(member.id, slots);
     }
     return out;
-  }, [appointments, dayStr, durationMin, eligibleStaff, schedules, salonDayStart, svc, timeOff, nowTick]);
+  }, [appointments, bookYmd, durationMin, eligibleStaff, schedules, salonDayStart, svc, timeOff, nowTick]);
 
   const slotCoverage = useMemo(() => {
     const coverage = new Map<string, number>();
@@ -623,11 +636,11 @@ export function PublicBookingPage() {
   const staffById = useMemo(() => new Map(staffDirectory.map((s) => [s.id, s])), [staffDirectory]);
 
   const calendarWeekDays = useMemo(() => {
-    const wd = salonWeekdaySun0(dayStr);
+    const wd = salonWeekdaySun0(bookYmd);
     const fromMonday = (wd + 6) % 7;
-    const weekStartYmd = gregorianAddDays(dayStr, -fromMonday);
+    const weekStartYmd = gregorianAddDays(bookYmd, -fromMonday);
     return Array.from({ length: 7 }, (_, i) => salonDayStartUtc(gregorianAddDays(weekStartYmd, i)));
-  }, [dayStr]);
+  }, [bookYmd]);
 
   const calendarRangeTitle = useMemo(() => {
     switch (calendarScope) {
@@ -637,7 +650,7 @@ export function PublicBookingPage() {
           day: "numeric",
           month: "long",
           year: "numeric",
-        }).format(salonDayStartUtc(dayStr));
+        }).format(salonDayStartUtc(bookYmd));
       case "week": {
         const a = calendarWeekDays[0];
         const b = calendarWeekDays[6];
@@ -660,14 +673,16 @@ export function PublicBookingPage() {
         return `Q${Math.floor(viewMonth.getMonth() / 3) + 1} ${format(viewMonth, "yyyy")}`;
       case "year":
         return format(startOfYear(viewMonth), "yyyy");
+      default:
+        return monthLabel;
     }
-  }, [calendarScope, calendarWeekDays, dayStr, i18n.language, monthLabel, viewMonth]);
+  }, [calendarScope, calendarWeekDays, bookYmd, i18n.language, monthLabel, viewMonth]);
 
   const navigateCalendar = useCallback(
     (dir: -1 | 1) => {
       const d = dir;
       if (calendarScope === "day") {
-        const next = gregorianAddDays(dayStr, d);
+        const next = gregorianAddDays(bookYmd, d);
         const min = salonFirstBookableYmd();
         if (compareSalonYmd(next, min) < 0) return;
         setDayStr(next);
@@ -676,7 +691,7 @@ export function PublicBookingPage() {
         return;
       }
       if (calendarScope === "week") {
-        const next = gregorianAddDays(dayStr, d * 7);
+        const next = gregorianAddDays(bookYmd, d * 7);
         const min = salonFirstBookableYmd();
         const clamped = compareSalonYmd(next, min) < 0 ? min : next;
         setDayStr(clamped);
@@ -694,7 +709,7 @@ export function PublicBookingPage() {
       }
       setViewMonth((v) => addYears(v, d));
     },
-    [calendarScope, dayStr],
+    [calendarScope, bookYmd],
   );
 
   const onSelectCalendarDay = useCallback((d: Date) => {
@@ -707,7 +722,7 @@ export function PublicBookingPage() {
   }, []);
 
   const mastersByColumn = useMemo(() => {
-    const weekday = salonWeekdaySun0(dayStr);
+    const weekday = salonWeekdaySun0(bookYmd);
     const mapRow = (m: StaffMember): MasterDayRow => {
       const daySchedule = schedules
         .filter((s) => s.staff_id === m.id && s.day_of_week === weekday)
@@ -747,7 +762,7 @@ export function PublicBookingPage() {
     };
   }, [
     appointments,
-    dayStr,
+    bookYmd,
     mastersSplitResolved,
     receptionMastersConfig.assignment,
     schedules,
@@ -794,7 +809,7 @@ export function PublicBookingPage() {
       setMsg(t("publicBook.fillAll"));
       return;
     }
-    if (!isSalonBookableYmd(dayStr)) {
+    if (!isSalonBookableYmd(bookYmd)) {
       setMsg(t("publicBook.dayNotBookable"));
       return;
     }
@@ -856,7 +871,7 @@ export function PublicBookingPage() {
   function renderDayButtons(gridDays: Date[], anchorMonth: Date, compact: boolean) {
     return gridDays.map((d) => {
       const cellYmd = salonYmdFromAnyDate(d);
-      const selected = cellYmd === dayStr;
+      const selected = cellYmd === bookYmd;
       const todayTallinn = salonCalendarYmd(new Date(nowTick));
       const isTodayCell = cellYmd === todayTallinn;
       const inMonth = isSameMonth(d, anchorMonth);
@@ -983,7 +998,7 @@ export function PublicBookingPage() {
         viewMonth={viewMonth}
         setViewMonth={setViewMonth}
         selectedDay={selectedDay}
-        selectedDayYmd={dayStr}
+        selectedDayYmd={bookYmd}
         minSelectableYmd={firstBookableYmd}
         onSelectCalendarDay={onSelectCalendarDay}
         monthStart={monthStart}

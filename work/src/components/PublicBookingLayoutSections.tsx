@@ -242,10 +242,13 @@ export function PublicBookingCalendarSection({
         </>
       )}
 
-      {calendarScope === "quarter" &&
-        miniMonthGrid(startOfQuarter(viewMonth), endOfQuarter(viewMonth), true)}
+      {calendarScope === "quarter" && Number.isFinite(viewMonth.getTime())
+        ? miniMonthGrid(startOfQuarter(viewMonth), endOfQuarter(viewMonth), true)
+        : null}
 
-      {calendarScope === "year" && miniMonthGrid(startOfYear(viewMonth), endOfYear(viewMonth), true)}
+      {calendarScope === "year" && Number.isFinite(viewMonth.getTime())
+        ? miniMonthGrid(startOfYear(viewMonth), endOfYear(viewMonth), true)
+        : null}
 
       <CalendarStaffLegend
         appointmentStaffIds={appointmentStaffIds}
