@@ -161,8 +161,15 @@
     var saved = storedLang();
 
     if (!saved) {
+      if (fromPath) {
+        try {
+          localStorage.setItem(STORAGE_KEY, fromPath);
+          localStorage.setItem("lang", fromPath);
+        } catch (e) {}
+        loadBundle(fromPath);
+        return;
+      }
       showLangPicker();
-      if (fromPath) setDocumentLang(fromPath);
       return;
     }
 
