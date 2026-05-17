@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AlesSanna Ilusalong</title>
+  <script>
+  (function () {
+    var langs = ["ru", "et", "en"];
+    var parts = location.pathname.split("/").filter(Boolean);
+    var seg = (parts[0] || "").toLowerCase();
+    if (langs.indexOf(seg) >= 0) {
+      location.replace("/" + seg + "/" + location.search + location.hash);
+      return;
+    }
+    location.replace("/" + location.search + location.hash);
+  })();
+  </script>
+</head>
+<body>
+  <p><a href="/">AlesSanna Ilusalong</a></p>
+</body>
+</html>

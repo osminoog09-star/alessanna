@@ -23,9 +23,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Assemble site (root static files + /work redirect stubs)
         run: |
-          set -e
+          set -euo pipefail
           mkdir -p _site
-          cp index.html ru.html _site/
+          cp index.html ru.html 404.html _site/
           cp styles.css script.js translations.js _site/
           cp work.css work.js work.html _site/
           cp -r assets _site/
@@ -33,7 +33,22 @@ jobs:
           cp supabase-public-config.js site-services.mjs site-team.mjs site-builder.mjs site-support-chat.mjs site-admin-preview.mjs _site/
           cp .nojekyll CNAME _site/
           cp -r .github/page-bundle/work _site/
+
+          # Language routes: /ru/, /et/, /en/ (required for alessannailu.com/et/ etc.)
           node scripts/pages-lang-routes.mjs _site
+          for lang in ru et en; do
+            if [ ! -f "_site/${lang}/index.html" ]; then
+              echo "Missing _site/${lang}/index.html — fallback sed"
+              mkdir -p "_site/${lang}"
+              sed "s/<html lang=\"[^\"]*\"/<html lang=\"${lang}\"/" index.html > "_site/${lang}/index.html"
+            fi
+          done
+          for lang in ru et en; do
+            test -s "_site/${lang}/index.html"
+            test -s "_site/${lang}.html"
+          done
+          echo "Language routes OK:"
+          ls -la _site/ru _site/et _site/en
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

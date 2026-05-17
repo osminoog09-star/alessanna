@@ -17,7 +17,14 @@
 
   function pathLang() {
     var seg = (location.pathname.split("/").filter(Boolean)[0] || "").toLowerCase();
-    return PUBLIC_LANGS.indexOf(seg) >= 0 ? seg : null;
+    if (PUBLIC_LANGS.indexOf(seg) >= 0) return seg;
+    try {
+      var q = new URLSearchParams(location.search).get("lang");
+      if (q && PUBLIC_LANGS.indexOf(q.toLowerCase().slice(0, 2)) >= 0) {
+        return q.toLowerCase().slice(0, 2);
+      }
+    } catch (e) {}
+    return null;
   }
 
   function storedLang() {
