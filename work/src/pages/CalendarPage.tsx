@@ -58,7 +58,7 @@ type View = "day" | "week" | "month";
 
 export function CalendarPage() {
   const { t } = useTranslation();
-  const { staffMember } = useAuth();
+  const { staffMember, isReceptionMode } = useAuth();
   const { canManage, isWorkerOnlyEffective } = useEffectiveRole();
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
@@ -490,7 +490,7 @@ export function CalendarPage() {
       {loading ? (
         <p className="text-muted">{t("common.loading")}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className={`grid grid-cols-1 gap-6 ${isReceptionMode ? "" : "xl:grid-cols-[minmax(0,1fr)_320px]"}`}>
           <div className="min-w-0">
             {view === "day" ? (
               <ProCalendar
@@ -605,18 +605,20 @@ export function CalendarPage() {
             )}
           </div>
 
-          <CalendarSidePanels
-            cursor={cursor}
-            staff={activeStaffForCalendar}
-            appointments={filteredAppointments}
-            services={services}
-            schedules={schedules}
-            timeOff={timeOff}
-            focusStaffId={staffId}
-            serviceDurationMin={durationMin}
-            onNearestSlot={canUseCalendar && staffId ? goNearestSlot : undefined}
-            onCreateBooking={canUseCalendar && staffId ? openQuickBooking : undefined}
-          />
+          {!isReceptionMode && (
+            <CalendarSidePanels
+              cursor={cursor}
+              staff={activeStaffForCalendar}
+              appointments={filteredAppointments}
+              services={services}
+              schedules={schedules}
+              timeOff={timeOff}
+              focusStaffId={staffId}
+              serviceDurationMin={durationMin}
+              onNearestSlot={canUseCalendar && staffId ? goNearestSlot : undefined}
+              onCreateBooking={canUseCalendar && staffId ? openQuickBooking : undefined}
+            />
+          )}
         </div>
       )}
 
