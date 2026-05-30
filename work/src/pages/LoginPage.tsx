@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth, type LoginResult } from "../context/AuthContext";
 import { isSupabaseConfigured } from "../lib/supabase";
@@ -27,7 +27,6 @@ function safePostLoginPath(nextParam: string | null): string {
 export function LoginPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const nextAfterLogin = safePostLoginPath(searchParams.get("next"));
   const { staffMember, login, hasDeviceToken, loading } = useAuth();
   const [phone, setPhone] = useState("");
@@ -38,8 +37,9 @@ export function LoginPage() {
   const [staffName, setStaffName] = useState<string>("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [redirectAfterLogin, setRedirectAfterLogin] = useState(nextAfterLogin);
 
-  if (staffMember) return <Navigate to={nextAfterLogin} replace />;
+  if (staffMember) return <Navigate to={redirectAfterLogin} replace />;
   /* Пока AuthContext пробует автологин по device_token — не показываем форму,
    * чтобы не моргала. Успешный автологин сам редиректнет выше по условию. */
   if (loading) {
@@ -168,12 +168,20 @@ export function LoginPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate("/reception")}
+              onClick={() => {
+                setRedirectAfterLogin("/reception");
+                setShowTrustedHint(true);
+                setShowWorkLoginForm(true);
+                setTimeout(() => {
+                  const el = document.getElementById("phone");
+                  if (el) (el as HTMLInputElement).focus();
+                }, 50);
+              }}
               className="rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-3 py-2 text-left text-sm text-emerald-100 hover:bg-emerald-900/40"
             >
               2. Ресепшен / Киоск
               <span className="mt-0.5 block text-xs text-emerald-200/60">
-                Планшет для самозаписи клиентов
+                Войдите, чтобы открыть режим самозаписи
               </span>
             </button>
             <a
