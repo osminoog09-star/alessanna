@@ -15,9 +15,9 @@ import type {
   StaffTimeOffRow,
 } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
-import { staffCrmAppointmentBlockStyle } from "../../lib/staffCalendarColors";
 import { appointmentInterval, intervalsOverlap } from "../../lib/slots";
 import { panelStaffWorkingOnDate } from "../../lib/calendarWorkingStaff";
+import { googleStaffColor } from "./receptionColors";
 
 const START_HOUR = 8;
 const END_HOUR = 21;
@@ -68,13 +68,6 @@ function computeOverlapLayout(appts: AppointmentRow[]): ApptLayout[] {
     }
     return { appt, col: colAssignments[i] ?? 0, totalCols: maxCol + 1 };
   });
-}
-
-function staffChipColor(member: StaffMember, hueMap: Map<string, number>): string {
-  const hex = member.calendar_color_hex?.trim();
-  if (hex && /^#[0-9a-f]{6}$/i.test(hex)) return hex;
-  const hue = hueMap.get(member.id) ?? 200;
-  return `hsl(${hue}, 65%, 45%)`;
 }
 
 type Props = {
@@ -128,10 +121,10 @@ export function ReceptionWeekGrid({
   }, [services]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
       {/* Day header row */}
-      <div className="flex shrink-0 border-b border-line/15 bg-panel">
-        <div className="flex w-12 shrink-0 items-end justify-center pb-1 text-[10px] text-muted/50">
+      <div className="flex shrink-0 border-b border-[#dadce0] bg-white">
+        <div className="flex w-14 shrink-0 items-end justify-center pb-1 text-[10px] text-[#70757a]">
           GMT+3
         </div>
         {days.map((day, i) => {
@@ -143,32 +136,35 @@ export function ReceptionWeekGrid({
           return (
             <div
               key={day.toISOString()}
-              className="flex min-w-0 flex-1 flex-col items-center border-l border-line/10 py-1"
+              className="flex min-w-0 flex-1 flex-col items-center border-l border-[#dadce0] py-1"
             >
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted/60">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-[#70757a]">
                 {ruDay}
               </span>
               <span
                 className={[
-                  "flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold",
-                  isToday ? "bg-gold text-canvas" : "text-fg/80",
+                  "flex h-8 w-8 items-center justify-center rounded-full text-lg font-medium",
+                  isToday ? "bg-[#1a73e8] text-white" : "text-[#3c4043]",
                 ].join(" ")}
               >
                 {format(day, "d")}
               </span>
               {workingStaff.length > 0 && (
                 <div className="mt-0.5 flex flex-wrap justify-center gap-0.5 px-1">
-                  {workingStaff.slice(0, 4).map((m) => (
-                    <span
-                      key={m.id}
-                      className="max-w-[52px] truncate rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
-                      style={{ backgroundColor: staffChipColor(m, staffHueMap) }}
-                    >
-                      {m.name.split(" ")[0]}
-                    </span>
-                  ))}
+                  {workingStaff.slice(0, 4).map((m) => {
+                    const c = googleStaffColor(m, staffHueMap);
+                    return (
+                      <span
+                        key={m.id}
+                        className="max-w-[56px] truncate rounded px-1.5 py-0.5 text-[10px] font-medium"
+                        style={{ backgroundColor: c.bg, color: c.fg }}
+                      >
+                        {m.name.split(" ")[0]}
+                      </span>
+                    );
+                  })}
                   {workingStaff.length > 4 && (
-                    <span className="rounded px-1 py-0.5 text-[9px] text-muted/60">
+                    <span className="rounded px-1 py-0.5 text-[9px] text-[#70757a]">
                       +{workingStaff.length - 4}
                     </span>
                   )}
@@ -180,13 +176,13 @@ export function ReceptionWeekGrid({
       </div>
 
       {/* Scrollable time body */}
-      <div ref={bodyRef} className="flex min-h-0 flex-1 overflow-y-auto bg-canvas">
+      <div ref={bodyRef} className="flex min-h-0 flex-1 overflow-y-auto bg-white">
         {/* Time gutter */}
-        <div className="relative w-12 shrink-0 bg-panel" style={{ height: TOTAL_PX }}>
+        <div className="relative w-14 shrink-0 bg-white" style={{ height: TOTAL_PX }}>
           {HOURS.map((h) => (
             <div
               key={h}
-              className="absolute right-2 text-[10px] text-muted/50"
+              className="absolute right-2 text-[10px] text-[#70757a]"
               style={{ top: (h - START_HOUR) * PX_PER_HOUR - 6 }}
             >
               {h.toString().padStart(2, "0")}:00
@@ -194,11 +190,11 @@ export function ReceptionWeekGrid({
           ))}
           {days.some((d) => isSameDay(d, now)) && (
             <div
-              className="absolute right-0 h-2 w-2 rounded-full bg-red-500"
+              className="absolute right-0 h-2.5 w-2.5 rounded-full bg-[#ea4335]"
               style={{
                 top:
                   (now.getHours() - START_HOUR) * PX_PER_HOUR +
-                  (now.getMinutes() / 60) * PX_PER_HOUR - 4,
+                  (now.getMinutes() / 60) * PX_PER_HOUR - 5,
               }}
             />
           )}
@@ -230,8 +226,8 @@ export function ReceptionWeekGrid({
               <div
                 key={day.toISOString()}
                 className={[
-                  "relative min-w-0 flex-1 cursor-pointer select-none border-l border-line/10",
-                  isToday ? "bg-gold/[0.03]" : "",
+                  "relative min-w-0 flex-1 cursor-pointer select-none border-l border-[#dadce0]",
+                  isToday ? "bg-[#1a73e8]/[0.04]" : "",
                 ].join(" ")}
                 style={{ height: TOTAL_PX }}
                 onClick={(e) => handleBodyClick(e, day)}
@@ -240,16 +236,8 @@ export function ReceptionWeekGrid({
                 {HOURS.map((h) => (
                   <div
                     key={h}
-                    className="pointer-events-none absolute inset-x-0 border-t border-line/12"
+                    className="pointer-events-none absolute inset-x-0 border-t border-[#e8eaed]"
                     style={{ top: (h - START_HOUR) * PX_PER_HOUR }}
-                  />
-                ))}
-                {/* Half-hour lines */}
-                {HOURS.map((h) => (
-                  <div
-                    key={`half-${h}`}
-                    className="pointer-events-none absolute inset-x-0 border-t border-line/6"
-                    style={{ top: (h - START_HOUR) * PX_PER_HOUR + PX_PER_HOUR / 2 }}
                   />
                 ))}
 
@@ -268,7 +256,7 @@ export function ReceptionWeekGrid({
                         top: topPx,
                         height: heightPx,
                         backgroundImage:
-                          "repeating-linear-gradient(-45deg, #ef4444 0, #ef4444 1px, transparent 0, transparent 50%)",
+                          "repeating-linear-gradient(-45deg, #c0c4cc 0, #c0c4cc 1px, transparent 0, transparent 50%)",
                         backgroundSize: "6px 6px",
                       }}
                     />
@@ -278,7 +266,7 @@ export function ReceptionWeekGrid({
                 {/* Current time line */}
                 {isToday && (
                   <div
-                    className="pointer-events-none absolute inset-x-0 z-10 h-px bg-red-500"
+                    className="pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-[#ea4335]"
                     style={{
                       top:
                         (now.getHours() - START_HOUR) * PX_PER_HOUR +
@@ -297,21 +285,24 @@ export function ReceptionWeekGrid({
 
                   const widthPct = 100 / totalCols;
                   const leftPct = (col / totalCols) * 100;
-                  const colorStyle = staffCrmAppointmentBlockStyle(appt.staff_id, staff, staffHueMap);
+                  const member = staff.find((s) => s.id === appt.staff_id);
+                  const c = member
+                    ? googleStaffColor(member, staffHueMap)
+                    : { bg: "#7986cb", fg: "#ffffff", border: "#5c6bc0" };
                   const svc = serviceMap.get(String(appt.service_id));
 
                   return (
                     <div
                       key={appt.id}
                       data-appt="1"
-                      className="absolute overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-left transition-opacity hover:brightness-110 cursor-pointer"
+                      className="absolute cursor-pointer overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-shadow hover:shadow-md"
                       style={{
                         top: topPx + 1,
                         height: heightPx - 2,
                         left: `calc(${leftPct}% + 1px)`,
                         width: `calc(${widthPct}% - 2px)`,
-                        ...colorStyle,
-                        borderColor: (colorStyle.borderColor as string) ?? "#c4a574",
+                        backgroundColor: c.bg,
+                        color: c.fg,
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -322,7 +313,7 @@ export function ReceptionWeekGrid({
                         {appt.client_name}
                       </p>
                       {heightPx > 28 && (
-                        <p className="truncate text-[10px] leading-tight opacity-80">
+                        <p className="truncate text-[10px] leading-tight opacity-90">
                           {format(iv.start, "HH:mm")}
                           {svc ? ` · ${svc.name_et}` : ""}
                         </p>

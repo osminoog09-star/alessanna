@@ -9,23 +9,16 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import type { AppointmentRow, ServiceRow, StaffMember } from "../../types/database";
+import type { AppointmentRow, StaffMember } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
+import { googleStaffColor } from "./receptionColors";
 
 const RU_WEEK_DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-
-function staffChipColor(member: StaffMember, hueMap: Map<string, number>): string {
-  const hex = member.calendar_color_hex?.trim();
-  if (hex && /^#[0-9a-f]{6}$/i.test(hex)) return hex;
-  const hue = hueMap.get(member.id) ?? 200;
-  return `hsl(${hue}, 65%, 45%)`;
-}
 
 type Props = {
   cursor: Date;
   staff: StaffMember[];
   appointments: AppointmentRow[];
-  services?: ServiceRow[];
   visibleStaffIds: Set<string>;
   onDayClick: (day: Date) => void;
   onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
@@ -70,13 +63,13 @@ export function ReceptionMonthView({
   }, [appointments, visibleStaffIds]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
       {/* Column headers */}
-      <div className="grid shrink-0 grid-cols-7 border-b border-line/15 bg-panel">
+      <div className="grid shrink-0 grid-cols-7 border-b border-[#dadce0] bg-white">
         {RU_WEEK_DAYS_SHORT.map((d) => (
           <div
             key={d}
-            className="py-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted/60"
+            className="py-2 text-center text-[11px] font-medium uppercase tracking-wide text-[#70757a]"
           >
             {d}
           </div>
@@ -84,7 +77,7 @@ export function ReceptionMonthView({
       </div>
 
       {/* Month grid */}
-      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-hidden bg-canvas">
+      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-hidden bg-white">
         {gridDays.map((day) => {
           const key = format(day, "yyyy-MM-dd");
           const dayAppts = apptsByDay.get(key) ?? [];
@@ -98,18 +91,19 @@ export function ReceptionMonthView({
             <div
               key={key}
               className={[
-                "relative flex min-h-0 flex-col overflow-hidden border-b border-r border-line/10 p-1",
-                !isCurrentMonth ? "opacity-35" : "",
-                isToday ? "bg-gold/[0.04]" : "",
+                "relative flex min-h-0 flex-col overflow-hidden border-b border-r border-[#e8eaed] p-1",
+                !isCurrentMonth ? "bg-[#f8f9fa]" : "",
               ].join(" ")}
             >
               <button
                 onClick={() => onDayClick(day)}
                 className={[
-                  "mb-0.5 flex h-6 w-6 shrink-0 items-center justify-center self-start rounded-full text-xs font-semibold transition-colors",
+                  "mb-0.5 flex h-6 w-6 shrink-0 items-center justify-center self-start rounded-full text-xs font-medium transition-colors",
                   isToday
-                    ? "bg-gold text-canvas"
-                    : "text-fg/70 hover:bg-surface",
+                    ? "bg-[#1a73e8] text-white"
+                    : isCurrentMonth
+                    ? "text-[#3c4043] hover:bg-[#f1f3f4]"
+                    : "text-[#bdc1c6] hover:bg-[#f1f3f4]",
                 ].join(" ")}
               >
                 {format(day, "d")}
@@ -118,7 +112,9 @@ export function ReceptionMonthView({
               <div className="flex min-h-0 flex-col gap-0.5 overflow-hidden">
                 {visibleAppts.map((appt) => {
                   const member = staffMap.get(appt.staff_id);
-                  const bg = member ? staffChipColor(member, staffHueMap) : "#4b5563";
+                  const c = member
+                    ? googleStaffColor(member, staffHueMap)
+                    : { bg: "#7986cb", fg: "#ffffff", border: "#5c6bc0" };
                   const startTime = (() => {
                     try { return format(parseISO(appt.start_time), "HH:mm"); } catch { return ""; }
                   })();
@@ -126,8 +122,8 @@ export function ReceptionMonthView({
                     <button
                       key={appt.id}
                       onClick={(e) => { e.stopPropagation(); onApptClick(appt, e.clientX, e.clientY); }}
-                      className="w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-white hover:brightness-110"
-                      style={{ backgroundColor: bg }}
+                      className="w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium hover:brightness-95"
+                      style={{ backgroundColor: c.bg, color: c.fg }}
                     >
                       {startTime} {appt.client_name}
                     </button>
@@ -136,7 +132,7 @@ export function ReceptionMonthView({
                 {hiddenCount > 0 && (
                   <button
                     onClick={() => onDayClick(day)}
-                    className="text-left text-[10px] text-muted/60 hover:text-muted"
+                    className="text-left text-[10px] text-[#70757a] hover:text-[#3c4043]"
                   >
                     +{hiddenCount} ещё
                   </button>

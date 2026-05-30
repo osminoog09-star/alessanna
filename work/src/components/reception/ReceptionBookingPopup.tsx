@@ -167,23 +167,23 @@ export function ReceptionBookingPopup({
     onSave();
   }
 
-  const inputCls = "flex-1 rounded-lg border border-line/20 bg-surface px-2 py-1.5 text-sm text-fg focus:border-gold/60 focus:outline-none focus:ring-1 focus:ring-gold/30";
-  const timeCls = "w-24 rounded-lg border border-line/20 bg-surface px-2 py-1 text-sm text-fg focus:border-gold/60 focus:outline-none focus:ring-1 focus:ring-gold/30";
+  const inputCls = "flex-1 rounded-lg border border-[#dadce0] bg-white px-2 py-1.5 text-sm text-[#3c4043] focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]";
+  const timeCls = "w-24 rounded-lg border border-[#dadce0] bg-white px-2 py-1 text-sm text-[#3c4043] focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]";
 
   return (
     <div
       ref={popupRef}
       style={{ left, top, width: POPUP_W }}
-      className="fixed z-50 overflow-hidden rounded-2xl border border-line/20 bg-panel shadow-[0_18px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+      className="fixed z-50 overflow-hidden rounded-2xl border border-[#dadce0] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
       role="dialog"
       aria-modal="true"
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-line/15 px-4 py-2.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted/70">Новая запись</span>
+      <div className="flex items-center justify-between border-b border-[#e8eaed] px-4 py-2.5">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#70757a]">Новая запись</span>
         <button
           onClick={onClose}
-          className="rounded-full p-1 text-muted hover:bg-surface hover:text-fg"
+          className="rounded-full p-1 text-[#5f6368] hover:bg-[#f1f3f4]"
           aria-label="Закрыть"
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -199,19 +199,19 @@ export function ReceptionBookingPopup({
           value={clientName}
           onChange={(e) => setClientName(e.target.value)}
           placeholder="Добавьте клиента"
-          className="w-full border-0 border-b border-line/20 bg-transparent pb-1 text-base font-medium text-fg placeholder:text-muted/50 focus:border-gold/50 focus:outline-none"
+          className="w-full border-0 border-b border-[#dadce0] bg-transparent pb-1 text-base font-medium text-[#3c4043] placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:outline-none"
         />
 
         {/* Date + time */}
         <div className="flex items-start gap-3">
-          <svg viewBox="0 0 20 20" className="mt-2 h-4 w-4 shrink-0 text-muted/60" fill="currentColor">
+          <svg viewBox="0 0 20 20" className="mt-2 h-4 w-4 shrink-0 text-[#5f6368]" fill="currentColor">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
           </svg>
           <div className="flex-1">
-            <p className="mb-1.5 text-sm font-medium capitalize text-fg/80">{dateLabel}</p>
+            <p className="mb-1.5 text-sm font-medium capitalize text-[#3c4043]">{dateLabel}</p>
             <div className="flex items-center gap-2">
               <div className="flex flex-col gap-0.5">
-                <label className="text-[10px] text-muted/60">Начало</label>
+                <label className="text-[10px] text-[#70757a]">Начало</label>
                 <input
                   type="time"
                   value={startStr}
@@ -219,15 +219,15 @@ export function ReceptionBookingPopup({
                   className={timeCls}
                 />
               </div>
-              <span className="mt-4 text-muted/40">—</span>
+              <span className="mt-4 text-[#9aa0a6]">—</span>
               <div className="flex flex-col gap-0.5">
-                <label className="flex items-center gap-1 text-[10px] text-muted/60">
+                <label className="flex items-center gap-1 text-[10px] text-[#70757a]">
                   Конец
                   {endManual && (
                     <button
                       type="button"
                       onClick={() => setEndManual(false)}
-                      className="text-[10px] text-gold hover:text-gold/80"
+                      className="text-[10px] text-[#1a73e8] hover:underline"
                       title="Сбросить к автоматическому"
                     >
                       ↺
@@ -240,7 +240,7 @@ export function ReceptionBookingPopup({
                   onChange={(e) => handleEndChange(e.target.value)}
                   className={[
                     timeCls,
-                    endManual ? "border-gold/40 bg-gold/5" : "",
+                    endManual ? "border-[#1a73e8] bg-[#e8f0fe]" : "",
                   ].join(" ")}
                 />
               </div>
@@ -250,7 +250,7 @@ export function ReceptionBookingPopup({
 
         {/* Staff */}
         <div className="flex items-center gap-3">
-          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted/60" fill="currentColor">
+          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-[#5f6368]" fill="currentColor">
             <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
           </svg>
           <select
@@ -266,7 +266,7 @@ export function ReceptionBookingPopup({
 
         {/* Service */}
         <div className="flex items-center gap-3">
-          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted/60" fill="currentColor">
+          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-[#5f6368]" fill="currentColor">
             <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
           </svg>
           <select
@@ -285,7 +285,7 @@ export function ReceptionBookingPopup({
 
         {/* Phone */}
         <div className="flex items-center gap-3">
-          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted/60" fill="currentColor">
+          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-[#5f6368]" fill="currentColor">
             <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
           </svg>
           <input
@@ -293,24 +293,24 @@ export function ReceptionBookingPopup({
             onChange={(e) => setClientPhone(e.target.value)}
             placeholder="Телефон (необязательно)"
             type="tel"
-            className={inputCls + " placeholder:text-muted/40"}
+            className={inputCls + " placeholder:text-[#9aa0a6]"}
           />
         </div>
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-[#d93025]">{error}</p>}
 
         <div className="flex items-center justify-end gap-2 pt-1">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-line/20 px-3 py-1.5 text-sm text-muted hover:bg-surface hover:text-fg"
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#1a73e8] hover:bg-[#f1f3f4]"
           >
             Отмена
           </button>
           <button
             type="submit"
             disabled={saving || !serviceId || !staffId}
-            className="rounded-lg bg-gradient-to-r from-gold-deep to-gold px-4 py-1.5 text-sm font-medium text-canvas shadow-gold hover:brightness-110 disabled:opacity-40"
+            className="rounded-lg bg-[#1a73e8] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#1765cc] disabled:opacity-40"
           >
             {saving ? "Сохранение…" : "Сохранить"}
           </button>

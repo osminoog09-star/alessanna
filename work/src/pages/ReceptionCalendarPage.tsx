@@ -115,45 +115,55 @@ export function ReceptionCalendarPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-canvas text-muted">
+      <div className="flex h-screen items-center justify-center bg-white text-[#70757a]">
         Загрузка…
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-canvas text-fg">
+    <div className="flex h-screen flex-col overflow-hidden bg-white text-[#3c4043]">
       <AppTopBar />
 
       {/* Top navigation */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-line/15 bg-panel px-3 py-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-fg"
-        >
-          ‹
-        </button>
+      <div className="flex shrink-0 items-center gap-2 border-b border-[#dadce0] bg-white px-3 py-2">
         <button
           onClick={() => setCursor(new Date())}
-          className="rounded-lg border border-line/20 px-3 py-1 text-sm font-medium text-fg/70 hover:bg-surface hover:text-fg"
+          className="rounded-lg border border-[#dadce0] px-4 py-1.5 text-sm font-medium text-[#3c4043] hover:bg-[#f1f3f4]"
         >
           Сегодня
         </button>
+
+        {/* Prominent prev/next week buttons */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+          aria-label={view === "week" ? "Предыдущая неделя" : "Предыдущий месяц"}
+          title={view === "week" ? "Предыдущая неделя" : "Предыдущий месяц"}
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
         <button
           onClick={() => navigate(1)}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-fg"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+          aria-label={view === "week" ? "Следующая неделя" : "Следующий месяц"}
+          title={view === "week" ? "Следующая неделя" : "Следующий месяц"}
         >
-          ›
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </button>
 
-        <span className="ml-1 text-base font-medium capitalize text-fg/80">
+        <span className="ml-1 text-lg font-normal capitalize text-[#3c4043]">
           {periodLabel}
         </span>
 
         <div className="flex-1" />
 
         {/* View switcher */}
-        <div className="flex items-center rounded-lg border border-line/20 bg-surface/40 p-0.5">
+        <div className="flex items-center rounded-lg border border-[#dadce0] p-0.5">
           {(["week", "month"] as const).map((v) => (
             <button
               key={v}
@@ -161,8 +171,8 @@ export function ReceptionCalendarPage() {
               className={[
                 "rounded-md px-3 py-1 text-sm font-medium transition-colors",
                 view === v
-                  ? "bg-surface text-fg shadow-sm"
-                  : "text-muted hover:text-fg/80",
+                  ? "bg-[#e8f0fe] text-[#1a73e8]"
+                  : "text-[#5f6368] hover:bg-[#f1f3f4]",
               ].join(" ")}
             >
               {v === "week" ? "Неделя" : "Месяц"}
@@ -198,7 +208,6 @@ export function ReceptionCalendarPage() {
             cursor={cursor}
             staff={staff}
             appointments={appointments}
-            services={services}
             visibleStaffIds={visibleStaffIds}
             onDayClick={handleDayClick}
             onApptClick={handleApptClick}
