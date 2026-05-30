@@ -74,7 +74,7 @@ function staffDotColor(member: StaffMember, hueMap: Map<string, number>): string
   const hex = member.calendar_color_hex?.trim();
   if (hex && /^#[0-9a-f]{6}$/i.test(hex)) return hex;
   const hue = hueMap.get(member.id) ?? 200;
-  return `hsl(${hue} 70% 50%)`;
+  return `hsl(${hue}, 65%, 45%)`;
 }
 
 type Props = {
@@ -86,6 +86,7 @@ type Props = {
   timeOff: StaffTimeOffRow[];
   visibleStaffIds: Set<string>;
   onSlotClick: (start: Date, anchorX: number, anchorY: number) => void;
+  onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
 };
 
 export function ReceptionWeekGrid({
@@ -97,6 +98,7 @@ export function ReceptionWeekGrid({
   timeOff,
   visibleStaffIds,
   onSlotClick,
+  onApptClick,
 }: Props) {
   const [now, setNow] = useState(() => new Date());
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -163,8 +165,8 @@ export function ReceptionWeekGrid({
                   {workingStaff.slice(0, 4).map((m) => (
                     <span
                       key={m.id}
-                      className="max-w-[48px] truncate rounded px-1 py-0.5 text-[9px] font-medium text-white/90"
-                      style={{ backgroundColor: staffDotColor(m, staffHueMap) + "cc" }}
+                      className="max-w-[52px] truncate rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                      style={{ backgroundColor: staffDotColor(m, staffHueMap) }}
                     >
                       {m.name.split(" ")[0]}
                     </span>
@@ -326,7 +328,10 @@ export function ReceptionWeekGrid({
                         ...colorStyle,
                         borderColor: (colorStyle.borderColor as string) ?? "#60a5fa",
                       }}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onApptClick(appt, e.clientX, e.clientY);
+                      }}
                     >
                       <p className="truncate text-[11px] font-semibold leading-tight">
                         {appt.client_name}

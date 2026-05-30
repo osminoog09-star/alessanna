@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { addDays, addWeeks, startOfWeek, subWeeks } from "date-fns";
+import { addDays, addMonths, addWeeks, startOfWeek, subMonths, subWeeks } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { loadServicesCatalog } from "../lib/loadServicesCatalog";
@@ -7,7 +7,9 @@ import { isStaffRowAdmin, normalizeStaffMember } from "../lib/roles";
 import { AppTopBar } from "../components/AppTopBar";
 import { ReceptionSidebar } from "../components/reception/ReceptionSidebar";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
+import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
 import { ReceptionBookingPopup } from "../components/reception/ReceptionBookingPopup";
+import { ReceptionAppointmentDetail } from "../components/reception/ReceptionAppointmentDetail";
 import type {
   AppointmentRow,
   ServiceRow,
@@ -17,14 +19,23 @@ import type {
   StaffTimeOffRow,
 } from "../types/database";
 
-type PopupState = {
+type View = "week" | "month";
+
+type BookingPopupState = {
   anchorX: number;
   anchorY: number;
   initialStart: Date;
   defaultStaffId: string | null;
 };
 
+type DetailState = {
+  appt: AppointmentRow;
+  anchorX: number;
+  anchorY: number;
+};
+
 export function ReceptionCalendarPage() {
+  const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
@@ -33,7 +44,8 @@ export function ReceptionCalendarPage() {
   const [timeOff, setTimeOff] = useState<StaffTimeOffRow[]>([]);
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
   const [visibleStaffIds, setVisibleStaffIds] = useState<Set<string>>(new Set());
-  const [popup, setPopup] = useState<PopupState | null>(null);
+  const [popup, setPopup] = useState<BookingPopupState | null>(null);
+  const [detail, setDetail] = useState<DetailState | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -51,7 +63,6 @@ export function ReceptionCalendarPage() {
         .filter((row) => !isStaffRowAdmin(row))
         .map((r) => normalizeStaffMember(r as StaffMember));
       setStaff(normalized);
-      // Initialize all staff as visible on first load
       setVisibleStaffIds((prev) => {
         if (prev.size > 0) return prev;
         return new Set(normalized.map((m) => m.id));
@@ -87,10 +98,29 @@ export function ReceptionCalendarPage() {
   }
 
   function handleSlotClick(start: Date, anchorX: number, anchorY: number) {
+    setDetail(null);
     setPopup({ anchorX, anchorY, initialStart: start, defaultStaffId: null });
   }
 
-  const weekLabel = cursor.toLocaleString("ru-RU", { month: "long", year: "numeric" });
+  function handleApptClick(appt: AppointmentRow, x: number, y: number) {
+    setPopup(null);
+    setDetail({ appt, anchorX: x, anchorY: y });
+  }
+
+  function handleDayClick(day: Date) {
+    setCursor(day);
+    setView("week");
+  }
+
+  function navigate(dir: 1 | -1) {
+    if (view === "week") setCursor((d) => (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1)));
+    else setCursor((d) => (dir === 1 ? addMonths(d, 1) : subMonths(d, 1)));
+  }
+
+  const periodLabel = cursor.toLocaleString("ru-RU", {
+    month: "long",
+    year: "numeric",
+  });
 
   if (loading) {
     return (
@@ -104,13 +134,11 @@ export function ReceptionCalendarPage() {
     <div className="flex h-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100">
       <AppTopBar />
 
-      {/* Google Calendar-style top nav */}
+      {/* Top navigation bar */}
       <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
-        {/* Nav buttons */}
         <button
-          onClick={() => setCursor((d) => subWeeks(d, 1))}
+          onClick={() => navigate(-1)}
           className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-          aria-label="Предыдущая неделя"
         >
           ‹
         </button>
@@ -121,50 +149,68 @@ export function ReceptionCalendarPage() {
           Сегодня
         </button>
         <button
-          onClick={() => setCursor((d) => addWeeks(d, 1))}
+          onClick={() => navigate(1)}
           className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-          aria-label="Следующая неделя"
         >
           ›
         </button>
-
-        {/* Month + year label */}
         <span className="ml-1 text-base font-medium capitalize text-zinc-200">
-          {weekLabel}
+          {periodLabel}
         </span>
-
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* View badge (static for now) */}
-        <span className="flex items-center gap-1 rounded-lg border border-zinc-700 px-3 py-1 text-sm text-zinc-300">
-          Неделя
-          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 opacity-60" fill="currentColor">
-            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" />
-          </svg>
-        </span>
+        {/* View switcher */}
+        <div className="flex items-center rounded-lg border border-zinc-700 p-0.5">
+          {(["week", "month"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={[
+                "rounded-md px-3 py-1 text-sm font-medium transition-colors",
+                view === v
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "text-zinc-400 hover:text-zinc-200",
+              ].join(" ")}
+            >
+              {v === "week" ? "Неделя" : "Месяц"}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Main content */}
+      {/* Main layout */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <ReceptionSidebar
           cursor={cursor}
-          onDateSelect={(date) => setCursor(date)}
+          onDateSelect={(date) => { setCursor(date); setView("week"); }}
           staff={staff}
           visibleStaffIds={visibleStaffIds}
           onToggleStaff={handleToggleStaff}
         />
 
-        <ReceptionWeekGrid
-          days={days}
-          staff={staff}
-          appointments={appointments}
-          services={services}
-          schedules={schedules}
-          timeOff={timeOff}
-          visibleStaffIds={visibleStaffIds}
-          onSlotClick={handleSlotClick}
-        />
+        {view === "week" ? (
+          <ReceptionWeekGrid
+            days={days}
+            staff={staff}
+            appointments={appointments}
+            services={services}
+            schedules={schedules}
+            timeOff={timeOff}
+            visibleStaffIds={visibleStaffIds}
+            onSlotClick={handleSlotClick}
+            onApptClick={handleApptClick}
+          />
+        ) : (
+          <ReceptionMonthView
+            cursor={cursor}
+            staff={staff}
+            appointments={appointments}
+            services={services}
+            visibleStaffIds={visibleStaffIds}
+            onDayClick={handleDayClick}
+            onApptClick={handleApptClick}
+          />
+        )}
       </div>
 
       {/* Booking popup */}
@@ -179,6 +225,18 @@ export function ReceptionCalendarPage() {
           links={staffServiceLinks}
           onSave={() => { setPopup(null); void load(); }}
           onClose={() => setPopup(null)}
+        />
+      )}
+
+      {/* Appointment detail */}
+      {detail && (
+        <ReceptionAppointmentDetail
+          appt={detail.appt}
+          anchorX={detail.anchorX}
+          anchorY={detail.anchorY}
+          staff={staff}
+          services={services}
+          onClose={() => setDetail(null)}
         />
       )}
     </div>

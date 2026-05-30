@@ -112,7 +112,7 @@ export function ReceptionSidebar({
       {/* Staff list */}
       <div className="px-3">
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-          Мои мастера
+          Мастера
         </p>
         <div className="space-y-0.5">
           {staff.map((member, idx) => (

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { addMinutes, format } from "date-fns";
+import { addMinutes, format, setHours, setMinutes, startOfDay } from "date-fns";
 import { supabase } from "../../lib/supabase";
 import { servicesEligibleForStaff } from "../../lib/roles";
 import { overlapsExistingAppointments } from "../../lib/slots";
@@ -17,8 +17,20 @@ type Props = {
   onClose: () => void;
 };
 
-const POPUP_W = 328;
-const POPUP_H = 400;
+const POPUP_W = 340;
+const POPUP_H = 460;
+
+function timeToStr(date: Date): string {
+  return format(date, "HH:mm");
+}
+
+function applyTimeStr(base: Date, timeStr: string): Date {
+  const [hStr, mStr] = timeStr.split(":");
+  const h = parseInt(hStr ?? "0", 10);
+  const m = parseInt(mStr ?? "0", 10);
+  if (Number.isNaN(h) || Number.isNaN(m)) return base;
+  return setMinutes(setHours(startOfDay(base), h), m);
+}
 
 export function ReceptionBookingPopup({
   anchorX,
@@ -36,10 +48,12 @@ export function ReceptionBookingPopup({
   const [clientPhone, setClientPhone] = useState("");
   const [staffId, setStaffId] = useState<string>(() => defaultStaffId ?? staff[0]?.id ?? "");
   const [serviceId, setServiceId] = useState<string>("");
+  const [startStr, setStartStr] = useState(() => timeToStr(initialStart));
+  const [endStr, setEndStr] = useState(() => timeToStr(addMinutes(initialStart, 60)));
+  const [endManual, setEndManual] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Compute popup position, clamp to viewport
   const left = Math.min(anchorX + 8, window.innerWidth - POPUP_W - 8);
   const top = Math.max(8, Math.min(anchorY - 8, window.innerHeight - POPUP_H - 8));
 
@@ -53,19 +67,45 @@ export function ReceptionBookingPopup({
     [services, links, staffId, selectedStaff],
   );
 
-  // Initialize serviceId when staff or services change
+  const svc = useMemo(
+    () => eligibleServices.find((s) => String(s.id) === serviceId) ?? null,
+    [eligibleServices, serviceId],
+  );
+
+  // Initialize serviceId
   useEffect(() => {
     if (!serviceId && eligibleServices.length > 0) {
       setServiceId(String(eligibleServices[0]!.id));
     }
   }, [eligibleServices, serviceId]);
 
-  // Reset service if no longer eligible for selected staff
+  // Reset service if no longer eligible
   useEffect(() => {
     if (serviceId && !eligibleServices.some((s) => String(s.id) === serviceId)) {
       setServiceId(eligibleServices[0] ? String(eligibleServices[0].id) : "");
     }
   }, [staffId, eligibleServices, serviceId]);
+
+  // Auto-compute end when service changes (unless user manually set end)
+  useEffect(() => {
+    if (endManual) return;
+    const dur = svc ? svc.duration_min + svc.buffer_after_min : 60;
+    const start = applyTimeStr(initialStart, startStr);
+    setEndStr(timeToStr(addMinutes(start, dur)));
+  }, [svc, startStr, initialStart, endManual]);
+
+  function handleStartChange(val: string) {
+    setStartStr(val);
+    if (!endManual && svc) {
+      const dur = svc.duration_min + svc.buffer_after_min;
+      setEndStr(timeToStr(addMinutes(applyTimeStr(initialStart, val), dur)));
+    }
+  }
+
+  function handleEndChange(val: string) {
+    setEndStr(val);
+    setEndManual(true);
+  }
 
   // Close on Escape or click outside
   useEffect(() => {
@@ -73,9 +113,7 @@ export function ReceptionBookingPopup({
       if (e.key === "Escape") onClose();
     }
     function onMouseDown(e: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) onClose();
     }
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onMouseDown);
@@ -85,16 +123,6 @@ export function ReceptionBookingPopup({
     };
   }, [onClose]);
 
-  const svc = useMemo(
-    () => eligibleServices.find((s) => String(s.id) === serviceId) ?? null,
-    [eligibleServices, serviceId],
-  );
-
-  const endTime = svc
-    ? addMinutes(initialStart, svc.duration_min + svc.buffer_after_min)
-    : addMinutes(initialStart, 60);
-
-  const timeLabel = `${format(initialStart, "HH:mm")} – ${format(endTime, "HH:mm")}`;
   const dateLabel = initialStart.toLocaleString("ru-RU", {
     weekday: "long",
     day: "numeric",
@@ -106,8 +134,10 @@ export function ReceptionBookingPopup({
     if (!svc) { setError("Выберите услугу"); return; }
     if (!staffId) { setError("Выберите мастера"); return; }
 
-    const start = initialStart;
-    const end = addMinutes(start, svc.duration_min + svc.buffer_after_min);
+    const start = applyTimeStr(initialStart, startStr);
+    const end = applyTimeStr(initialStart, endStr);
+
+    if (end <= start) { setError("Время окончания должно быть позже начала"); return; }
 
     setSaving(true);
     setError("");
@@ -157,7 +187,7 @@ export function ReceptionBookingPopup({
       role="dialog"
       aria-modal="true"
     >
-      {/* Header strip */}
+      {/* Header */}
       <div className="flex items-center justify-between bg-zinc-800 px-4 py-2">
         <span className="text-xs font-medium text-zinc-400">Новая запись</span>
         <button
@@ -171,8 +201,8 @@ export function ReceptionBookingPopup({
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-3">
-        {/* Client name — large borderless input like Google Calendar */}
+      <form onSubmit={handleSubmit} className="space-y-3 p-4">
+        {/* Client name */}
         <input
           autoFocus
           value={clientName}
@@ -182,32 +212,59 @@ export function ReceptionBookingPopup({
         />
 
         {/* Date + time row */}
-        <div className="flex items-start gap-3 text-sm text-zinc-300">
-          <svg viewBox="0 0 20 20" className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" fill="currentColor">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-              clipRule="evenodd"
-            />
+        <div className="flex items-start gap-3">
+          <svg viewBox="0 0 20 20" className="mt-2 h-4 w-4 shrink-0 text-zinc-500" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
           </svg>
-          <div>
-            <p className="font-medium capitalize">{dateLabel}</p>
-            <p className="text-zinc-400">{timeLabel}</p>
+          <div className="flex-1">
+            <p className="mb-1 text-sm font-medium capitalize text-zinc-300">{dateLabel}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col">
+                <label className="mb-0.5 text-[10px] text-zinc-500">Начало</label>
+                <input
+                  type="time"
+                  value={startStr}
+                  onChange={(e) => handleStartChange(e.target.value)}
+                  className="w-24 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <span className="mt-4 text-zinc-500">—</span>
+              <div className="flex flex-col">
+                <label className="mb-0.5 flex items-center gap-1 text-[10px] text-zinc-500">
+                  Конец
+                  {endManual && (
+                    <button
+                      type="button"
+                      onClick={() => { setEndManual(false); }}
+                      className="text-[10px] text-blue-400 hover:text-blue-300"
+                      title="Сбросить к автоматическому"
+                    >
+                      ↺
+                    </button>
+                  )}
+                </label>
+                <input
+                  type="time"
+                  value={endStr}
+                  onChange={(e) => handleEndChange(e.target.value)}
+                  className={[
+                    "w-24 rounded-lg border px-2 py-1 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none",
+                    endManual ? "border-amber-600 bg-amber-950/30" : "border-zinc-700 bg-zinc-800",
+                  ].join(" ")}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Staff selector */}
         <div className="flex items-center gap-3">
           <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-zinc-500" fill="currentColor">
-            <path
-              fillRule="evenodd"
-              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-              clipRule="evenodd"
-            />
+            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
           </svg>
           <select
             value={staffId}
-            onChange={(e) => { setStaffId(e.target.value); setServiceId(""); }}
+            onChange={(e) => { setStaffId(e.target.value); setServiceId(""); setEndManual(false); }}
             className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none"
           >
             {staff.filter((s) => s.active).map((s) => (
@@ -219,15 +276,11 @@ export function ReceptionBookingPopup({
         {/* Service selector */}
         <div className="flex items-center gap-3">
           <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-zinc-500" fill="currentColor">
-            <path
-              fillRule="evenodd"
-              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-              clipRule="evenodd"
-            />
+            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
           </svg>
           <select
             value={serviceId}
-            onChange={(e) => setServiceId(e.target.value)}
+            onChange={(e) => { setServiceId(e.target.value); setEndManual(false); }}
             className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none"
           >
             <option value="">— услуга —</option>
@@ -239,7 +292,7 @@ export function ReceptionBookingPopup({
           </select>
         </div>
 
-        {/* Phone (optional) */}
+        {/* Phone */}
         <div className="flex items-center gap-3">
           <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-zinc-500" fill="currentColor">
             <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
@@ -255,7 +308,6 @@ export function ReceptionBookingPopup({
 
         {error && <p className="text-xs text-red-400">{error}</p>}
 
-        {/* Actions */}
         <div className="flex items-center justify-end gap-2 pt-1">
           <button
             type="button"
