@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type { ServiceRow } from "../types/database";
+import { listingPriceMaxCents } from "./serviceListing";
 
 /**
  * Единая точка загрузки каталога услуг для всего CRM.
@@ -90,7 +91,7 @@ async function fetchFromListings(): Promise<ServiceRow[]> {
       duration_min: Number(r.duration || 0),
       buffer_after_min: Number(r.buffer_after_min ?? 10),
       price_cents: Math.round(Number(r.price || 0) * 100),
-      price_max_cents: r.price_max != null ? Math.round(Number(r.price_max) * 100) : null,
+      price_max_cents: listingPriceMaxCents(r.price_max),
       active: r.is_active !== false,
       sort_order: idx,
       catalogSource: "listing" as const,

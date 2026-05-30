@@ -6,6 +6,7 @@ import { useEffectiveRole } from "../context/EffectiveRoleContext";
 import { useServicesCatalogRealtime } from "../hooks/useSalonRealtime";
 import type { CategoryRow, ServiceRow, StaffMember } from "../types/database";
 import { formatPriceEur } from "../lib/format";
+import { listingPriceMaxCents, priceMaxEur } from "../lib/serviceListing";
 import { normalizeRoles } from "../lib/roles";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 
@@ -90,7 +91,7 @@ async function fetchServicesFromListingsCatalog(): Promise<ServiceRow[]> {
       duration_min: Number(r.duration || 0),
       buffer_after_min: Number(r.buffer_after_min ?? 10),
       price_cents: Math.round(Number(r.price || 0) * 100),
-      price_max_cents: r.price_max != null ? Math.round(Number(r.price_max) * 100) : null,
+      price_max_cents: listingPriceMaxCents(r.price_max),
       active: r.is_active !== false,
       sort_order: idx,
       catalogSource: "listing",
@@ -278,7 +279,7 @@ export function ServicesPage() {
         duration_min: Number(r.duration || 0),
         buffer_after_min: Number(r.buffer_after_min || 10),
         price_cents: Number.isFinite(priceNum) ? Math.round(priceNum * 100) : 0,
-        price_max_cents: r.price_max != null ? Math.round(Number(r.price_max) * 100) : null,
+        price_max_cents: listingPriceMaxCents(r.price_max),
         active: r.active !== false && r.is_active !== false,
         sort_order: idx,
         created_at: r.created_at != null ? String(r.created_at) : undefined,
@@ -317,7 +318,7 @@ export function ServicesPage() {
         }
       }
 
-      const syncPriceMax = (service.price_max_cents ?? 0) > 0 ? Number(service.price_max_cents ?? 0) / 100 : null;
+      const syncPriceMax = priceMaxEur(service.price_max_cents);
       const payload = {
         name: serviceName,
         price: Number(service.price_cents || 0) / 100,
@@ -633,7 +634,7 @@ export function ServicesPage() {
     if (rowFromServiceListings(s)) {
       const publicCategoryId =
         s.category_id != null && String(s.category_id).trim() !== "" ? String(s.category_id) : null;
-      const priceMax = (s.price_max_cents ?? 0) > 0 ? Number(s.price_max_cents ?? 0) / 100 : null;
+      const priceMax = priceMaxEur(s.price_max_cents);
       const payload = {
         name: String(s.name_et || "").trim(),
         price: Number(s.price_cents || 0) / 100,

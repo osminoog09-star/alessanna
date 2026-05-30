@@ -6,6 +6,7 @@ import type { StaffMember, StaffServiceRow, ServiceRow } from "../types/database
 import { staffEligibleForService, servicesEligibleForStaff } from "../lib/roles";
 import { restrictAndOrderStaffByServiceHall, serviceRowToPublicCatalogEntry } from "../lib/publicMasterPanel";
 import { overlapsExistingAppointments } from "../lib/slots";
+import { priceMaxEur } from "../lib/serviceListing";
 import { ServiceListPicker } from "./service-picker/ServiceListPicker";
 
 type Props = {
@@ -80,7 +81,7 @@ export function BookingModal({
         name: s.name_et,
         durationMin: s.duration_min,
         priceEur: Number.isFinite(s.price_cents) ? s.price_cents / 100 : null,
-        priceMaxEur: (s.price_max_cents ?? 0) > 0 ? (s.price_max_cents ?? 0) / 100 : null,
+        priceMaxEur: priceMaxEur(s.price_max_cents),
         categoryName: s.category,
       })),
     [eligibleServices],

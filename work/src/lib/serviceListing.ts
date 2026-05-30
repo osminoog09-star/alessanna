@@ -24,3 +24,13 @@ export function listingSlotMinutes(s: ServiceListingRow): number {
 export function listingPriceCents(s: Pick<ServiceListingRow, "price">): number {
   return Math.round(Number(s.price ?? 0) * 100);
 }
+
+/** Range upper bound: `price_max` euros (nullable) → integer cents, or null when unset. */
+export function listingPriceMaxCents(priceMax: unknown): number | null {
+  return priceMax != null ? Math.round(Number(priceMax) * 100) : null;
+}
+
+/** ServiceRow.price_max_cents → euros for display/persistence; 0 or null means "no range". */
+export function priceMaxEur(priceMaxCents: number | null | undefined): number | null {
+  return (priceMaxCents ?? 0) > 0 ? (priceMaxCents ?? 0) / 100 : null;
+}
