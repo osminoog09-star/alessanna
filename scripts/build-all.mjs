@@ -50,7 +50,18 @@ execSync("npm install --prefer-offline 2>/dev/null || npm install", {
   cwd: workDir, stdio: "inherit", shell: true,
 });
 // Base stays '/' — React Router works normally, URL stays work.alessannailu.com/*
-execSync("npm run build", { cwd: workDir, stdio: "inherit", shell: true });
+// VITE_ vars are baked in at build time; .vercelignore blocks .env files so we
+// inject them here directly (both are public anon-level keys, safe to commit).
+execSync("npm run build", {
+  cwd: workDir,
+  stdio: "inherit",
+  shell: true,
+  env: {
+    ...process.env,
+    VITE_SUPABASE_URL: "https://eclrkusmwcrtnxqhzpky.supabase.co",
+    VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjbHJrdXNtd2NydG54cWh6cGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDU3ODEsImV4cCI6MjA5MTU4MTc4MX0.FpTqRxDFBToOCyfjJCOj2NvOwTol__4qGDgLp6Q8JUg",
+  },
+});
 
 // ── 2. Prepare dist/ ─────────────────────────────────────────────────────────
 
