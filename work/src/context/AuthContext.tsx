@@ -253,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
     // Внимание: device_token НЕ удаляем — это смысл «доверенного устройства».
     // Чтобы устройство «забыть», есть отдельный forgetThisDevice().
+    setReceptionMode(false);
     setStaffMember(null);
   }, []);
 
