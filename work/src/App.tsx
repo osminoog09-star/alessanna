@@ -52,8 +52,8 @@ export default function App() {
       <Route path="/help" element={<MyHelpPage />} />
       <Route path="/book" element={<PublicBookingPage />} />
       <Route path="/book/simple" element={<SimplePublicBookingPage />} />
-      <Route path="/reception" element={<ReceptionPage />} />
-      <Route path="/quick-booking" element={<ReceptionPage />} />
+      <Route path="/reception" element={<Protected><ReceptionPage /></Protected>} />
+      <Route path="/quick-booking" element={<Protected><ReceptionPage /></Protected>} />
       <Route path="/invite/:token" element={<PublicInvitePage />} />
       <Route
         path="/"

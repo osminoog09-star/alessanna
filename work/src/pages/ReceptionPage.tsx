@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { PublicBookingPage } from "./PublicBookingPage";
+import { CalendarPage } from "./CalendarPage";
 
 /**
- * Kiosk/reception mode wrapper.
- * Sets isReceptionMode=true while mounted so UI components
- * (AppTopBar, booking form) know they're running in kiosk context.
+ * Reception/kiosk mode — full CRM calendar without the sidebar nav.
+ * Sets isReceptionMode=true while mounted so AppTopBar and other
+ * components know they're running in kiosk context.
  */
 export function ReceptionPage() {
   const { setReceptionMode } = useAuth();
@@ -15,5 +15,5 @@ export function ReceptionPage() {
     return () => setReceptionMode(false);
   }, [setReceptionMode]);
 
-  return <PublicBookingPage />;
+  return <CalendarPage />;
 }
