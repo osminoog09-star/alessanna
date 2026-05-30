@@ -80,6 +80,7 @@ type Props = {
   visibleStaffIds: Set<string>;
   onSlotClick: (start: Date, anchorX: number, anchorY: number) => void;
   onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
+  onDayHeaderClick?: (day: Date, x: number, y: number) => void;
 };
 
 export function ReceptionWeekGrid({
@@ -92,6 +93,7 @@ export function ReceptionWeekGrid({
   visibleStaffIds,
   onSlotClick,
   onApptClick,
+  onDayHeaderClick,
 }: Props) {
   const [now, setNow] = useState(() => new Date());
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -136,7 +138,11 @@ export function ReceptionWeekGrid({
           return (
             <div
               key={day.toISOString()}
-              className="flex min-w-0 flex-1 flex-col items-center border-l border-[#dadce0] py-1"
+              className={[
+                "flex min-w-0 flex-1 flex-col items-center border-l border-[#dadce0] py-1",
+                onDayHeaderClick ? "cursor-pointer hover:bg-[#f1f3f4]" : "",
+              ].join(" ")}
+              onClick={onDayHeaderClick ? (e) => onDayHeaderClick(day, e.clientX, e.clientY) : undefined}
             >
               <span className="text-[11px] font-medium uppercase tracking-wide text-[#70757a]">
                 {ruDay}

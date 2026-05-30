@@ -46,6 +46,7 @@ import { CalendarSidePanels } from "../components/CalendarSidePanels";
 import { ProCalendar } from "../components/calendar/ProCalendar";
 import { WeekTimelineGrid } from "../components/calendar/WeekTimelineGrid";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
+import { DaySchedulePopup } from "../components/reception/DaySchedulePopup";
 import { buildStaffHueMap } from "../lib/staffHue";
 import {
   CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY,
@@ -77,6 +78,7 @@ export function CalendarPage() {
   const [calendarServiceId, setCalendarServiceId] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ start: Date; staffId: string } | null>(null);
+  const [dayPopup, setDayPopup] = useState<{ day: Date; x: number; y: number } | null>(null);
   const [receptionMastersConfig, setReceptionMastersConfig] = useState<ReceptionMastersPanelConfig>(() => ({
     ...DEFAULT_RECEPTION_MASTERS_PANEL,
   }));
@@ -597,6 +599,7 @@ export function CalendarPage() {
                     if (sid) setModal({ start, staffId: sid });
                   }}
                   onApptClick={() => {}}
+                  onDayHeaderClick={(day, x, y) => setDayPopup({ day, x, y })}
                 />
               </div>
             ) : (
@@ -650,6 +653,19 @@ export function CalendarPage() {
           lockStaff={!canManage}
           mastersHallSplit={mastersSplitResolved}
           mastersHallFullPanel={mastersPanelStaffForHall}
+        />
+      )}
+
+      {dayPopup && (
+        <DaySchedulePopup
+          day={dayPopup.day}
+          anchorX={dayPopup.x}
+          anchorY={dayPopup.y}
+          allStaff={activeStaffForCalendar}
+          schedules={schedules}
+          timeOff={timeOff}
+          onClose={() => setDayPopup(null)}
+          onSaved={() => { setDayPopup(null); void load(); }}
         />
       )}
     </div>

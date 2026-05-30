@@ -11,6 +11,7 @@ import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
 import { ReceptionBookingPopup } from "../components/reception/ReceptionBookingPopup";
 import { ReceptionAppointmentDetail } from "../components/reception/ReceptionAppointmentDetail";
 import { ReceptionStaffColorSettings } from "../components/reception/ReceptionStaffColorSettings";
+import { DaySchedulePopup } from "../components/reception/DaySchedulePopup";
 import type {
   AppointmentRow,
   ServiceRow,
@@ -48,6 +49,7 @@ export function ReceptionCalendarPage() {
   const [popup, setPopup] = useState<BookingPopupState | null>(null);
   const [detail, setDetail] = useState<DetailState | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [dayPopup, setDayPopup] = useState<{ day: Date; x: number; y: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -101,6 +103,12 @@ export function ReceptionCalendarPage() {
   function handleApptClick(appt: AppointmentRow, x: number, y: number) {
     setPopup(null);
     setDetail({ appt, anchorX: x, anchorY: y });
+  }
+
+  function handleDayHeaderClick(day: Date, x: number, y: number) {
+    setPopup(null);
+    setDetail(null);
+    setDayPopup({ day, x, y });
   }
 
   function handleDayClick(day: Date) {
@@ -215,6 +223,7 @@ export function ReceptionCalendarPage() {
             visibleStaffIds={visibleStaffIds}
             onSlotClick={handleSlotClick}
             onApptClick={handleApptClick}
+            onDayHeaderClick={handleDayHeaderClick}
           />
         ) : (
           <ReceptionMonthView
@@ -250,6 +259,19 @@ export function ReceptionCalendarPage() {
           staff={staff}
           services={services}
           onClose={() => setDetail(null)}
+        />
+      )}
+
+      {dayPopup && (
+        <DaySchedulePopup
+          day={dayPopup.day}
+          anchorX={dayPopup.x}
+          anchorY={dayPopup.y}
+          allStaff={staff}
+          schedules={schedules}
+          timeOff={timeOff}
+          onClose={() => setDayPopup(null)}
+          onSaved={() => { setDayPopup(null); void load(); }}
         />
       )}
 
