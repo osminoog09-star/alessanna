@@ -106,13 +106,8 @@ for (const f of ["book.html", "book.css", "book.js", "config.js"]) {
 
 // ── 3. Copy CRM build → dist/_crm_dist/ ──────────────────────────────────────
 
-console.log("\n=== [3/4] Copying CRM build → dist/_crm_dist/ ===");
+console.log("\n=== [3/3] Copying CRM build → dist/_crm_dist/ ===");
 cpDirTo("work/dist", "_crm_dist");
-
-// ── 4. Copy gcal-test → dist/gcal-test/ ──────────────────────────────────────
-
-console.log("\n=== [4/4] Copying gcal-test → dist/gcal-test/ ===");
-cpDirTo("gcal-test", "gcal-test");
 
 console.log("\n=== Build complete ===");
 console.log("Landing files:", fs.readdirSync(dist).filter(f => !f.startsWith("_")).slice(0, 12).join(", "));
