@@ -26,8 +26,8 @@ if (import.meta.env.DEV && !configured) {
 }
 
 export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!,
+  url || "https://placeholder.supabase.co",
+  key || "invalid-placeholder-key",
   { auth: { persistSession: false } }
 );
 
