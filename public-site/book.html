@@ -9,41 +9,74 @@
 <body>
   <header class="top">
     <a class="brand" href="/">AlesSanna</a>
-    <p class="tag">Online broneering (Supabase)</p>
   </header>
 
   <main class="shell">
     <p id="config-warn" class="warn" hidden>
-      Lisa <code>public-site/config.js</code> failis oma Supabase URL ja anon võti (vt README).
+      Konfiguratsioon puudub. Võta ühendust saidi haldajaga.
     </p>
 
     <ol class="steps">
+      <!-- Step 1: Service -->
       <li class="step is-active" data-step="1">
-        <h2>1. Teenus</h2>
-        <div id="services-list" class="cards"></div>
+        <h2>Vali teenus</h2>
+        <div id="services-list" class="cards">
+          <p class="muted">Laadin teenuseid…</p>
+        </div>
       </li>
+
+      <!-- Step 2: Staff -->
       <li class="step" data-step="2">
-        <h2>2. Meister</h2>
+        <button type="button" class="btn-back" data-back="1">← Tagasi</button>
+        <h2>Vali meister</h2>
         <div id="employees-list" class="cards"></div>
       </li>
+
+      <!-- Step 3: Time slot -->
       <li class="step" data-step="3">
-        <h2>3. Aeg</h2>
+        <button type="button" class="btn-back" data-back="2">← Tagasi</button>
+        <h2>Vali sobiv aeg</h2>
         <p class="muted" id="slot-hint"></p>
-        <div id="slots-list" class="slots"></div>
+        <div id="slots-list"></div>
       </li>
+
+      <!-- Step 4: Confirm -->
       <li class="step" data-step="4">
-        <h2>4. Kinnita</h2>
+        <button type="button" class="btn-back" data-back="3">← Tagasi</button>
+        <h2>Kinnita broneering</h2>
+
+        <div id="booking-summary" class="summary-box"></div>
+
         <form id="confirm-form" class="form">
-          <label>Nimi <input name="client_name" required /></label>
-          <label>Telefon <input name="client_phone" type="tel" required /></label>
-          <button type="submit">Broneeri</button>
+          <label>
+            Nimi *
+            <input name="client_name" required autocomplete="name" placeholder="Sinu nimi" />
+          </label>
+          <label>
+            Telefon *
+            <input name="client_phone" type="tel" required autocomplete="tel" placeholder="+372 5xxx xxxx" />
+          </label>
+          <label>
+            Kommentaar (vabatahtlik)
+            <textarea name="note" rows="2" placeholder="Soovid või küsimused…"></textarea>
+          </label>
+          <p id="booking-error" class="error-msg" hidden></p>
+          <button type="submit" id="submit-btn">
+            <span id="submit-btn-text">Broneeri</span>
+          </button>
         </form>
-        <p id="done-msg" class="ok" hidden>Broneering salvestatud.</p>
+
+        <div id="done-msg" class="ok-box" hidden>
+          <div class="ok-icon">✓</div>
+          <strong>Broneering vastu võetud!</strong>
+          <p>Võtame sinuga peagi ühendust.</p>
+          <a href="/" class="btn-home">← Tagasi avalehele</a>
+        </div>
       </li>
     </ol>
   </main>
 
-  <script src="./config.js"></script>
+  <script src="./supabase-public-config.js"></script>
   <script type="module" src="./book.js"></script>
 </body>
 </html>
