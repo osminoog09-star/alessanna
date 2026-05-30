@@ -10,6 +10,7 @@ import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
 import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
 import { ReceptionBookingPopup } from "../components/reception/ReceptionBookingPopup";
 import { ReceptionAppointmentDetail } from "../components/reception/ReceptionAppointmentDetail";
+import { ReceptionStaffColorSettings } from "../components/reception/ReceptionStaffColorSettings";
 import type {
   AppointmentRow,
   ServiceRow,
@@ -46,6 +47,7 @@ export function ReceptionCalendarPage() {
   const [visibleStaffIds, setVisibleStaffIds] = useState<Set<string>>(new Set());
   const [popup, setPopup] = useState<BookingPopupState | null>(null);
   const [detail, setDetail] = useState<DetailState | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -126,58 +128,69 @@ export function ReceptionCalendarPage() {
       <AppTopBar />
 
       {/* Top navigation */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-[#dadce0] bg-white px-3 py-2">
-        <button
-          onClick={() => setCursor(new Date())}
-          className="rounded-lg border border-[#dadce0] px-4 py-1.5 text-sm font-medium text-[#3c4043] hover:bg-[#f1f3f4]"
-        >
-          Сегодня
-        </button>
+      <div className="flex shrink-0 items-center border-b border-[#dadce0] bg-white px-3 py-2">
+        {/* Left: Today + view switcher */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCursor(new Date())}
+            className="rounded-lg border border-[#dadce0] px-4 py-1.5 text-sm font-medium text-[#3c4043] hover:bg-[#f1f3f4]"
+          >
+            Сегодня
+          </button>
+          <div className="flex items-center rounded-lg border border-[#dadce0] p-0.5">
+            {(["week", "month"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={[
+                  "rounded-md px-3 py-1 text-sm font-medium transition-colors",
+                  view === v
+                    ? "bg-[#e8f0fe] text-[#1a73e8]"
+                    : "text-[#5f6368] hover:bg-[#f1f3f4]",
+                ].join(" ")}
+              >
+                {v === "week" ? "Неделя" : "Месяц"}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* Prominent prev/next week buttons */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
-          aria-label={view === "week" ? "Предыдущая неделя" : "Предыдущий месяц"}
-          title={view === "week" ? "Предыдущая неделя" : "Предыдущий месяц"}
-        >
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-        <button
-          onClick={() => navigate(1)}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
-          aria-label={view === "week" ? "Следующая неделя" : "Следующий месяц"}
-          title={view === "week" ? "Следующая неделя" : "Следующий месяц"}
-        >
-          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
+        {/* Center: prev / month-year / next */}
+        <div className="flex flex-1 items-center justify-center gap-1">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+            aria-label={view === "week" ? "Предыдущая неделя" : "Предыдущий месяц"}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <span className="min-w-[160px] text-center text-lg font-normal capitalize text-[#3c4043]">
+            {periodLabel}
+          </span>
+          <button
+            onClick={() => navigate(1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+            aria-label={view === "week" ? "Следующая неделя" : "Следующий месяц"}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
 
-        <span className="ml-1 text-lg font-normal capitalize text-[#3c4043]">
-          {periodLabel}
-        </span>
-
-        <div className="flex-1" />
-
-        {/* View switcher */}
-        <div className="flex items-center rounded-lg border border-[#dadce0] p-0.5">
-          {(["week", "month"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={[
-                "rounded-md px-3 py-1 text-sm font-medium transition-colors",
-                view === v
-                  ? "bg-[#e8f0fe] text-[#1a73e8]"
-                  : "text-[#5f6368] hover:bg-[#f1f3f4]",
-              ].join(" ")}
-            >
-              {v === "week" ? "Неделя" : "Месяц"}
-            </button>
-          ))}
+        {/* Right: settings gear */}
+        <div className="flex items-center">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
+            title="Настройки цветов мастеров"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96a7.01 7.01 0 00-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.11.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -237,6 +250,14 @@ export function ReceptionCalendarPage() {
           staff={staff}
           services={services}
           onClose={() => setDetail(null)}
+        />
+      )}
+
+      {showSettings && (
+        <ReceptionStaffColorSettings
+          staff={staff}
+          onClose={() => setShowSettings(false)}
+          onSaved={() => { void load(); }}
         />
       )}
     </div>

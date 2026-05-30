@@ -290,6 +290,7 @@ export function ReceptionWeekGrid({
                     ? googleStaffColor(member, staffHueMap)
                     : { bg: "#7986cb", fg: "#ffffff", border: "#5c6bc0" };
                   const svc = serviceMap.get(String(appt.service_id));
+                  const isPast = iv.end.getTime() < now.getTime();
 
                   return (
                     <div
@@ -303,6 +304,7 @@ export function ReceptionWeekGrid({
                         width: `calc(${widthPct}% - 2px)`,
                         backgroundColor: c.bg,
                         color: c.fg,
+                        opacity: isPast ? 0.45 : 1,
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
