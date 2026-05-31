@@ -112,79 +112,78 @@ export function ReceptionWeekGrid({
   const bodyRef = useRef<HTMLDivElement>(null);
   const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
 
-  // Drag-to-resize: hold for 2 s to unlock resize mode, then drag up/down.
-  // Top half of block → move start time; bottom half → move end time.
-  // Snaps to 30-minute steps. A short press (< 2 s without movement) opens
-  // the edit popup. Moving more than 10 px before 2 s cancels the long-press
-  // so normal scroll still works.
+  // Resize mode: press and hold a booking for 1 s to put THAT booking into
+  // resize mode. It then shows top/bottom drag handles you can grab (you may
+  // lift your finger first) to change the start/end time in 30-min steps.
+  // Tapping empty calendar space exits resize mode. A quick tap (no hold)
+  // opens the edit popup as usual.
   const RESIZE_STEP_MIN = 30;
   const LONG_PRESS_MS = 1000;
 
-  const dragRef = useRef<{
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+  const [resizeModeId, setResizeModeId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ id: string; start: Date; end: Date } | null>(null);
+
+  // Active handle drag (only while a booking is in resize mode)
+  const handleDragRef = useRef<{
     appt: AppointmentRow;
     edge: "top" | "bottom";
     origStart: Date;
     origEnd: Date;
     startClientY: number;
-    startClientX: number;
-    resizeActive: boolean;
     curStart: Date;
     curEnd: Date;
-    pointerId: number;
-    el: HTMLDivElement;
   } | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [armingId, setArmingId] = useState<string | null>(null);   // 0–2 s press
-  const [preview, setPreview] = useState<{ id: string; start: Date; end: Date } | null>(null);
 
-  function cancelLongPress() {
+  function clearLongPress() {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-    setArmingId(null);
   }
 
-  function handleApptPointerDown(
-    e: React.PointerEvent<HTMLDivElement>,
-    appt: AppointmentRow,
-    start: Date,
-    end: Date,
-  ) {
+  // ---- Long-press a booking card -> enter resize mode ----
+  function handleCardPointerDown(e: React.PointerEvent<HTMLDivElement>, appt: AppointmentRow) {
     if (e.button !== 0 && e.pointerType === "mouse") return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const edge: "top" | "bottom" = e.clientY - rect.top < rect.height / 2 ? "top" : "bottom";
-    dragRef.current = {
-      appt, edge, origStart: start, origEnd: end,
-      startClientY: e.clientY, startClientX: e.clientX,
-      resizeActive: false, curStart: start, curEnd: end,
-      pointerId: e.pointerId, el: e.currentTarget,
-    };
-    // Capture immediately so mobile browser doesn't fire pointercancel and
-    // claim the gesture. Scroll still works because there's no touch-none yet.
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setArmingId(appt.id);
+    if (resizeModeId === appt.id) return; // already in resize mode; handles take over
+    longPressFired.current = false;
+    clearLongPress();
     longPressTimer.current = setTimeout(() => {
-      if (dragRef.current && dragRef.current.appt.id === appt.id) {
-        dragRef.current.resizeActive = true;
-        setArmingId(null);
-      }
+      longPressFired.current = true;
+      setResizeModeId(appt.id);
     }, LONG_PRESS_MS);
   }
 
-  function handleApptPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    const d = dragRef.current;
+  function handleCardPointerUp(e: React.PointerEvent<HTMLDivElement>, appt: AppointmentRow) {
+    clearLongPress();
+    if (longPressFired.current) { longPressFired.current = false; return; } // just entered resize mode
+    if (resizeModeId === appt.id) return; // tap on a card already in resize mode -> ignore
+    onApptClick(appt, e.clientX, e.clientY);
+  }
+
+  function handleCardPointerCancel() {
+    clearLongPress();
+  }
+
+  // ---- Dragging a resize handle ----
+  function handleHandlePointerDown(
+    e: React.PointerEvent<HTMLDivElement>,
+    appt: AppointmentRow,
+    edge: "top" | "bottom",
+    start: Date,
+    end: Date,
+  ) {
+    e.stopPropagation();
+    clearLongPress();
+    handleDragRef.current = {
+      appt, edge, origStart: start, origEnd: end,
+      startClientY: e.clientY, curStart: start, curEnd: end,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleHandlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const d = handleDragRef.current;
     if (!d) return;
-
-    // While arming, ignore movement entirely. The card has touch-action:none
-    // so the browser won't scroll from it, and finger jitter during a hold
-    // must NOT cancel the long-press. Resize unlocks only when the 1 s timer
-    // fires; lifting the finger before then is treated as a tap. Keep the
-    // baseline at the latest finger position so resize starts with no jump.
-    if (!d.resizeActive) {
-      d.startClientY = e.clientY;
-      d.startClientX = e.clientX;
-      return;
-    }
-
-    // Resize is active — snap to step
+    const deltaY = e.clientY - d.startClientY;
     const stepPx = (RESIZE_STEP_MIN / 60) * PX_PER_HOUR;
     const steps = Math.round(deltaY / stepPx);
     const deltaMin = steps * RESIZE_STEP_MIN;
@@ -202,16 +201,12 @@ export function ReceptionWeekGrid({
     setPreview({ id: d.appt.id, start, end });
   }
 
-  function handleApptPointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    cancelLongPress();
-    const d = dragRef.current;
-    dragRef.current = null;
+  function handleHandlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    const d = handleDragRef.current;
+    handleDragRef.current = null;
     setPreview(null);
     if (!d) return;
-    if (!d.resizeActive) {
-      onApptClick(d.appt, e.clientX, e.clientY);
-      return;
-    }
     const changed =
       d.curStart.getTime() !== d.origStart.getTime() ||
       d.curEnd.getTime() !== d.origEnd.getTime();
@@ -234,6 +229,9 @@ export function ReceptionWeekGrid({
 
   function handleBodyClick(e: React.MouseEvent<HTMLDivElement>, day: Date) {
     if ((e.target as HTMLElement).closest("[data-appt]")) return;
+    // Tapping empty calendar space exits resize mode (does not also open the
+    // new-booking popup, so it's an easy way to "deactivate" stretching).
+    if (resizeModeId) { setResizeModeId(null); return; }
     const rect = e.currentTarget.getBoundingClientRect();
     const scrollTop = bodyRef.current?.scrollTop ?? 0;
     const yOffset = e.clientY - rect.top + scrollTop;
@@ -420,7 +418,7 @@ export function ReceptionWeekGrid({
                   const iv = appointmentInterval(appt);
                   if (!iv) return null;
                   const isResizing = preview?.id === appt.id;
-                  const isArming = armingId === appt.id;
+                  const inResizeMode = resizeModeId === appt.id;
                   const effStart = isResizing ? preview!.start : iv.start;
                   const effEnd = isResizing ? preview!.end : iv.end;
                   const topPx = timeToPx(effStart, dayAnchor);
@@ -442,8 +440,7 @@ export function ReceptionWeekGrid({
                       data-appt="1"
                       className={[
                         "absolute touch-none overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-all",
-                        isResizing ? "shadow-lg ring-2 ring-white/60" : "hover:shadow-md",
-                        isArming ? "opacity-70 ring-2 ring-white/40" : "",
+                        isResizing || inResizeMode ? "shadow-lg ring-2 ring-white/70" : "hover:shadow-md",
                       ].join(" ")}
                       style={{
                         top: topPx + 1,
@@ -452,24 +449,19 @@ export function ReceptionWeekGrid({
                         width: `calc(${widthPct}% - 2px)`,
                         backgroundColor: c.bg,
                         color: c.fg,
-                        opacity: isArming ? 0.7 : isPast ? 0.45 : 1,
-                        cursor: isResizing ? "ns-resize" : "pointer",
-                        zIndex: isResizing || isArming ? 20 : undefined,
+                        opacity: isPast && !inResizeMode ? 0.45 : 1,
+                        cursor: "pointer",
+                        zIndex: isResizing || inResizeMode ? 20 : undefined,
                       }}
                       onPointerDown={(e) => {
                         e.stopPropagation();
-                        handleApptPointerDown(e, appt, iv.start, iv.end);
+                        handleCardPointerDown(e, appt);
                       }}
-                      onPointerMove={handleApptPointerMove}
                       onPointerUp={(e) => {
                         e.stopPropagation();
-                        handleApptPointerUp(e);
+                        handleCardPointerUp(e, appt);
                       }}
-                      onPointerCancel={() => {
-                        cancelLongPress();
-                        dragRef.current = null;
-                        setPreview(null);
-                      }}
+                      onPointerCancel={handleCardPointerCancel}
                     >
                       <p className="truncate text-[11px] font-semibold leading-tight">
                         {appt.client_name}
@@ -480,11 +472,27 @@ export function ReceptionWeekGrid({
                           {svc ? ` · ${svc.name_et}` : ""}
                         </p>
                       )}
-                      {isResizing && (
-                        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-md bg-white/50" />
-                      )}
-                      {isResizing && (
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 rounded-b-md bg-white/50" />
+                      {inResizeMode && (
+                        <>
+                          {/* Top drag handle */}
+                          <div
+                            className="absolute inset-x-0 top-0 z-30 flex h-5 cursor-ns-resize touch-none items-start justify-center"
+                            onPointerDown={(e) => handleHandlePointerDown(e, appt, "top", iv.start, iv.end)}
+                            onPointerMove={handleHandlePointerMove}
+                            onPointerUp={handleHandlePointerUp}
+                          >
+                            <div className="mt-0.5 h-1.5 w-8 rounded-full bg-white shadow" />
+                          </div>
+                          {/* Bottom drag handle */}
+                          <div
+                            className="absolute inset-x-0 bottom-0 z-30 flex h-5 cursor-ns-resize touch-none items-end justify-center"
+                            onPointerDown={(e) => handleHandlePointerDown(e, appt, "bottom", iv.start, iv.end)}
+                            onPointerMove={handleHandlePointerMove}
+                            onPointerUp={handleHandlePointerUp}
+                          >
+                            <div className="mb-0.5 h-1.5 w-8 rounded-full bg-white shadow" />
+                          </div>
+                        </>
                       )}
                     </div>
                   );
