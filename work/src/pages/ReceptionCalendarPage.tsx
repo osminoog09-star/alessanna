@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { addDays, addMonths, addWeeks, startOfWeek, subMonths, subWeeks } from "date-fns";
+import { addDays, addMonths, addWeeks, subDays, startOfWeek, subMonths, subWeeks } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { loadServicesCatalog } from "../lib/loadServicesCatalog";
@@ -20,7 +20,7 @@ import type {
   StaffWorkDateRow,
 } from "../types/database";
 
-type View = "week" | "month";
+type View = "day" | "week" | "month";
 
 type BookingPopupState = {
   anchorX: number;
@@ -79,7 +79,10 @@ export function ReceptionCalendarPage() {
   useCalendarDataRealtime(load);
 
   const weekStart = useMemo(() => startOfWeek(cursor, { weekStartsOn: 1 }), [cursor]);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = useMemo(() => {
+    if (view === "day") return [cursor];
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [view, cursor, weekStart]);
 
   function handleToggleStaff(id: string) {
     setVisibleStaffIds((prev) => {
@@ -126,16 +129,19 @@ export function ReceptionCalendarPage() {
 
   function handleDayClick(day: Date) {
     setCursor(day);
-    setView("week");
+    setView("day");
   }
 
   function navigate(dir: 1 | -1) {
-    if (view === "week") setCursor((d) => (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1)));
+    if (view === "day") setCursor((d) => (dir === 1 ? addDays(d, 1) : subDays(d, 1)));
+    else if (view === "week") setCursor((d) => (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1)));
     else setCursor((d) => (dir === 1 ? addMonths(d, 1) : subMonths(d, 1)));
   }
 
   const uiLocale = i18n.language === "et" ? "et-EE" : "ru-RU";
-  const periodLabel = cursor.toLocaleString(uiLocale, { month: "long", year: "numeric" });
+  const periodLabel = view === "day"
+    ? cursor.toLocaleString(uiLocale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : cursor.toLocaleString(uiLocale, { month: "long", year: "numeric" });
 
   if (loading) {
     return (
@@ -170,7 +176,7 @@ export function ReceptionCalendarPage() {
 
         {/* View switcher — hidden on mobile (available in sidebar) */}
         <div className="hidden items-center rounded-lg border border-[#dadce0] p-0.5 md:flex">
-          {(["week", "month"] as const).map((v) => (
+          {(["day", "week", "month"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -179,7 +185,7 @@ export function ReceptionCalendarPage() {
                 view === v ? "bg-[#e8f0fe] text-[#1a73e8]" : "text-[#5f6368] hover:bg-[#f1f3f4]",
               ].join(" ")}
             >
-              {v === "week" ? t("calendar.week") : t("calendar.month")}
+              {v === "day" ? t("calendar.day") : v === "week" ? t("calendar.week") : t("calendar.month")}
             </button>
           ))}
         </div>
@@ -248,7 +254,16 @@ export function ReceptionCalendarPage() {
         )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {view === "week" ? (
+          {view === "month" ? (
+            <ReceptionMonthView
+              cursor={cursor}
+              staff={staff}
+              appointments={appointments}
+              visibleStaffIds={visibleStaffIds}
+              onDayClick={handleDayClick}
+              onApptClick={handleApptClick}
+            />
+          ) : (
             <ReceptionWeekGrid
               days={days}
               staff={staff}
@@ -260,16 +275,7 @@ export function ReceptionCalendarPage() {
               onSlotClick={handleSlotClick}
               onApptClick={handleApptClick}
               onApptResize={handleApptResize}
-              onDayHeaderClick={handleDayHeaderClick}
-            />
-          ) : (
-            <ReceptionMonthView
-              cursor={cursor}
-              staff={staff}
-              appointments={appointments}
-              visibleStaffIds={visibleStaffIds}
-              onDayClick={handleDayClick}
-              onApptClick={handleApptClick}
+              onDayHeaderClick={view === "week" ? handleDayHeaderClick : undefined}
             />
           )}
         </div>

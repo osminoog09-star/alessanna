@@ -24,8 +24,8 @@ type Props = {
   onToggleStaff: (id: string) => void;
   dark?: boolean;
   hideMiniCalendar?: boolean;
-  view?: "week" | "month";
-  onViewChange?: (v: "week" | "month") => void;
+  view?: "day" | "week" | "month";
+  onViewChange?: (v: "day" | "week" | "month") => void;
 };
 
 const DAY_KEYS = [1, 2, 3, 4, 5, 6, 0] as const; // Mon→1 … Sun→0
@@ -66,16 +66,16 @@ export function ReceptionSidebar({
       {/* View switcher — only shown on mobile (top bar hides it on sm) */}
       {onViewChange && view && (
         <div className={`mb-3 flex items-center rounded-lg border p-0.5 mx-3 md:hidden ${borderCls}`}>
-          {(["week", "month"] as const).map((v) => (
+          {(["day", "week", "month"] as const).map((v) => (
             <button
               key={v}
               onClick={() => onViewChange(v)}
               className={[
-                "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors",
                 view === v ? "bg-[#e8f0fe] text-[#1a73e8]" : `${mutedCls} ${hoverCls}`,
               ].join(" ")}
             >
-              {v === "week" ? t("calendar.week") : t("calendar.month")}
+              {v === "day" ? t("calendar.day") : v === "week" ? t("calendar.week") : t("calendar.month")}
             </button>
           ))}
         </div>
