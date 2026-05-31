@@ -144,9 +144,17 @@ export function ReceptionWeekGrid({
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }
 
-  // ---- Long-press a booking card -> enter resize mode ----
+  // ---- Mouse: card click opens popup (handle zones stop propagation, so this
+  //      only fires for clicks in the middle area of the card) ----
   function handleCardPointerDown(e: React.PointerEvent<HTMLDivElement>, appt: AppointmentRow) {
     if (e.button !== 0 && e.pointerType === "mouse") return;
+
+    if (e.pointerType === "mouse") {
+      pointerDownY.current = e.clientY;
+      return; // resize handled by always-visible handle strips
+    }
+
+    // Touch: long-press to enter resize mode
     if (resizeModeId === appt.id) return;
     longPressFired.current = false;
     pointerDownY.current = e.clientY;
@@ -159,6 +167,15 @@ export function ReceptionWeekGrid({
 
   function handleCardPointerUp(e: React.PointerEvent<HTMLDivElement>, appt: AppointmentRow) {
     clearLongPress();
+
+    if (e.pointerType === "mouse") {
+      if (Math.abs(e.clientY - pointerDownY.current) <= 4) {
+        onApptClick(appt, e.clientX, e.clientY);
+      }
+      return;
+    }
+
+    // Touch path
     if (longPressFired.current) { longPressFired.current = false; return; }
     if (resizeModeId === appt.id) return;
     // If finger moved > 8 px it was a scroll attempt — don't open popup
@@ -168,11 +185,40 @@ export function ReceptionWeekGrid({
 
   function handleCardPointerCancel() {
     // Browser fired pointercancel — it took over the gesture for scrolling.
-    // Cancel the long-press timer; pointerup won't fire so no popup either.
     clearLongPress();
   }
 
-  // ---- Dragging a resize handle ----
+  // ---- Mouse: immediate drag from always-visible handle strips ----
+  function handleMouseHandlePointerDown(
+    e: React.PointerEvent<HTMLDivElement>,
+    appt: AppointmentRow,
+    edge: "top" | "bottom",
+    start: Date,
+    end: Date,
+  ) {
+    if (e.pointerType !== "mouse") return;
+    e.stopPropagation();
+    handleDragRef.current = {
+      appt, edge, origStart: start, origEnd: end,
+      startClientY: e.clientY, curStart: start, curEnd: end,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleMouseHandlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "mouse") return;
+    e.stopPropagation();
+    const d = handleDragRef.current;
+    handleDragRef.current = null;
+    setPreview(null);
+    if (!d) return;
+    const changed =
+      d.curStart.getTime() !== d.origStart.getTime() ||
+      d.curEnd.getTime() !== d.origEnd.getTime();
+    if (changed && onApptResize) onApptResize(d.appt, d.curStart, d.curEnd);
+  }
+
+  // ---- Touch: dragging a resize handle (only when card is in resize mode) ----
   function handleHandlePointerDown(
     e: React.PointerEvent<HTMLDivElement>,
     appt: AppointmentRow,
@@ -451,6 +497,7 @@ export function ReceptionWeekGrid({
                         "absolute overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-all",
                         inResizeMode ? "touch-none shadow-lg ring-2 ring-white/70" : "hover:shadow-md",
                         isResizing ? "touch-none" : "",
+                        "group",
                       ].join(" ")}
                       style={{
                         top: topPx + 1,
@@ -482,28 +529,54 @@ export function ReceptionWeekGrid({
                           {svc ? ` · ${svc.name_et}` : ""}
                         </p>
                       )}
-                      {inResizeMode && (
-                        <>
-                          {/* Top drag handle */}
-                          <div
-                            className="absolute inset-x-0 top-0 z-30 flex h-5 cursor-ns-resize touch-none items-start justify-center"
-                            onPointerDown={(e) => handleHandlePointerDown(e, appt, "top", iv.start, iv.end)}
-                            onPointerMove={handleHandlePointerMove}
-                            onPointerUp={handleHandlePointerUp}
-                          >
-                            <div className="mt-0.5 h-1.5 w-8 rounded-full bg-white shadow" />
-                          </div>
-                          {/* Bottom drag handle */}
-                          <div
-                            className="absolute inset-x-0 bottom-0 z-30 flex h-5 cursor-ns-resize touch-none items-end justify-center"
-                            onPointerDown={(e) => handleHandlePointerDown(e, appt, "bottom", iv.start, iv.end)}
-                            onPointerMove={handleHandlePointerMove}
-                            onPointerUp={handleHandlePointerUp}
-                          >
-                            <div className="mb-0.5 h-1.5 w-8 rounded-full bg-white shadow" />
-                          </div>
-                        </>
-                      )}
+                      {/* Top resize handle: mouse = always draggable, touch = only in resize mode */}
+                      <div
+                        className={[
+                          "absolute inset-x-0 top-0 z-30 flex h-5 cursor-ns-resize items-start justify-center",
+                          inResizeMode ? "touch-none" : "",
+                        ].join(" ")}
+                        onPointerDown={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerDown(e, appt, "top", iv.start, iv.end);
+                          } else if (inResizeMode) {
+                            handleHandlePointerDown(e, appt, "top", iv.start, iv.end);
+                          }
+                        }}
+                        onPointerMove={handleHandlePointerMove}
+                        onPointerUp={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerUp(e);
+                          } else if (inResizeMode) {
+                            handleHandlePointerUp(e);
+                          }
+                        }}
+                      >
+                        {inResizeMode && <div className="mt-0.5 h-1.5 w-8 rounded-full bg-white shadow" />}
+                      </div>
+                      {/* Bottom resize handle */}
+                      <div
+                        className={[
+                          "absolute inset-x-0 bottom-0 z-30 flex h-5 cursor-ns-resize items-end justify-center",
+                          inResizeMode ? "touch-none" : "",
+                        ].join(" ")}
+                        onPointerDown={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerDown(e, appt, "bottom", iv.start, iv.end);
+                          } else if (inResizeMode) {
+                            handleHandlePointerDown(e, appt, "bottom", iv.start, iv.end);
+                          }
+                        }}
+                        onPointerMove={handleHandlePointerMove}
+                        onPointerUp={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerUp(e);
+                          } else if (inResizeMode) {
+                            handleHandlePointerUp(e);
+                          }
+                        }}
+                      >
+                        {inResizeMode && <div className="mb-0.5 h-1.5 w-8 rounded-full bg-white shadow" />}
+                      </div>
                     </div>
                   );
                 })}
