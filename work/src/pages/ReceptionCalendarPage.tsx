@@ -11,14 +11,14 @@ import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
 import { ReceptionBookingPopup } from "../components/reception/ReceptionBookingPopup";
 import { ReceptionAppointmentDetail } from "../components/reception/ReceptionAppointmentDetail";
 import { ReceptionStaffColorSettings } from "../components/reception/ReceptionStaffColorSettings";
-import { DaySchedulePopup } from "../components/reception/DaySchedulePopup";
+import { AdminDaySchedulePopup } from "../components/reception/AdminDaySchedulePopup";
 import type {
   AppointmentRow,
   ServiceRow,
   StaffMember,
-  StaffScheduleRow,
   StaffServiceRow,
   StaffTimeOffRow,
+  StaffWorkDateRow,
 } from "../types/database";
 
 type View = "week" | "month";
@@ -42,8 +42,8 @@ export function ReceptionCalendarPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
-  const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
   const [timeOff, setTimeOff] = useState<StaffTimeOffRow[]>([]);
+  const [workDates, setWorkDates] = useState<StaffWorkDateRow[]>([]);
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
   const [visibleStaffIds, setVisibleStaffIds] = useState<Set<string>>(new Set());
   const [popup, setPopup] = useState<BookingPopupState | null>(null);
@@ -53,13 +53,13 @@ export function ReceptionCalendarPage() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [st, sch, to, ap, svCatalog, ss] = await Promise.all([
+    const [st, to, ap, svCatalog, ss, wd] = await Promise.all([
       supabase.from("staff").select("*").eq("is_active", true).order("name"),
-      supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
       supabase.from("appointments").select("*").neq("status", "cancelled"),
       loadServicesCatalog({ activeOnly: true }),
       supabase.from("staff_services").select("*"),
+      supabase.from("staff_work_dates").select("*"),
     ]);
 
     if (st.data) {
@@ -72,8 +72,8 @@ export function ReceptionCalendarPage() {
         return new Set(normalized.map((m) => m.id));
       });
     }
-    if (sch.data) setSchedules(sch.data as StaffScheduleRow[]);
     if (to.data) setTimeOff(to.data as StaffTimeOffRow[]);
+    if (wd.data) setWorkDates(wd.data as StaffWorkDateRow[]);
     if (ap.data) setAppointments(ap.data as AppointmentRow[]);
     if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
     setServices(svCatalog);
@@ -218,8 +218,8 @@ export function ReceptionCalendarPage() {
             staff={staff}
             appointments={appointments}
             services={services}
-            schedules={schedules}
             timeOff={timeOff}
+            workDates={workDates}
             visibleStaffIds={visibleStaffIds}
             onSlotClick={handleSlotClick}
             onApptClick={handleApptClick}
@@ -263,14 +263,14 @@ export function ReceptionCalendarPage() {
       )}
 
       {dayPopup && (
-        <DaySchedulePopup
+        <AdminDaySchedulePopup
           day={dayPopup.day}
           anchorX={dayPopup.x}
           anchorY={dayPopup.y}
           allStaff={staff}
-          schedules={schedules}
+          workDates={workDates}
           onClose={() => setDayPopup(null)}
-          onSaved={() => { setDayPopup(null); void load(); }}
+          onSaved={() => { void load(); }}
         />
       )}
 

@@ -26,6 +26,7 @@ import type {
   StaffScheduleRow,
   StaffServiceRow,
   StaffTimeOffRow,
+  StaffWorkDateRow,
 } from "../types/database";
 import { isStaffRowAdmin, staffEligibleForService, normalizeStaffMember } from "../lib/roles";
 import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
@@ -46,7 +47,7 @@ import { CalendarSidePanels } from "../components/CalendarSidePanels";
 import { ProCalendar } from "../components/calendar/ProCalendar";
 import { WeekTimelineGrid } from "../components/calendar/WeekTimelineGrid";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
-import { DaySchedulePopup } from "../components/reception/DaySchedulePopup";
+import { AdminDaySchedulePopup } from "../components/reception/AdminDaySchedulePopup";
 import { buildStaffHueMap } from "../lib/staffHue";
 import {
   CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY,
@@ -70,6 +71,7 @@ export function CalendarPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [schedules, setSchedules] = useState<StaffScheduleRow[]>([]);
   const [timeOff, setTimeOff] = useState<StaffTimeOffRow[]>([]);
+  const [workDates, setWorkDates] = useState<StaffWorkDateRow[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
@@ -89,7 +91,7 @@ export function CalendarPage() {
     if (isWorkerOnlyEffective && staffMember) {
       apQuery = apQuery.eq("staff_id", staffMember.id);
     }
-    const [st, sch, to, ap, svCatalog, ss, remoteLayout, implicitSetting] = await Promise.all([
+    const [st, sch, to, ap, svCatalog, ss, remoteLayout, implicitSetting, wd] = await Promise.all([
       supabase.from("staff").select("*").order("name"),
       supabase.from("staff_schedule").select("*"),
       supabase.from("staff_time_off").select("*"),
@@ -103,6 +105,7 @@ export function CalendarPage() {
       supabase.from("staff_services").select("*"),
       fetchReceptionLayoutFromServer(),
       supabase.from("salon_settings").select("value").eq("key", CALENDAR_WEEK_EXCEPT_SUNDAY_STAFF_SETTING_KEY).maybeSingle(),
+      supabase.from("staff_work_dates").select("*"),
     ]);
     if (st.data) {
       /* Тех-поддержка (роль admin) не принимает клиентов — не занимает колонку в календаре. */
@@ -114,6 +117,7 @@ export function CalendarPage() {
     }
     if (sch.data) setSchedules(sch.data as StaffScheduleRow[]);
     if (to.data) setTimeOff(to.data as StaffTimeOffRow[]);
+    if (wd.data) setWorkDates(wd.data as StaffWorkDateRow[]);
     if (ap.data) setAppointments(ap.data as AppointmentRow[]);
     if (ss.data) setStaffServiceLinks(ss.data as StaffServiceRow[]);
     setServices(svCatalog);
@@ -585,14 +589,14 @@ export function CalendarPage() {
                 })}
               </div>
             ) : staffId === ALL_STAFF_ID ? (
-              <div className="h-[720px] overflow-hidden rounded-xl border border-line/10">
+              <div className="flex h-[720px] flex-col overflow-hidden rounded-xl border border-line/10">
                 <ReceptionWeekGrid
                   days={days}
                   staff={activeStaffForCalendar}
                   appointments={filteredAppointments}
                   services={services}
-                  schedules={schedules}
                   timeOff={timeOff}
+                  workDates={workDates}
                   visibleStaffIds={new Set(activeStaffForCalendar.map((m) => m.id))}
                   onSlotClick={(start) => {
                     const sid = activeStaffForCalendar[0]?.id;
@@ -657,14 +661,14 @@ export function CalendarPage() {
       )}
 
       {dayPopup && (
-        <DaySchedulePopup
+        <AdminDaySchedulePopup
           day={dayPopup.day}
           anchorX={dayPopup.x}
           anchorY={dayPopup.y}
           allStaff={activeStaffForCalendar}
-          schedules={schedules}
+          workDates={workDates}
           onClose={() => setDayPopup(null)}
-          onSaved={() => { setDayPopup(null); void load(); }}
+          onSaved={() => { void load(); }}
         />
       )}
     </div>

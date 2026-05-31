@@ -11,12 +11,11 @@ import type {
   AppointmentRow,
   ServiceRow,
   StaffMember,
-  StaffScheduleRow,
   StaffTimeOffRow,
+  StaffWorkDateRow,
 } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
 import { appointmentInterval, intervalsOverlap } from "../../lib/slots";
-import { panelStaffWorkingOnDate } from "../../lib/calendarWorkingStaff";
 import { googleStaffColor } from "./receptionColors";
 
 const START_HOUR = 8;
@@ -75,8 +74,8 @@ type Props = {
   staff: StaffMember[];
   appointments: AppointmentRow[];
   services: ServiceRow[];
-  schedules: StaffScheduleRow[];
   timeOff: StaffTimeOffRow[];
+  workDates: StaffWorkDateRow[];
   visibleStaffIds: Set<string>;
   onSlotClick: (start: Date, anchorX: number, anchorY: number) => void;
   onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
@@ -88,8 +87,8 @@ export function ReceptionWeekGrid({
   staff,
   appointments,
   services,
-  schedules,
   timeOff,
+  workDates,
   visibleStaffIds,
   onSlotClick,
   onApptClick,
@@ -102,6 +101,13 @@ export function ReceptionWeekGrid({
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
+  }, []);
+
+  // Scroll to business hours (~9:00) on mount so the day starts in view.
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = Math.max(0, (9 - START_HOUR) * PX_PER_HOUR - 8);
+    }
   }, []);
 
   function handleBodyClick(e: React.MouseEvent<HTMLDivElement>, day: Date) {
@@ -123,7 +129,7 @@ export function ReceptionWeekGrid({
   }, [services]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white">
       {/* Day header row */}
       <div className="flex shrink-0 border-b border-[#dadce0] bg-white">
         <div className="flex w-14 shrink-0 items-end justify-center pb-1 text-[10px] text-[#70757a]">
@@ -131,9 +137,13 @@ export function ReceptionWeekGrid({
         </div>
         {days.map((day, i) => {
           const isToday = isSameDay(day, now);
-          const workingStaff = panelStaffWorkingOnDate(staff, schedules, day, new Set<string>(), timeOff).filter(
-            (m) => visibleStaffIds.has(m.id),
+          const dateStr = format(day, "yyyy-MM-dd");
+          const workingIds = new Set(
+            workDates.filter((r) => r.work_date === dateStr).map((r) => r.staff_id),
           );
+          const workingStaff = staff
+            .filter((m) => workingIds.has(m.id) && visibleStaffIds.has(m.id))
+            .sort((a, b) => a.name.localeCompare(b.name, "et", { sensitivity: "base" }));
           const ruDay = RU_WEEK_DAYS[i] ?? "";
           return (
             <div
