@@ -663,7 +663,6 @@ export function CalendarPage() {
           anchorY={dayPopup.y}
           allStaff={activeStaffForCalendar}
           schedules={schedules}
-          timeOff={timeOff}
           onClose={() => setDayPopup(null)}
           onSaved={() => { setDayPopup(null); void load(); }}
         />

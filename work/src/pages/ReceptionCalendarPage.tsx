@@ -269,7 +269,6 @@ export function ReceptionCalendarPage() {
           anchorY={dayPopup.y}
           allStaff={staff}
           schedules={schedules}
-          timeOff={timeOff}
           onClose={() => setDayPopup(null)}
           onSaved={() => { setDayPopup(null); void load(); }}
         />
