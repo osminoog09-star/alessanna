@@ -173,15 +173,14 @@ export function ReceptionWeekGrid({
     const d = dragRef.current;
     if (!d) return;
 
+    // While arming, ignore movement entirely. The card has touch-action:none
+    // so the browser won't scroll from it, and finger jitter during a hold
+    // must NOT cancel the long-press. Resize unlocks only when the 1 s timer
+    // fires; lifting the finger before then is treated as a tap. Keep the
+    // baseline at the latest finger position so resize starts with no jump.
     if (!d.resizeActive) {
-      // Still arming — cancel if user moved significantly (scroll intent)
-      const deltaY = e.clientY - d.startClientY;
-      const deltaX = e.clientX - d.startClientX;
-      if (Math.abs(deltaY) > 12 || Math.abs(deltaX) > 12) {
-        cancelLongPress();
-        try { d.el.releasePointerCapture(d.pointerId); } catch { /* ignore */ }
-        dragRef.current = null;
-      }
+      d.startClientY = e.clientY;
+      d.startClientX = e.clientX;
       return;
     }
 
