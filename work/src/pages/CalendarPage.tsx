@@ -613,7 +613,7 @@ export function CalendarPage() {
                 staff={staff}
                 staffHueMap={staffHueMap}
                 getWorkingStaffForDay={(d) =>
-                  panelStaffWorkingOnDate(staff, schedules, d, implicitWeekStaffSet)
+                  panelStaffWorkingOnDate(staff, schedules, d, implicitWeekStaffSet, timeOff)
                 }
                 onFreeClick={(start) => setModal({ start, staffId })}
                 canClick={canUseCalendar}

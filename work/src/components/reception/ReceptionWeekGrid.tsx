@@ -131,7 +131,7 @@ export function ReceptionWeekGrid({
         </div>
         {days.map((day, i) => {
           const isToday = isSameDay(day, now);
-          const workingStaff = panelStaffWorkingOnDate(staff, schedules, day, new Set<string>()).filter(
+          const workingStaff = panelStaffWorkingOnDate(staff, schedules, day, new Set<string>(), timeOff).filter(
             (m) => visibleStaffIds.has(m.id),
           );
           const ruDay = RU_WEEK_DAYS[i] ?? "";
