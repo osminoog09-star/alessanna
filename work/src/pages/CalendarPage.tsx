@@ -28,11 +28,10 @@ import type {
   StaffTimeOffRow,
   StaffWorkDateRow,
 } from "../types/database";
-import { isStaffRowAdmin, staffEligibleForService, normalizeStaffMember } from "../lib/roles";
+import { isStaffRowAdmin, normalizeStaffMember } from "../lib/roles";
 import { effectiveCanWorkCalendar } from "../lib/effectiveRole";
 import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import {
-  restrictAndOrderStaffByServiceHall,
   serviceRowToPublicCatalogEntry,
   splitStaffIntoHairAndNailsForCrm,
 } from "../lib/publicMasterPanel";
@@ -44,7 +43,6 @@ import {
 import { fetchReceptionLayoutFromServer } from "../lib/receptionLayoutRemote";
 import { BookingModal } from "../components/BookingModal";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
-import { ReceptionSidebar } from "../components/reception/ReceptionSidebar";
 import { AdminDaySchedulePopup } from "../components/reception/AdminDaySchedulePopup";
 import { buildStaffHueMap } from "../lib/staffHue";
 import { staffCrmAppointmentBlockStyle } from "../lib/staffCalendarColors";
@@ -65,7 +63,6 @@ export function CalendarPage() {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
-  const [visibleStaffIds, setVisibleStaffIds] = useState<Set<string>>(new Set());
   const [calendarServiceId, setCalendarServiceId] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ start: Date; staffId: string } | null>(null);
@@ -94,10 +91,6 @@ export function CalendarPage() {
         .filter((row) => !isStaffRowAdmin(row))
         .map((r) => normalizeStaffMember(r as StaffMember));
       setStaff(normalized);
-      setVisibleStaffIds((prev) => {
-        if (prev.size > 0) return prev;
-        return new Set(normalized.map((m) => m.id));
-      });
     }
     if (sch.data) setSchedules(sch.data as StaffScheduleRow[]);
     if (to.data) setTimeOff(to.data as StaffTimeOffRow[]);
@@ -159,34 +152,13 @@ export function CalendarPage() {
     return splitStaffIntoHairAndNailsForCrm(staff, staffServiceLinks, servicesCatalog);
   }, [receptionMastersConfig, staff, staffServiceLinks, servicesCatalog]);
 
-  const staffForCalendar = useMemo(() => {
-    const base = staffEligibleForService(staff, staffServiceLinks, calendarServiceId);
-    const svc = services.find((x) => x.id === calendarServiceId);
-    return restrictAndOrderStaffByServiceHall(
-      base,
-      serviceRowToPublicCatalogEntry(svc),
-      mastersSplitResolved,
-      mastersPanelStaffForHall,
-    );
-  }, [
-    staff,
-    staffServiceLinks,
-    calendarServiceId,
-    services,
-    mastersSplitResolved,
-    mastersPanelStaffForHall,
-  ]);
-
+  /* The reception-style calendar shows every active master (colour-coded
+   * columns + day-header chips). No per-service filtering here — that was
+   * for the old single-staff dropdown which this view replaced. */
   const activeStaffForCalendar = useMemo(
-    () => staffForCalendar.filter((e) => e.active),
-    [staffForCalendar]
+    () => staff.filter((e) => e.active !== false),
+    [staff],
   );
-
-  useEffect(() => {
-    if (isWorkerOnlyEffective && staffMember) {
-      setVisibleStaffIds(new Set([staffMember.id]));
-    }
-  }, [isWorkerOnlyEffective, staffMember]);
 
   const canUseCalendar = staffMember ? effectiveCanWorkCalendar(staffMember.roles) : false;
 
@@ -256,19 +228,15 @@ export function CalendarPage() {
     return out;
   }, [activeStaffForCalendar, durationMin, filteredAppointments, monthDays, schedules, timeOff, view]);
 
+  /* No sidebar toggle in this view — show every active master (workers
+   * still only see their own column). */
   const effectiveVisibleIds = useMemo(
-    () => isWorkerOnlyEffective && staffMember ? new Set([staffMember.id]) : visibleStaffIds,
-    [isWorkerOnlyEffective, staffMember, visibleStaffIds],
+    () =>
+      isWorkerOnlyEffective && staffMember
+        ? new Set([staffMember.id])
+        : new Set(activeStaffForCalendar.map((m) => m.id)),
+    [isWorkerOnlyEffective, staffMember, activeStaffForCalendar],
   );
-
-  function handleToggleStaff(id: string) {
-    setVisibleStaffIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   function navigate(dir: 1 | -1) {
     setCursor((d) => view === "week" ? addDays(d, dir * 7) : addMonths(d, dir));
@@ -292,9 +260,9 @@ export function CalendarPage() {
   }
 
   return (
-    <div className="-mx-6 -my-6 flex h-screen flex-col overflow-hidden text-fg lg:-mx-8 lg:-my-8">
+    <div className="flex flex-col gap-3 text-fg">
       {/* Top navigation */}
-      <div className="flex shrink-0 items-center border-b border-line/15 bg-panel px-3 py-2">
+      <div className="flex shrink-0 items-center rounded-xl border border-line/15 bg-panel px-3 py-2">
         {/* Left: Today + view switcher */}
         <div className="flex items-center gap-2">
           <button
@@ -362,18 +330,9 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {/* Main body */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <ReceptionSidebar
-          dark
-          hideMiniCalendar
-          cursor={cursor}
-          onDateSelect={(date) => { setCursor(date); setView("week"); }}
-          staff={activeStaffForCalendar}
-          visibleStaffIds={effectiveVisibleIds}
-          onToggleStaff={isWorkerOnlyEffective ? () => {} : handleToggleStaff}
-        />
-
+      {/* Main body — a contained, smaller window that scrolls internally
+          (the calendar body scrolls, not the whole page). */}
+      <div className="flex h-[72vh] min-h-0 overflow-hidden rounded-xl border border-line/15 bg-panel">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel">
           {loading ? (
             <div className="flex flex-1 items-center justify-center text-muted">

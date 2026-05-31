@@ -35,7 +35,7 @@ export function useCalendarDataRealtime(onChange: () => void) {
     () =>
       subscribeTables(
         "crm-calendar",
-        ["appointments", "staff_schedule", "staff_time_off", "staff_services", "services"],
+        ["appointments", "staff_schedule", "staff_work_dates", "staff_time_off", "staff_services", "services"],
         onChangeRef
       ),
     []

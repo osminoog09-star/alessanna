@@ -115,11 +115,12 @@ export function ReceptionWeekGrid({
     return () => clearInterval(id);
   }, []);
 
-  // Scroll to business hours (~8:00) on mount; the full 00:00–24:00 grid
-  // stays scrollable so any hour can be reached like a normal calendar.
+  // Open at ~10:00 (typical salon start) on mount; the full 00:00–24:00
+  // grid stays scrollable inside the body so any hour can be reached
+  // earlier or later, like a normal calendar.
   useEffect(() => {
     if (bodyRef.current) {
-      bodyRef.current.scrollTop = Math.max(0, (8 - START_HOUR) * PX_PER_HOUR - 8);
+      bodyRef.current.scrollTop = Math.max(0, (10 - START_HOUR) * PX_PER_HOUR - 8);
     }
   }, []);
 
