@@ -125,14 +125,14 @@ export function ReceptionCalendarPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white text-[#70757a]">
+      <div className="flex h-[100dvh] items-center justify-center bg-white text-[#70757a]">
         Загрузка…
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-white text-[#3c4043]">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-white text-[#3c4043]">
       <AppTopBar />
 
       {/* Top navigation */}
