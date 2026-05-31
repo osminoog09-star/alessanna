@@ -28,7 +28,7 @@ type Props = {
   onViewChange?: (v: "week" | "month") => void;
 };
 
-const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const DAY_KEYS = [1, 2, 3, 4, 5, 6, 0] as const; // Mon→1 … Sun→0
 
 export function ReceptionSidebar({
   cursor,
@@ -43,6 +43,7 @@ export function ReceptionSidebar({
 }: Props) {
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language.split("-")[0] ?? "ru";
+  const uiLocale = currentLang === "et" ? "et-EE" : "ru-RU";
   const [miniCursor, setMiniCursor] = useState(() => new Date());
   const today = new Date();
   const staffHueMap = buildStaffHueMap(staff.map((m) => m.id));
@@ -93,7 +94,7 @@ export function ReceptionSidebar({
             ‹
           </button>
           <span className={`text-xs font-medium capitalize ${textCls}`}>
-            {miniCursor.toLocaleString("ru-RU", { month: "long", year: "numeric" })}
+            {miniCursor.toLocaleString(uiLocale, { month: "long", year: "numeric" })}
           </span>
           <button
             onClick={() => setMiniCursor((d) => addMonths(d, 1))}
@@ -106,9 +107,9 @@ export function ReceptionSidebar({
 
         {/* Day name headers */}
         <div className="grid grid-cols-7 text-center">
-          {DAY_NAMES.map((d) => (
-            <div key={d} className={`py-0.5 text-[10px] font-medium ${mutedCls}`}>
-              {d}
+          {DAY_KEYS.map((k) => (
+            <div key={k} className={`py-0.5 text-[10px] font-medium ${mutedCls}`}>
+              {t(`weekday.${k}`)}
             </div>
           ))}
         </div>
@@ -188,7 +189,7 @@ export function ReceptionSidebar({
       {/* Language switcher */}
       <div className={`mt-auto border-t px-3 pt-3 ${borderCls}`}>
         <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${mutedCls}`}>
-          Язык / Keel
+          {t("common.language")}
         </p>
         <div className="flex gap-1">
           {(["ru", "et"] as const).map((code) => (

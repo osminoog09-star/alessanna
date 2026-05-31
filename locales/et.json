@@ -703,7 +703,20 @@
     "noServices": "Aktiivseid teenuseid pole. Lisa need lehel «Teenused» või seo töötajaga jaotises «Töötajad → Oskused».",
     "overlap": "See aeg pole selle töötaja jaoks enam vaba. Värskenda ja vali teine aeg.",
     "fillAll": "Täida kõik väljad.",
-    "closeBooking": "Sulge salvestamata"
+    "closeBooking": "Sulge salvestamata",
+    "editBooking": "Muuda broneeringut",
+    "addClient": "Lisa klient",
+    "start": "Algus",
+    "end": "Lõpp",
+    "resetAuto": "Lähtesta automaatselt",
+    "phoneOptional": "Telefon (vabatahtlik)",
+    "saving": "Salvestamine…",
+    "delete": "Kustuta",
+    "deleteConfirm": "Kustuta see broneering?",
+    "defaultClient": "Klient (vastuvõtt)",
+    "endAfterStart": "Lõpuaeg peab olema hiljem kui algusaeg",
+    "selectService": "— teenus —",
+    "selectStaff": "Vali meister"
   },
   "site": {
     "skip": "Liigu põhisisu juurde",
