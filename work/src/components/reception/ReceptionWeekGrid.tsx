@@ -112,21 +112,35 @@ export function ReceptionWeekGrid({
   const bodyRef = useRef<HTMLDivElement>(null);
   const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
 
-  // Drag-to-resize: grabbing the top half of a booking moves its start time,
-  // the bottom half moves its end time. Snaps to 30-minute steps. A press
-  // without movement is treated as a normal click (opens the edit popup).
+  // Drag-to-resize: hold for 2 s to unlock resize mode, then drag up/down.
+  // Top half of block → move start time; bottom half → move end time.
+  // Snaps to 30-minute steps. A short press (< 2 s without movement) opens
+  // the edit popup. Moving more than 10 px before 2 s cancels the long-press
+  // so normal scroll still works.
   const RESIZE_STEP_MIN = 30;
+  const LONG_PRESS_MS = 2000;
+
   const dragRef = useRef<{
     appt: AppointmentRow;
     edge: "top" | "bottom";
     origStart: Date;
     origEnd: Date;
     startClientY: number;
-    moved: boolean;
+    startClientX: number;
+    resizeActive: boolean;
     curStart: Date;
     curEnd: Date;
+    pointerId: number;
+    el: HTMLDivElement;
   } | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [armingId, setArmingId] = useState<string | null>(null);   // 0–2 s press
   const [preview, setPreview] = useState<{ id: string; start: Date; end: Date } | null>(null);
+
+  function cancelLongPress() {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    setArmingId(null);
+  }
 
   function handleApptPointerDown(
     e: React.PointerEvent<HTMLDivElement>,
@@ -134,30 +148,44 @@ export function ReceptionWeekGrid({
     start: Date,
     end: Date,
   ) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 && e.pointerType === "mouse") return;
     const rect = e.currentTarget.getBoundingClientRect();
     const edge: "top" | "bottom" = e.clientY - rect.top < rect.height / 2 ? "top" : "bottom";
     dragRef.current = {
-      appt,
-      edge,
-      origStart: start,
-      origEnd: end,
-      startClientY: e.clientY,
-      moved: false,
-      curStart: start,
-      curEnd: end,
+      appt, edge, origStart: start, origEnd: end,
+      startClientY: e.clientY, startClientX: e.clientX,
+      resizeActive: false, curStart: start, curEnd: end,
+      pointerId: e.pointerId, el: e.currentTarget,
     };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setArmingId(appt.id);
+    longPressTimer.current = setTimeout(() => {
+      if (dragRef.current) {
+        dragRef.current.resizeActive = true;
+        setArmingId(null);
+      }
+    }, LONG_PRESS_MS);
   }
 
   function handleApptPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const d = dragRef.current;
     if (!d) return;
-    const deltaPx = e.clientY - d.startClientY;
-    if (!d.moved && Math.abs(deltaPx) > 3) d.moved = true;
-    if (!d.moved) return;
+    const deltaY = e.clientY - d.startClientY;
+    const deltaX = e.clientX - d.startClientX;
+
+    if (!d.resizeActive) {
+      // Cancel long-press if user moves (they're scrolling)
+      if (Math.abs(deltaY) > 10 || Math.abs(deltaX) > 10) {
+        cancelLongPress();
+        try { d.el.releasePointerCapture(d.pointerId); } catch { /* ignore */ }
+        dragRef.current = null;
+      }
+      return;
+    }
+
+    // Resize is active — snap to step
     const stepPx = (RESIZE_STEP_MIN / 60) * PX_PER_HOUR;
-    const steps = Math.round(deltaPx / stepPx);
+    const steps = Math.round(deltaY / stepPx);
     const deltaMin = steps * RESIZE_STEP_MIN;
     let start = d.origStart;
     let end = d.origEnd;
@@ -174,11 +202,12 @@ export function ReceptionWeekGrid({
   }
 
   function handleApptPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    cancelLongPress();
     const d = dragRef.current;
     dragRef.current = null;
     setPreview(null);
     if (!d) return;
-    if (!d.moved) {
+    if (!d.resizeActive) {
       onApptClick(d.appt, e.clientX, e.clientY);
       return;
     }
@@ -390,6 +419,7 @@ export function ReceptionWeekGrid({
                   const iv = appointmentInterval(appt);
                   if (!iv) return null;
                   const isResizing = preview?.id === appt.id;
+                  const isArming = armingId === appt.id;
                   const effStart = isResizing ? preview!.start : iv.start;
                   const effEnd = isResizing ? preview!.end : iv.end;
                   const topPx = timeToPx(effStart, dayAnchor);
@@ -409,7 +439,11 @@ export function ReceptionWeekGrid({
                     <div
                       key={appt.id}
                       data-appt="1"
-                      className="absolute touch-none overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-shadow hover:shadow-md"
+                      className={[
+                        "absolute touch-none overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-all",
+                        isResizing ? "shadow-lg ring-2 ring-white/60" : "hover:shadow-md",
+                        isArming ? "opacity-70 ring-2 ring-white/40" : "",
+                      ].join(" ")}
                       style={{
                         top: topPx + 1,
                         height: heightPx - 2,
@@ -417,9 +451,9 @@ export function ReceptionWeekGrid({
                         width: `calc(${widthPct}% - 2px)`,
                         backgroundColor: c.bg,
                         color: c.fg,
-                        opacity: isPast ? 0.45 : 1,
+                        opacity: isArming ? 0.7 : isPast ? 0.45 : 1,
                         cursor: isResizing ? "ns-resize" : "pointer",
-                        zIndex: isResizing ? 20 : undefined,
+                        zIndex: isResizing || isArming ? 20 : undefined,
                       }}
                       onPointerDown={(e) => {
                         e.stopPropagation();
@@ -430,6 +464,11 @@ export function ReceptionWeekGrid({
                         e.stopPropagation();
                         handleApptPointerUp(e);
                       }}
+                      onPointerCancel={() => {
+                        cancelLongPress();
+                        dragRef.current = null;
+                        setPreview(null);
+                      }}
                     >
                       <p className="truncate text-[11px] font-semibold leading-tight">
                         {appt.client_name}
@@ -439,6 +478,12 @@ export function ReceptionWeekGrid({
                           {format(effStart, "HH:mm")}–{format(effEnd, "HH:mm")}
                           {svc ? ` · ${svc.name_et}` : ""}
                         </p>
+                      )}
+                      {isResizing && (
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-md bg-white/50" />
+                      )}
+                      {isResizing && (
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 rounded-b-md bg-white/50" />
                       )}
                     </div>
                   );
