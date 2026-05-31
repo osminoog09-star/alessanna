@@ -219,7 +219,6 @@ export function ReceptionCalendarPage() {
             appointments={appointments}
             services={services}
             timeOff={timeOff}
-            workDates={workDates}
             visibleStaffIds={visibleStaffIds}
             onSlotClick={handleSlotClick}
             onApptClick={handleApptClick}

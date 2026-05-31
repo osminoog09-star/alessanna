@@ -12,14 +12,13 @@ import type {
   ServiceRow,
   StaffMember,
   StaffTimeOffRow,
-  StaffWorkDateRow,
 } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
 import { appointmentInterval, intervalsOverlap } from "../../lib/slots";
 import { googleStaffColor } from "./receptionColors";
 
-const START_HOUR = 8;
-const END_HOUR = 21;
+const START_HOUR = 0;
+const END_HOUR = 24;
 const PX_PER_HOUR = 64;
 const TOTAL_PX = (END_HOUR - START_HOUR) * PX_PER_HOUR;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
@@ -75,7 +74,6 @@ type Props = {
   appointments: AppointmentRow[];
   services: ServiceRow[];
   timeOff: StaffTimeOffRow[];
-  workDates: StaffWorkDateRow[];
   visibleStaffIds: Set<string>;
   onSlotClick: (start: Date, anchorX: number, anchorY: number) => void;
   onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
@@ -89,7 +87,6 @@ export function ReceptionWeekGrid({
   appointments,
   services,
   timeOff,
-  workDates,
   visibleStaffIds,
   onSlotClick,
   onApptClick,
@@ -115,10 +112,11 @@ export function ReceptionWeekGrid({
     return () => clearInterval(id);
   }, []);
 
-  // Scroll to business hours (~9:00) on mount so the day starts in view.
+  // Scroll to business hours (~8:00) on mount; the full 00:00–24:00 grid
+  // stays scrollable so any hour can be reached like a normal calendar.
   useEffect(() => {
     if (bodyRef.current) {
-      bodyRef.current.scrollTop = Math.max(0, (9 - START_HOUR) * PX_PER_HOUR - 8);
+      bodyRef.current.scrollTop = Math.max(0, (8 - START_HOUR) * PX_PER_HOUR - 8);
     }
   }, []);
 
@@ -149,13 +147,6 @@ export function ReceptionWeekGrid({
         </div>
         {days.map((day, i) => {
           const isToday = isSameDay(day, now);
-          const dateStr = format(day, "yyyy-MM-dd");
-          const workingIds = new Set(
-            workDates.filter((r) => r.work_date === dateStr).map((r) => r.staff_id),
-          );
-          const workingStaff = staff
-            .filter((m) => workingIds.has(m.id) && visibleStaffIds.has(m.id))
-            .sort((a, b) => a.name.localeCompare(b.name, "et", { sensitivity: "base" }));
           const ruDay = RU_WEEK_DAYS[i] ?? "";
           return (
             <div
@@ -177,27 +168,6 @@ export function ReceptionWeekGrid({
               >
                 {format(day, "d")}
               </span>
-              {workingStaff.length > 0 && (
-                <div className="mt-0.5 flex flex-wrap justify-center gap-0.5 px-1">
-                  {workingStaff.slice(0, 4).map((m) => {
-                    const c = googleStaffColor(m, staffHueMap);
-                    return (
-                      <span
-                        key={m.id}
-                        className="max-w-[56px] truncate rounded px-1.5 py-0.5 text-[10px] font-medium"
-                        style={{ backgroundColor: c.bg, color: c.fg }}
-                      >
-                        {m.name.split(" ")[0]}
-                      </span>
-                    );
-                  })}
-                  {workingStaff.length > 4 && (
-                    <span className="rounded px-1 py-0.5 text-[9px] text-[#70757a]">
-                      +{workingStaff.length - 4}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           );
         })}

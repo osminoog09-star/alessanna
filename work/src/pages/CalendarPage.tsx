@@ -386,7 +386,6 @@ export function CalendarPage() {
               appointments={filteredAppointments}
               services={services}
               timeOff={timeOff}
-              workDates={workDates}
               visibleStaffIds={effectiveVisibleIds}
               onSlotClick={(start) => {
                 if (!canUseCalendar) return;
