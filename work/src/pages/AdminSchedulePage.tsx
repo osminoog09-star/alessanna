@@ -189,7 +189,7 @@ export function AdminSchedulePage() {
           allStaff={staff}
           workDates={workDates}
           onClose={() => setDayPopup(null)}
-          onSaved={() => { setDayPopup(null); void load(); }}
+          onSaved={() => { void load(); }}
         />
       )}
     </div>
