@@ -102,6 +102,21 @@ export function ReceptionCalendarPage() {
     });
   }
 
+  async function handleApptResize(appt: AppointmentRow, newStart: Date, newEnd: Date) {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === appt.id
+          ? { ...a, start_time: newStart.toISOString(), end_time: newEnd.toISOString() }
+          : a,
+      ),
+    );
+    const { error } = await supabase
+      .from("appointments")
+      .update({ start_time: newStart.toISOString(), end_time: newEnd.toISOString() })
+      .eq("id", appt.id);
+    if (error) void load();
+  }
+
   function handleDayHeaderClick(day: Date, x: number, y: number) {
     setPopup(null);
     setDayPopup({ day, x, y });
@@ -220,6 +235,7 @@ export function ReceptionCalendarPage() {
               visibleStaffIds={visibleStaffIds}
               onSlotClick={handleSlotClick}
               onApptClick={handleApptClick}
+              onApptResize={handleApptResize}
               onDayHeaderClick={handleDayHeaderClick}
             />
           ) : (

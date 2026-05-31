@@ -79,6 +79,7 @@ type Props = {
   visibleStaffIds: Set<string>;
   onSlotClick: (start: Date, anchorX: number, anchorY: number) => void;
   onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
+  onApptResize?: (appt: AppointmentRow, newStart: Date, newEnd: Date) => void;
   onDayHeaderClick?: (day: Date, x: number, y: number) => void;
   dark?: boolean;
 };
@@ -93,6 +94,7 @@ export function ReceptionWeekGrid({
   visibleStaffIds,
   onSlotClick,
   onApptClick,
+  onApptResize,
   onDayHeaderClick,
   dark,
 }: Props) {
@@ -109,6 +111,82 @@ export function ReceptionWeekGrid({
   const [now, setNow] = useState(() => new Date());
   const bodyRef = useRef<HTMLDivElement>(null);
   const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
+
+  // Drag-to-resize: grabbing the top half of a booking moves its start time,
+  // the bottom half moves its end time. Snaps to 30-minute steps. A press
+  // without movement is treated as a normal click (opens the edit popup).
+  const RESIZE_STEP_MIN = 30;
+  const dragRef = useRef<{
+    appt: AppointmentRow;
+    edge: "top" | "bottom";
+    origStart: Date;
+    origEnd: Date;
+    startClientY: number;
+    moved: boolean;
+    curStart: Date;
+    curEnd: Date;
+  } | null>(null);
+  const [preview, setPreview] = useState<{ id: string; start: Date; end: Date } | null>(null);
+
+  function handleApptPointerDown(
+    e: React.PointerEvent<HTMLDivElement>,
+    appt: AppointmentRow,
+    start: Date,
+    end: Date,
+  ) {
+    if (e.button !== 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const edge: "top" | "bottom" = e.clientY - rect.top < rect.height / 2 ? "top" : "bottom";
+    dragRef.current = {
+      appt,
+      edge,
+      origStart: start,
+      origEnd: end,
+      startClientY: e.clientY,
+      moved: false,
+      curStart: start,
+      curEnd: end,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  }
+
+  function handleApptPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const d = dragRef.current;
+    if (!d) return;
+    const deltaPx = e.clientY - d.startClientY;
+    if (!d.moved && Math.abs(deltaPx) > 3) d.moved = true;
+    if (!d.moved) return;
+    const stepPx = (RESIZE_STEP_MIN / 60) * PX_PER_HOUR;
+    const steps = Math.round(deltaPx / stepPx);
+    const deltaMin = steps * RESIZE_STEP_MIN;
+    let start = d.origStart;
+    let end = d.origEnd;
+    if (d.edge === "top") {
+      start = addMinutes(d.origStart, deltaMin);
+      if (start.getTime() >= end.getTime()) start = addMinutes(end, -RESIZE_STEP_MIN);
+    } else {
+      end = addMinutes(d.origEnd, deltaMin);
+      if (end.getTime() <= start.getTime()) end = addMinutes(start, RESIZE_STEP_MIN);
+    }
+    d.curStart = start;
+    d.curEnd = end;
+    setPreview({ id: d.appt.id, start, end });
+  }
+
+  function handleApptPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setPreview(null);
+    if (!d) return;
+    if (!d.moved) {
+      onApptClick(d.appt, e.clientX, e.clientY);
+      return;
+    }
+    const changed =
+      d.curStart.getTime() !== d.origStart.getTime() ||
+      d.curEnd.getTime() !== d.origEnd.getTime();
+    if (changed && onApptResize) onApptResize(d.appt, d.curStart, d.curEnd);
+  }
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -311,8 +389,11 @@ export function ReceptionWeekGrid({
                 {layouts.map(({ appt, col, totalCols }) => {
                   const iv = appointmentInterval(appt);
                   if (!iv) return null;
-                  const topPx = timeToPx(iv.start, dayAnchor);
-                  const heightPx = Math.max(timeToPx(iv.end, dayAnchor) - topPx, 20);
+                  const isResizing = preview?.id === appt.id;
+                  const effStart = isResizing ? preview!.start : iv.start;
+                  const effEnd = isResizing ? preview!.end : iv.end;
+                  const topPx = timeToPx(effStart, dayAnchor);
+                  const heightPx = Math.max(timeToPx(effEnd, dayAnchor) - topPx, 20);
                   if (topPx < -20 || topPx > TOTAL_PX) return null;
 
                   const widthPct = 100 / totalCols;
@@ -322,13 +403,13 @@ export function ReceptionWeekGrid({
                     ? googleStaffColor(member, staffHueMap)
                     : { bg: "#7986cb", fg: "#ffffff", border: "#5c6bc0" };
                   const svc = serviceMap.get(String(appt.service_id));
-                  const isPast = iv.end.getTime() < now.getTime();
+                  const isPast = effEnd.getTime() < now.getTime();
 
                   return (
                     <div
                       key={appt.id}
                       data-appt="1"
-                      className="absolute cursor-pointer overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-shadow hover:shadow-md"
+                      className="absolute touch-none overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-shadow hover:shadow-md"
                       style={{
                         top: topPx + 1,
                         height: heightPx - 2,
@@ -337,10 +418,17 @@ export function ReceptionWeekGrid({
                         backgroundColor: c.bg,
                         color: c.fg,
                         opacity: isPast ? 0.45 : 1,
+                        cursor: isResizing ? "ns-resize" : "pointer",
+                        zIndex: isResizing ? 20 : undefined,
                       }}
-                      onClick={(e) => {
+                      onPointerDown={(e) => {
                         e.stopPropagation();
-                        onApptClick(appt, e.clientX, e.clientY);
+                        handleApptPointerDown(e, appt, iv.start, iv.end);
+                      }}
+                      onPointerMove={handleApptPointerMove}
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                        handleApptPointerUp(e);
                       }}
                     >
                       <p className="truncate text-[11px] font-semibold leading-tight">
@@ -348,7 +436,7 @@ export function ReceptionWeekGrid({
                       </p>
                       {heightPx > 28 && (
                         <p className="truncate text-[10px] leading-tight opacity-90">
-                          {format(iv.start, "HH:mm")}
+                          {format(effStart, "HH:mm")}–{format(effEnd, "HH:mm")}
                           {svc ? ` · ${svc.name_et}` : ""}
                         </p>
                       )}
