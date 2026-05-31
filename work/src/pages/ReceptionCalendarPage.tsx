@@ -9,7 +9,6 @@ import { ReceptionSidebar } from "../components/reception/ReceptionSidebar";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
 import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
 import { ReceptionBookingPopup } from "../components/reception/ReceptionBookingPopup";
-import { ReceptionAppointmentDetail } from "../components/reception/ReceptionAppointmentDetail";
 import { ReceptionStaffColorSettings } from "../components/reception/ReceptionStaffColorSettings";
 import { AdminDaySchedulePopup } from "../components/reception/AdminDaySchedulePopup";
 import type {
@@ -28,12 +27,7 @@ type BookingPopupState = {
   anchorY: number;
   initialStart: Date;
   defaultStaffId: string | null;
-};
-
-type DetailState = {
-  appt: AppointmentRow;
-  anchorX: number;
-  anchorY: number;
+  editAppt?: AppointmentRow | null;
 };
 
 export function ReceptionCalendarPage() {
@@ -47,7 +41,6 @@ export function ReceptionCalendarPage() {
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
   const [visibleStaffIds, setVisibleStaffIds] = useState<Set<string>>(new Set());
   const [popup, setPopup] = useState<BookingPopupState | null>(null);
-  const [detail, setDetail] = useState<DetailState | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [dayPopup, setDayPopup] = useState<{ day: Date; x: number; y: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,18 +89,21 @@ export function ReceptionCalendarPage() {
   }
 
   function handleSlotClick(start: Date, anchorX: number, anchorY: number) {
-    setDetail(null);
     setPopup({ anchorX, anchorY, initialStart: start, defaultStaffId: null });
   }
 
   function handleApptClick(appt: AppointmentRow, x: number, y: number) {
-    setPopup(null);
-    setDetail({ appt, anchorX: x, anchorY: y });
+    setPopup({
+      anchorX: x,
+      anchorY: y,
+      initialStart: new Date(appt.start_time),
+      defaultStaffId: appt.staff_id,
+      editAppt: appt,
+    });
   }
 
   function handleDayHeaderClick(day: Date, x: number, y: number) {
     setPopup(null);
-    setDetail(null);
     setDayPopup({ day, x, y });
   }
 
@@ -246,19 +242,9 @@ export function ReceptionCalendarPage() {
           staff={staff}
           services={services}
           links={staffServiceLinks}
+          editAppt={popup.editAppt ?? null}
           onSave={() => { setPopup(null); void load(); }}
           onClose={() => setPopup(null)}
-        />
-      )}
-
-      {detail && (
-        <ReceptionAppointmentDetail
-          appt={detail.appt}
-          anchorX={detail.anchorX}
-          anchorY={detail.anchorY}
-          staff={staff}
-          services={services}
-          onClose={() => setDetail(null)}
         />
       )}
 

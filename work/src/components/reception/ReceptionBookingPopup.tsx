@@ -3,7 +3,7 @@ import { addMinutes, format, setHours, setMinutes, startOfDay } from "date-fns";
 import { supabase } from "../../lib/supabase";
 import { servicesEligibleForStaff } from "../../lib/roles";
 import { overlapsExistingAppointments } from "../../lib/slots";
-import type { ServiceRow, StaffMember, StaffServiceRow } from "../../types/database";
+import type { AppointmentRow, ServiceRow, StaffMember, StaffServiceRow } from "../../types/database";
 
 type Props = {
   anchorX: number;
@@ -15,6 +15,8 @@ type Props = {
   links: StaffServiceRow[];
   onSave: () => void;
   onClose: () => void;
+  /** When set, the popup edits this appointment (UPDATE + delete) instead of creating one. */
+  editAppt?: AppointmentRow | null;
 };
 
 const POPUP_W = 340;
@@ -42,15 +44,19 @@ export function ReceptionBookingPopup({
   links,
   onSave,
   onClose,
+  editAppt = null,
 }: Props) {
   const popupRef = useRef<HTMLDivElement>(null);
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [staffId, setStaffId] = useState<string>(() => defaultStaffId ?? staff[0]?.id ?? "");
-  const [serviceId, setServiceId] = useState<string>("");
-  const [startStr, setStartStr] = useState(() => timeToStr(initialStart));
-  const [endStr, setEndStr] = useState(() => timeToStr(addMinutes(initialStart, 60)));
-  const [endManual, setEndManual] = useState(false);
+  const isEdit = editAppt != null;
+  const [clientName, setClientName] = useState(() => editAppt?.client_name ?? "");
+  const [clientPhone, setClientPhone] = useState(() => editAppt?.client_phone ?? "");
+  const [staffId, setStaffId] = useState<string>(() => editAppt?.staff_id ?? defaultStaffId ?? staff[0]?.id ?? "");
+  const [serviceId, setServiceId] = useState<string>(() => (editAppt ? String(editAppt.service_id) : ""));
+  const [startStr, setStartStr] = useState(() => timeToStr(editAppt ? new Date(editAppt.start_time) : initialStart));
+  const [endStr, setEndStr] = useState(() =>
+    timeToStr(editAppt ? new Date(editAppt.end_time) : addMinutes(initialStart, 60)),
+  );
+  const [endManual, setEndManual] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -138,20 +144,22 @@ export function ReceptionBookingPopup({
 
     const { data: existingRows, error: loadErr } = await supabase
       .from("appointments")
-      .select("start_time, end_time")
+      .select("id, start_time, end_time")
       .eq("staff_id", staffId)
       .neq("status", "cancelled")
       .limit(500);
 
     if (loadErr) { setSaving(false); setError(loadErr.message); return; }
 
-    if (overlapsExistingAppointments(start, end, (existingRows ?? []) as { start_time: string; end_time: string }[])) {
+    const others = ((existingRows ?? []) as { id: string; start_time: string; end_time: string }[])
+      .filter((r) => !isEdit || r.id !== editAppt!.id);
+    if (overlapsExistingAppointments(start, end, others)) {
       setSaving(false);
       setError("Время занято, выберите другой слот.");
       return;
     }
 
-    const { error: insErr } = await supabase.from("appointments").insert({
+    const payload = {
       client_name: clientName.trim() || "Клиент (ресепшен)",
       client_phone: clientPhone.trim() || null,
       note: null,
@@ -160,10 +168,24 @@ export function ReceptionBookingPopup({
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       status: "confirmed",
-    });
+    };
+
+    const { error: writeErr } = isEdit
+      ? await supabase.from("appointments").update(payload).eq("id", editAppt!.id)
+      : await supabase.from("appointments").insert(payload);
 
     setSaving(false);
-    if (insErr) { setError(insErr.message); return; }
+    if (writeErr) { setError(writeErr.message); return; }
+    onSave();
+  }
+
+  async function handleDelete() {
+    if (!editAppt) return;
+    if (!window.confirm("Удалить эту запись?")) return;
+    setSaving(true);
+    const { error: delErr } = await supabase.from("appointments").delete().eq("id", editAppt.id);
+    setSaving(false);
+    if (delErr) { setError(delErr.message); return; }
     onSave();
   }
 
@@ -180,7 +202,7 @@ export function ReceptionBookingPopup({
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#e8eaed] px-4 py-2.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#70757a]">Новая запись</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#70757a]">{isEdit ? "Редактировать запись" : "Новая запись"}</span>
         <button
           onClick={onClose}
           className="rounded-full p-1 text-[#5f6368] hover:bg-[#f1f3f4]"
@@ -300,6 +322,16 @@ export function ReceptionBookingPopup({
         {error && <p className="text-xs text-[#d93025]">{error}</p>}
 
         <div className="flex items-center justify-end gap-2 pt-1">
+          {isEdit && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving}
+              className="mr-auto rounded-lg px-3 py-1.5 text-sm font-medium text-[#d93025] hover:bg-[#fce8e6] disabled:opacity-40"
+            >
+              Удалить
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

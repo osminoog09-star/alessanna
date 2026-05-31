@@ -65,7 +65,7 @@ export function CalendarPage() {
   const [staffServiceLinks, setStaffServiceLinks] = useState<StaffServiceRow[]>([]);
   const [calendarServiceId, setCalendarServiceId] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<{ start: Date; staffId: string } | null>(null);
+  const [modal, setModal] = useState<{ start: Date; staffId: string; editAppt?: AppointmentRow | null } | null>(null);
   const [dayPopup, setDayPopup] = useState<{ day: Date; x: number; y: number } | null>(null);
   const [receptionMastersConfig, setReceptionMastersConfig] = useState<ReceptionMastersPanelConfig>(() => ({
     ...DEFAULT_RECEPTION_MASTERS_PANEL,
@@ -355,7 +355,10 @@ export function CalendarPage() {
                   : [...effectiveVisibleIds][0] ?? activeStaffForCalendar[0]?.id;
                 if (sid) setModal({ start, staffId: sid });
               }}
-              onApptClick={() => {}}
+              onApptClick={(appt) => {
+                if (!canUseCalendar) return;
+                setModal({ start: parseISO(appt.start_time), staffId: appt.staff_id, editAppt: appt });
+              }}
               onDayHeaderClick={canManage ? (day, x, y) => setDayPopup({ day, x, y }) : undefined}
             />
           ) : (
@@ -443,6 +446,7 @@ export function CalendarPage() {
           lockStaff={!canManage}
           mastersHallSplit={mastersSplitResolved}
           mastersHallFullPanel={mastersPanelStaffForHall}
+          editAppointment={modal.editAppt ?? null}
         />
       )}
 

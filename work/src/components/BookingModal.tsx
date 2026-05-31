@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { addMinutes } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import type { StaffMember, StaffServiceRow, ServiceRow } from "../types/database";
+import type { StaffMember, StaffServiceRow, ServiceRow, AppointmentRow } from "../types/database";
 import { staffEligibleForService, servicesEligibleForStaff } from "../lib/roles";
 import { restrictAndOrderStaffByServiceHall, serviceRowToPublicCatalogEntry } from "../lib/publicMasterPanel";
 import { overlapsExistingAppointments } from "../lib/slots";
@@ -24,6 +24,8 @@ type Props = {
   /** Колонки «волосы» / «ногти» (как на ресепшене). Если заданы вместе с fullPanel — список мастеров режется по залу выбранной услуги. */
   mastersHallSplit?: { hair: StaffMember[]; nails: StaffMember[] };
   mastersHallFullPanel?: StaffMember[];
+  /** When set, the modal edits this appointment (UPDATE + delete) instead of creating one. */
+  editAppointment?: AppointmentRow | null;
 };
 
 export function BookingModal({
@@ -40,8 +42,10 @@ export function BookingModal({
   layout = "modal",
   mastersHallSplit,
   mastersHallFullPanel,
+  editAppointment = null,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const isEdit = editAppointment != null;
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [staffId, setStaffId] = useState(initialStaffId);
@@ -98,13 +102,20 @@ export function BookingModal({
 
   useEffect(() => {
     if (!open) return;
+    setError("");
+    if (editAppointment) {
+      setStaffId(editAppointment.staff_id);
+      setClientName(editAppointment.client_name ?? "");
+      setClientPhone(editAppointment.client_phone ?? "");
+      setServiceId(editAppointment.service_id as string | number);
+      return;
+    }
     setStaffId(initialStaffId);
     setClientName("");
     setClientPhone("");
-    setError("");
     const firstSvc = eligibleServices[0]?.id ?? services.find((s) => s.active)?.id ?? 0;
     setServiceId(firstSvc);
-  }, [open, initialStaffId, eligibleServices, services]);
+  }, [open, initialStaffId, eligibleServices, services, editAppointment]);
 
   useEffect(() => {
     if (!open) return;
@@ -139,8 +150,9 @@ export function BookingModal({
       return;
     }
     setSaving(true);
-    const start = initialStart;
-    if (start.getTime() < Date.now()) {
+    /* When editing keep the existing start; when creating reject past slots. */
+    const start = isEdit && editAppointment ? new Date(editAppointment.start_time) : initialStart;
+    if (!isEdit && start.getTime() < Date.now()) {
       setSaving(false);
       setError("Нельзя создать запись в прошедшее время. Выберите актуальный слот.");
       return;
@@ -149,7 +161,7 @@ export function BookingModal({
 
     const { data: existingRows, error: loadErr } = await supabase
       .from("appointments")
-      .select("start_time, end_time")
+      .select("id, start_time, end_time")
       .eq("staff_id", staffId)
       .neq("status", "cancelled")
       .limit(500);
@@ -158,7 +170,9 @@ export function BookingModal({
       setError(t("auth.error.rpcFailed", { message: loadErr.message }));
       return;
     }
-    if (overlapsExistingAppointments(start, end, (existingRows ?? []) as { start_time: string; end_time: string }[])) {
+    const others = ((existingRows ?? []) as { id: string; start_time: string; end_time: string }[])
+      .filter((r) => !isEdit || r.id !== editAppointment!.id);
+    if (overlapsExistingAppointments(start, end, others)) {
       setSaving(false);
       setError(t("modal.overlap"));
       return;
@@ -169,7 +183,7 @@ export function BookingModal({
      *  the 'source' column of 'appointments' in the schema cache» и запись не
      *  создаётся. Поэтому отправляем только реально существующие колонки. */
     const normalizedClientName = clientName.trim() || "Клиент (CRM)";
-    const { error: insErr } = await supabase.from("appointments").insert({
+    const payload = {
       client_name: normalizedClientName,
       client_phone: clientPhone.trim() || null,
       note: null,
@@ -178,20 +192,40 @@ export function BookingModal({
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       status: "confirmed",
-    });
+    };
+    const { error: writeErr } = isEdit
+      ? await supabase.from("appointments").update(payload).eq("id", editAppointment!.id)
+      : await supabase.from("appointments").insert(payload);
     setSaving(false);
-    if (insErr) {
-      if (insErr.code === "23P01" || /overlap|занят/i.test(String(insErr.message || ""))) {
+    if (writeErr) {
+      if (writeErr.code === "23P01" || /overlap|занят/i.test(String(writeErr.message || ""))) {
         setError(t("modal.overlap"));
         return;
       }
-      setError(t("auth.error.rpcFailed", { message: insErr.message }));
+      setError(t("auth.error.rpcFailed", { message: writeErr.message }));
       return;
     }
     onSaved();
     onClose();
     setClientName("");
     setClientPhone("");
+  }
+
+  async function handleDelete() {
+    if (!editAppointment) return;
+    if (!window.confirm(t("modal.deleteConfirm", { defaultValue: "Удалить эту запись?" }))) return;
+    setSaving(true);
+    const { error: delErr } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", editAppointment.id);
+    setSaving(false);
+    if (delErr) {
+      setError(t("auth.error.rpcFailed", { message: delErr.message }));
+      return;
+    }
+    onSaved();
+    onClose();
   }
 
   const shell =
@@ -217,7 +251,7 @@ export function BookingModal({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 id="booking-modal-title" className="text-lg font-semibold text-white">
-              {t("modal.newBooking")}
+              {isEdit ? t("modal.editBooking", { defaultValue: "Редактировать запись" }) : t("modal.newBooking")}
             </h2>
             <p className="mt-1 text-sm text-muted">
               {initialStart.toLocaleString(i18n.language, {
@@ -319,7 +353,17 @@ export function BookingModal({
             />
           </div>
           {error && <p className="text-sm text-red-400">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2">
+            {isEdit && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={saving}
+                className="mr-auto rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+              >
+                {t("common.delete", { defaultValue: "Удалить" })}
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -336,7 +380,7 @@ export function BookingModal({
                   : "bg-sky-600 hover:bg-sky-500"
               }`}
             >
-              {t("calendar.createBooking", { defaultValue: "Сделать запись" })}
+              {isEdit ? t("common.save", { defaultValue: "Сохранить" }) : t("calendar.createBooking", { defaultValue: "Сделать запись" })}
             </button>
           </div>
         </form>

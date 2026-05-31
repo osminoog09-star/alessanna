@@ -240,6 +240,9 @@ export function ReceptionWeekGrid({
               if (!visibleStaffIds.has(a.staff_id)) return false;
               const iv = appointmentInterval(a);
               if (!iv) return false;
+              // Hide legacy all-day "work-day" blocks (≥16h) — they're schedule
+              // markers, not real bookings, and would fill the whole column.
+              if (iv.end.getTime() - iv.start.getTime() >= 16 * 3_600_000) return false;
               return isSameDay(iv.start, day);
             });
 
