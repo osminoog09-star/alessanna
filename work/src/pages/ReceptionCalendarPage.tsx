@@ -128,7 +128,7 @@ export function ReceptionCalendarPage() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-white text-[#3c4043]">
+    <div className="fixed inset-0 flex flex-col bg-white text-[#3c4043]">
       <AppTopBar />
 
       {/* Top navigation */}

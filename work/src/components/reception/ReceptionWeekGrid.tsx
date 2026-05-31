@@ -206,7 +206,7 @@ export function ReceptionWeekGrid({
       </div>
 
       {/* Scrollable time body */}
-      <div ref={bodyRef} className={`flex h-0 flex-1 overflow-y-auto ${bg}`}>
+      <div ref={bodyRef} className={`flex min-h-0 flex-1 overflow-y-scroll ${bg}`}>
         {/* Time gutter */}
         <div className={`relative w-14 shrink-0 ${bg}`} style={{ height: TOTAL_PX }}>
           {HOURS.map((h) => (
