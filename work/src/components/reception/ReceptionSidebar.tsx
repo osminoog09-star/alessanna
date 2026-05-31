@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   addDays,
   addMonths,
@@ -36,6 +37,8 @@ export function ReceptionSidebar({
   dark,
   hideMiniCalendar,
 }: Props) {
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language.split("-")[0] ?? "ru";
   const [miniCursor, setMiniCursor] = useState(() => new Date());
   const today = new Date();
   const staffHueMap = buildStaffHueMap(staff.map((m) => m.id));
@@ -54,7 +57,7 @@ export function ReceptionSidebar({
   const miniDays = eachDayOfInterval({ start: gridStart, end: addDays(gridStart, 41) });
 
   return (
-    <div className={`flex w-64 shrink-0 flex-col overflow-y-auto border-r py-3 ${borderCls} ${bg}`}>
+    <div className={`flex h-full w-64 shrink-0 flex-col overflow-y-auto border-r py-3 ${borderCls} ${bg}`}>
       {!hideMiniCalendar && (
       <>
       {/* Mini calendar */}
@@ -157,6 +160,29 @@ export function ReceptionSidebar({
               </label>
             );
           })}
+        </div>
+      </div>
+
+      {/* Language switcher */}
+      <div className={`mt-auto border-t px-3 pt-3 ${borderCls}`}>
+        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${mutedCls}`}>
+          Язык / Keel
+        </p>
+        <div className="flex gap-1">
+          {(["ru", "et"] as const).map((code) => (
+            <button
+              key={code}
+              onClick={() => void i18n.changeLanguage(code)}
+              className={[
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                currentLang === code
+                  ? "bg-[#e8f0fe] text-[#1a73e8]"
+                  : `${mutedCls} ${hoverCls}`,
+              ].join(" ")}
+            >
+              {code.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
     </div>

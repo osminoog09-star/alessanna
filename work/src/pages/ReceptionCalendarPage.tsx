@@ -4,7 +4,6 @@ import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import { isStaffRowAdmin, normalizeStaffMember } from "../lib/roles";
-import { AppTopBar } from "../components/AppTopBar";
 import { ReceptionSidebar } from "../components/reception/ReceptionSidebar";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
 import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
@@ -145,8 +144,6 @@ export function ReceptionCalendarPage() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-white text-[#3c4043]">
-      <AppTopBar />
-
       {/* Top navigation */}
       <div className="flex shrink-0 items-center border-b border-[#dadce0] bg-white px-2 py-2">
         {/* Left: hamburger (mobile) + Today + view switcher */}
