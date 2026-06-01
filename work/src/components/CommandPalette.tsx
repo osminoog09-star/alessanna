@@ -438,14 +438,14 @@ export function CommandPalette({
         </Command.List>
         <div className="flex items-center justify-between gap-3 border-t border-line/15 bg-panel px-3 py-2 text-[10px] text-muted">
           <span className="flex items-center gap-2">
-            <kbd className="rounded border border-line/15 bg-black px-1.5 py-0.5 font-mono">↵</kbd>
+            <kbd className="rounded border border-line/15 bg-surface px-1.5 py-0.5 font-mono">↵</kbd>
             {t("command.hintEnter")}
             <span className="mx-1 opacity-30">·</span>
-            <kbd className="rounded border border-line/15 bg-black px-1.5 py-0.5 font-mono">↑↓</kbd>
+            <kbd className="rounded border border-line/15 bg-surface px-1.5 py-0.5 font-mono">↑↓</kbd>
             {t("command.hintNav")}
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-line/15 bg-black px-1.5 py-0.5 font-mono">⌘K</kbd>
+            <kbd className="rounded border border-line/15 bg-surface px-1.5 py-0.5 font-mono">⌘K</kbd>
             {t("command.hintToggle")}
           </span>
         </div>

@@ -51,7 +51,7 @@ export function AppTopBar({
             <select
               value={calendarStaffQuick.value}
               onChange={(e) => calendarStaffQuick.onChange(e.target.value)}
-              className="max-w-[11rem] rounded-md border border-line/20 bg-black px-2 py-1.5 text-xs text-fg"
+              className="max-w-[11rem] rounded-md border border-line/20 bg-surface px-2 py-1.5 text-xs text-fg"
             >
               {calendarStaffQuick.options.map((o) => (
                 <option key={o.id} value={o.id}>

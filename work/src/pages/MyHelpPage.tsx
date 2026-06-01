@@ -461,7 +461,7 @@ export function MyHelpPage() {
                   onChange={(e) => setComposer(e.target.value)}
                   placeholder={t("myHelp.composerPlaceholder")}
                   rows={4}
-                  className="w-full resize-none rounded-lg border border-line/15 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-line/15 bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
                 />
                 <div className="mt-2 flex items-center gap-2">
                   <label
@@ -651,7 +651,7 @@ export function MyHelpPage() {
                         }}
                         placeholder={t("myHelp.replyPlaceholder")}
                         rows={2}
-                        className="flex-1 resize-none rounded-lg border border-line/15 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
+                        className="flex-1 resize-none rounded-lg border border-line/15 bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
                       />
                       <button
                         type="button"
