@@ -250,7 +250,7 @@ export function BookingModal({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 id="booking-modal-title" className="text-lg font-semibold text-white">
+            <h2 id="booking-modal-title" className="text-lg font-semibold text-fg">
               {isEdit ? t("modal.editBooking", { defaultValue: "Редактировать запись" }) : t("modal.newBooking")}
             </h2>
             <p className="mt-1 text-sm text-muted">
@@ -374,7 +374,7 @@ export function BookingModal({
             <button
               type="submit"
               disabled={saving}
-              className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
+              className={`rounded-lg px-4 py-2 text-sm font-medium text-fg disabled:opacity-50 ${
                 variant === "pro"
                   ? "bg-gradient-to-r from-gold-deep to-gold hover:brightness-110 shadow-[0_0_24px_rgba(196,165,116,0.25)]"
                   : "bg-sky-600 hover:bg-sky-500"

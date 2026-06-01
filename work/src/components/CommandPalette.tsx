@@ -374,16 +374,16 @@ export function CommandPalette({
       }}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/50"
+        className="w-full max-w-xl overflow-hidden rounded-xl border border-line/15 bg-panel shadow-2xl shadow-black/50"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-zinc-800 px-3">
+        <div className="flex items-center gap-2 border-b border-line/15 px-3">
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth={1.75}
-            className="h-4 w-4 shrink-0 text-zinc-500"
+            className="h-4 w-4 shrink-0 text-muted"
             aria-hidden="true"
           >
             <circle cx="11" cy="11" r="7" />
@@ -392,21 +392,21 @@ export function CommandPalette({
           <Command.Input
             autoFocus
             placeholder={t("command.placeholder")}
-            className="h-12 flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+            className="h-12 flex-1 bg-transparent text-sm text-fg placeholder:text-muted focus:outline-none"
           />
-          <kbd className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+          <kbd className="rounded border border-line/15 bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted">
             Esc
           </kbd>
         </div>
         <Command.List className="max-h-[60vh] overflow-y-auto p-2 [&_[cmdk-list-sizer]]:space-y-1">
-          <Command.Empty className="px-3 py-6 text-center text-sm text-zinc-500">
+          <Command.Empty className="px-3 py-6 text-center text-sm text-muted">
             {t("command.empty")}
           </Command.Empty>
 
           {recentItems.length > 0 && (
             <Command.Group
               heading={t("command.groupRecent")}
-              className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+              className="text-[10px] font-semibold uppercase tracking-wide text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
             >
               {recentItems.map((item) => (
                 <PaletteRow key={`r-${item.id}`} item={item} onRun={runItem} />
@@ -416,7 +416,7 @@ export function CommandPalette({
 
           <Command.Group
             heading={t("command.groupQuick")}
-            className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+            className="text-[10px] font-semibold uppercase tracking-wide text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
           >
             {visibleItems
               .filter((i) => i.group === "quick")
@@ -427,7 +427,7 @@ export function CommandPalette({
 
           <Command.Group
             heading={t("command.groupGo")}
-            className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+            className="text-[10px] font-semibold uppercase tracking-wide text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
           >
             {visibleItems
               .filter((i) => i.group === "go")
@@ -436,16 +436,16 @@ export function CommandPalette({
               ))}
           </Command.Group>
         </Command.List>
-        <div className="flex items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-950 px-3 py-2 text-[10px] text-zinc-500">
+        <div className="flex items-center justify-between gap-3 border-t border-line/15 bg-panel px-3 py-2 text-[10px] text-muted">
           <span className="flex items-center gap-2">
-            <kbd className="rounded border border-zinc-800 bg-black px-1.5 py-0.5 font-mono">↵</kbd>
+            <kbd className="rounded border border-line/15 bg-black px-1.5 py-0.5 font-mono">↵</kbd>
             {t("command.hintEnter")}
             <span className="mx-1 opacity-30">·</span>
-            <kbd className="rounded border border-zinc-800 bg-black px-1.5 py-0.5 font-mono">↑↓</kbd>
+            <kbd className="rounded border border-line/15 bg-black px-1.5 py-0.5 font-mono">↑↓</kbd>
             {t("command.hintNav")}
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="rounded border border-zinc-800 bg-black px-1.5 py-0.5 font-mono">⌘K</kbd>
+            <kbd className="rounded border border-line/15 bg-black px-1.5 py-0.5 font-mono">⌘K</kbd>
             {t("command.hintToggle")}
           </span>
         </div>
@@ -459,17 +459,17 @@ function PaletteRow({ item, onRun }: { item: CommandItem; onRun: (i: CommandItem
     <Command.Item
       value={`${item.label} ${item.hint ?? ""}`}
       onSelect={() => onRun(item)}
-      className="group flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-zinc-300 aria-selected:bg-zinc-800 aria-selected:text-zinc-50"
+      className="group flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-fg aria-selected:bg-surface aria-selected:text-zinc-50"
     >
-      <span className="text-zinc-500 group-aria-selected:text-emerald-300">{item.icon}</span>
+      <span className="text-muted group-aria-selected:text-emerald-300">{item.icon}</span>
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      {item.hint && <span className="truncate text-[11px] text-zinc-500">{item.hint}</span>}
+      {item.hint && <span className="truncate text-[11px] text-muted">{item.hint}</span>}
       {item.shortcut && (
         <span className="ml-2 hidden gap-1 sm:flex">
           {item.shortcut.map((k) => (
             <kbd
               key={k}
-              className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-mono text-zinc-500"
+              className="rounded border border-line/15 bg-surface px-1.5 py-0.5 text-[10px] font-mono text-muted"
             >
               {k}
             </kbd>

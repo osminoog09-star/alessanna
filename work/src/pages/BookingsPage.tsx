@@ -310,8 +310,8 @@ export function BookingsPage() {
   function statusTone(status: string) {
     if (status === "pending") return "border-amber-700/60 bg-amber-950/40 text-amber-200";
     if (status === "confirmed") return "border-emerald-700/60 bg-emerald-950/40 text-emerald-200";
-    if (status === "cancelled") return "border-zinc-700 bg-zinc-900 text-zinc-500";
-    return "border-zinc-700 bg-zinc-900 text-zinc-300";
+    if (status === "cancelled") return "border-line/20 bg-surface text-muted";
+    return "border-line/20 bg-surface text-fg";
   }
 
   /* Источник записи (миграция 053). Цветовая схема выбрана так, чтобы
@@ -391,10 +391,10 @@ export function BookingsPage() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-white">{t("bookings.title")}</h1>
-          <p className="mt-0.5 text-sm text-zinc-500">{t("bookings.subtitle")}</p>
+          <h1 className="text-2xl font-semibold text-fg">{t("bookings.title")}</h1>
+          <p className="mt-0.5 text-sm text-muted">{t("bookings.subtitle")}</p>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-muted">
           {t("bookings.counter", { shown: visible.length, total: rows.length })}
         </p>
       </header>
@@ -409,7 +409,7 @@ export function BookingsPage() {
             strokeWidth={1.75}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
             aria-hidden="true"
           >
             <circle cx="11" cy="11" r="7" />
@@ -420,13 +420,13 @@ export function BookingsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("bookings.search")}
-            className="w-full rounded-lg border border-zinc-800 bg-black/40 py-2 pl-9 pr-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-emerald-600/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+            className="w-full rounded-lg border border-line/15 bg-canvas/40 py-2 pl-9 pr-3 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
           />
         </div>
         <div
           role="tablist"
           aria-label={t("bookings.status")}
-          className="flex flex-wrap items-center gap-1 rounded-lg border border-zinc-800 bg-black/30 p-1"
+          className="flex flex-wrap items-center gap-1 rounded-lg border border-line/15 bg-black/30 p-1"
         >
           {STATUS_FILTERS.map((f) => (
             <button
@@ -439,7 +439,7 @@ export function BookingsPage() {
                 "rounded-md px-2.5 py-1 text-xs font-medium transition " +
                 (statusFilter === f
                   ? "bg-zinc-200 text-black"
-                  : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100")
+                  : "text-muted hover:bg-surface hover:text-fg")
               }
             >
               {filterLabel(f)}
@@ -478,13 +478,13 @@ export function BookingsPage() {
           <p className="mt-1 text-xs text-red-300/80">{loadError}</p>
         </div>
       ) : loading ? (
-        <p className="text-zinc-500">{t("common.loading")}</p>
+        <p className="text-muted">{t("common.loading")}</p>
       ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 p-10 text-center text-sm text-zinc-500">
+        <div className="rounded-xl border border-dashed border-line/15 bg-panel/40 p-10 text-center text-sm text-muted">
           {t("bookings.empty")}
         </div>
       ) : visible.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 p-10 text-center text-sm text-zinc-400">
+        <div className="rounded-xl border border-dashed border-line/15 bg-panel/40 p-10 text-center text-sm text-muted">
           <p>{t("bookings.emptyFiltered")}</p>
           {filtersActive && (
             <button
@@ -493,16 +493,16 @@ export function BookingsPage() {
                 setSearch("");
                 setStatusFilter("active");
               }}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 transition hover:border-zinc-600 hover:text-white"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-line/20 bg-surface px-3 py-1.5 text-xs text-fg transition hover:border-line/25 hover:text-fg"
             >
               {t("bookings.resetFilters")}
             </button>
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-800">
+        <div className="overflow-x-auto rounded-xl border border-line/15">
           <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-950 text-xs uppercase tracking-wide text-zinc-500">
+            <thead className="border-b border-line/15 bg-panel text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-3">{t("bookings.when")}</th>
                 <th className="px-4 py-3">{t("bookings.client")}</th>
@@ -517,11 +517,11 @@ export function BookingsPage() {
                         prev === "none" ? "asc" : prev === "asc" ? "desc" : "none",
                       )
                     }
-                    className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-zinc-500 hover:text-zinc-300"
+                    className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-muted hover:text-fg"
                     title={t("bookings.sortSource", { defaultValue: "Сортировать по источнику" })}
                   >
                     {t("bookings.source", { defaultValue: "Источник" })}
-                    <span className="text-[10px] text-zinc-600">
+                    <span className="text-[10px] text-muted">
                       {sourceSort === "asc" ? "↑" : sourceSort === "desc" ? "↓" : "↕"}
                     </span>
                   </button>
@@ -529,7 +529,7 @@ export function BookingsPage() {
                 {(canManage || (isWorkerOnlyEffective && staffMember)) && <th className="px-4 py-3" />}
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y divide-line/15">
               {visible.map((b) => {
                 const when = b.start_time;
                 const em = staffNames.find((x) => x.id === b.staff_id);
@@ -540,23 +540,23 @@ export function BookingsPage() {
                   ? staffNames.find((x) => x.id === b.created_by_staff_id)
                   : null;
                 return (
-                  <tr key={b.id} className="bg-zinc-950/80">
-                    <td className="px-4 py-3 text-zinc-300">
+                  <tr key={b.id} className="bg-panel/80">
+                    <td className="px-4 py-3 text-fg">
                       {when ? format(parseISO(when), "yyyy-MM-dd HH:mm") : t("common.dash")}
                     </td>
-                    <td className="px-4 py-3 text-white">
+                    <td className="px-4 py-3 text-fg">
                       <div>{b.client_name}</div>
                       {b.client_phone && (
-                        <div className="mt-0.5 text-[11px] text-zinc-500">{b.client_phone}</div>
+                        <div className="mt-0.5 text-[11px] text-muted">{b.client_phone}</div>
                       )}
                       {b.note && (
-                        <div className="mt-0.5 text-xs italic text-zinc-500" title={b.note}>
+                        <div className="mt-0.5 text-xs italic text-muted" title={b.note}>
                           &laquo;{b.note.length > 80 ? b.note.slice(0, 80) + "…" : b.note}&raquo;
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-zinc-400">{em?.name ?? t("common.dash")}</td>
-                    <td className="px-4 py-3 text-zinc-400">{sv?.name || t("common.dash")}</td>
+                    <td className="px-4 py-3 text-muted">{em?.name ?? t("common.dash")}</td>
+                    <td className="px-4 py-3 text-muted">{sv?.name || t("common.dash")}</td>
                     <td className="px-4 py-3">
                       <span
                         className={
@@ -577,7 +577,7 @@ export function BookingsPage() {
                               e.target.value as "public_site" | "reception" | "crm",
                             )
                           }
-                          className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 focus:border-emerald-600/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+                          className="rounded-md border border-line/20 bg-surface px-2 py-1 text-xs text-fg focus:border-emerald-600/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
                         >
                           <option value="public_site">
                             {t("bookings.sourceSite", { defaultValue: "Сайт" })}
@@ -605,10 +605,10 @@ export function BookingsPage() {
                           {src.label}
                         </span>
                       ) : (
-                        <span className="text-zinc-600">{t("common.dash")}</span>
+                        <span className="text-muted">{t("common.dash")}</span>
                       )}
                       {acceptedBy && (
-                        <div className="mt-0.5 text-[10px] text-zinc-500">
+                        <div className="mt-0.5 text-[10px] text-muted">
                           {t("bookings.acceptedBy", {
                             defaultValue: "Принял: {{name}}",
                             name: acceptedBy.name,
@@ -653,7 +653,7 @@ export function BookingsPage() {
                             <button
                               type="button"
                               onClick={() => void deleteBooking(b.id)}
-                              className="text-xs text-zinc-400 hover:text-red-300"
+                              className="text-xs text-muted hover:text-red-300"
                             >
                               {t("bookings.delete", { defaultValue: "Удалить" })}
                             </button>

@@ -76,7 +76,7 @@ function toneClasses(tone: "ok" | "warn" | "err" | "info"): string {
       return "border-red-700/60 bg-red-950/30 text-red-200";
     case "info":
     default:
-      return "border-zinc-700/60 bg-zinc-900/50 text-zinc-300";
+      return "border-line/20/60 bg-surface/50 text-fg";
   }
 }
 
@@ -149,7 +149,7 @@ export function ActivityLogSection(props: ActivityLogProps) {
   }, [items]);
 
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950">
+    <section className="rounded-xl border border-line/15 bg-panel">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -158,15 +158,15 @@ export function ActivityLogSection(props: ActivityLogProps) {
       >
         <span className="flex items-center gap-2">
           <span aria-hidden="true">📋</span>
-          <span className="text-base font-semibold text-white">{title}</span>
+          <span className="text-base font-semibold text-fg">{title}</span>
           {items.length > 0 && (
-            <span className="rounded-full border border-zinc-700 bg-zinc-900/60 px-2 py-0.5 text-[10px] text-zinc-400">
+            <span className="rounded-full border border-line/20 bg-surface/60 px-2 py-0.5 text-[10px] text-muted">
               {items.length}
             </span>
           )}
         </span>
         <span
-          className={`text-zinc-500 transition-transform ${open ? "rotate-90" : ""}`}
+          className={`text-muted transition-transform ${open ? "rotate-90" : ""}`}
           aria-hidden="true"
         >
           ▶
@@ -174,9 +174,9 @@ export function ActivityLogSection(props: ActivityLogProps) {
       </button>
 
       {open && (
-        <div className="border-t border-zinc-800/80 px-5 py-4">
+        <div className="border-t border-line/15/80 px-5 py-4">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted">
               {mode === "self"
                 ? "Ваши действия в системе: входы, ошибки PIN, IP, устройство."
                 : "Действия выбранного сотрудника. Для безопасности и аудита."}
@@ -188,7 +188,7 @@ export function ActivityLogSection(props: ActivityLogProps) {
                 setHasMore(true);
                 void load();
               }}
-              className="text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline"
+              className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline"
             >
               Обновить
             </button>
@@ -197,11 +197,11 @@ export function ActivityLogSection(props: ActivityLogProps) {
           {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
           {loading && items.length === 0 ? (
-            <p className="text-sm text-zinc-500">Загружаем…</p>
+            <p className="text-sm text-muted">Загружаем…</p>
           ) : items.length === 0 ? (
-            <p className="text-sm text-zinc-500">Записей пока нет.</p>
+            <p className="text-sm text-muted">Записей пока нет.</p>
           ) : (
-            <ul className="divide-y divide-zinc-800/80">
+            <ul className="divide-y divide-line/15/80">
               {items.map((row) => {
                 const meta = actionMeta(row.action);
                 return (
@@ -216,12 +216,12 @@ export function ActivityLogSection(props: ActivityLogProps) {
                         >
                           {meta.label}
                         </span>
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-muted">
                           {new Date(row.occurred_at).toLocaleString()}
                         </span>
                       </p>
                       {row.meta && Object.keys(row.meta).length > 0 && (
-                        <p className="mt-1 truncate text-xs text-zinc-500">
+                        <p className="mt-1 truncate text-xs text-muted">
                           {(() => {
                             const m = row.meta as Record<string, unknown>;
                             if (typeof m.mode === "string") return "Режим: " + m.mode;
@@ -234,14 +234,14 @@ export function ActivityLogSection(props: ActivityLogProps) {
                         </p>
                       )}
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-0.5 text-right text-xs text-zinc-500">
+                    <div className="flex shrink-0 flex-col items-end gap-0.5 text-right text-xs text-muted">
                       {row.ip_address && (
-                        <span className="font-mono text-[11px] text-zinc-400">
+                        <span className="font-mono text-[11px] text-muted">
                           IP {row.ip_address}
                         </span>
                       )}
                       {row.user_agent && (
-                        <span className="text-[11px] text-zinc-600" title={row.user_agent}>
+                        <span className="text-[11px] text-muted" title={row.user_agent}>
                           {shortUA(row.user_agent)}
                         </span>
                       )}
@@ -258,7 +258,7 @@ export function ActivityLogSection(props: ActivityLogProps) {
                 type="button"
                 disabled={loading}
                 onClick={() => oldest && void load(oldest)}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                className="rounded-lg border border-line/20 bg-surface px-4 py-1.5 text-xs text-fg hover:bg-surface disabled:opacity-50"
               >
                 {loading ? "Загружаем…" : "Загрузить ещё"}
               </button>

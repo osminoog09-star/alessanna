@@ -89,8 +89,8 @@ function pickStaffRoleStyle(roles: StaffRole[] | undefined): StaffRoleStyle {
   }
   return {
     label: "",
-    pill: "border-zinc-700 bg-zinc-900/40 text-zinc-300",
-    name: "text-zinc-200",
+    pill: "border-line/20 bg-surface/40 text-fg",
+    name: "text-fg",
     dot: "bg-zinc-500",
   };
 }
@@ -186,7 +186,7 @@ function statusLabel(t: (k: string) => string, status: Status): string {
 
 function statusTone(status: Status): string {
   if (status === "pending") return "border-amber-600/50 bg-amber-900/30 text-amber-200";
-  if (status === "closed") return "border-zinc-700 bg-zinc-900/60 text-zinc-400";
+  if (status === "closed") return "border-line/20 bg-surface/60 text-muted";
   return "border-emerald-600/50 bg-emerald-900/30 text-emerald-200";
 }
 
@@ -203,7 +203,7 @@ const STAT_TONE: Record<StatTone, string> = {
   amber: "border-amber-700/40 bg-amber-950/40 text-amber-100",
   violet: "border-violet-700/40 bg-violet-950/40 text-violet-100",
   sky: "border-sky-700/40 bg-sky-950/40 text-sky-100",
-  zinc: "border-zinc-800 bg-zinc-950/60 text-zinc-200",
+  zinc: "border-line/15 bg-panel/60 text-fg",
   rose: "border-rose-700/60 bg-rose-950/40 text-rose-100",
 };
 
@@ -553,7 +553,7 @@ export function AdminSupportPage() {
 
   if (!canAccess) {
     return (
-      <div className="max-w-4xl space-y-3 text-zinc-200">
+      <div className="max-w-4xl space-y-3 text-fg">
         <h1 className="text-xl font-semibold">{t("support.pageTitle")}</h1>
         <p className="rounded-lg border border-red-900/50 bg-red-950/40 p-3 text-sm text-red-200">
           {t("support.noAccess")}
@@ -563,11 +563,11 @@ export function AdminSupportPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] max-w-[1400px] flex-col gap-3 text-zinc-200">
+    <div className="flex h-[calc(100vh-6rem)] max-w-[1400px] flex-col gap-3 text-fg">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{t("support.pageTitle")}</h1>
-          <p className="mt-0.5 text-xs text-zinc-500">
+          <p className="mt-0.5 text-xs text-muted">
             {isAdmin ? t("support.visibilityAdmin") : t("support.visibilityManager")}
           </p>
         </div>
@@ -580,7 +580,7 @@ export function AdminSupportPage() {
           <div
             role="tablist"
             aria-label={t("support.filterStatusLabel")}
-            className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-black/30 p-1"
+            className="flex items-center gap-1 rounded-lg border border-line/15 bg-black/30 p-1"
           >
             {(["active", "all", "closed"] as const).map((s) => (
               <button
@@ -593,7 +593,7 @@ export function AdminSupportPage() {
                   "rounded-md px-2.5 py-1 text-xs font-medium transition " +
                   (statusView === s
                     ? "bg-zinc-200 text-black"
-                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100")
+                    : "text-muted hover:bg-surface hover:text-fg")
                 }
               >
                 {s === "active"
@@ -605,25 +605,25 @@ export function AdminSupportPage() {
             ))}
           </div>
           {isAdmin && (
-            <label className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-black/30 px-2 py-1">
-              <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <label className="flex items-center gap-1.5 rounded-lg border border-line/15 bg-black/30 px-2 py-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted">
                 {t("support.filterTopicLabel")}
               </span>
               <select
                 value={topicFilter}
                 onChange={(e) => setTopicFilter(e.target.value as "" | Topic)}
-                className="bg-transparent text-xs text-zinc-100 focus:outline-none"
+                className="bg-transparent text-xs text-fg focus:outline-none"
               >
-                <option value="" className="bg-zinc-900">
+                <option value="" className="bg-surface">
                   {t("support.filterAllTopics")}
                 </option>
-                <option value="salon" className="bg-zinc-900">
+                <option value="salon" className="bg-surface">
                   {t("support.topicSalon")}
                 </option>
-                <option value="site" className="bg-zinc-900">
+                <option value="site" className="bg-surface">
                   {t("support.topicSite")}
                 </option>
-                <option value="staff" className="bg-zinc-900">
+                <option value="staff" className="bg-surface">
                   {t("support.topicStaff")}
                 </option>
               </select>
@@ -671,15 +671,15 @@ export function AdminSupportPage() {
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[340px_1fr]">
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
-          <div className="border-b border-zinc-800 px-3 py-2 text-[11px] uppercase tracking-wider text-zinc-500">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line/15 bg-panel">
+          <div className="border-b border-line/15 px-3 py-2 text-[11px] uppercase tracking-wider text-muted">
             {t("support.threads")} · {visibleThreads.length}
           </div>
           <ul className="flex-1 overflow-y-auto">
             {listLoading && threads.length === 0 ? (
-              <li className="px-3 py-4 text-xs text-zinc-500">{t("support.loading")}</li>
+              <li className="px-3 py-4 text-xs text-muted">{t("support.loading")}</li>
             ) : visibleThreads.length === 0 ? (
-              <li className="px-3 py-6 text-center text-xs text-zinc-500">
+              <li className="px-3 py-6 text-center text-xs text-muted">
                 {t("support.emptyThreads")}
               </li>
             ) : (
@@ -693,12 +693,12 @@ export function AdminSupportPage() {
                       className={
                         "flex w-full flex-col gap-1 border-b border-zinc-900 px-3 py-2.5 text-left transition " +
                         (active
-                          ? "bg-zinc-900/80"
-                          : "hover:bg-zinc-900/50")
+                          ? "bg-surface/80"
+                          : "hover:bg-surface/50")
                       }
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-zinc-100">
+                        <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-fg">
                           {th.unread_for_staff && (
                             <span
                               aria-hidden="true"
@@ -725,14 +725,14 @@ export function AdminSupportPage() {
                             )}
                           </span>
                         </span>
-                        <span className="shrink-0 text-[10px] text-zinc-500">
+                        <span className="shrink-0 text-[10px] text-muted">
                           {formatTime(th.last_message_at || th.updated_at)}
                         </span>
                       </div>
                       {/* display_id моноширинным мелким — чтобы можно было
                        * сослаться в звонке/чате: «открой SAL-000123». */}
                       {th.display_id && (
-                        <div className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                        <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
                           {th.display_id}
                         </div>
                       )}
@@ -757,7 +757,7 @@ export function AdminSupportPage() {
                               "inline-flex items-center gap-1 rounded-full border px-1.5 py-[1px] " +
                               (th.assigned_staff_id === staffMember?.id
                                 ? "border-emerald-700/60 bg-emerald-900/30 text-emerald-200"
-                                : "border-zinc-700 bg-zinc-900/60 text-zinc-300")
+                                : "border-line/20 bg-surface/60 text-fg")
                             }
                             title={t("support.assignedTo", { name: th.assigned_staff_name })}
                           >
@@ -771,9 +771,9 @@ export function AdminSupportPage() {
                         )}
                       </div>
                       {th.last_message_preview && (
-                        <p className="line-clamp-2 text-xs text-zinc-500">
+                        <p className="line-clamp-2 text-xs text-muted">
                           {th.last_sender_type === "staff" && (
-                            <span className="mr-1 text-zinc-600">
+                            <span className="mr-1 text-muted">
                               {t("support.youReply")}:
                             </span>
                           )}
@@ -788,28 +788,28 @@ export function AdminSupportPage() {
           </ul>
         </aside>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-black/30">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line/15 bg-black/30">
           {!selectedId ? (
-            <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
+            <div className="flex flex-1 items-center justify-center text-sm text-muted">
               {t("support.selectThread")}
             </div>
           ) : (
             <>
-              <header className="border-b border-zinc-800 bg-zinc-950/70 px-4 py-3">
+              <header className="border-b border-line/15 bg-panel/70 px-4 py-3">
                 {threadLoading && !detail ? (
-                  <p className="text-xs text-zinc-500">{t("support.loading")}</p>
+                  <p className="text-xs text-muted">{t("support.loading")}</p>
                 ) : detail ? (
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate text-sm font-semibold text-zinc-100">
+                        <h2 className="truncate text-sm font-semibold text-fg">
                           {detail.topic === "staff"
                             ? detail.staff_author_name || detail.visitor_name
                             : detail.visitor_name}
                         </h2>
                         {detail.display_id && (
                           <span
-                            className="rounded-full border border-zinc-700 bg-zinc-900/60 px-2 py-[1px] font-mono text-[10px] uppercase tracking-wider text-zinc-300"
+                            className="rounded-full border border-line/20 bg-surface/60 px-2 py-[1px] font-mono text-[10px] uppercase tracking-wider text-fg"
                             title={t("support.threadIdHint")}
                           >
                             {detail.display_id}
@@ -841,10 +841,10 @@ export function AdminSupportPage() {
                           </span>
                         )}
                       </div>
-                      <p className="mt-0.5 text-[11px] text-zinc-500">
+                      <p className="mt-0.5 text-[11px] text-muted">
                         {detail.visitor_email ? (
                           <a
-                            className="text-zinc-400 hover:text-zinc-200"
+                            className="text-muted hover:text-fg"
                             href={`mailto:${detail.visitor_email}`}
                           >
                             {detail.visitor_email}
@@ -872,21 +872,21 @@ export function AdminSupportPage() {
                               {t("support.assignedMineFull")}
                             </span>
                           ) : (
-                            <span className="text-zinc-300">
+                            <span className="text-fg">
                               {t("support.assignedTo", {
                                 name: detail.assigned_staff_name || "—",
                               })}
                             </span>
                           )
                         ) : (
-                          <span className="text-zinc-500">
+                          <span className="text-muted">
                             {t("support.notAssigned")}
                           </span>
                         )}
                         {detail.assigned_by_staff_id &&
                           detail.assigned_by_staff_id !==
                             detail.assigned_staff_id && (
-                            <span className="text-zinc-600">
+                            <span className="text-muted">
                               ·{" "}
                               {t("support.assignedBy", {
                                 name: detail.assigned_by_staff_name || "—",
@@ -906,7 +906,7 @@ export function AdminSupportPage() {
                         <button
                           type="button"
                           onClick={() => void assignToMe()}
-                          className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 hover:bg-zinc-800"
+                          className="rounded-md border border-line/20 bg-surface px-2.5 py-1 text-[11px] text-fg hover:bg-surface"
                           disabled={
                             !!detail.assigned_staff_id && !isAdmin
                           }
@@ -924,7 +924,7 @@ export function AdminSupportPage() {
                         <button
                           type="button"
                           onClick={() => void releaseAssignment()}
-                          className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800"
+                          className="rounded-md border border-line/20 bg-surface px-2.5 py-1 text-[11px] text-fg hover:bg-surface"
                           title={t("support.releaseHint")}
                         >
                           {t("support.release")}
@@ -937,14 +937,14 @@ export function AdminSupportPage() {
                             onClick={() => setTransferOpen((v) => !v)}
                             aria-haspopup="listbox"
                             aria-expanded={transferOpen}
-                            className="rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 hover:bg-zinc-800"
+                            className="rounded-md border border-line/20 bg-surface px-2.5 py-1 text-[11px] text-fg hover:bg-surface"
                           >
                             {t("support.transferTo")}
                           </button>
                           {transferOpen && (
                             <div
                               role="listbox"
-                              className="absolute right-0 top-full z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-1 shadow-2xl"
+                              className="absolute right-0 top-full z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-line/15 bg-panel p-1 shadow-2xl"
                             >
                               {staffOptions.map((s) => {
                                 const isCurrent =
@@ -966,7 +966,7 @@ export function AdminSupportPage() {
                                       "flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs transition " +
                                       (isCurrent
                                         ? "bg-emerald-900/30 ring-1 ring-emerald-700/40"
-                                        : "hover:bg-zinc-900")
+                                        : "hover:bg-surface")
                                     }
                                   >
                                     <span className="flex min-w-0 items-center gap-1.5">
@@ -1026,7 +1026,7 @@ export function AdminSupportPage() {
                         <button
                           type="button"
                           onClick={() => void changeStatus("pending")}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 transition hover:bg-zinc-800"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-line/20 bg-surface px-2.5 py-1 text-[11px] text-fg transition hover:bg-surface"
                           title={t("support.markPendingHint")}
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
@@ -1039,7 +1039,7 @@ export function AdminSupportPage() {
                         <button
                           type="button"
                           onClick={() => void changeStatus("open")}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] text-zinc-200 transition hover:bg-zinc-800"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-line/20 bg-surface px-2.5 py-1 text-[11px] text-fg transition hover:bg-surface"
                           title={t("support.resumeOpenHint")}
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
@@ -1056,7 +1056,7 @@ export function AdminSupportPage() {
                         <button
                           type="button"
                           onClick={() => void changeStatus("closed")}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-600 bg-zinc-100 px-3 py-1.5 text-[11px] font-semibold text-zinc-900 shadow-sm transition hover:bg-white"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-line/25 bg-zinc-100 px-3 py-1.5 text-[11px] font-semibold text-zinc-900 shadow-sm transition hover:bg-white"
                           title={t("support.closeThreadHint")}
                         >
                           <svg
@@ -1122,23 +1122,23 @@ export function AdminSupportPage() {
                       "border-b px-4 py-2 text-[11px] " +
                       (detail.is_suspicious
                         ? "border-rose-900/60 bg-rose-950/30 text-rose-100"
-                        : "border-zinc-800 bg-zinc-950/50 text-zinc-400")
+                        : "border-line/15 bg-panel/50 text-muted")
                     }
                   >
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <span className="uppercase tracking-wider text-zinc-500">
+                      <span className="uppercase tracking-wider text-muted">
                         {t("support.techContext")}
                       </span>
                       {detail.client_ip ? (
                         <span>
                           IP:{" "}
-                          <span className="font-mono text-zinc-200">
+                          <span className="font-mono text-fg">
                             {detail.client_ip}
                           </span>
                         </span>
                       ) : (
                         !isAdmin && (
-                          <span className="text-zinc-500">
+                          <span className="text-muted">
                             {t("support.ipHidden")}
                           </span>
                         )
@@ -1156,14 +1156,14 @@ export function AdminSupportPage() {
                       {detail.device_fingerprint_short && isAdmin && (
                         <span>
                           {t("support.device")}:{" "}
-                          <span className="font-mono text-zinc-300">
+                          <span className="font-mono text-fg">
                             {detail.device_fingerprint_short}…
                           </span>
                         </span>
                       )}
                       {detail.visitor_user_agent && isAdmin && (
                         <span
-                          className="truncate text-zinc-500"
+                          className="truncate text-muted"
                           title={detail.visitor_user_agent}
                         >
                           UA: {detail.visitor_user_agent.slice(0, 60)}
@@ -1177,7 +1177,7 @@ export function AdminSupportPage() {
 
               <div className="flex-1 overflow-y-auto px-4 py-4">
                 {messages.length === 0 ? (
-                  <p className="text-center text-xs text-zinc-500">
+                  <p className="text-center text-xs text-muted">
                     {t("support.noMessages")}
                   </p>
                 ) : (
@@ -1194,7 +1194,7 @@ export function AdminSupportPage() {
                               "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm " +
                               (mine
                                 ? "bg-emerald-900/40 text-emerald-50"
-                                : "bg-zinc-900 text-zinc-100")
+                                : "bg-surface text-fg")
                             }
                           >
                             <div className="mb-0.5 flex items-center gap-2 text-[10px] uppercase tracking-wide opacity-70">
@@ -1229,13 +1229,13 @@ export function AdminSupportPage() {
                                     href={m.attachment_url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-2 rounded-lg border border-black/30 bg-black/20 px-2.5 py-1 text-[11px] text-zinc-100 hover:bg-black/30"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-black/30 bg-canvas/20 px-2.5 py-1 text-[11px] text-fg hover:bg-black/30"
                                   >
                                     <span>📎</span>
                                     <span className="max-w-[200px] truncate">
                                       {m.attachment_name || t("support.attachment")}
                                     </span>
-                                    <span className="text-zinc-400">
+                                    <span className="text-muted">
                                       {formatBytes(m.attachment_size_bytes)}
                                     </span>
                                   </a>
@@ -1251,22 +1251,22 @@ export function AdminSupportPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t border-zinc-800 bg-zinc-950/70 p-3">
+              <div className="border-t border-line/15 bg-panel/70 p-3">
                 {sendError && (
                   <p className="mb-2 text-xs text-red-300">{sendError}</p>
                 )}
                 {attachment && (
-                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-800 bg-black/40 px-2 py-1.5 text-[11px] text-zinc-300">
+                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-line/15 bg-canvas/40 px-2 py-1.5 text-[11px] text-fg">
                     <span>📎</span>
                     <span className="max-w-[200px] truncate">{attachment.name}</span>
-                    <span className="text-zinc-500">{formatBytes(attachment.size)}</span>
+                    <span className="text-muted">{formatBytes(attachment.size)}</span>
                     <button
                       type="button"
                       onClick={() => {
                         setAttachment(null);
                         if (fileInputRef.current) fileInputRef.current.value = "";
                       }}
-                      className="ml-auto rounded text-zinc-500 hover:text-zinc-300"
+                      className="ml-auto rounded text-muted hover:text-fg"
                     >
                       ×
                     </button>
@@ -1274,7 +1274,7 @@ export function AdminSupportPage() {
                 )}
                 <div className="flex items-end gap-2">
                   <label
-                    className="shrink-0 cursor-pointer rounded-lg border border-zinc-800 bg-black/40 px-2.5 py-2 text-xs text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                    className="shrink-0 cursor-pointer rounded-lg border border-line/15 bg-canvas/40 px-2.5 py-2 text-xs text-muted hover:bg-surface hover:text-fg"
                     title={t("support.attachFile")}
                   >
                     📎
@@ -1299,7 +1299,7 @@ export function AdminSupportPage() {
                     }}
                     placeholder={t("support.replyPlaceholder")}
                     rows={2}
-                    className="flex-1 resize-none rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-emerald-600/60 focus:outline-none"
+                    className="flex-1 resize-none rounded-lg border border-line/15 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
                   />
                   <button
                     type="button"
@@ -1309,14 +1309,14 @@ export function AdminSupportPage() {
                       uploading ||
                       (!replyText.trim() && !attachment)
                     }
-                    className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                    className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-fg transition hover:bg-emerald-500 disabled:opacity-50"
                   >
                     {sending || uploading
                       ? t("support.sending")
                       : t("support.send")}
                   </button>
                 </div>
-                <p className="mt-1 text-[10px] text-zinc-600">{t("support.sendHint")}</p>
+                <p className="mt-1 text-[10px] text-muted">{t("support.sendHint")}</p>
               </div>
             </>
           )}

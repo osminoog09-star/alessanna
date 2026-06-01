@@ -295,10 +295,10 @@ export function ProfileSecurityPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 p-4 sm:p-6">
       <header>
-        <h1 className="text-2xl font-semibold text-white">
+        <h1 className="text-2xl font-semibold text-fg">
           {t("profileSecurity.title", { defaultValue: "Безопасность входа" })}
         </h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <p className="mt-1 text-sm text-muted">
           {t("profileSecurity.subtitle", {
             defaultValue:
               "PIN защищает вход в CRM. Доверенные устройства запоминаются — на них вход без PIN.",
@@ -306,20 +306,20 @@ export function ProfileSecurityPage() {
         </p>
       </header>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-        <h2 className="text-base font-semibold text-white">
+      <section className="rounded-xl border border-line/15 bg-panel p-5">
+        <h2 className="text-base font-semibold text-fg">
           {devices && devices.length > 0
             ? t("profileSecurity.changePin", { defaultValue: "Сменить PIN" })
             : t("profileSecurity.setPin", { defaultValue: "Установить PIN" })}
         </h2>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-muted">
           {t("profileSecurity.pinHelp", {
             defaultValue: "4–12 цифр. После установки этот PIN будет требоваться при входе с новых устройств.",
           })}
         </p>
         <form onSubmit={onSetPin} className="mt-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-zinc-500">
+            <label className="block text-xs font-medium text-muted">
               {t("profileSecurity.currentPin", { defaultValue: "Текущий PIN (если был установлен)" })}
             </label>
             <input
@@ -327,14 +327,14 @@ export function ProfileSecurityPage() {
               inputMode="numeric"
               value={currentPin}
               onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               placeholder={t("profileSecurity.currentPinPlaceholder", { defaultValue: "Оставить пустым, если ещё не задан" })}
               maxLength={12}
               autoComplete="current-password"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">
+            <label className="block text-xs font-medium text-muted">
               {t("profileSecurity.newPin", { defaultValue: "Новый PIN" })}
             </label>
             <input
@@ -342,7 +342,7 @@ export function ProfileSecurityPage() {
               inputMode="numeric"
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               minLength={4}
               maxLength={12}
               autoComplete="new-password"
@@ -350,7 +350,7 @@ export function ProfileSecurityPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-500">
+            <label className="block text-xs font-medium text-muted">
               {t("profileSecurity.confirmPin", { defaultValue: "Подтвердите новый PIN" })}
             </label>
             <input
@@ -358,7 +358,7 @@ export function ProfileSecurityPage() {
               inputMode="numeric"
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               minLength={4}
               maxLength={12}
               autoComplete="new-password"
@@ -373,7 +373,7 @@ export function ProfileSecurityPage() {
           <button
             type="submit"
             disabled={pinPending || newPin.length < 4}
-            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500 disabled:opacity-50"
+            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-fg hover:bg-sky-500 disabled:opacity-50"
           >
             {pinPending
               ? t("common.saving", { defaultValue: "Сохраняем…" })
@@ -382,15 +382,15 @@ export function ProfileSecurityPage() {
         </form>
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
+      <section className="rounded-xl border border-line/15 bg-panel p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-base font-semibold text-fg">
             {t("profileSecurity.devices", { defaultValue: "Доверенные устройства" })}
           </h2>
           <button
             type="button"
             onClick={() => void reload()}
-            className="text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline"
+            className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline"
           >
             {t("common.refresh", { defaultValue: "Обновить" })}
           </button>
@@ -415,17 +415,17 @@ export function ProfileSecurityPage() {
 
         {devicesError && <p className="mt-3 text-sm text-red-400">{devicesError}</p>}
         {devicesLoading ? (
-          <p className="mt-3 text-sm text-zinc-500">{t("common.loading")}</p>
+          <p className="mt-3 text-sm text-muted">{t("common.loading")}</p>
         ) : devices.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">
+          <p className="mt-3 text-sm text-muted">
             {t("profileSecurity.noDevices", { defaultValue: "Доверенных устройств нет." })}
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-zinc-800">
+          <ul className="mt-3 divide-y divide-line/15">
             {devices.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 truncate text-sm font-medium text-white">
+                  <p className="flex items-center gap-2 truncate text-sm font-medium text-fg">
                     <span className="truncate">{localizeDeviceLabel(d.label)}</span>
                     {/* Если админ забрал устройство под салон — показываем
                      * это пользователю явно: «не моё устройство, общее».
@@ -439,15 +439,15 @@ export function ProfileSecurityPage() {
                       </span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-zinc-500">{d.user_agent ?? ""}</p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-zinc-600">
+                  <p className="truncate text-xs text-muted">{d.user_agent ?? ""}</p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
                     <span>
                       {t("profileSecurity.lastSeen", { defaultValue: "Последний вход" })}:{" "}
                       {new Date(d.last_seen_at).toLocaleString()}
                     </span>
                     {d.ip_address && (
                       <span
-                        className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400"
+                        className="rounded border border-line/15 bg-surface/60 px-1.5 py-0.5 font-mono text-[10px] text-muted"
                         title={t("profileSecurity.ipHint", {
                           defaultValue: "IP, с которого был последний вход",
                         })}
@@ -458,12 +458,12 @@ export function ProfileSecurityPage() {
                   </p>
                 </div>
                 {d.revoked_at ? (
-                  <span className="rounded bg-zinc-900 px-2 py-1 text-xs text-zinc-500">
+                  <span className="rounded bg-surface px-2 py-1 text-xs text-muted">
                     {t("profileSecurity.revoked", { defaultValue: "Отозвано" })}
                   </span>
                 ) : d.is_salon_device ? (
                   <span
-                    className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-500"
+                    className="rounded-lg border border-line/15 bg-surface px-3 py-1.5 text-xs text-muted"
                     title="Управляет админ — обратитесь к нему, чтобы отозвать."
                   >
                     {t("profileSecurity.salonOwned", {
@@ -607,10 +607,10 @@ function AllDevicesSection(props: AllDevicesSectionProps) {
     Array.from(groups.byStaff.values()).reduce((acc, g) => acc + g.items.length, 0);
 
   return (
-    <section className="rounded-xl border border-violet-900/50 bg-zinc-950 p-5">
+    <section className="rounded-xl border border-violet-900/50 bg-panel p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold text-white">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-fg">
             {t("profileSecurity.allDevicesTitle", {
               defaultValue: "Все устройства",
             })}
@@ -626,11 +626,11 @@ function AllDevicesSection(props: AllDevicesSectionProps) {
                 ? t("profileSecurity.roleAdmin", { defaultValue: "admin" })
                 : t("profileSecurity.roleManager", { defaultValue: "manager" })}
             </span>
-            <span className="rounded-full border border-zinc-700 bg-zinc-900/60 px-2 py-0.5 text-[10px] text-zinc-400">
+            <span className="rounded-full border border-line/20 bg-surface/60 px-2 py-0.5 text-[10px] text-muted">
               {totalShown}
             </span>
           </h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted">
             {isAdmin
               ? t("profileSecurity.adminAllDevicesHint", {
                   defaultValue:
@@ -645,7 +645,7 @@ function AllDevicesSection(props: AllDevicesSectionProps) {
         <button
           type="button"
           onClick={onReload}
-          className="text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline"
+          className="text-xs text-muted underline-offset-4 hover:text-fg hover:underline"
         >
           {t("common.refresh", { defaultValue: "Обновить" })}
         </button>
@@ -653,9 +653,9 @@ function AllDevicesSection(props: AllDevicesSectionProps) {
 
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
       {loading ? (
-        <p className="mt-3 text-sm text-zinc-500">{t("common.loading")}</p>
+        <p className="mt-3 text-sm text-muted">{t("common.loading")}</p>
       ) : totalShown === 0 ? (
-        <p className="mt-3 text-sm text-zinc-500">
+        <p className="mt-3 text-sm text-muted">
           {t("profileSecurity.adminNoDevices", {
             defaultValue: "Пока нет ни одного зарегистрированного устройства.",
           })}
@@ -758,33 +758,33 @@ function CollapsibleGroup(props: {
   const accent =
     props.accent === "violet"
       ? "border-violet-900/40 bg-violet-950/10"
-      : "border-zinc-800 bg-zinc-900/30";
+      : "border-line/15 bg-surface/30";
   return (
     <div className={`rounded-lg border ${accent}`}>
       <button
         type="button"
         onClick={() => props.onToggle(props.groupKey)}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-100 hover:bg-white/5"
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-fg hover:bg-white/5"
         aria-expanded={props.expanded}
       >
         <span className="flex min-w-0 items-center gap-2">
           <span aria-hidden="true">{props.icon}</span>
           <span className="truncate font-medium">{props.title}</span>
-          <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/70 px-1.5 py-0.5 text-[10px] text-zinc-400">
+          <span className="shrink-0 rounded-full border border-line/20 bg-surface/70 px-1.5 py-0.5 text-[10px] text-muted">
             {props.count}
           </span>
         </span>
         <span
-          className={`shrink-0 text-zinc-500 transition-transform ${props.expanded ? "rotate-90" : ""}`}
+          className={`shrink-0 text-muted transition-transform ${props.expanded ? "rotate-90" : ""}`}
           aria-hidden="true"
         >
           ▶
         </span>
       </button>
       {props.expanded && (
-        <div className="border-t border-zinc-800/80 px-3 py-2">
+        <div className="border-t border-line/15/80 px-3 py-2">
           {props.hint && (
-            <p className="mb-2 text-[11px] text-zinc-500">{props.hint}</p>
+            <p className="mb-2 text-[11px] text-muted">{props.hint}</p>
           )}
           {props.children}
         </div>
@@ -805,7 +805,7 @@ function DeviceList(props: {
 }) {
   const { items, isAdmin, busyId, onClaim, onRelease, onRevoke, t } = props;
   return (
-    <ul className="divide-y divide-zinc-800/80">
+    <ul className="divide-y divide-line/15/80">
       {items.map((d) => {
         const busy = busyId === d.id;
         return (
@@ -817,7 +817,7 @@ function DeviceList(props: {
             }
           >
             <div className="min-w-0 flex-1">
-              <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-white">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-fg">
                 <span className="truncate">{localizeDeviceLabel(d.label)}</span>
                 {d.is_salon_device && (
                   <span className="shrink-0 rounded-full border border-violet-700/60 bg-violet-950/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
@@ -825,12 +825,12 @@ function DeviceList(props: {
                   </span>
                 )}
                 {d.revoked_at && (
-                  <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-500">
+                  <span className="shrink-0 rounded-full border border-line/20 bg-surface px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
                     {t("profileSecurity.revoked", { defaultValue: "Отозвано" })}
                   </span>
                 )}
               </p>
-              <p className="mt-0.5 text-xs text-zinc-400">
+              <p className="mt-0.5 text-xs text-muted">
                 {d.is_salon_device
                   ? t("profileSecurity.adminClaimedFrom", {
                       defaultValue:
@@ -842,7 +842,7 @@ function DeviceList(props: {
                       name: d.staff_name || "—",
                     })}
                 {d.is_salon_device && d.claimed_by_admin_name && (
-                  <span className="text-zinc-500">
+                  <span className="text-muted">
                     {" · "}
                     {t("profileSecurity.adminClaimedBy", {
                       defaultValue: "переведён админом {{name}}",
@@ -851,17 +851,17 @@ function DeviceList(props: {
                   </span>
                 )}
               </p>
-              <p className="truncate text-xs text-zinc-600">
+              <p className="truncate text-xs text-muted">
                 {d.user_agent ?? ""}
               </p>
-              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-zinc-600">
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
                 <span>
                   {t("profileSecurity.lastSeen", { defaultValue: "Последний вход" })}
                   : {new Date(d.last_seen_at).toLocaleString()}
                 </span>
                 {d.ip_address && (
                   <span
-                    className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400"
+                    className="rounded border border-line/15 bg-surface/60 px-1.5 py-0.5 font-mono text-[10px] text-muted"
                     title={t("profileSecurity.ipHint", {
                       defaultValue: "IP, с которого был последний вход",
                     })}
@@ -879,7 +879,7 @@ function DeviceList(props: {
                     type="button"
                     disabled={busy}
                     onClick={() => void onRelease(d.id)}
-                    className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                    className="rounded-lg border border-line/20 bg-surface px-3 py-1.5 text-xs text-fg hover:bg-surface disabled:opacity-50"
                     title="Снять статус «общего», вернуть исходному владельцу"
                   >
                     {t("profileSecurity.adminRelease", {

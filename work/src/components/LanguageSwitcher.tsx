@@ -16,7 +16,7 @@ export function LanguageSwitcher({ className = "", variant = "default" }: Props)
     <div className={`flex flex-wrap items-center gap-1 ${className}`} role="group" aria-label={t("common.language")}>
       {LANGS.map((code, i) => (
         <span key={code} className="inline-flex items-center gap-1">
-          {i > 0 && <span className="text-zinc-600 select-none">|</span>}
+          {i > 0 && <span className="text-muted select-none">|</span>}
           <button
             type="button"
             onClick={() => void i18n.changeLanguage(code)}
@@ -24,13 +24,13 @@ export function LanguageSwitcher({ className = "", variant = "default" }: Props)
               variant === "compact"
                 ? `px-2 py-1 text-xs ${
                     current === code
-                      ? "bg-zinc-700 text-white"
-                      : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                      ? "bg-zinc-700 text-fg"
+                      : "text-muted hover:bg-surface hover:text-fg"
                   }`
                 : `px-2.5 py-1.5 text-xs ${
                     current === code
                       ? "bg-amber-500/20 text-amber-100 ring-1 ring-amber-500/40"
-                      : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                      : "text-muted hover:bg-surface hover:text-fg"
                   }`
             }`}
           >

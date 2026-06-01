@@ -929,7 +929,7 @@ export function Layout() {
             <button
               type="button"
               onClick={() => setPreviewRole(null)}
-              className="rounded-md border border-amber-500/30 px-2 py-0.5 text-xs font-medium text-amber-100 transition hover:border-amber-300 hover:bg-amber-900/40 hover:text-white"
+              className="rounded-md border border-amber-500/30 px-2 py-0.5 text-xs font-medium text-amber-100 transition hover:border-amber-300 hover:bg-amber-900/40 hover:text-fg"
             >
               {t("preview.exit")}
             </button>

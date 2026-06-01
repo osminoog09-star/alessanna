@@ -391,7 +391,7 @@ export function CalendarPage() {
                         <div className="mb-1 flex items-center justify-between">
                           <span
                             className={`flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold ${
-                              isToday ? "bg-[#1a73e8] text-white" : "text-fg"
+                              isToday ? "bg-[#1a73e8] text-fg" : "text-fg"
                             }`}
                           >
                             {format(day, "d")}

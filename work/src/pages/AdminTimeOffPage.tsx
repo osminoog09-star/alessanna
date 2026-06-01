@@ -142,23 +142,23 @@ export function AdminTimeOffPage() {
   }
   const dur = durationLabel();
 
-  if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
+  if (loading) return <p className="text-muted">{t("common.loading")}</p>;
 
   return (
-    <div className="max-w-2xl space-y-6 text-zinc-200">
+    <div className="max-w-2xl space-y-6 text-fg">
       <header>
-        <h1 className="text-xl font-semibold text-white">{t("nav.adminTimeOff")}</h1>
-        <p className="mt-1 text-sm text-zinc-500">{t("adminTimeOff.subtitle")}</p>
+        <h1 className="text-xl font-semibold text-fg">{t("nav.adminTimeOff")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("adminTimeOff.subtitle")}</p>
       </header>
       {err && <p className="text-sm text-red-400">{err}</p>}
 
-      <form onSubmit={onAdd} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-        <label className="block text-sm text-zinc-400">
+      <form onSubmit={onAdd} className="space-y-4 rounded-xl border border-line/15 bg-panel p-4">
+        <label className="block text-sm text-muted">
           {t("calendar.staff")}
           <select
             value={staffId}
             onChange={(e) => setStaffId(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"
+            className="mt-1 block w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-fg"
           >
             {staffList.map((s) => (
               <option key={s.id} value={s.id}>
@@ -170,11 +170,11 @@ export function AdminTimeOffPage() {
 
         {/* Quick presets — закрывают 80% повседневных кейсов одним кликом. */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-[11px] uppercase tracking-wide text-zinc-500">Быстро:</span>
+          <span className="mr-1 text-[11px] uppercase tracking-wide text-muted">Быстро:</span>
           <button
             type="button"
             onClick={presetNow}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-black/40 px-2.5 py-1 text-xs text-zinc-200 transition hover:border-sky-500/60 hover:bg-sky-950/30 hover:text-sky-100"
+            className="inline-flex items-center gap-1 rounded-full border border-line/20 bg-canvas/40 px-2.5 py-1 text-xs text-fg transition hover:border-sky-500/60 hover:bg-sky-950/30 hover:text-sky-100"
             title="Сейчас → +1 час"
           >
             Сейчас на 1 час
@@ -182,7 +182,7 @@ export function AdminTimeOffPage() {
           <button
             type="button"
             onClick={presetWholeDay}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-black/40 px-2.5 py-1 text-xs text-zinc-200 transition hover:border-sky-500/60 hover:bg-sky-950/30 hover:text-sky-100"
+            className="inline-flex items-center gap-1 rounded-full border border-line/20 bg-canvas/40 px-2.5 py-1 text-xs text-fg transition hover:border-sky-500/60 hover:bg-sky-950/30 hover:text-sky-100"
             title="Весь день (00:00 – 23:59) от выбранной/сегодняшней даты"
           >
             Весь день
@@ -190,7 +190,7 @@ export function AdminTimeOffPage() {
           <button
             type="button"
             onClick={presetTomorrowWorkday}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-black/40 px-2.5 py-1 text-xs text-zinc-200 transition hover:border-sky-500/60 hover:bg-sky-950/30 hover:text-sky-100"
+            className="inline-flex items-center gap-1 rounded-full border border-line/20 bg-canvas/40 px-2.5 py-1 text-xs text-fg transition hover:border-sky-500/60 hover:bg-sky-950/30 hover:text-sky-100"
             title="Завтра, 09:00 – 18:00"
           >
             Завтра, 9–18
@@ -199,7 +199,7 @@ export function AdminTimeOffPage() {
             <button
               type="button"
               onClick={() => { setStart(""); setEnd(""); }}
-              className="ml-auto inline-flex items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] text-zinc-500 transition hover:border-zinc-700 hover:text-zinc-200"
+              className="ml-auto inline-flex items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] text-muted transition hover:border-line/20 hover:text-fg"
               title="Очистить даты"
             >
               очистить
@@ -208,13 +208,13 @@ export function AdminTimeOffPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm text-zinc-400">
+          <label className="block text-sm text-muted">
             {t("adminTimeOff.start")}
             <div className="relative mt-1">
               <button
                 type="button"
                 onClick={() => openPicker(startRef.current)}
-                className="absolute left-2 top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-800 hover:text-sky-300"
+                className="absolute left-2 top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted transition hover:bg-surface hover:text-sky-300"
                 tabIndex={-1}
                 aria-label="Открыть календарь"
                 title="Открыть календарь"
@@ -231,17 +231,17 @@ export function AdminTimeOffPage() {
                 value={start}
                 onChange={(e) => onChangeStart(e.target.value)}
                 onClick={() => openPicker(startRef.current)}
-                className="block w-full cursor-pointer rounded-lg border border-zinc-700 bg-black pl-10 pr-3 py-2 text-sm text-white [color-scheme:dark] focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                className="block w-full cursor-pointer rounded-lg border border-line/20 bg-black pl-10 pr-3 py-2 text-sm text-fg [color-scheme:dark] focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
             </div>
           </label>
-          <label className="block text-sm text-zinc-400">
+          <label className="block text-sm text-muted">
             {t("adminTimeOff.end")}
             <div className="relative mt-1">
               <button
                 type="button"
                 onClick={() => openPicker(endRef.current)}
-                className="absolute left-2 top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-800 hover:text-sky-300"
+                className="absolute left-2 top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted transition hover:bg-surface hover:text-sky-300"
                 tabIndex={-1}
                 aria-label="Открыть календарь"
                 title="Открыть календарь"
@@ -259,15 +259,15 @@ export function AdminTimeOffPage() {
                 min={start || undefined}
                 onChange={(e) => setEnd(e.target.value)}
                 onClick={() => openPicker(endRef.current)}
-                className="block w-full cursor-pointer rounded-lg border border-zinc-700 bg-black pl-10 pr-3 py-2 text-sm text-white [color-scheme:dark] focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                className="block w-full cursor-pointer rounded-lg border border-line/20 bg-black pl-10 pr-3 py-2 text-sm text-fg [color-scheme:dark] focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
             </div>
           </label>
         </div>
 
         {dur && (
-          <p className="-mt-1 text-xs text-zinc-500">
-            Длительность блока: <span className="text-zinc-300">{dur}</span>
+          <p className="-mt-1 text-xs text-muted">
+            Длительность блока: <span className="text-fg">{dur}</span>
           </p>
         )}
         {start && end && new Date(end).getTime() <= new Date(start).getTime() && (
@@ -276,19 +276,19 @@ export function AdminTimeOffPage() {
           </p>
         )}
 
-        <label className="block text-sm text-zinc-400">
+        <label className="block text-sm text-muted">
           {t("adminTimeOff.reason")}
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="например: больничный, отпуск, личное"
-            className="mt-1 block w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+            className="mt-1 block w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
           />
         </label>
         <button
           type="submit"
           disabled={!staffId || !start || !end || new Date(end).getTime() <= new Date(start).getTime()}
-          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-fg transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("common.add")}
         </button>
@@ -300,15 +300,15 @@ export function AdminTimeOffPage() {
           return (
             <li
               key={b.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line/15 bg-panel px-3 py-2 text-sm"
             >
               <div>
-                <span className="font-medium text-white">{st?.name ?? b.staff_id}</span>
-                <span className="text-zinc-500">
+                <span className="font-medium text-fg">{st?.name ?? b.staff_id}</span>
+                <span className="text-muted">
                   {" "}
                   {format(parseISO(b.start_time), "Pp")} – {format(parseISO(b.end_time), "Pp")}
                 </span>
-                {b.reason && <p className="text-xs text-zinc-500">{b.reason}</p>}
+                {b.reason && <p className="text-xs text-muted">{b.reason}</p>}
               </div>
               <button type="button" className="text-red-400 underline" onClick={() => void remove(b.id)}>
                 {t("adminTimeOff.delete")}

@@ -95,7 +95,7 @@ function statusLabel(t: (k: string) => string, status: Status): string {
 
 function statusTone(status: Status): string {
   if (status === "pending") return "border-amber-600/50 bg-amber-900/30 text-amber-200";
-  if (status === "closed") return "border-zinc-700 bg-zinc-900/60 text-zinc-400";
+  if (status === "closed") return "border-line/20 bg-surface/60 text-muted";
   return "border-emerald-600/50 bg-emerald-900/30 text-emerald-200";
 }
 
@@ -301,7 +301,7 @@ export function MyHelpPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+      <div className="flex min-h-screen items-center justify-center bg-panel text-muted">
         {t("common.loading")}
       </div>
     );
@@ -312,11 +312,11 @@ export function MyHelpPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[1200px] flex-col gap-3 px-4 py-6 text-zinc-200 md:px-6">
+    <div className="mx-auto flex min-h-screen max-w-[1200px] flex-col gap-3 px-4 py-6 text-fg md:px-6">
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Link
           to="/"
-          className="inline-flex min-h-[40px] items-center rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 text-sm text-sky-300 hover:border-zinc-500"
+          className="inline-flex min-h-[40px] items-center rounded-lg border border-line/20 bg-surface/50 px-3 text-sm text-sky-300 hover:border-line/30"
         >
           ← {t("nav.backToCrm")}
         </Link>
@@ -324,7 +324,7 @@ export function MyHelpPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{t("myHelp.pageTitle")}</h1>
-          <p className="mt-0.5 max-w-2xl text-xs text-zinc-500">{t("myHelp.subtitle")}</p>
+          <p className="mt-0.5 max-w-2xl text-xs text-muted">{t("myHelp.subtitle")}</p>
         </div>
         <button
           type="button"
@@ -343,13 +343,13 @@ export function MyHelpPage() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[300px_1fr]">
         {/* ───── List of own threads ───── */}
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
-          <div className="border-b border-zinc-800 px-3 py-2 text-[11px] uppercase tracking-wider text-zinc-500">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line/15 bg-panel">
+          <div className="border-b border-line/15 px-3 py-2 text-[11px] uppercase tracking-wider text-muted">
             {t("myHelp.threads")} · {visibleThreads.length}
           </div>
           <ul className="flex-1 overflow-y-auto">
             {visibleThreads.length === 0 ? (
-              <li className="px-3 py-6 text-center text-xs text-zinc-500">
+              <li className="px-3 py-6 text-center text-xs text-muted">
                 {t("myHelp.emptyThreads")}
               </li>
             ) : (
@@ -365,11 +365,11 @@ export function MyHelpPage() {
                       }}
                       className={
                         "flex w-full flex-col gap-1 border-b border-zinc-900 px-3 py-2.5 text-left transition " +
-                        (active ? "bg-zinc-900/80" : "hover:bg-zinc-900/50")
+                        (active ? "bg-surface/80" : "hover:bg-surface/50")
                       }
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-1.5 text-sm font-medium text-zinc-100">
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-fg">
                           {th.unread_for_visitor && (
                             <span
                               aria-hidden="true"
@@ -385,7 +385,7 @@ export function MyHelpPage() {
                             })}
                           </span>
                         </span>
-                        <span className="shrink-0 text-[10px] text-zinc-500">
+                        <span className="shrink-0 text-[10px] text-muted">
                           {formatTime(th.last_message_at || th.updated_at)}
                         </span>
                       </div>
@@ -400,7 +400,7 @@ export function MyHelpPage() {
                         </span>
                       </div>
                       {th.last_message_preview && (
-                        <p className="line-clamp-2 text-xs text-zinc-500">
+                        <p className="line-clamp-2 text-xs text-muted">
                           {th.last_sender_type === "staff" && (
                             <span className="mr-1 text-emerald-400/80">
                               {t("myHelp.fromSupport")}:
@@ -418,7 +418,7 @@ export function MyHelpPage() {
         </aside>
 
         {/* ───── Thread / new-thread composer ───── */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-black/30">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line/15 bg-black/30">
           {!selectedId ? (
             <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-6">
               <div className="rounded-2xl border border-emerald-900/40 bg-gradient-to-br from-emerald-950/40 to-zinc-950/40 p-5">
@@ -428,7 +428,7 @@ export function MyHelpPage() {
                 <p className="mt-1 text-xs text-emerald-200/70">
                   {t("myHelp.newThreadHint")}
                 </p>
-                <ul className="mt-3 grid gap-1 text-[12px] text-zinc-400 sm:grid-cols-2">
+                <ul className="mt-3 grid gap-1 text-[12px] text-muted sm:grid-cols-2">
                   <li>· {t("myHelp.exampleBug")}</li>
                   <li>· {t("myHelp.exampleAccess")}</li>
                   <li>· {t("myHelp.exampleQuestion")}</li>
@@ -438,19 +438,19 @@ export function MyHelpPage() {
               {composerError && (
                 <p className="text-xs text-red-300">{composerError}</p>
               )}
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+              <div className="rounded-xl border border-line/15 bg-panel p-3">
                 {attachment && (
-                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-800 bg-black/40 px-2 py-1.5 text-[11px] text-zinc-300">
+                  <div className="mb-2 flex items-center gap-2 rounded-lg border border-line/15 bg-canvas/40 px-2 py-1.5 text-[11px] text-fg">
                     <span>📎</span>
                     <span className="max-w-[280px] truncate">{attachment.name}</span>
-                    <span className="text-zinc-500">{formatBytes(attachment.size)}</span>
+                    <span className="text-muted">{formatBytes(attachment.size)}</span>
                     <button
                       type="button"
                       onClick={() => {
                         setAttachment(null);
                         if (fileInputRef.current) fileInputRef.current.value = "";
                       }}
-                      className="ml-auto rounded text-zinc-500 hover:text-zinc-300"
+                      className="ml-auto rounded text-muted hover:text-fg"
                     >
                       ×
                     </button>
@@ -461,11 +461,11 @@ export function MyHelpPage() {
                   onChange={(e) => setComposer(e.target.value)}
                   placeholder={t("myHelp.composerPlaceholder")}
                   rows={4}
-                  className="w-full resize-none rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-emerald-600/60 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-line/15 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
                 />
                 <div className="mt-2 flex items-center gap-2">
                   <label
-                    className="cursor-pointer rounded-lg border border-zinc-800 bg-black/40 px-2.5 py-1.5 text-xs text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                    className="cursor-pointer rounded-lg border border-line/15 bg-canvas/40 px-2.5 py-1.5 text-xs text-muted hover:bg-surface hover:text-fg"
                     title={t("support.attachFile")}
                   >
                     📎 {t("support.attachFile")}
@@ -480,7 +480,7 @@ export function MyHelpPage() {
                     type="button"
                     onClick={() => void send()}
                     disabled={sending || uploading || (!composer.trim() && !attachment)}
-                    className="ml-auto rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                    className="ml-auto rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-fg transition hover:bg-emerald-500 disabled:opacity-50"
                   >
                     {sending || uploading
                       ? t("support.sending")
@@ -491,13 +491,13 @@ export function MyHelpPage() {
             </div>
           ) : (
             <>
-              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-950/70 px-4 py-3">
+              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line/15 bg-panel/70 px-4 py-3">
                 <div className="min-w-0">
-                  <h2 className="text-sm font-semibold text-zinc-100">
+                  <h2 className="text-sm font-semibold text-fg">
                     {t("myHelp.threadHeader")}
                   </h2>
                   {detail && (
-                    <p className="mt-0.5 text-[11px] text-zinc-500">
+                    <p className="mt-0.5 text-[11px] text-muted">
                       {t("myHelp.opened")}: {formatTime(detail.created_at)} ·{" "}
                       <span
                         className={
@@ -517,7 +517,7 @@ export function MyHelpPage() {
 
               <div className="flex-1 overflow-y-auto px-4 py-4">
                 {messages.length === 0 ? (
-                  <p className="text-center text-xs text-zinc-500">
+                  <p className="text-center text-xs text-muted">
                     {t("support.noMessages")}
                   </p>
                 ) : (
@@ -535,7 +535,7 @@ export function MyHelpPage() {
                             className={
                               "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm " +
                               (fromSupport
-                                ? "bg-zinc-900 text-zinc-100"
+                                ? "bg-surface text-fg"
                                 : "bg-emerald-900/40 text-emerald-50")
                             }
                           >
@@ -571,13 +571,13 @@ export function MyHelpPage() {
                                     href={m.attachment_url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-2 rounded-lg border border-black/30 bg-black/20 px-2.5 py-1 text-[11px] text-zinc-100 hover:bg-black/30"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-black/30 bg-canvas/20 px-2.5 py-1 text-[11px] text-fg hover:bg-black/30"
                                   >
                                     <span>📎</span>
                                     <span className="max-w-[200px] truncate">
                                       {m.attachment_name || t("support.attachment")}
                                     </span>
-                                    <span className="text-zinc-400">
+                                    <span className="text-muted">
                                       {formatBytes(m.attachment_size_bytes)}
                                     </span>
                                   </a>
@@ -593,9 +593,9 @@ export function MyHelpPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t border-zinc-800 bg-zinc-950/70 p-3">
+              <div className="border-t border-line/15 bg-panel/70 p-3">
                 {detail?.status === "closed" ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-black/40 px-3 py-2 text-xs text-zinc-400">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line/15 bg-canvas/40 px-3 py-2 text-xs text-muted">
                     <span>{t("myHelp.closedHint")}</span>
                     <button
                       type="button"
@@ -611,17 +611,17 @@ export function MyHelpPage() {
                       <p className="mb-2 text-xs text-red-300">{composerError}</p>
                     )}
                     {attachment && (
-                      <div className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-800 bg-black/40 px-2 py-1.5 text-[11px] text-zinc-300">
+                      <div className="mb-2 flex items-center gap-2 rounded-lg border border-line/15 bg-canvas/40 px-2 py-1.5 text-[11px] text-fg">
                         <span>📎</span>
                         <span className="max-w-[200px] truncate">{attachment.name}</span>
-                        <span className="text-zinc-500">{formatBytes(attachment.size)}</span>
+                        <span className="text-muted">{formatBytes(attachment.size)}</span>
                         <button
                           type="button"
                           onClick={() => {
                             setAttachment(null);
                             if (fileInputRef.current) fileInputRef.current.value = "";
                           }}
-                          className="ml-auto rounded text-zinc-500 hover:text-zinc-300"
+                          className="ml-auto rounded text-muted hover:text-fg"
                         >
                           ×
                         </button>
@@ -629,7 +629,7 @@ export function MyHelpPage() {
                     )}
                     <div className="flex items-end gap-2">
                       <label
-                        className="shrink-0 cursor-pointer rounded-lg border border-zinc-800 bg-black/40 px-2.5 py-2 text-xs text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                        className="shrink-0 cursor-pointer rounded-lg border border-line/15 bg-canvas/40 px-2.5 py-2 text-xs text-muted hover:bg-surface hover:text-fg"
                         title={t("support.attachFile")}
                       >
                         📎
@@ -651,7 +651,7 @@ export function MyHelpPage() {
                         }}
                         placeholder={t("myHelp.replyPlaceholder")}
                         rows={2}
-                        className="flex-1 resize-none rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-emerald-600/60 focus:outline-none"
+                        className="flex-1 resize-none rounded-lg border border-line/15 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -659,12 +659,12 @@ export function MyHelpPage() {
                         disabled={
                           sending || uploading || (!composer.trim() && !attachment)
                         }
-                        className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                        className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-fg transition hover:bg-emerald-500 disabled:opacity-50"
                       >
                         {sending || uploading ? t("support.sending") : t("support.send")}
                       </button>
                     </div>
-                    <p className="mt-1 text-[10px] text-zinc-600">{t("support.sendHint")}</p>
+                    <p className="mt-1 text-[10px] text-muted">{t("support.sendHint")}</p>
                   </>
                 )}
               </div>

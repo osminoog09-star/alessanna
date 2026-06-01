@@ -22,8 +22,8 @@ const STATUS_BADGE: Record<EmailJob["status"], string> = {
   pending: "border-amber-700/60 bg-amber-950/40 text-amber-200",
   sent: "border-emerald-700/60 bg-emerald-950/40 text-emerald-200",
   failed: "border-red-700/60 bg-red-950/40 text-red-300",
-  cancelled: "border-zinc-700 bg-zinc-900 text-zinc-500",
-  skipped: "border-zinc-700 bg-zinc-900 text-zinc-500",
+  cancelled: "border-line/20 bg-surface text-muted",
+  skipped: "border-line/20 bg-surface text-muted",
 };
 
 export function AdminCommunicationsPage() {
@@ -81,10 +81,10 @@ export function AdminCommunicationsPage() {
     <div className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-2xl font-semibold text-fg">
             {t("communications.title", { defaultValue: "Письма клиентам" })}
           </h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted">
             {t("communications.subtitle", {
               defaultValue:
                 "Очередь автоматических писем: подтверждение, напоминание, follow-up.",
@@ -94,7 +94,7 @@ export function AdminCommunicationsPage() {
         <button
           type="button"
           onClick={() => void reload()}
-          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-900"
+          className="rounded-lg border border-line/20 px-3 py-1.5 text-sm text-fg hover:bg-surface"
         >
           {t("common.refresh", { defaultValue: "Обновить" })}
         </button>
@@ -110,9 +110,9 @@ export function AdminCommunicationsPage() {
 
       {err && <p className="rounded border border-red-900 bg-red-950/40 p-2 text-sm text-red-300">{err}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-800">
+      <div className="overflow-x-auto rounded-xl border border-line/15">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-900 text-left text-xs uppercase text-zinc-400">
+          <thead className="bg-surface text-left text-xs uppercase text-muted">
             <tr>
               <th className="px-3 py-2">{t("communications.col.date", { defaultValue: "Создано" })}</th>
               <th className="px-3 py-2">{t("communications.col.type", { defaultValue: "Тип" })}</th>
@@ -125,28 +125,28 @@ export function AdminCommunicationsPage() {
           <tbody className="divide-y divide-zinc-900">
             {loading && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-6 text-center text-muted">
                   {t("common.loading")}
                 </td>
               </tr>
             )}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-6 text-center text-muted">
                   {t("communications.empty", { defaultValue: "Писем нет" })}
                 </td>
               </tr>
             )}
             {filtered.map((r) => (
               <tr key={r.id}>
-                <td className="px-3 py-2 text-zinc-400">{new Date(r.created_at).toLocaleString()}</td>
-                <td className="px-3 py-2 text-zinc-300">
+                <td className="px-3 py-2 text-muted">{new Date(r.created_at).toLocaleString()}</td>
+                <td className="px-3 py-2 text-fg">
                   {t(`communications.type.${r.job_type}`, { defaultValue: r.job_type })}
                 </td>
-                <td className="px-3 py-2 text-white">
-                  {r.recipient_name || "—"} <span className="text-zinc-500">· {r.recipient_email}</span>
+                <td className="px-3 py-2 text-fg">
+                  {r.recipient_name || "—"} <span className="text-muted">· {r.recipient_email}</span>
                 </td>
-                <td className="px-3 py-2 text-zinc-400">{new Date(r.scheduled_at).toLocaleString()}</td>
+                <td className="px-3 py-2 text-muted">{new Date(r.scheduled_at).toLocaleString()}</td>
                 <td className="px-3 py-2">
                   <span className={`rounded border px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}>
                     {t(`communications.status.${r.status}`, { defaultValue: r.status })}
@@ -162,7 +162,7 @@ export function AdminCommunicationsPage() {
                     <button
                       type="button"
                       onClick={() => void retry(r.id)}
-                      className="text-xs text-sky-400 hover:underline"
+                      className="text-xs text-gold hover:underline"
                     >
                       {t("communications.retry", { defaultValue: "Повторить" })}
                     </button>
@@ -198,18 +198,18 @@ function Stat({
       : tone === "red"
       ? "border-red-700/60"
       : tone === "zinc"
-      ? "border-zinc-700"
-      : "border-zinc-700";
+      ? "border-line/20"
+      : "border-line/20";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg border bg-zinc-950 px-3 py-2 text-left ${toneClass} ${
+      className={`rounded-lg border bg-panel px-3 py-2 text-left ${toneClass} ${
         active ? "ring-2 ring-sky-500" : ""
       }`}
     >
-      <p className="text-xs text-zinc-400">{label}</p>
-      <p className="text-xl font-semibold text-white">{value}</p>
+      <p className="text-xs text-muted">{label}</p>
+      <p className="text-xl font-semibold text-fg">{value}</p>
     </button>
   );
 }

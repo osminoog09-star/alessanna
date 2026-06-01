@@ -82,32 +82,32 @@ export function CloseDayModal({ open, onClose, onSaved, staffList, initialDay }:
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 shadow-2xl">
-        <h2 className="text-lg font-semibold text-white">{t("closeDay.title")}</h2>
-        <p className="mt-1 text-sm text-zinc-500">{t("closeDay.subtitle")}</p>
+      <div className="w-full max-w-md rounded-2xl border border-line/20 bg-panel p-6 shadow-2xl">
+        <h2 className="text-lg font-semibold text-fg">{t("closeDay.title")}</h2>
+        <p className="mt-1 text-sm text-muted">{t("closeDay.subtitle")}</p>
         <form onSubmit={submit} className="mt-4 space-y-4">
           <div>
-            <label className="text-xs text-zinc-500">{t("closeDay.date")}</label>
+            <label className="text-xs text-muted">{t("closeDay.date")}</label>
             <input
               type="date"
               value={dayStr}
               onChange={(e) => setDayStr(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
             />
           </div>
           <div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={selectAll} className="text-xs text-sky-400 hover:underline">
+              <button type="button" onClick={selectAll} className="text-xs text-gold hover:underline">
                 {t("closeDay.all")}
               </button>
-              <button type="button" onClick={selectNone} className="text-xs text-zinc-500 hover:underline">
+              <button type="button" onClick={selectNone} className="text-xs text-muted hover:underline">
                 {t("closeDay.none")}
               </button>
             </div>
-            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-zinc-800 p-2">
+            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-line/15 p-2">
               {activeStaff.map((em) => (
                 <li key={em.id}>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(em.id)}
@@ -124,14 +124,14 @@ export function CloseDayModal({ open, onClose, onSaved, staffList, initialDay }:
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-900"
+              className="rounded-lg border border-line/20 px-4 py-2 text-sm text-fg hover:bg-surface"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-fg hover:bg-amber-500 disabled:opacity-50"
             >
               {t("closeDay.confirm")}
             </button>

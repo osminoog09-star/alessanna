@@ -139,22 +139,22 @@ export function FinancePage() {
     });
   }, [staff, lines, listings, workDays]);
 
-  if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
+  if (loading) return <p className="text-muted">{t("common.loading")}</p>;
 
   return (
     <div className="space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">{t("finance.title")}</h1>
-          <p className="text-sm text-zinc-500">{t("finance.subtitle")}</p>
+          <h1 className="text-2xl font-semibold text-fg">{t("finance.title")}</h1>
+          <p className="text-sm text-muted">{t("finance.subtitle")}</p>
         </div>
-        <label className="flex flex-col text-xs text-zinc-500">
+        <label className="flex flex-col text-xs text-muted">
           {t("finance.month")}
           <input
             type="month"
             value={monthStr}
             onChange={(e) => setMonthStr(e.target.value)}
-            className="mt-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+            className="mt-1 rounded-lg border border-line/20 bg-panel px-3 py-2 text-sm text-fg"
           />
         </label>
       </header>
@@ -163,9 +163,9 @@ export function FinancePage() {
         <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{err}</p>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-800">
-        <table className="w-full border-collapse text-left text-sm text-zinc-200">
-          <thead className="bg-zinc-900 text-xs uppercase text-zinc-500">
+      <div className="overflow-x-auto rounded-xl border border-line/15">
+        <table className="w-full border-collapse text-left text-sm text-fg">
+          <thead className="bg-surface text-xs uppercase text-muted">
             <tr>
               <th className="px-3 py-2">{t("common.staff")}</th>
               <th className="px-3 py-2">{t("adminStaff.payModel")}</th>
@@ -178,9 +178,9 @@ export function FinancePage() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-t border-zinc-800">
-                <td className="px-3 py-2 font-medium text-white">{r.name}</td>
-                <td className="px-3 py-2 text-zinc-400">
+              <tr key={r.id} className="border-t border-line/15">
+                <td className="px-3 py-2 font-medium text-fg">{r.name}</td>
+                <td className="px-3 py-2 text-muted">
                   {r.workType === "rent"
                     ? t("adminStaff.payRent")
                     : r.workType === "salary"
@@ -198,7 +198,7 @@ export function FinancePage() {
         </table>
       </div>
 
-      <p className="text-xs text-zinc-600">{t("finance.hint")}</p>
+      <p className="text-xs text-muted">{t("finance.hint")}</p>
     </div>
   );
 }

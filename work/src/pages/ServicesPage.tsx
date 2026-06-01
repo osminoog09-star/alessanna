@@ -11,9 +11,9 @@ import { normalizeRoles } from "../lib/roles";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 
 const editableUi =
-  "border border-sky-600/45 ring-1 ring-sky-500/25 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/40";
+  "border border-sky-600/45 ring-1 ring-sky-500/25 focus:border-gold focus:ring-2 focus:ring-sky-500/40";
 const fieldBase =
-  "mt-1 w-full rounded-lg bg-black px-3 py-2 text-sm text-white disabled:opacity-60";
+  "mt-1 w-full rounded-lg bg-black px-3 py-2 text-sm text-fg disabled:opacity-60";
 
 function normServiceName(n: string): string {
   return String(n || "").trim().toLowerCase();
@@ -1179,12 +1179,12 @@ export function ServicesPage() {
     return { total, active, onSite, noMasters };
   }, [services, publicListingNames, serviceStaffLinksMap]);
 
-  if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
+  if (loading) return <p className="text-muted">{t("common.loading")}</p>;
 
   return (
     <div className="space-y-8">
       {/* ───── Page header ───── */}
-      <header className="rounded-2xl border border-zinc-800/80 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-black/70 p-5 shadow-sm shadow-black/30">
+      <header className="rounded-2xl border border-line/15/80 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-black/70 p-5 shadow-sm shadow-black/30">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -1197,8 +1197,8 @@ export function ServicesPage() {
                 </svg>
               </span>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white">{t("services.title")}</h1>
-                <p className="text-sm text-zinc-500">{t("services.subtitle")}</p>
+                <h1 className="text-2xl font-semibold tracking-tight text-fg">{t("services.title")}</h1>
+                <p className="text-sm text-muted">{t("services.subtitle")}</p>
               </div>
             </div>
 
@@ -1236,8 +1236,8 @@ export function ServicesPage() {
                         ? "border-rose-500/80 bg-rose-900/40 text-rose-100"
                         : "border-rose-700/50 bg-rose-950/30 text-rose-200 hover:border-rose-500/70 hover:bg-rose-900/40")
                     : (filterNoMasters
-                        ? "border-zinc-500/80 bg-zinc-800/60 text-zinc-100"
-                        : "border-zinc-700/50 bg-zinc-900/40 text-zinc-300 hover:border-zinc-500/70"))
+                        ? "border-line/30/80 bg-surface/60 text-fg"
+                        : "border-line/20/50 bg-surface/40 text-fg hover:border-line/30/70"))
                 }
               >
                 <span
@@ -1257,7 +1257,7 @@ export function ServicesPage() {
               <button
                 type="button"
                 onClick={() => void refreshPublicStatus()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line/20 px-3 py-2 text-sm font-medium text-fg transition hover:border-line/30 hover:bg-surface"
                 title="Сверить CRM со списком услуг, который видит сайт"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" /></svg>
@@ -1275,7 +1275,7 @@ export function ServicesPage() {
               <button
                 type="button"
                 onClick={() => void addService()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-sky-500/20 transition hover:bg-sky-500"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-fg shadow-sm shadow-sky-500/20 transition hover:bg-sky-500"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
                 {t("services.addService")}
@@ -1289,19 +1289,19 @@ export function ServicesPage() {
           <div className="mt-4 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative min-w-0 flex-1 max-w-md">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
                 <input
                   type="search"
                   value={serviceSearch}
                   onChange={(e) => setServiceSearch(e.target.value)}
                   placeholder="Поиск по названию услуги…"
-                  className="w-full rounded-lg border border-zinc-700 bg-black pl-8 pr-8 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  className="w-full rounded-lg border border-line/20 bg-black pl-8 pr-8 py-2 text-sm text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
                 />
                 {serviceSearch && (
                   <button
                     type="button"
                     onClick={() => setServiceSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted hover:bg-surface hover:text-fg"
                     aria-label="Очистить поиск"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
@@ -1316,7 +1316,7 @@ export function ServicesPage() {
                   "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition " +
                   (filtersActive
                     ? "border-sky-600/60 bg-sky-950/40 text-sky-200 hover:border-sky-500"
-                    : "border-zinc-700 bg-black/30 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-900")
+                    : "border-line/20 bg-black/30 text-fg hover:border-line/30 hover:bg-surface")
                 }
                 aria-expanded={showToolbar}
                 title="Фильтры и сортировка"
@@ -1337,14 +1337,14 @@ export function ServicesPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 transition ${showToolbar ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
               </button>
 
-              <div className="ml-auto flex items-center gap-2 text-xs text-zinc-500">
+              <div className="ml-auto flex items-center gap-2 text-xs text-muted">
                 {(serviceSearch || filtersActive) && (
                   <span>{visibleServiceIds.length} из {services.length} найдено</span>
                 )}
                 <button
                   type="button"
                   onClick={expandAllVisible}
-                  className="rounded-md border border-zinc-700 bg-black/30 px-2 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+                  className="rounded-md border border-line/20 bg-black/30 px-2 py-1 text-[11px] font-medium text-fg transition hover:border-line/30 hover:bg-surface hover:text-fg"
                   title="Раскрыть полные карточки всех видимых услуг"
                 >
                   Развернуть всё
@@ -1352,7 +1352,7 @@ export function ServicesPage() {
                 <button
                   type="button"
                   onClick={collapseAll}
-                  className="rounded-md border border-zinc-700 bg-black/30 px-2 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+                  className="rounded-md border border-line/20 bg-black/30 px-2 py-1 text-[11px] font-medium text-fg transition hover:border-line/30 hover:bg-surface hover:text-fg"
                   title="Свернуть все карточки"
                 >
                   Свернуть всё
@@ -1361,9 +1361,9 @@ export function ServicesPage() {
             </div>
 
             {showToolbar && (
-              <div className="rounded-xl border border-zinc-800/80 bg-black/40 p-3 space-y-3">
+              <div className="rounded-xl border border-line/15/80 bg-canvas/40 p-3 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] uppercase tracking-wide text-zinc-500">Статус:</span>
+                  <span className="text-[11px] uppercase tracking-wide text-muted">Статус:</span>
                   {([
                     { id: "all", label: "Все" },
                     { id: "active", label: "Только активные" },
@@ -1377,7 +1377,7 @@ export function ServicesPage() {
                         "rounded-full border px-3 py-1 text-xs font-medium transition " +
                         (filterActive === opt.id
                           ? "border-sky-500/70 bg-sky-900/40 text-sky-100"
-                          : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-zinc-500 hover:text-white")
+                          : "border-line/20 bg-surface/40 text-fg hover:border-line/30 hover:text-fg")
                       }
                     >
                       {opt.label}
@@ -1386,7 +1386,7 @@ export function ServicesPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] uppercase tracking-wide text-zinc-500">Проблемы:</span>
+                  <span className="text-[11px] uppercase tracking-wide text-muted">Проблемы:</span>
                   <button
                     type="button"
                     onClick={() => setFilterNoMasters((v) => !v)}
@@ -1394,7 +1394,7 @@ export function ServicesPage() {
                       "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
                       (filterNoMasters
                         ? "border-amber-500/70 bg-amber-950/40 text-amber-100"
-                        : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-amber-700/50 hover:text-amber-200")
+                        : "border-line/20 bg-surface/40 text-fg hover:border-amber-700/50 hover:text-amber-200")
                     }
                     title="Услуги, которые никто не выполняет"
                   >
@@ -1407,7 +1407,7 @@ export function ServicesPage() {
                       "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
                       (filterNotOnMain
                         ? "border-amber-500/70 bg-amber-950/40 text-amber-100"
-                        : "border-zinc-700 bg-zinc-900/40 text-zinc-300 hover:border-amber-700/50 hover:text-amber-200")
+                        : "border-line/20 bg-surface/40 text-fg hover:border-amber-700/50 hover:text-amber-200")
                     }
                     title="Услуги, которых ещё нет на сайте"
                   >
@@ -1416,11 +1416,11 @@ export function ServicesPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] uppercase tracking-wide text-zinc-500">Сортировка:</span>
+                  <span className="text-[11px] uppercase tracking-wide text-muted">Сортировка:</span>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortBy)}
-                    className="rounded-lg border border-zinc-700 bg-black px-2.5 py-1 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                    className="rounded-lg border border-line/20 bg-black px-2.5 py-1 text-xs text-fg focus:border-gold focus:outline-none focus:ring-1 focus:ring-sky-500/40"
                   >
                     <option value="name">по названию (А → Я)</option>
                     <option value="price-asc">цена ↑</option>
@@ -1433,7 +1433,7 @@ export function ServicesPage() {
 
                 {categories.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] uppercase tracking-wide text-zinc-500">Категории:</span>
+                    <span className="text-[11px] uppercase tracking-wide text-muted">Категории:</span>
                     {categories.map((c) => {
                       const id = String(c.id);
                       const checked = filterCategoryIds.has(id);
@@ -1446,7 +1446,7 @@ export function ServicesPage() {
                             "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition " +
                             (checked
                               ? "border-sky-500/70 bg-sky-900/40 text-sky-100"
-                              : "border-zinc-700 bg-zinc-900/40 text-zinc-400 hover:border-zinc-500 hover:text-white")
+                              : "border-line/20 bg-surface/40 text-muted hover:border-line/30 hover:text-fg")
                           }
                         >
                           {c.name}
@@ -1457,7 +1457,7 @@ export function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => setFilterCategoryIds(new Set())}
-                        className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                        className="rounded-full border border-line/15 px-2 py-0.5 text-[10px] text-muted hover:border-line/25 hover:text-fg"
                       >
                         очистить
                       </button>
@@ -1470,7 +1470,7 @@ export function ServicesPage() {
                     <button
                       type="button"
                       onClick={resetFilters}
-                      className="text-[11px] text-zinc-400 underline-offset-2 hover:text-white hover:underline"
+                      className="text-[11px] text-muted underline-offset-2 hover:text-fg hover:underline"
                     >
                       Сбросить все фильтры
                     </button>
@@ -1484,14 +1484,14 @@ export function ServicesPage() {
 
       {/* ───── Categories manager ───── */}
       {canManage && (
-        <section className="rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-5">
+        <section className="rounded-2xl border border-line/15/80 bg-panel/60 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-200">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-sky-300"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
                 {t("services.categories")}
               </h2>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-muted">
                 Это категории услуг. В каждую категорию можно добавить услуги.
               </p>
             </div>
@@ -1506,13 +1506,13 @@ export function ServicesPage() {
                   }
                 }}
                 placeholder={t("services.categoryPlaceholder")}
-                className="w-48 rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                className="w-48 rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
               <button
                 type="button"
                 onClick={() => void addCategory()}
                 disabled={!newCat.trim()}
-                className="inline-flex items-center gap-1 rounded-lg bg-zinc-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-lg bg-surface px-3 py-2 text-sm font-medium text-fg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
                 {t("common.add")}
@@ -1521,7 +1521,7 @@ export function ServicesPage() {
           </div>
 
           {categories.length === 0 ? (
-            <p className="mt-4 rounded-lg border border-dashed border-zinc-800 bg-black/20 px-3 py-4 text-center text-xs text-zinc-500">
+            <p className="mt-4 rounded-lg border border-dashed border-line/15 bg-canvas/20 px-3 py-4 text-center text-xs text-muted">
               Пока нет категорий. Добавьте первую — например, «Стрижка» или «Маникюр».
             </p>
           ) : (
@@ -1535,7 +1535,7 @@ export function ServicesPage() {
                 return (
                   <li
                     key={c.id}
-                    className="group flex items-center gap-1.5 rounded-xl border border-zinc-800/80 bg-black/30 px-2 py-1.5 transition hover:border-zinc-700 hover:bg-black/50"
+                    className="group flex items-center gap-1.5 rounded-xl border border-line/15/80 bg-black/30 px-2 py-1.5 transition hover:border-line/20 hover:bg-black/50"
                   >
                     <input
                       value={draft ?? c.name}
@@ -1554,9 +1554,9 @@ export function ServicesPage() {
                           (e.currentTarget as HTMLInputElement).blur();
                         }
                       }}
-                      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-zinc-100 transition hover:border-zinc-700 focus:border-sky-500 focus:bg-black focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-fg transition hover:border-line/20 focus:border-gold focus:bg-black focus:outline-none focus:ring-1 focus:ring-sky-500/40"
                     />
-                    <span className="shrink-0 rounded-full bg-zinc-800/60 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400" title={`Услуг в категории: ${servicesInCat}`}>
+                    <span className="shrink-0 rounded-full bg-surface/60 px-1.5 py-0.5 text-[10px] font-medium text-muted" title={`Услуг в категории: ${servicesInCat}`}>
                       {servicesInCat}
                     </span>
                     {changed && (
@@ -1573,7 +1573,7 @@ export function ServicesPage() {
                     <button
                       type="button"
                       onClick={() => openQuickCreate(String(c.name || "").trim())}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-emerald-950/40 hover:text-emerald-300"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-emerald-950/40 hover:text-emerald-300"
                       title="Добавить услугу в эту категорию"
                       aria-label="Добавить услугу"
                     >
@@ -1582,7 +1582,7 @@ export function ServicesPage() {
                     <button
                       type="button"
                       onClick={() => void deleteCategory(c)}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-600 opacity-0 transition group-hover:opacity-100 hover:bg-red-950/40 hover:text-red-300"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted opacity-0 transition group-hover:opacity-100 hover:bg-red-950/40 hover:text-red-300"
                       title="Удалить категорию"
                       aria-label="Удалить"
                     >
@@ -1615,9 +1615,9 @@ export function ServicesPage() {
           return (
           <section
             key={categoryName}
-            className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/60"
+            className="overflow-hidden rounded-2xl border border-line/15/80 bg-panel/60"
           >
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 bg-gradient-to-r from-zinc-900/60 to-transparent px-5 py-3">
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line/15/60 bg-gradient-to-r from-zinc-900/60 to-transparent px-5 py-3">
               <button
                 type="button"
                 onClick={() => toggleCategoryCollapsed(categoryName)}
@@ -1633,15 +1633,15 @@ export function ServicesPage() {
                   strokeWidth={2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition group-hover:text-zinc-300 ${isCatCollapsed ? "-rotate-90" : ""}`}
+                  className={`h-3.5 w-3.5 shrink-0 text-muted transition group-hover:text-fg ${isCatCollapsed ? "-rotate-90" : ""}`}
                   aria-hidden="true"
                 ><path d="m6 9 6 6 6-6" /></svg>
                 <span
                   aria-hidden="true"
                   className="h-2 w-2 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400 shadow-sm shadow-emerald-500/30"
                 />
-                <h3 className="truncate text-sm font-semibold text-zinc-100">{categoryName}</h3>
-                <span className="shrink-0 rounded-full bg-zinc-800/70 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                <h3 className="truncate text-sm font-semibold text-fg">{categoryName}</h3>
+                <span className="shrink-0 rounded-full bg-surface/70 px-2 py-0.5 text-[10px] font-medium text-muted">
                   {list.length}
                 </span>
                 {activeCount < list.length && (
@@ -1674,7 +1674,7 @@ export function ServicesPage() {
                 <button
                   type="button"
                   onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
-                  className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-black/30 px-2.5 py-1 text-xs text-zinc-200 transition hover:border-emerald-700/60 hover:bg-emerald-950/30 hover:text-emerald-200"
+                  className="inline-flex items-center gap-1 rounded-md border border-line/20 bg-black/30 px-2.5 py-1 text-xs text-fg transition hover:border-emerald-700/60 hover:bg-emerald-950/30 hover:text-emerald-200"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M12 5v14M5 12h14" /></svg>
                   Добавить услугу
@@ -1696,12 +1696,12 @@ export function ServicesPage() {
                 <article
                   key={s.id}
                   className={
-                    "group relative overflow-hidden rounded-xl border bg-black/30 shadow-sm transition hover:border-zinc-700/80 " +
+                    "group relative overflow-hidden rounded-xl border bg-black/30 shadow-sm transition hover:border-line/20/80 " +
                     (!s.active
                       ? "border-rose-800/60 bg-rose-950/20 shadow-rose-950/20"
                       : noMasters
                         ? "border-amber-700/60 shadow-amber-950/20"
-                        : "border-zinc-800/80 shadow-black/30")
+                        : "border-line/15/80 shadow-black/30")
                   }
                 >
                   {/* Vertical accent strip on left, colored by service state */}
@@ -1734,7 +1734,7 @@ export function ServicesPage() {
                         strokeWidth={2}
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition ${isExpanded ? "rotate-180" : ""}`}
+                        className={`h-3.5 w-3.5 shrink-0 text-muted transition ${isExpanded ? "rotate-180" : ""}`}
                         aria-hidden="true"
                       ><path d="m6 9 6 6 6-6" /></svg>
                       <span
@@ -1750,18 +1750,18 @@ export function ServicesPage() {
                                 : "bg-sky-400")
                         }
                       />
-                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-zinc-100" : "text-rose-200/80 line-through decoration-rose-500/60"}`}>
-                        {String(s.name_et || "").trim() || <span className="italic text-zinc-500">без названия</span>}
+                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-fg" : "text-rose-200/80 line-through decoration-rose-500/60"}`}>
+                        {String(s.name_et || "").trim() || <span className="italic text-muted">без названия</span>}
                       </span>
-                      <span className="hidden sm:inline-flex shrink-0 items-center gap-2 text-[11px] text-zinc-400 tabular-nums">
-                        <span className="rounded-md border border-zinc-800 bg-zinc-900/50 px-1.5 py-0.5 font-medium text-zinc-200">
+                      <span className="hidden sm:inline-flex shrink-0 items-center gap-2 text-[11px] text-muted tabular-nums">
+                        <span className="rounded-md border border-line/15 bg-surface/50 px-1.5 py-0.5 font-medium text-fg">
                           {formatPriceEur(s.price_cents, s.price_max_cents)}
                         </span>
                         <span title="Длительность">
                           {Number(s.duration_min || 0)} мин
                         </span>
                         {Number(s.buffer_after_min || 0) > 0 && (
-                          <span className="text-zinc-500" title="Пауза после услуги">
+                          <span className="text-muted" title="Пауза после услуги">
                             +{Number(s.buffer_after_min || 0)}
                           </span>
                         )}
@@ -1770,7 +1770,7 @@ export function ServicesPage() {
                             ⚠ без мастеров
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-0.5 rounded-full border border-zinc-800 bg-zinc-900/40 px-1.5 py-0.5 text-[10px] text-zinc-300" title={`Назначено мастеров: ${masterLinksCount}`}>
+                          <span className="inline-flex items-center gap-0.5 rounded-full border border-line/15 bg-surface/40 px-1.5 py-0.5 text-[10px] text-fg" title={`Назначено мастеров: ${masterLinksCount}`}>
                             👤 {masterLinksCount}
                           </span>
                         )}
@@ -1782,7 +1782,7 @@ export function ServicesPage() {
                       </span>
                     </button>
                     <div
-                      className="flex shrink-0 items-center gap-1.5 text-[10px] text-zinc-500"
+                      className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <ToggleSwitch
@@ -1801,27 +1801,27 @@ export function ServicesPage() {
                   </div>
 
                   {/* === Mobile-only chips line (sm:hidden) === */}
-                  <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2 sm:hidden text-[11px] text-zinc-400 tabular-nums">
-                    <span className="rounded-md border border-zinc-800 bg-zinc-900/50 px-1.5 py-0.5 font-medium text-zinc-200">
+                  <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2 sm:hidden text-[11px] text-muted tabular-nums">
+                    <span className="rounded-md border border-line/15 bg-surface/50 px-1.5 py-0.5 font-medium text-fg">
                       {formatPriceEur(s.price_cents, s.price_max_cents)}
                     </span>
                     <span>{Number(s.duration_min || 0)} мин</span>
                     {Number(s.buffer_after_min || 0) > 0 && (
-                      <span className="text-zinc-500">+{Number(s.buffer_after_min || 0)}</span>
+                      <span className="text-muted">+{Number(s.buffer_after_min || 0)}</span>
                     )}
                     {noMasters ? (
                       <span className="rounded-full border border-amber-700/60 bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-200">⚠ без мастеров</span>
                     ) : (
-                      <span className="rounded-full border border-zinc-800 bg-zinc-900/40 px-1.5 py-0.5 text-[10px] text-zinc-300">👤 {masterLinksCount}</span>
+                      <span className="rounded-full border border-line/15 bg-surface/40 px-1.5 py-0.5 text-[10px] text-fg">👤 {masterLinksCount}</span>
                     )}
                   </div>
 
                   {/* === Expanded full editor === */}
                   {isExpanded && (
-                  <div className="border-t border-zinc-800/60 p-4 pt-3">
+                  <div className="border-t border-line/15/60 p-4 pt-3">
                   {/* Form grid — name takes 2 cols on lg for visibility */}
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500 lg:col-span-2">
+                    <label className="block text-[11px] uppercase tracking-wide text-muted lg:col-span-2">
                       {t("services.name")}
                       <input
                         disabled={!canManage}
@@ -1831,11 +1831,11 @@ export function ServicesPage() {
                           setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name_et: v } : x)));
                         }}
                         onBlur={() => void saveService(s)}
-                        className={`${fieldBase} text-sm font-medium ${canManage ? editableUi : "border border-zinc-700"}`}
+                        className={`${fieldBase} text-sm font-medium ${canManage ? editableUi : "border border-line/20"}`}
                       />
                     </label>
                     <div className="flex gap-2">
-                      <label className="block flex-1 text-[11px] uppercase tracking-wide text-zinc-500">
+                      <label className="block flex-1 text-[11px] uppercase tracking-wide text-muted">
                         Цена от (€)
                         <div className="relative mt-1">
                           <input
@@ -1849,12 +1849,12 @@ export function ServicesPage() {
                               setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
                             }}
                             onBlur={() => void saveService(s)}
-                            className={`w-full rounded-lg bg-black px-3 py-2 pr-6 text-sm text-white disabled:opacity-60 ${canManage ? editableUi : "border border-zinc-700"}`}
+                            className={`w-full rounded-lg bg-black px-3 py-2 pr-6 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                           />
-                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500">€</span>
+                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">€</span>
                         </div>
                       </label>
-                      <label className="block flex-1 text-[11px] uppercase tracking-wide text-zinc-500">
+                      <label className="block flex-1 text-[11px] uppercase tracking-wide text-muted">
                         До (€)
                         <div className="relative mt-1">
                           <input
@@ -1869,13 +1869,13 @@ export function ServicesPage() {
                               setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_max_cents } : x)));
                             }}
                             onBlur={() => void saveService(s)}
-                            className={`w-full rounded-lg bg-black px-3 py-2 pr-6 text-sm text-white placeholder-zinc-600 disabled:opacity-60 ${canManage ? editableUi : "border border-zinc-700"}`}
+                            className={`w-full rounded-lg bg-black px-3 py-2 pr-6 text-sm text-fg placeholder-muted disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                           />
-                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500">€</span>
+                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">€</span>
                         </div>
                       </label>
                     </div>
-                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                    <label className="block text-[11px] uppercase tracking-wide text-muted">
                       {t("services.duration")}
                       <div className="relative mt-1">
                         <input
@@ -1889,14 +1889,14 @@ export function ServicesPage() {
                             setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
                           }}
                           onBlur={() => void saveService(s)}
-                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-white disabled:opacity-60 ${canManage ? editableUi : "border border-zinc-700"}`}
+                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                         />
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-500">
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted">
                           мин
                         </span>
                       </div>
                     </label>
-                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500" title="Пауза после услуги блокирует следующий слот у мастера (уборка, отдых).">
+                    <label className="block text-[11px] uppercase tracking-wide text-muted" title="Пауза после услуги блокирует следующий слот у мастера (уборка, отдых).">
                       Пауза после
                       <div className="relative mt-1">
                         <input
@@ -1910,14 +1910,14 @@ export function ServicesPage() {
                             setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, buffer_after_min } : x)));
                           }}
                           onBlur={() => void saveService(s)}
-                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-white disabled:opacity-60 ${canManage ? editableUi : "border border-zinc-700"}`}
+                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                         />
-                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-500">
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted">
                           мин
                         </span>
                       </div>
                     </label>
-                    <label className="block text-[11px] uppercase tracking-wide text-zinc-500 md:col-span-2 lg:col-span-5">
+                    <label className="block text-[11px] uppercase tracking-wide text-muted md:col-span-2 lg:col-span-5">
                       {t("services.category")}
                       <select
                         disabled={!canManage}
@@ -1929,7 +1929,7 @@ export function ServicesPage() {
                           setServices((prev) => prev.map((x) => (x.id === s.id ? next : x)));
                           void saveService(next);
                         }}
-                        className={`${fieldBase} ${canManage ? editableUi : "border border-zinc-700"}`}
+                        className={`${fieldBase} ${canManage ? editableUi : "border border-line/20"}`}
                       >
                         <option value="">{t("common.dash")}</option>
                         {categories.map((c) => (
@@ -1941,15 +1941,15 @@ export function ServicesPage() {
                     </label>
                   </div>
                   {/* Masters block */}
-                  <div className="mt-3 rounded-lg border border-zinc-800/80 bg-black/20 p-3">
+                  <div className="mt-3 rounded-lg border border-line/15/80 bg-canvas/20 p-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-zinc-500"><path d="M16 21v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-1a4 4 0 0 0-3-3.87M17 3.13a4 4 0 0 1 0 7.74" /></svg>
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-fg">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-muted"><path d="M16 21v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-1a4 4 0 0 0-3-3.87M17 3.13a4 4 0 0 1 0 7.74" /></svg>
                         Мастера
                       </p>
-                      <p className="text-[10px] text-zinc-500">
+                      <p className="text-[10px] text-muted">
                         назначения меняются на{" "}
-                        <span className="font-mono text-zinc-400">/admin/staff</span>
+                        <span className="font-mono text-muted">/admin/staff</span>
                       </p>
                     </div>
                     {(() => {
@@ -1958,7 +1958,7 @@ export function ServicesPage() {
                       const allMasters = staffListedAsMasters(staff);
                       if (allMasters.length === 0) {
                         return (
-                          <p className="mt-2 text-xs text-zinc-500">
+                          <p className="mt-2 text-xs text-muted">
                             Нет активных мастеров в справочнике.
                           </p>
                         );
@@ -2021,7 +2021,7 @@ export function ServicesPage() {
                                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition " +
                                 (c.available
                                   ? "border-emerald-600/60 bg-emerald-900/30 text-emerald-200"
-                                  : "border-zinc-700 bg-zinc-900/40 text-zinc-500")
+                                  : "border-line/20 bg-surface/40 text-muted")
                               }
                             >
                               <span
@@ -2045,7 +2045,7 @@ export function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => void deleteService(s)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-500 transition hover:bg-red-950/40 hover:text-red-300 focus:opacity-100"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-red-950/40 hover:text-red-300 focus:opacity-100"
                         title={t("services.deletePermanent")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
@@ -2059,8 +2059,8 @@ export function ServicesPage() {
                 );
               })}
               {list.length === 0 && canManage && (
-                <div className="rounded-lg border border-dashed border-zinc-700 bg-black/20 p-4 text-center">
-                  <p className="text-sm text-zinc-400">В этой категории пока нет услуг.</p>
+                <div className="rounded-lg border border-dashed border-line/20 bg-canvas/20 p-4 text-center">
+                  <p className="text-sm text-muted">В этой категории пока нет услуг.</p>
                   <button
                     type="button"
                     onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
@@ -2080,22 +2080,22 @@ export function ServicesPage() {
 
       {quickCreateCategory !== null && canManage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-            <h3 className="text-base font-semibold text-white">Быстрое создание услуги</h3>
-            <p className="mt-1 text-xs text-zinc-500">
+          <div className="w-full max-w-md rounded-xl border border-line/15 bg-panel p-5">
+            <h3 className="text-base font-semibold text-fg">Быстрое создание услуги</h3>
+            <p className="mt-1 text-xs text-muted">
               Категория: {String(quickCreateCategory || "Без категории")}
             </p>
 
             <div className="mt-4 space-y-3">
-              <label className="block text-xs text-zinc-400">
+              <label className="block text-xs text-muted">
                 Название
                 <input
                   value={quickName}
                   onChange={(e) => setQuickName(e.target.value)}
-                  className={`${fieldBase} border border-zinc-700`}
+                  className={`${fieldBase} border border-line/20`}
                 />
               </label>
-              <label className="block text-xs text-zinc-400">
+              <label className="block text-xs text-muted">
                 Цена (EUR)
                 <input
                   type="number"
@@ -2103,10 +2103,10 @@ export function ServicesPage() {
                   step={0.5}
                   value={quickPriceEur}
                   onChange={(e) => setQuickPriceEur(e.target.value)}
-                  className={`${fieldBase} border border-zinc-700`}
+                  className={`${fieldBase} border border-line/20`}
                 />
               </label>
-              <label className="block text-xs text-zinc-400">
+              <label className="block text-xs text-muted">
                 Длительность (мин)
                 <input
                   type="number"
@@ -2114,10 +2114,10 @@ export function ServicesPage() {
                   step={5}
                   value={quickDuration}
                   onChange={(e) => setQuickDuration(e.target.value)}
-                  className={`${fieldBase} border border-zinc-700`}
+                  className={`${fieldBase} border border-line/20`}
                 />
               </label>
-              <label className="block text-xs text-zinc-400">
+              <label className="block text-xs text-muted">
                 Пауза после (мин)
                 <input
                   type="number"
@@ -2125,23 +2125,23 @@ export function ServicesPage() {
                   step={5}
                   value={quickBuffer}
                   onChange={(e) => setQuickBuffer(e.target.value)}
-                  className={`${fieldBase} border border-zinc-700`}
+                  className={`${fieldBase} border border-line/20`}
                 />
               </label>
-              <div className="flex items-center gap-2 text-xs text-zinc-300">
+              <div className="flex items-center gap-2 text-xs text-fg">
                 <ToggleSwitch checked={quickActive} onCheckedChange={setQuickActive} aria-label="Услуга активна" />
                 <span>Услуга активна</span>
               </div>
-              <div className="rounded-lg border border-zinc-800 p-3">
-                <p className="text-xs text-zinc-400">Мастера, которые могут выполнять услугу</p>
-                <p className="mt-1 text-[11px] text-zinc-500">
+              <div className="rounded-lg border border-line/15 p-3">
+                <p className="text-xs text-muted">Мастера, которые могут выполнять услугу</p>
+                <p className="mt-1 text-[11px] text-muted">
                   Если не выбрать никого, услуга будет доступна всем активным мастерам.
                 </p>
                 <div className="mt-2 max-h-40 space-y-1 overflow-auto">
                   {staffListedAsMasters(staff).map((m) => {
                     const on = quickStaffIds.includes(m.id);
                     return (
-                      <div key={m.id} className="flex items-center gap-2 text-xs text-zinc-300">
+                      <div key={m.id} className="flex items-center gap-2 text-xs text-fg">
                         <ToggleSwitch
                           size="sm"
                           checked={on}
@@ -2155,7 +2155,7 @@ export function ServicesPage() {
                     );
                   })}
                   {staffListedAsMasters(staff).length === 0 && (
-                    <p className="text-xs text-zinc-500">Активные мастера не найдены.</p>
+                    <p className="text-xs text-muted">Активные мастера не найдены.</p>
                   )}
                 </div>
               </div>
@@ -2165,14 +2165,14 @@ export function ServicesPage() {
               <button
                 type="button"
                 onClick={() => closeQuickCreate()}
-                className="rounded-md border border-zinc-700 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-900"
+                className="rounded-md border border-line/20 px-3 py-2 text-xs text-fg hover:bg-surface"
               >
                 Отмена
               </button>
               <button
                 type="button"
                 onClick={() => void createServiceFromQuickForm()}
-                className="rounded-md bg-sky-600 px-3 py-2 text-xs font-medium text-white hover:bg-sky-500"
+                className="rounded-md bg-sky-600 px-3 py-2 text-xs font-medium text-fg hover:bg-sky-500"
               >
                 Создать услугу
               </button>

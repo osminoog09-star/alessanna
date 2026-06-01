@@ -119,16 +119,16 @@ export function BlockTimeModal({
 
   return (
     <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/75 p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-md rounded-2xl border border-red-900/40 bg-zinc-950/95 p-6 shadow-2xl backdrop-blur-xl">
-        <h2 className="text-lg font-semibold text-white">{t("blockTimeModal.title")}</h2>
+      <div className="w-full max-w-md rounded-2xl border border-red-900/40 bg-panel/95 p-6 shadow-2xl backdrop-blur-xl">
+        <h2 className="text-lg font-semibold text-fg">{t("blockTimeModal.title")}</h2>
         <form onSubmit={submit} className="mt-4 space-y-3">
           {!lockStaff && (
             <div>
-              <label className="text-xs text-zinc-500">{t("modal.staff")}</label>
+              <label className="text-xs text-muted">{t("modal.staff")}</label>
               <select
                 value={staffId}
                 onChange={(e) => setStaffId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               >
                 {activeStaff.map((em) => (
                   <option key={em.id} value={em.id}>
@@ -139,29 +139,29 @@ export function BlockTimeModal({
             </div>
           )}
           <div>
-            <label className="text-xs text-zinc-500">{t("blockTimeModal.start")}</label>
+            <label className="text-xs text-muted">{t("blockTimeModal.start")}</label>
             <input
               type="datetime-local"
               value={startStr}
               onChange={(e) => setStartStr(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
             />
           </div>
           <div>
-            <label className="text-xs text-zinc-500">{t("blockTimeModal.end")}</label>
+            <label className="text-xs text-muted">{t("blockTimeModal.end")}</label>
             <input
               type="datetime-local"
               value={endStr}
               onChange={(e) => setEndStr(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
             />
           </div>
           <div>
-            <label className="text-xs text-zinc-500">{t("blockTimeModal.type")}</label>
+            <label className="text-xs text-muted">{t("blockTimeModal.type")}</label>
             <select
               value={timeOffType}
               onChange={(e) => setTimeOffType(e.target.value as TimeOffType)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
             >
               <option value="manual_block">{t("blockTimeModal.typeManual")}</option>
               <option value="day_off">{t("blockTimeModal.typeDayOff")}</option>
@@ -169,11 +169,11 @@ export function BlockTimeModal({
             </select>
           </div>
           <div>
-            <label className="text-xs text-zinc-500">{t("blockTimeModal.reason")}</label>
+            <label className="text-xs text-muted">{t("blockTimeModal.reason")}</label>
             <input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               placeholder="—"
             />
           </div>
@@ -182,14 +182,14 @@ export function BlockTimeModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-900"
+              className="rounded-lg border border-line/20 px-4 py-2 text-sm text-fg hover:bg-surface"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
+              className="rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-fg hover:bg-red-600 disabled:opacity-50"
             >
               {t("common.save")}
             </button>

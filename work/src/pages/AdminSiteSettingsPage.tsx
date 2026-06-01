@@ -151,8 +151,8 @@ export function AdminSiteSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Настройки сайта</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h1 className="text-2xl font-semibold text-fg">Настройки сайта</h1>
+        <p className="mt-1 text-sm text-muted">
           Управление поведением публичного сайта без правок кода.
         </p>
       </div>
@@ -163,12 +163,12 @@ export function AdminSiteSettingsPage() {
         </p>
       )}
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
-        <div className="rounded-lg border border-zinc-800 bg-black/40 p-3">
+      <section className="rounded-xl border border-line/15 bg-panel/60 p-5">
+        <div className="rounded-lg border border-line/15 bg-canvas/40 p-3">
           <label className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-zinc-100">Корзина “Ваш выбор” на сайте</p>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="text-sm font-medium text-fg">Корзина “Ваш выбор” на сайте</p>
+              <p className="mt-1 text-xs text-muted">
                 Если выключить, блок “Ваш выбор” на публичном сайте скрывается.
               </p>
             </div>
@@ -181,13 +181,13 @@ export function AdminSiteSettingsPage() {
             />
           </label>
         </div>
-        <div className="mt-3 rounded-lg border border-zinc-800 bg-black/40 p-3">
+        <div className="mt-3 rounded-lg border border-line/15 bg-canvas/40 p-3">
           <label className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-zinc-100">Панель онлайн-записи</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                Страница <code className="text-zinc-400">/book</code>, короткая{" "}
-                <code className="text-zinc-400">/book/simple</code> и блок записи на главной сайта
+              <p className="text-sm font-medium text-fg">Панель онлайн-записи</p>
+              <p className="mt-1 text-xs text-muted">
+                Страница <code className="text-muted">/book</code>, короткая{" "}
+                <code className="text-muted">/book/simple</code> и блок записи на главной сайта
                 (календарь + форма). Выключите, чтобы временно закрыть запись без деплоя.
               </p>
             </div>
@@ -201,16 +201,16 @@ export function AdminSiteSettingsPage() {
           </label>
         </div>
         {(loading || saving) && (
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-muted">
             {saving ? "Сохраняем…" : "Загружаем настройки…"}
           </p>
         )}
       </section>
 
       {isAdmin && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
-          <h2 className="text-lg font-medium text-white">{t("siteSettings.receptionLayoutTitle")}</h2>
-          <p className="mt-1 text-sm text-zinc-500">{t("siteSettings.receptionLayoutSubtitle")}</p>
+        <section className="rounded-xl border border-line/15 bg-panel/60 p-5">
+          <h2 className="text-lg font-medium text-fg">{t("siteSettings.receptionLayoutTitle")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("siteSettings.receptionLayoutSubtitle")}</p>
 
           {receptionFeedback && (
             <p
@@ -224,7 +224,7 @@ export function AdminSiteSettingsPage() {
             </p>
           )}
 
-          <p className="mt-3 text-xs text-zinc-500">{t("siteSettings.receptionMastersHint")}</p>
+          <p className="mt-3 text-xs text-muted">{t("siteSettings.receptionMastersHint")}</p>
 
           <div className="mt-4">
             <ReceptionLayoutEditor
@@ -252,7 +252,7 @@ export function AdminSiteSettingsPage() {
               type="button"
               disabled={loading || receptionSaving}
               onClick={resetReceptionLayoutLocal}
-              className="rounded-lg border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+              className="rounded-lg border border-line/25 px-3 py-1.5 text-sm text-fg hover:bg-surface"
             >
               {t("reception.layout.reset")}
             </button>

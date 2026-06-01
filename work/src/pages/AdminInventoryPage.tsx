@@ -99,10 +99,10 @@ export function AdminInventoryPage() {
     <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-2xl font-semibold text-fg">
             {t("inventory.title", { defaultValue: "Склад / расходники" })}
           </h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted">
             {t("inventory.subtitle", {
               defaultValue:
                 "Учёт расходных материалов, нормы расхода на услуги, журнал движений.",
@@ -112,7 +112,7 @@ export function AdminInventoryPage() {
         <button
           type="button"
           onClick={() => void reload()}
-          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-900"
+          className="rounded-lg border border-line/20 px-3 py-1.5 text-sm text-fg hover:bg-surface"
         >
           {t("common.refresh", { defaultValue: "Обновить" })}
         </button>
@@ -139,7 +139,7 @@ export function AdminInventoryPage() {
         </div>
       )}
 
-      <nav className="flex gap-1 border-b border-zinc-800">
+      <nav className="flex gap-1 border-b border-line/15">
         {(["items", "norms", "movements"] as const).map((k) => (
           <button
             key={k}
@@ -147,8 +147,8 @@ export function AdminInventoryPage() {
             onClick={() => setTab(k)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm ${
               tab === k
-                ? "border-sky-500 text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-200"
+                ? "border-sky-500 text-fg"
+                : "border-transparent text-muted hover:text-fg"
             }`}
           >
             {t(`inventory.tab.${k}`, {
@@ -159,7 +159,7 @@ export function AdminInventoryPage() {
       </nav>
 
       {err && <p className="rounded border border-red-900 bg-red-950/40 p-2 text-sm text-red-300">{err}</p>}
-      {loading && <p className="text-sm text-zinc-500">{t("common.loading")}</p>}
+      {loading && <p className="text-sm text-muted">{t("common.loading")}</p>}
 
       {!loading && tab === "items" && (
         <ItemsTab items={items} onChanged={reload} />
@@ -227,15 +227,15 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
         <button
           type="button"
           onClick={startCreate}
-          className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500"
+          className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-fg hover:bg-sky-500"
         >
           + {t("inventory.addItem", { defaultValue: "Добавить материал" })}
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-800">
+      <div className="overflow-x-auto rounded-xl border border-line/15">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-900 text-left text-xs uppercase text-zinc-400">
+          <thead className="bg-surface text-left text-xs uppercase text-muted">
             <tr>
               <th className="px-3 py-2">{t("inventory.col.name", { defaultValue: "Название" })}</th>
               <th className="px-3 py-2">{t("inventory.col.unit", { defaultValue: "Ед." })}</th>
@@ -248,7 +248,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
           <tbody className="divide-y divide-zinc-900">
             {items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-6 text-center text-muted">
                   {t("inventory.empty", { defaultValue: "Материалов пока нет" })}
                 </td>
               </tr>
@@ -258,28 +258,28 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 i.is_active && i.low_stock_threshold != null && i.on_hand <= i.low_stock_threshold;
               return (
                 <tr key={i.id} className={i.is_active ? "" : "opacity-50"}>
-                  <td className="px-3 py-2 text-white">{i.name}</td>
-                  <td className="px-3 py-2 text-zinc-400">{i.unit}</td>
-                  <td className={`px-3 py-2 text-right ${low ? "text-amber-300" : "text-zinc-200"}`}>
+                  <td className="px-3 py-2 text-fg">{i.name}</td>
+                  <td className="px-3 py-2 text-muted">{i.unit}</td>
+                  <td className={`px-3 py-2 text-right ${low ? "text-amber-300" : "text-fg"}`}>
                     {i.on_hand}
                   </td>
-                  <td className="px-3 py-2 text-right text-zinc-500">
+                  <td className="px-3 py-2 text-right text-muted">
                     {i.low_stock_threshold ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-zinc-400">{i.category ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted">{i.category ?? "—"}</td>
                   <td className="px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={() => setEditing(i)}
-                      className="text-xs text-sky-400 hover:underline"
+                      className="text-xs text-gold hover:underline"
                     >
                       {t("common.edit", { defaultValue: "Изменить" })}
                     </button>
-                    <span className="px-1 text-zinc-700">·</span>
+                    <span className="px-1 text-muted">·</span>
                     <button
                       type="button"
                       onClick={() => void toggleActive(i)}
-                      className="text-xs text-zinc-400 hover:underline"
+                      className="text-xs text-muted hover:underline"
                     >
                       {i.is_active
                         ? t("common.archive", { defaultValue: "В архив" })
@@ -301,7 +301,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 type="text"
                 value={editing.name ?? ""}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 required
               />
             </Field>
@@ -310,7 +310,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 <select
                   value={editing.unit ?? "pcs"}
                   onChange={(e) => setEditing({ ...editing, unit: e.target.value })}
-                  className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 >
                   {UNITS.map((u) => (
                     <option key={u} value={u}>
@@ -331,7 +331,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                       low_stock_threshold: e.target.value === "" ? null : Number(e.target.value),
                     })
                   }
-                  className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 />
               </Field>
             </div>
@@ -340,7 +340,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 type="text"
                 value={editing.category ?? ""}
                 onChange={(e) => setEditing({ ...editing, category: e.target.value })}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 placeholder={t("inventory.categoryPlaceholder", { defaultValue: "лак / база / расходка" })}
               />
             </Field>
@@ -349,7 +349,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 value={editing.notes ?? ""}
                 onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
                 rows={2}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               />
             </Field>
             {!editing.id && (
@@ -360,9 +360,9 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                   min={0}
                   value={editing.on_hand ?? 0}
                   onChange={(e) => setEditing({ ...editing, on_hand: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 />
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted">
                   {t("inventory.startingBalanceHint", {
                     defaultValue: "После создания корректировки идут только через журнал движений.",
                   })}
@@ -373,14 +373,14 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-900"
+                className="rounded-lg border border-line/20 px-3 py-1.5 text-sm text-fg hover:bg-surface"
               >
                 {t("common.cancel")}
               </button>
               <button
                 type="submit"
                 disabled={pending}
-                className="rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-500 disabled:opacity-50"
+                className="rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-semibold text-fg hover:bg-sky-500 disabled:opacity-50"
               >
                 {pending ? t("common.saving", { defaultValue: "Сохраняем…" }) : t("common.save", { defaultValue: "Сохранить" })}
               </button>
@@ -456,7 +456,7 @@ function NormsTab({
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs text-zinc-500">
+        <label className="block text-xs text-muted">
           {t("inventory.selectService", { defaultValue: "Выберите услугу" })}
         </label>
         <select
@@ -465,7 +465,7 @@ function NormsTab({
             setServiceId(e.target.value);
             setEditing(null);
           }}
-          className="mt-1 w-full max-w-md rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+          className="mt-1 w-full max-w-md rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
         >
           <option value="">— {t("common.choose", { defaultValue: "выбрать" })} —</option>
           {activeServices.map((s) => (
@@ -477,9 +477,9 @@ function NormsTab({
       </div>
 
       {serviceId && (
-        <div className="space-y-3 rounded-xl border border-zinc-800 p-4">
+        <div className="space-y-3 rounded-xl border border-line/15 p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">
+            <h3 className="text-sm font-semibold text-fg">
               {t("inventory.normsForService", { defaultValue: "Нормы расхода для услуги" })}
             </h3>
             <button
@@ -490,24 +490,24 @@ function NormsTab({
                   amount: 1,
                 })
               }
-              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-fg hover:bg-sky-500"
             >
               + {t("inventory.addNorm", { defaultValue: "Добавить норму" })}
             </button>
           </div>
 
           {normsForService.length === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-muted">
               {t("inventory.noNorms", { defaultValue: "Норм пока нет" })}
             </p>
           ) : (
-            <ul className="divide-y divide-zinc-800">
+            <ul className="divide-y divide-line/15">
               {normsForService.map((n) => {
                 const it = itemMap.get(n.inventory_item_id);
                 return (
                   <li key={n.id} className="flex items-center justify-between py-2 text-sm">
-                    <span className="text-white">{it?.name ?? n.inventory_item_id}</span>
-                    <span className="text-zinc-400">
+                    <span className="text-fg">{it?.name ?? n.inventory_item_id}</span>
+                    <span className="text-muted">
                       {n.amount} {it?.unit ?? ""}
                     </span>
                     <button
@@ -526,12 +526,12 @@ function NormsTab({
           {editing && (
             <form
               onSubmit={addNorm}
-              className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-800 bg-zinc-950 p-3 sm:grid-cols-3"
+              className="grid grid-cols-1 gap-2 rounded-lg border border-line/15 bg-panel p-3 sm:grid-cols-3"
             >
               <select
                 value={editing.inventory_item_id}
                 onChange={(e) => setEditing({ ...editing, inventory_item_id: e.target.value })}
-                className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               >
                 {items
                   .filter((i) => i.is_active)
@@ -547,20 +547,20 @@ function NormsTab({
                 min="0.001"
                 value={editing.amount}
                 onChange={(e) => setEditing({ ...editing, amount: Number(e.target.value) })}
-                className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 placeholder={t("inventory.amountPerService", { defaultValue: "Расход на 1 услугу" })}
               />
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex-1 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white"
+                  className="flex-1 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-fg"
                 >
                   {t("common.save", { defaultValue: "Сохранить" })}
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditing(null)}
-                  className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300"
+                  className="rounded-lg border border-line/20 px-3 py-2 text-sm text-fg"
                 >
                   {t("common.cancel")}
                 </button>
@@ -641,15 +641,15 @@ function MovementsTab({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-500"
+          className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-fg hover:bg-sky-500"
         >
           + {t("inventory.addMovement", { defaultValue: "Добавить движение" })}
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-800">
+      <div className="overflow-x-auto rounded-xl border border-line/15">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-900 text-left text-xs uppercase text-zinc-400">
+          <thead className="bg-surface text-left text-xs uppercase text-muted">
             <tr>
               <th className="px-3 py-2">{t("inventory.col.date", { defaultValue: "Когда" })}</th>
               <th className="px-3 py-2">{t("inventory.col.item", { defaultValue: "Материал" })}</th>
@@ -662,7 +662,7 @@ function MovementsTab({
           <tbody className="divide-y divide-zinc-900">
             {movements.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-6 text-center text-muted">
                   {t("inventory.noMovements", { defaultValue: "Движений пока нет" })}
                 </td>
               </tr>
@@ -672,9 +672,9 @@ function MovementsTab({
               const positive = m.delta > 0;
               return (
                 <tr key={m.id}>
-                  <td className="px-3 py-2 text-zinc-400">{new Date(m.created_at).toLocaleString()}</td>
-                  <td className="px-3 py-2 text-white">{it?.name ?? "—"}</td>
-                  <td className="px-3 py-2 text-zinc-400">
+                  <td className="px-3 py-2 text-muted">{new Date(m.created_at).toLocaleString()}</td>
+                  <td className="px-3 py-2 text-fg">{it?.name ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted">
                     {t(`inventory.type.${m.movement_type}`, {
                       defaultValue: m.movement_type,
                     })}
@@ -682,8 +682,8 @@ function MovementsTab({
                   <td className={`px-3 py-2 text-right font-mono ${positive ? "text-emerald-300" : "text-red-300"}`}>
                     {m.delta > 0 ? `+${m.delta}` : m.delta}
                   </td>
-                  <td className="px-3 py-2 text-right text-zinc-200">{m.on_hand_after}</td>
-                  <td className="px-3 py-2 text-zinc-500">{m.notes ?? ""}</td>
+                  <td className="px-3 py-2 text-right text-fg">{m.on_hand_after}</td>
+                  <td className="px-3 py-2 text-muted">{m.notes ?? ""}</td>
                 </tr>
               );
             })}
@@ -698,7 +698,7 @@ function MovementsTab({
               <select
                 value={form.inventory_item_id}
                 onChange={(e) => setForm({ ...form, inventory_item_id: e.target.value })}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 required
               >
                 <option value="">— {t("common.choose", { defaultValue: "выбрать" })} —</option>
@@ -715,7 +715,7 @@ function MovementsTab({
               <select
                 value={form.movement_type}
                 onChange={(e) => setForm({ ...form, movement_type: e.target.value as Movement["movement_type"] })}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               >
                 <option value="purchase">{t("inventory.type.purchase", { defaultValue: "Приход" })}</option>
                 <option value="adjustment_in">{t("inventory.type.adjustment_in", { defaultValue: "Коррекция +" })}</option>
@@ -730,7 +730,7 @@ function MovementsTab({
                 min="0.001"
                 value={form.delta}
                 onChange={(e) => setForm({ ...form, delta: Number(e.target.value) })}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 required
               />
             </Field>
@@ -742,7 +742,7 @@ function MovementsTab({
                   min="0"
                   value={form.cost_cents}
                   onChange={(e) => setForm({ ...form, cost_cents: e.target.value })}
-                  className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
                 />
               </Field>
             )}
@@ -751,14 +751,14 @@ function MovementsTab({
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={2}
-                className="w-full rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
               />
             </Field>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setAdding(false)} className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-900">
+              <button type="button" onClick={() => setAdding(false)} className="rounded-lg border border-line/20 px-3 py-1.5 text-sm text-fg hover:bg-surface">
                 {t("common.cancel")}
               </button>
-              <button type="submit" className="rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-500">
+              <button type="submit" className="rounded-lg bg-sky-600 px-4 py-1.5 text-sm font-semibold text-fg hover:bg-sky-500">
                 {t("common.save", { defaultValue: "Сохранить" })}
               </button>
             </div>
@@ -774,7 +774,7 @@ function MovementsTab({
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs text-zinc-500">
+      <span className="block text-xs text-muted">
         {label}
         {required && <span className="text-red-400"> *</span>}
       </span>
@@ -786,8 +786,8 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-        <h3 className="mb-3 text-base font-semibold text-white">{title}</h3>
+      <div className="w-full max-w-lg rounded-xl border border-line/15 bg-panel p-5">
+        <h3 className="mb-3 text-base font-semibold text-fg">{title}</h3>
         {children}
       </div>
     </div>

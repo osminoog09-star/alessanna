@@ -71,14 +71,14 @@ export function AdminSchedulePage() {
   }
 
   if (loading) {
-    return <p className="text-zinc-500">Загрузка…</p>;
+    return <p className="text-muted">Загрузка…</p>;
   }
 
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-xl font-semibold text-white">График</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h1 className="text-xl font-semibold text-fg">График</h1>
+        <p className="mt-1 text-sm text-muted">
           Нажмите на день чтобы назначить мастеров на эту дату.
         </p>
       </header>
@@ -88,39 +88,39 @@ export function AdminSchedulePage() {
         <button
           type="button"
           onClick={() => setViewMonth((m) => subMonths(m, 1))}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line/20 text-fg hover:bg-surface"
         >
           ←
         </button>
-        <span className="min-w-[160px] text-center text-base font-medium capitalize text-white">
+        <span className="min-w-[160px] text-center text-base font-medium capitalize text-fg">
           {monthLabel}
         </span>
         <button
           type="button"
           onClick={() => setViewMonth((m) => addMonths(m, 1))}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line/20 text-fg hover:bg-surface"
         >
           →
         </button>
         <button
           type="button"
           onClick={() => setViewMonth(startOfMonth(new Date()))}
-          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+          className="rounded-lg border border-line/20 px-3 py-1.5 text-sm text-fg hover:bg-surface"
         >
           Сегодня
         </button>
       </div>
 
       {/* Calendar grid */}
-      <div className="overflow-hidden rounded-xl border border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-line/15">
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 border-b border-zinc-800 bg-zinc-900">
+        <div className="grid grid-cols-7 border-b border-line/15 bg-surface">
           {MON_FIRST_DOW.map((dow, i) => (
             <div
               key={dow}
               className={[
-                "py-2 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500",
-                i < 6 ? "border-r border-zinc-800" : "",
+                "py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted",
+                i < 6 ? "border-r border-line/15" : "",
               ].join(" ")}
             >
               {RU_WEEK[i]}
@@ -142,9 +142,9 @@ export function AdminSchedulePage() {
                 type="button"
                 onClick={(e) => setDayPopup({ day, x: e.clientX, y: e.clientY })}
                 className={[
-                  "group relative flex min-h-[90px] flex-col gap-1 p-2 text-left transition hover:bg-zinc-800/60",
-                  colPos < 6 ? "border-r border-zinc-800" : "",
-                  idx < calendarDays.length - 7 ? "border-b border-zinc-800" : "",
+                  "group relative flex min-h-[90px] flex-col gap-1 p-2 text-left transition hover:bg-surface",
+                  colPos < 6 ? "border-r border-line/15" : "",
+                  idx < calendarDays.length - 7 ? "border-b border-line/15" : "",
                   inMonth ? "" : "opacity-35",
                 ].join(" ")}
               >
@@ -153,8 +153,8 @@ export function AdminSchedulePage() {
                   className={[
                     "flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold",
                     isToday
-                      ? "bg-[#1a73e8] text-white"
-                      : "text-zinc-300 group-hover:bg-zinc-700",
+                      ? "bg-gold text-canvas"
+                      : "text-fg group-hover:bg-surface",
                   ].join(" ")}
                 >
                   {format(day, "d")}

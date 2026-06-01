@@ -218,7 +218,7 @@ function StaffCalendarEmailField(props: {
           (e.currentTarget as HTMLInputElement).blur();
         }
       }}
-      className="w-full rounded border border-zinc-700 bg-black px-2 py-1 text-xs text-zinc-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 disabled:opacity-60"
+      className="w-full rounded border border-line/20 bg-canvas px-2 py-1 text-xs text-fg focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30 disabled:opacity-60"
     />
   );
 }
@@ -277,14 +277,14 @@ function SalonCalendarSettingsCard(props: { onError: (msg: string | null) => voi
   const dirty = value.trim() !== initial.trim();
 
   return (
-    <section className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+    <section className="mt-4 rounded-lg border border-line/15 bg-panel/60 p-3">
       <header className="mb-1 flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
           Общий Google-календарь салона
         </p>
-        <span className="text-[10px] text-zinc-600">salon_settings.salon_calendar_email</span>
+        <span className="text-[10px] text-muted">salon_settings.salon_calendar_email</span>
       </header>
-      <p className="mb-2 text-[11px] leading-snug text-zinc-500">
+      <p className="mb-2 text-[11px] leading-snug text-muted">
         Рабочая почта салона — в этот календарь попадут все записи (сейчас только хранится,
         реальная синхронизация с Google Calendar будет подключена отдельным шагом).
       </p>
@@ -297,13 +297,13 @@ function SalonCalendarSettingsCard(props: { onError: (msg: string | null) => voi
           placeholder="salon@gmail.com"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="flex-1 rounded border border-zinc-700 bg-black px-2 py-1 text-sm text-zinc-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 disabled:opacity-60"
+          className="flex-1 rounded border border-line/20 bg-canvas px-2 py-1 text-sm text-fg focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30 disabled:opacity-60"
         />
         <button
           type="button"
           onClick={() => void save()}
           disabled={loading || saving || !dirty}
-          className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-40"
+          className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-fg hover:bg-sky-500 disabled:opacity-40"
         >
           Сохранить
         </button>
@@ -1209,7 +1209,7 @@ export function AdminStaffPage() {
     setDraggedCatName(null);
   }
 
-  if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
+  if (loading) return <p className="text-muted">{t("common.loading")}</p>;
 
   const isAdminRow = (r: StaffTableRow): boolean => {
     const pr = String(r.role || "").toLowerCase();
@@ -1220,29 +1220,29 @@ export function AdminStaffPage() {
   const adminRows = rows.filter(isAdminRow);
 
   return (
-    <div className="max-w-5xl space-y-6 text-zinc-200">
+    <div className="max-w-5xl space-y-6 text-fg">
       <header>
-        <h1 className="text-xl font-semibold text-white">{t("nav.adminStaff")}</h1>
-        <p className="mt-1 text-sm text-zinc-500">{t("adminStaff.subtitle")}</p>
+        <h1 className="text-xl font-semibold text-fg">{t("nav.adminStaff")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("adminStaff.subtitle")}</p>
         <SalonCalendarSettingsCard onError={setErr} />
       </header>
 
       {staffMarketingColumnMissing && (
         <p className="rounded border border-amber-800/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
-          В проекте БД нет колонки <code className="rounded bg-black/40 px-1">staff.show_on_marketing_site</code> — поэтому
+          В проекте БД нет колонки <code className="rounded bg-canvas/40 px-1">staff.show_on_marketing_site</code> — поэтому
           переключатели «Сайт / запись» не могут сохраниться. Откройте Supabase → SQL Editor и выполните файл{" "}
-          <code className="rounded bg-black/40 px-1">supabase/migrations/020_staff_show_on_marketing_site.sql</code>
-          (или <code className="rounded bg-black/40 px-1">supabase db push</code>), затем обновите эту страницу.
+          <code className="rounded bg-canvas/40 px-1">supabase/migrations/020_staff_show_on_marketing_site.sql</code>
+          (или <code className="rounded bg-canvas/40 px-1">supabase db push</code>), затем обновите эту страницу.
         </p>
       )}
 
       {serviceListingsEmpty && (
         <p className="rounded border border-amber-800/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
-          Таблица <code className="rounded bg-black/40 px-1">service_listings</code> пустая — CRM показывает услуги из
-          старой таблицы <code className="rounded bg-black/40 px-1">services</code> с числовыми id, а{" "}
-          <code className="rounded bg-black/40 px-1">staff_services.service_id</code> ждёт UUID. Поэтому переключатели
+          Таблица <code className="rounded bg-canvas/40 px-1">service_listings</code> пустая — CRM показывает услуги из
+          старой таблицы <code className="rounded bg-canvas/40 px-1">services</code> с числовыми id, а{" "}
+          <code className="rounded bg-canvas/40 px-1">staff_services.service_id</code> ждёт UUID. Поэтому переключатели
           услуг падают с ошибкой внешнего ключа. Запустите миграцию{" "}
-          <code className="rounded bg-black/40 px-1">supabase/migrations/012_service_listings_fk.sql</code> или добавьте
+          <code className="rounded bg-canvas/40 px-1">supabase/migrations/012_service_listings_fk.sql</code> или добавьте
           услуги в новой схеме на странице «Услуги», затем обновите эту страницу.
         </p>
       )}
@@ -1253,11 +1253,11 @@ export function AdminStaffPage() {
 
       <form
         onSubmit={onAdd}
-        className="rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-black/60 p-4 shadow-inner shadow-black/40 sm:p-5"
+        className="rounded-lg border border-line/15 bg-gradient-to-b from-zinc-950 to-black/60 p-4 shadow-inner shadow-black/40 sm:p-5"
       >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold tracking-wide text-zinc-100">Добавить мастера</h2>
-          <span className="text-[11px] text-zinc-500">
+          <h2 className="text-sm font-semibold tracking-wide text-fg">Добавить мастера</h2>
+          <span className="text-[11px] text-muted">
             роль можно изменить позже в строке мастера
           </span>
         </div>
@@ -1266,7 +1266,7 @@ export function AdminStaffPage() {
           <div className="flex min-w-0 items-baseline justify-between gap-2">
             <label
               htmlFor="staff-new-phone"
-              className="text-[11px] font-medium uppercase tracking-wide text-zinc-500"
+              className="text-[11px] font-medium uppercase tracking-wide text-muted"
             >
               {t("login.phone")}
             </label>
@@ -1278,7 +1278,7 @@ export function AdminStaffPage() {
                 "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide transition select-none " +
                 (noPhone
                   ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
-                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200")
+                  : "border-line/20 bg-surface/50 text-muted hover:border-line/30 hover:text-fg")
               }
               title="Добавить мастера без номера телефона"
             >
@@ -1286,7 +1286,7 @@ export function AdminStaffPage() {
                 aria-hidden="true"
                 className={
                   "flex h-3 w-3 items-center justify-center rounded-full border text-[9px] leading-none " +
-                  (noPhone ? "border-amber-300 bg-amber-300 text-black" : "border-zinc-500")
+                  (noPhone ? "border-amber-300 bg-amber-300 text-black" : "border-line/30")
                 }
               >
                 {noPhone ? "✓" : ""}
@@ -1296,11 +1296,11 @@ export function AdminStaffPage() {
           </div>
           <label
             htmlFor="staff-new-name"
-            className="text-[11px] font-medium uppercase tracking-wide text-zinc-500"
+            className="text-[11px] font-medium uppercase tracking-wide text-muted"
           >
             {t("adminStaff.name")}
           </label>
-          <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
             {t("role.label")}
           </span>
           <span aria-hidden="true" />
@@ -1310,7 +1310,7 @@ export function AdminStaffPage() {
             value={noPhone ? "" : phone}
             onChange={(e) => setPhone(e.target.value)}
             disabled={noPhone}
-            className="h-9 w-full rounded-md border border-zinc-700 bg-black/80 px-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-sky-600/60 focus:ring-1 focus:ring-sky-600/40 disabled:cursor-not-allowed disabled:border-dashed disabled:border-zinc-700 disabled:bg-zinc-950/50 disabled:text-zinc-500 disabled:opacity-80"
+            className="h-9 w-full rounded-md border border-line/20 bg-canvas/80 px-2.5 text-sm text-fg placeholder-muted outline-none transition focus:border-gold/60 focus:ring-1 focus:ring-gold/40 disabled:cursor-not-allowed disabled:border-dashed disabled:border-line/20 disabled:bg-panel/50 disabled:text-muted disabled:opacity-80"
             placeholder={noPhone ? "не требуется для входа" : "введите номер"}
             inputMode="tel"
             autoComplete="off"
@@ -1319,7 +1319,7 @@ export function AdminStaffPage() {
             id="staff-new-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-9 w-full rounded-md border border-zinc-700 bg-black/80 px-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition focus:border-sky-600/60 focus:ring-1 focus:ring-sky-600/40"
+            className="h-9 w-full rounded-md border border-line/20 bg-canvas/80 px-2.5 text-sm text-fg placeholder-muted outline-none transition focus:border-gold/60 focus:ring-1 focus:ring-gold/40"
             placeholder="имя мастера"
           />
           <div className="flex h-9 items-center gap-1">
@@ -1339,7 +1339,7 @@ export function AdminStaffPage() {
                     "h-8 rounded-full border px-3 text-xs transition select-none " +
                     (on
                       ? "border-sky-500/60 bg-sky-600/20 text-sky-100 shadow-sm shadow-sky-900/40"
-                      : "border-zinc-700 bg-zinc-900/40 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200")
+                      : "border-line/20 bg-surface/40 text-muted hover:border-line/30 hover:text-fg")
                   }
                 >
                   {lbl}
@@ -1349,23 +1349,23 @@ export function AdminStaffPage() {
         </div>
           <button
             type="submit"
-            className="inline-flex h-9 items-center justify-center rounded-md bg-sky-600 px-4 text-sm font-semibold text-white shadow-sm shadow-sky-950/40 transition hover:bg-sky-500 active:bg-sky-700"
+            className="inline-flex h-9 items-center justify-center rounded-md bg-sky-600 px-4 text-sm font-semibold text-fg shadow-sm shadow-sky-950/40 transition hover:bg-sky-500 active:bg-sky-700"
           >
           {t("common.add")}
         </button>
         </div>
       </form>
 
-      <div className="overflow-x-auto border border-zinc-800">
+      <div className="overflow-x-auto border border-line/15">
         <table className="w-full border-collapse text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-400">
+          <thead className="bg-surface text-muted">
             <tr>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("login.phone")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.name")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.roleBrief")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">{t("adminStaff.active")}</th>
-              <th className="min-w-[10rem] border-b border-zinc-800 px-3 py-2">{t("adminStaff.services")}</th>
-              <th className="border-b border-zinc-800 px-3 py-2">actions</th>
+              <th className="border-b border-line/15 px-3 py-2">{t("login.phone")}</th>
+              <th className="border-b border-line/15 px-3 py-2">{t("adminStaff.name")}</th>
+              <th className="border-b border-line/15 px-3 py-2">{t("adminStaff.roleBrief")}</th>
+              <th className="border-b border-line/15 px-3 py-2">{t("adminStaff.active")}</th>
+              <th className="min-w-[10rem] border-b border-line/15 px-3 py-2">{t("adminStaff.services")}</th>
+              <th className="border-b border-line/15 px-3 py-2">actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1373,7 +1373,7 @@ export function AdminStaffPage() {
               <tr>
                 <td
                   colSpan={6}
-                  className="px-3 py-6 text-center text-xs text-zinc-500"
+                  className="px-3 py-6 text-center text-xs text-muted"
                 >
                   Пока нет мастеров и менеджеров. Добавьте первого через форму выше.
                 </td>
@@ -1384,13 +1384,13 @@ export function AdminStaffPage() {
               const expanded = !!expandedById[r.id];
               return (
                 <Fragment key={r.id}>
-                  <tr className="border-b border-zinc-800/80 align-middle">
-                <td className="px-3 py-2 text-zinc-300">
+                  <tr className="border-b border-line/15/80 align-middle">
+                <td className="px-3 py-2 text-fg">
                   {editingId === r.id ? (
                     <input
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
-                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs font-mono"
+                      className="w-full rounded border border-line/25 bg-canvas px-1 py-0.5 text-xs font-mono"
                     />
                   ) : (
                     <PrivateValue
@@ -1409,13 +1409,13 @@ export function AdminStaffPage() {
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs"
+                      className="w-full rounded border border-line/25 bg-canvas px-1 py-0.5 text-xs"
                     />
                   ) : (
                     r.name
                   )}
                 </td>
-                    <td className="max-w-[14rem] px-3 py-2 text-xs text-zinc-400">{roleLabelsSummary(r)}</td>
+                    <td className="max-w-[14rem] px-3 py-2 text-xs text-muted">{roleLabelsSummary(r)}</td>
                 <td className="px-3 py-2">
                       <div className="flex flex-col gap-0.5 text-xs">
                         <div className="flex items-center gap-2">
@@ -1424,7 +1424,7 @@ export function AdminStaffPage() {
                             onCheckedChange={(v) => void updateStaffActive(r, v)}
                             aria-label={`${r.name}: активен в CRM и на сайте`}
                           />
-                          <span className="text-zinc-500">
+                          <span className="text-muted">
                             {r.is_active ? t("adminStaff.yes") : t("adminStaff.no")}
                           </span>
                         </div>
@@ -1434,7 +1434,7 @@ export function AdminStaffPage() {
                             pr === "admin" || pr === "owner" || rowRoles(r).some((x) => x === "admin");
                           if (isAdmin) {
                             return (
-                              <span className="text-[10px] leading-snug text-zinc-600">
+                              <span className="text-[10px] leading-snug text-muted">
                                 админ — скрыт на сайте
                               </span>
                             );
@@ -1445,14 +1445,14 @@ export function AdminStaffPage() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-muted">
                           {assigned.length === 0
                             ? t("adminStaff.assignedNone")
                             : t("adminStaff.assignedCount", { count: assigned.length })}
                         </span>
                         <button
                           type="button"
-                          className="w-fit rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-left text-xs text-zinc-200 hover:border-zinc-500 hover:text-white"
+                          className="w-fit rounded border border-line/20 bg-surface px-2 py-1 text-left text-xs text-fg hover:border-line/30 hover:text-fg"
                           onClick={() => toggleRowExpanded(r.id)}
                         >
                           {expanded ? t("adminStaff.collapseRow") : t("adminStaff.expandRow")}
@@ -1462,16 +1462,16 @@ export function AdminStaffPage() {
                     <td className="space-x-2 px-3 py-2 whitespace-nowrap">
                       {editingId === r.id ? (
                         <>
-                          <button type="button" className="text-sky-400 underline" onClick={() => void saveEdit()}>
+                          <button type="button" className="text-gold underline" onClick={() => void saveEdit()}>
                             {t("common.save")}
                           </button>
-                          <button type="button" className="text-zinc-500 underline" onClick={() => setEditingId(null)}>
+                          <button type="button" className="text-muted underline" onClick={() => setEditingId(null)}>
                             {t("common.cancel")}
                           </button>
                         </>
                       ) : (
                         <>
-                          <button type="button" className="text-sky-400 underline" onClick={() => startEdit(r)}>
+                          <button type="button" className="text-gold underline" onClick={() => startEdit(r)}>
                             {t("adminStaff.edit")}
                           </button>
                           <button type="button" className="text-red-400 underline" onClick={() => void remove(r)}>
@@ -1482,18 +1482,18 @@ export function AdminStaffPage() {
                     </td>
                   </tr>
                   {expanded && (
-                    <tr className="border-b border-zinc-800/80 bg-zinc-950/50 align-top">
+                    <tr className="border-b border-line/15/80 bg-panel/50 align-top">
                       <td colSpan={6} className="px-3 py-3">
                         <div className="flex flex-col gap-4 text-sm">
                           <div>
-                            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted">
                               {t("role.label")}
                             </p>
                   <div className="flex flex-wrap gap-2">
                     {(["admin", "manager", "worker"] as UiRole[]).map((roleToken) => {
                       const current = rowRoles(r);
                       return (
-                        <label key={roleToken} className="inline-flex items-center gap-1 text-xs text-zinc-300">
+                        <label key={roleToken} className="inline-flex items-center gap-1 text-xs text-fg">
                           <input
                             type="checkbox"
                             checked={current.includes(roleToken)}
@@ -1516,18 +1516,18 @@ export function AdminStaffPage() {
                     })}
                   </div>
                           </div>
-                          <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
-                            <span className="text-[11px] font-medium uppercase text-zinc-500">
+                          <div className="flex flex-col gap-1 rounded border border-line/15/80 p-2">
+                            <span className="text-[11px] font-medium uppercase text-muted">
                               Календарь сотрудника
                             </span>
                             <StaffCalendarEmailField row={r} onSaved={() => void load()} onError={setErr} />
-                            <span className="text-[10px] leading-snug text-zinc-600">
+                            <span className="text-[10px] leading-snug text-muted">
                               Персональный e-mail для Google/Apple/Outlook календаря. На него будут
                               приходить приглашения и ICS-файлы записей, когда подключим интеграцию.
                             </span>
                           </div>
-                          <div className="flex flex-col gap-1 rounded border border-zinc-800/80 p-2">
-                            <span className="text-[11px] font-medium uppercase text-zinc-500">
+                          <div className="flex flex-col gap-1 rounded border border-line/15/80 p-2">
+                            <span className="text-[11px] font-medium uppercase text-muted">
                               {t("adminStaff.active")}
                             </span>
                             <div className="flex items-center gap-2 text-xs">
@@ -1536,7 +1536,7 @@ export function AdminStaffPage() {
                                 onCheckedChange={(v) => void updateStaffActive(r, v)}
                                 aria-label={`${r.name}: активен в CRM и на сайте`}
                               />
-                              <span className="text-zinc-400">
+                              <span className="text-muted">
                                 {r.is_active ? "Активен" : "Неактивен"}
                               </span>
                             </div>
@@ -1545,7 +1545,7 @@ export function AdminStaffPage() {
                               const isAdmin =
                                 pr === "admin" || pr === "owner" || rowRoles(r).some((x) => x === "admin");
                               return (
-                                <span className="text-[10px] leading-snug text-zinc-600">
+                                <span className="text-[10px] leading-snug text-muted">
                                   Один переключатель: включает мастера и в CRM, и в публичной записи, и в блоке
                                   «Мастера» на сайте.
                                   {isAdmin
@@ -1582,12 +1582,12 @@ export function AdminStaffPage() {
                                     — что делает мастер ({assigned.length})
                                   </span>
                                 </p>
-                                <span className="text-[10px] text-zinc-500">
+                                <span className="text-[10px] text-muted">
                                   тащите карточку: вверх/вниз — порядок, в «Неактивные» — убрать категорию
                                 </span>
                               </header>
                               {assigned.length === 0 ? (
-                                <p className="mt-1 text-xs text-zinc-500">
+                                <p className="mt-1 text-xs text-muted">
                                   Нет активных услуг. Включите тумблеры в блоке «Неактивные услуги» ниже.
                                 </p>
                               ) : (
@@ -1631,7 +1631,7 @@ export function AdminStaffPage() {
                                             : undefined
                                         }
                                         className={
-                                          "group relative rounded-md border bg-black/25 transition-all duration-150 " +
+                                          "group relative rounded-md border bg-canvas/25 transition-all duration-150 " +
                                           (draggable
                                             ? "cursor-grab active:cursor-grabbing hover:border-emerald-800/80 hover:bg-emerald-950/20 "
                                             : "") +
@@ -1639,7 +1639,7 @@ export function AdminStaffPage() {
                                             ? "border-sky-500/80 bg-sky-950/20 opacity-60 shadow-lg shadow-sky-500/20 ring-1 ring-sky-500/40"
                                             : isDropTarget
                                               ? "border-dashed border-sky-700/70"
-                                              : "border-zinc-800/60")
+                                              : "border-line/15/60")
                                         }
                                       >
                                         <div className="flex w-full items-center gap-2 px-2 py-2 text-left">
@@ -1647,8 +1647,8 @@ export function AdminStaffPage() {
                                             className={
                                               "shrink-0 select-none font-mono text-[11px] leading-none transition-colors " +
                                               (draggable
-                                                ? "text-zinc-600 group-hover:text-emerald-400"
-                                                : "text-zinc-700 opacity-40")
+                                                ? "text-muted group-hover:text-emerald-400"
+                                                : "text-muted opacity-40")
                                             }
                                             title={
                                               draggable
@@ -1667,13 +1667,13 @@ export function AdminStaffPage() {
                                             aria-controls={assignedCatPanelId}
                                             draggable={false}
                                           >
-                                            <span className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 transition group-hover:border-zinc-600">
+                                            <span className="shrink-0 rounded border border-line/20 px-1.5 py-0.5 text-[10px] text-muted transition group-hover:border-line/25">
                                               {expanded ? "▼" : "▶"}
                                             </span>
-                                            <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
+                                            <span className="min-w-0 flex-1 text-xs font-medium text-fg">
                                               {catName}
                                             </span>
-                                            <span className="shrink-0 text-[10px] text-zinc-500">
+                                            <span className="shrink-0 text-[10px] text-muted">
                                               {siteCount}/{items.length} на сайте
                                             </span>
                                           </button>
@@ -1681,14 +1681,14 @@ export function AdminStaffPage() {
                                         {expanded && (
                                           <ul
                                             id={assignedCatPanelId}
-                                            className="space-y-1.5 border-t border-zinc-800/50 px-2 py-2 text-xs text-zinc-200"
+                                            className="space-y-1.5 border-t border-line/15/50 px-2 py-2 text-xs text-fg"
                                           >
                                             {items.map((a) => (
                                               <li
                                                 key={a.serviceId}
-                                                className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zinc-800/60 pb-1 last:border-0 last:pb-0"
+                                                className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line/15/60 pb-1 last:border-0 last:pb-0"
                                               >
-                                                <span className="min-w-0 flex-1 font-medium text-zinc-100">
+                                                <span className="min-w-0 flex-1 font-medium text-fg">
                                                   {a.name}
                                                 </span>
                                                 <span
@@ -1700,7 +1700,7 @@ export function AdminStaffPage() {
                                                 >
                                                   {a.show_on_site ? "на сайте" : "только CRM"}
                                                 </span>
-                                                <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-zinc-400">
+                                                <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted">
                                                   <ToggleSwitch
                                                     size="sm"
                                                     checked={a.show_on_site}
@@ -1714,7 +1714,7 @@ export function AdminStaffPage() {
                                                 <button
                                                   type="button"
                                                   onClick={() => void toggleService(r.id, a.serviceId, false)}
-                                                  className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-500 transition hover:border-red-800/60 hover:text-red-300"
+                                                  className="shrink-0 rounded border border-line/20 px-1.5 py-0.5 text-[10px] text-muted transition hover:border-red-800/60 hover:text-red-300"
                                                   title="Убрать услугу у мастера"
                                                 >
                                                   убрать
@@ -1746,12 +1746,12 @@ export function AdminStaffPage() {
                               return (
                                 <section
                                   className={
-                                    "rounded border bg-black/20 px-2 py-2 transition-colors " +
+                                    "rounded border bg-canvas/20 px-2 py-2 transition-colors " +
                                     (skillDrag &&
                                     skillDrag.staffId === r.id &&
                                     skillDrag.from === "assigned"
                                       ? "border-amber-500/70 bg-amber-950/15 ring-1 ring-amber-400/30"
-                                      : "border-zinc-800/80")
+                                      : "border-line/15/80")
                                   }
                                   onDragOver={onSkillCardDragOver}
                                   onDrop={(e) =>
@@ -1763,22 +1763,22 @@ export function AdminStaffPage() {
                                   }
                                 >
                                   <header className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-                                    <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
                                       Неактивные услуги
-                                      <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-zinc-500">
+                                      <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-muted">
                                         — включите, чтобы добавить мастеру ({totalInactive})
                                       </span>
                                     </p>
-                                    <span className="text-[10px] text-zinc-500">
+                                    <span className="text-[10px] text-muted">
                                       тащите в «Активные», чтобы добавить категорию мастеру
                                     </span>
                                   </header>
                                   {activeServices.length === 0 ? (
-                                    <p className="text-xs text-zinc-500">
+                                    <p className="text-xs text-muted">
                                       Каталог услуг пуст — добавьте услуги на странице «Услуги».
                                     </p>
                                   ) : inactiveByCat.length === 0 ? (
-                                    <p className="text-xs text-zinc-500">
+                                    <p className="text-xs text-muted">
                                       Мастер уже закреплён за всеми услугами салона.
                                     </p>
                                   ) : (
@@ -1820,7 +1820,7 @@ export function AdminStaffPage() {
                                                 : undefined
                                             }
                                             className={
-                                              "group relative rounded-md border bg-black/25 transition-all duration-150 " +
+                                              "group relative rounded-md border bg-canvas/25 transition-all duration-150 " +
                                               (draggable
                                                 ? "cursor-grab active:cursor-grabbing hover:border-sky-800/80 hover:bg-sky-950/15 "
                                                 : "") +
@@ -1828,7 +1828,7 @@ export function AdminStaffPage() {
                                                 ? "border-sky-500/80 bg-sky-950/20 opacity-60 shadow-lg shadow-sky-500/20 ring-1 ring-sky-500/40"
                                                 : isDropTarget
                                                   ? "border-dashed border-sky-700/70"
-                                                  : "border-zinc-800/60")
+                                                  : "border-line/15/60")
                                             }
                                           >
                                             <div className="flex flex-wrap items-center gap-2 px-2 py-2">
@@ -1836,8 +1836,8 @@ export function AdminStaffPage() {
                                                 className={
                                                   "shrink-0 select-none font-mono text-[11px] leading-none transition-colors " +
                                                   (draggable
-                                                    ? "text-zinc-600 group-hover:text-sky-400"
-                                                    : "text-zinc-700 opacity-40")
+                                                    ? "text-muted group-hover:text-gold"
+                                                    : "text-muted opacity-40")
                                                 }
                                                 title={
                                                   draggable
@@ -1851,7 +1851,7 @@ export function AdminStaffPage() {
                                               <button
                                                 type="button"
                                                 onClick={() => toggleSkillCategoryPanel(r.id, catName)}
-                                                className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 transition hover:border-zinc-500 hover:bg-zinc-800"
+                                                className="shrink-0 rounded border border-line/20 px-1.5 py-0.5 text-[10px] text-muted transition hover:border-line/30 hover:bg-surface"
                                                 aria-expanded={expanded}
                                                 aria-controls={catPanelId}
                                                 title={
@@ -1861,10 +1861,10 @@ export function AdminStaffPage() {
                                               >
                                                 {expanded ? "▼" : "▶"}
                                               </button>
-                                              <span className="min-w-0 flex-1 text-xs font-medium text-zinc-200">
+                                              <span className="min-w-0 flex-1 text-xs font-medium text-fg">
                                                 {catName}
                                               </span>
-                                              <span className="shrink-0 rounded-full bg-zinc-900/80 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+                                              <span className="shrink-0 rounded-full bg-surface/80 px-1.5 py-0.5 text-[10px] font-medium text-muted">
                                                 {catSvcs.length} не включено
                                               </span>
                                               <button
@@ -1882,12 +1882,12 @@ export function AdminStaffPage() {
                                             {expanded && (
                                               <div
                                                 id={catPanelId}
-                                                className="flex flex-wrap gap-x-3 gap-y-1 border-t border-zinc-800/50 px-2 py-2"
+                                                className="flex flex-wrap gap-x-3 gap-y-1 border-t border-line/15/50 px-2 py-2"
                                               >
                                                 {catSvcs.map((s) => (
                                                   <div
                                                     key={s.id}
-                                                    className="flex max-w-[11rem] items-center gap-1.5 text-xs text-zinc-400"
+                                                    className="flex max-w-[11rem] items-center gap-1.5 text-xs text-muted"
                                                   >
                                                     <ToggleSwitch
                                                       size="sm"
@@ -1945,13 +1945,13 @@ export function AdminStaffPage() {
               · поддержка сайта и CRM
             </span>
           </div>
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-muted">
             не участвует в расписании салона
           </span>
         </header>
 
         {adminRows.length === 0 ? (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted">
             Пока нет администраторов. Добавьте сотрудника с ролью «Админ» через форму выше — он
             появится здесь, а не в таблице салона.
           </p>
@@ -1978,11 +1978,11 @@ export function AdminStaffPage() {
                         <input
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="w-full rounded border border-zinc-600 bg-black px-1 py-0.5 text-xs text-zinc-100"
+                          className="w-full rounded border border-line/25 bg-canvas px-1 py-0.5 text-xs text-fg"
                           aria-label="Имя"
                         />
                       ) : (
-                        <span className="block truncate font-medium text-zinc-100">
+                        <span className="block truncate font-medium text-fg">
                           {r.name}
                         </span>
                       )}
@@ -1993,14 +1993,14 @@ export function AdminStaffPage() {
                   </div>
 
                   <div className="min-w-[7rem] text-xs">
-                    <span className="block text-[10px] uppercase tracking-wide text-zinc-600">
+                    <span className="block text-[10px] uppercase tracking-wide text-muted">
                       {t("login.phone")}
                     </span>
                     {isEditing ? (
                       <input
                         value={editPhone}
                         onChange={(e) => setEditPhone(e.target.value)}
-                        className="mt-0.5 w-full rounded border border-zinc-600 bg-black px-1 py-0.5 font-mono text-xs text-zinc-100"
+                        className="mt-0.5 w-full rounded border border-line/25 bg-canvas px-1 py-0.5 font-mono text-xs text-fg"
                         aria-label="Телефон"
                       />
                     ) : (
@@ -2011,7 +2011,7 @@ export function AdminStaffPage() {
                         kind="phone"
                         showTitle={t("adminStaff.revealPhone", { defaultValue: "Показать номер" })}
                         hideTitle={t("adminStaff.hidePhone", { defaultValue: "Скрыть номер" })}
-                        className="mt-0.5 block text-xs text-zinc-400"
+                        className="mt-0.5 block text-xs text-muted"
                       />
                     )}
                   </div>
@@ -2022,7 +2022,7 @@ export function AdminStaffPage() {
                       onCheckedChange={(v) => void updateStaffActive(r, v)}
                       aria-label={`${r.name}: активен в CRM`}
                     />
-                    <span className="text-zinc-500">
+                    <span className="text-muted">
                       {r.is_active ? "активен" : "выключен"}
                     </span>
                   </div>
@@ -2032,14 +2032,14 @@ export function AdminStaffPage() {
                       <>
                         <button
                           type="button"
-                          className="text-sky-400 underline"
+                          className="text-gold underline"
                           onClick={() => void saveEdit()}
                         >
                         {t("common.save")}
                       </button>
                         <button
                           type="button"
-                          className="text-zinc-500 underline"
+                          className="text-muted underline"
                           onClick={() => setEditingId(null)}
                         >
                         {t("common.cancel")}
@@ -2049,7 +2049,7 @@ export function AdminStaffPage() {
                     <>
                         <button
                           type="button"
-                          className="text-sky-400 underline"
+                          className="text-gold underline"
                           onClick={() => startEdit(r)}
                         >
                         {t("adminStaff.edit")}
@@ -2072,7 +2072,7 @@ export function AdminStaffPage() {
           </ul>
         )}
 
-        <p className="mt-3 border-t border-amber-900/20 pt-2 text-[10px] leading-snug text-zinc-500">
+        <p className="mt-3 border-t border-amber-900/20 pt-2 text-[10px] leading-snug text-muted">
           Администраторы всегда скрыты на публичном сайте и в онлайн-записи. Этот блок — техперсонал,
           обслуживающий CRM и сайт салона. Чтобы добавить нового админа, используйте форму выше и
           выберите роль «Админ» — сотрудник появится именно здесь.

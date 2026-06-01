@@ -43,15 +43,15 @@ function KpiCard({
       ? "border-amber-500/40"
       : tone === "red"
       ? "border-red-500/50"
-      : "border-zinc-800";
+      : "border-line/15";
   const inner = (
     <>
-      <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-fg">{value}</p>
+      {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </>
   );
-  const cls = `rounded-xl border ${toneClass} bg-zinc-950 p-4 transition hover:border-zinc-600`;
+  const cls = `rounded-xl border ${toneClass} bg-panel p-4 transition hover:border-line/30`;
   if (href) {
     return (
       <Link to={href} className={cls}>
@@ -123,49 +123,49 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold text-white">{t("dashboard.title")}</h1>
-        <p className="text-sm text-zinc-500">{t("dashboard.subtitle")}</p>
+        <h1 className="text-2xl font-semibold text-fg">{t("dashboard.title")}</h1>
+        <p className="text-sm text-muted">{t("dashboard.subtitle")}</p>
       </header>
 
       {loading ? (
-        <p className="text-zinc-500">{t("common.loading")}</p>
+        <p className="text-muted">{t("common.loading")}</p>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <div className="rounded-xl border border-line/15 bg-panel p-5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">
                 {t("dashboard.today")}
               </p>
-              <p className="mt-2 text-3xl font-semibold text-white">{todayAppointments.length}</p>
-              <p className="text-sm text-zinc-500">{t("common.bookings")}</p>
+              <p className="mt-2 text-3xl font-semibold text-fg">{todayAppointments.length}</p>
+              <p className="text-sm text-muted">{t("common.bookings")}</p>
             </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <div className="rounded-xl border border-line/15 bg-panel p-5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">
                 {t("dashboard.pipeline")}
               </p>
-              <p className="mt-2 text-3xl font-semibold text-white">
+              <p className="mt-2 text-3xl font-semibold text-fg">
                 {mine.filter((b) => b.status === "pending").length}
               </p>
-              <p className="text-sm text-zinc-500">{t("dashboard.pending")}</p>
+              <p className="text-sm text-muted">{t("dashboard.pending")}</p>
             </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            <div className="rounded-xl border border-line/15 bg-panel p-5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">
                 {t("dashboard.upcoming")}
               </p>
-              <p className="mt-2 text-3xl font-semibold text-white">{upcoming.length}</p>
-              <p className="text-sm text-zinc-500">{t("dashboard.nextSlots")}</p>
+              <p className="mt-2 text-3xl font-semibold text-fg">{upcoming.length}</p>
+              <p className="text-sm text-muted">{t("dashboard.nextSlots")}</p>
             </div>
           </div>
 
           {canManage && kpi && (
             <section className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white">
+                <h2 className="text-sm font-semibold text-fg">
                   {t("dashboard.kpi.title", { defaultValue: "Бизнес-метрики" })}
                 </h2>
                 <Link
                   to="/analytics"
-                  className="text-xs text-sky-400 hover:underline"
+                  className="text-xs text-gold hover:underline"
                 >
                   {t("dashboard.kpi.openAnalytics", { defaultValue: "Подробная аналитика →" })}
                 </Link>
@@ -219,20 +219,20 @@ export function DashboardPage() {
             </section>
           )}
 
-          <section className="rounded-xl border border-zinc-800 bg-zinc-950">
-            <div className="border-b border-zinc-800 px-5 py-3">
-              <h2 className="text-sm font-semibold text-white">{t("dashboard.upcomingSection")}</h2>
+          <section className="rounded-xl border border-line/15 bg-panel">
+            <div className="border-b border-line/15 px-5 py-3">
+              <h2 className="text-sm font-semibold text-fg">{t("dashboard.upcomingSection")}</h2>
             </div>
-            <ul className="divide-y divide-zinc-800">
+            <ul className="divide-y divide-line/15">
               {upcoming.length === 0 && (
-                <li className="px-5 py-8 text-center text-sm text-zinc-500">
+                <li className="px-5 py-8 text-center text-sm text-muted">
                   {t("dashboard.noUpcoming")}
                 </li>
               )}
               {upcoming.map((b) => (
                 <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
-                  <span className="font-medium text-zinc-200">{b.client_name}</span>
-                  <span className="text-zinc-500">{format(parseISO(b.start_time), "EEE d MMM HH:mm")}</span>
+                  <span className="font-medium text-fg">{b.client_name}</span>
+                  <span className="text-muted">{format(parseISO(b.start_time), "EEE d MMM HH:mm")}</span>
                 </li>
               ))}
             </ul>

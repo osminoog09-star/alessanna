@@ -122,35 +122,35 @@ export function AnalyticsPage() {
     return map;
   }, [appointments, serviceById]);
 
-  if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
+  if (loading) return <p className="text-muted">{t("common.loading")}</p>;
 
   return (
     <div className="space-y-10">
       <header>
-        <h1 className="text-2xl font-semibold text-white">{t("analytics.title")}</h1>
-        <p className="text-sm text-zinc-500">{t("analytics.subtitle")}</p>
+        <h1 className="text-2xl font-semibold text-fg">{t("analytics.title")}</h1>
+        <p className="text-sm text-muted">{t("analytics.subtitle")}</p>
       </header>
 
       <section>
-        <h2 className="text-sm font-semibold text-white">{t("analytics.revenueByEmployee")}</h2>
-        <p className="mt-1 text-xs text-zinc-600">{t("analytics.revenueNote")}</p>
-        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-800">
+        <h2 className="text-sm font-semibold text-fg">{t("analytics.revenueByEmployee")}</h2>
+        <p className="mt-1 text-xs text-muted">{t("analytics.revenueNote")}</p>
+        <div className="mt-3 overflow-x-auto rounded-xl border border-line/15">
           <table className="w-full min-w-[480px] text-left text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-950 text-xs uppercase text-zinc-500">
+            <thead className="border-b border-line/15 bg-panel text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3">{t("analytics.colEmployee")}</th>
                 <th className="px-4 py-3">{t("analytics.colBookings")}</th>
                 <th className="px-4 py-3">{t("analytics.colRevenue")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y divide-line/15">
               {staffList.map((em) => {
                 const st = byStaff.get(em.id) ?? { count: 0, revenueCents: 0 };
                 return (
-                  <tr key={em.id} className="bg-zinc-950/80">
-                    <td className="px-4 py-3 text-white">{em.name}</td>
-                    <td className="px-4 py-3 text-zinc-400">{st.count}</td>
-                    <td className="px-4 py-3 text-zinc-400">{eurFromCents(st.revenueCents)}</td>
+                  <tr key={em.id} className="bg-panel/80">
+                    <td className="px-4 py-3 text-fg">{em.name}</td>
+                    <td className="px-4 py-3 text-muted">{st.count}</td>
+                    <td className="px-4 py-3 text-muted">{eurFromCents(st.revenueCents)}</td>
                   </tr>
                 );
               })}
@@ -160,23 +160,23 @@ export function AnalyticsPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-white">{t("analytics.utilizationTitle")}</h2>
-        <p className="mt-1 text-xs text-zinc-600">{t("analytics.utilizationHint")}</p>
-        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-800">
+        <h2 className="text-sm font-semibold text-fg">{t("analytics.utilizationTitle")}</h2>
+        <p className="mt-1 text-xs text-muted">{t("analytics.utilizationHint")}</p>
+        <div className="mt-3 overflow-x-auto rounded-xl border border-line/15">
           <table className="w-full min-w-[360px] text-left text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-950 text-xs uppercase text-zinc-500">
+            <thead className="border-b border-line/15 bg-panel text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3">{t("analytics.colEmployee")}</th>
                 <th className="px-4 py-3">{t("analytics.colBookedMinutes")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y divide-line/15">
               {staffList.map((em) => {
                 const mins = utilization30d.get(em.id) ?? 0;
                 return (
-                  <tr key={em.id} className="bg-zinc-950/80">
-                    <td className="px-4 py-3 text-white">{em.name}</td>
-                    <td className="px-4 py-3 text-zinc-400">{mins}</td>
+                  <tr key={em.id} className="bg-panel/80">
+                    <td className="px-4 py-3 text-fg">{em.name}</td>
+                    <td className="px-4 py-3 text-muted">{mins}</td>
                   </tr>
                 );
               })}
@@ -186,15 +186,15 @@ export function AnalyticsPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-white">{t("analytics.popular")}</h2>
-        <ul className="mt-3 space-y-2 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-          {popularServices.length === 0 && <li className="text-sm text-zinc-500">{t("analytics.noData")}</li>}
+        <h2 className="text-sm font-semibold text-fg">{t("analytics.popular")}</h2>
+        <ul className="mt-3 space-y-2 rounded-xl border border-line/15 bg-panel p-4">
+          {popularServices.length === 0 && <li className="text-sm text-muted">{t("analytics.noData")}</li>}
           {popularServices.map(([id, count]) => {
             const sv = serviceById.get(id);
             return (
-              <li key={id} className="flex justify-between text-sm text-zinc-300">
+              <li key={id} className="flex justify-between text-sm text-fg">
                 <span>{sv?.name || t("analytics.unknownService", { id })}</span>
-                <span className="text-zinc-500">{t("analytics.bookingsCount", { count })}</span>
+                <span className="text-muted">{t("analytics.bookingsCount", { count })}</span>
               </li>
             );
           })}

@@ -290,8 +290,8 @@ export function AdminInvitesPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-xl font-semibold text-zinc-100">Приглашения сотрудников</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h1 className="text-xl font-semibold text-fg">Приглашения сотрудников</h1>
+        <p className="mt-1 text-sm text-muted">
           Создавайте одноразовые ссылки для регистрации мастеров/менеджеров без
           ручной выдачи паролей. После того, как кандидат заполнит форму и вы
           одобрите заявку, его устройство автоматически становится доверенным.
@@ -305,17 +305,17 @@ export function AdminInvitesPage() {
       ) : null}
 
       {/* Forma sozdaniya */}
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+      <section className="rounded-2xl border border-line/15 bg-panel p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-fg">
           Создать ссылку
         </h2>
         <form onSubmit={onCreate} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block text-sm text-zinc-300">
+          <label className="block text-sm text-fg">
             Ожидаемая роль
             <select
               value={formRole}
               onChange={(e) => setFormRole(e.target.value as typeof formRole)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-600"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-fg outline-none focus:border-sky-600"
             >
               <option value="">— не указано —</option>
               <option value="worker">Мастер</option>
@@ -323,25 +323,25 @@ export function AdminInvitesPage() {
               <option value="admin">Админ</option>
             </select>
           </label>
-          <label className="block text-sm text-zinc-300">
+          <label className="block text-sm text-fg">
             Имя кандидата (необязательно)
             <input
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-600"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-fg outline-none focus:border-sky-600"
               placeholder="Имя Фамилия"
             />
           </label>
-          <label className="block text-sm text-zinc-300 sm:col-span-2">
+          <label className="block text-sm text-fg sm:col-span-2">
             Заметка (видна кандидату)
             <input
               value={formNote}
               onChange={(e) => setFormNote(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-600"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-fg outline-none focus:border-sky-600"
               placeholder='напр. "Регистрируемся на ресепшен в субботу"'
             />
           </label>
-          <label className="block text-sm text-zinc-300">
+          <label className="block text-sm text-fg">
             Срок действия (часов)
             <input
               type="number"
@@ -349,10 +349,10 @@ export function AdminInvitesPage() {
               max={720}
               value={formHours}
               onChange={(e) => setFormHours(Number(e.target.value) || 1)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-600"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-fg outline-none focus:border-sky-600"
             />
           </label>
-          <label className="block text-sm text-zinc-300">
+          <label className="block text-sm text-fg">
             Сколько раз можно использовать
             <input
               type="number"
@@ -360,13 +360,13 @@ export function AdminInvitesPage() {
               max={50}
               value={formMaxUses}
               onChange={(e) => setFormMaxUses(Number(e.target.value) || 1)}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-600"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-fg outline-none focus:border-sky-600"
             />
           </label>
           <div className="sm:col-span-2">
             <button
               type="submit"
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-fg hover:bg-sky-500"
             >
               Создать ссылку
             </button>
@@ -377,7 +377,7 @@ export function AdminInvitesPage() {
           <div className="mt-4 rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-3 text-sm text-emerald-100">
             <div className="font-medium">Ссылка создана. Скопируйте и отправьте кандидату:</div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <code className="break-all rounded bg-black/40 px-2 py-1 text-xs text-emerald-100">
+              <code className="break-all rounded bg-canvas/40 px-2 py-1 text-xs text-emerald-100">
                 {justCreated.url}
               </code>
               <button
@@ -390,7 +390,7 @@ export function AdminInvitesPage() {
               <button
                 type="button"
                 onClick={() => setJustCreated(null)}
-                className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
+                className="rounded border border-line/20 px-2 py-1 text-xs text-fg hover:bg-surface"
               >
                 Скрыть
               </button>
@@ -404,14 +404,14 @@ export function AdminInvitesPage() {
       </section>
 
       {/* Pending zayavki */}
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+      <section className="rounded-2xl border border-line/15 bg-panel p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-fg">
           Заявки на регистрацию ({pending.length} в ожидании)
         </h2>
         {loading && submissions.length === 0 ? (
-          <div className="mt-3 text-sm text-zinc-500">Загружаем…</div>
+          <div className="mt-3 text-sm text-muted">Загружаем…</div>
         ) : pending.length === 0 ? (
-          <div className="mt-3 text-sm text-zinc-500">
+          <div className="mt-3 text-sm text-muted">
             Нет новых заявок. Когда кандидат заполнит форму по ссылке — она
             появится здесь.
           </div>
@@ -422,15 +422,15 @@ export function AdminInvitesPage() {
               return (
                 <li
                   key={s.id}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4"
+                  className="rounded-xl border border-line/15 bg-surface/40 p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-base font-semibold text-zinc-100">
+                      <div className="text-base font-semibold text-fg">
                         {s.submitted_name}
                       </div>
-                      <div className="mt-0.5 text-sm text-zinc-300">{s.submitted_phone}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                      <div className="mt-0.5 text-sm text-fg">{s.submitted_phone}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                         <span
                           className={`rounded-full border px-2 py-0.5 ${
                             s.device_kind === "salon"
@@ -441,7 +441,7 @@ export function AdminInvitesPage() {
                           {deviceKindLabel(s.device_kind)}
                         </span>
                         {s.invite_intended_role ? (
-                          <span className="rounded-full border border-zinc-700 bg-zinc-900/40 px-2 py-0.5">
+                          <span className="rounded-full border border-line/20 bg-surface/40 px-2 py-0.5">
                             Ожидаемая роль: {s.invite_intended_role}
                           </span>
                         ) : null}
@@ -449,7 +449,7 @@ export function AdminInvitesPage() {
                         <span>{formatDateTime(s.created_at)}</span>
                       </div>
                       {s.user_agent ? (
-                        <div className="mt-1 truncate text-[11px] text-zinc-500" title={s.user_agent}>
+                        <div className="mt-1 truncate text-[11px] text-muted" title={s.user_agent}>
                           {s.user_agent}
                         </div>
                       ) : null}
@@ -459,7 +459,7 @@ export function AdminInvitesPage() {
                         type="button"
                         disabled={busyId === s.id}
                         onClick={() => void onApprove(s, "create_new")}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-fg hover:bg-emerald-500 disabled:opacity-50"
                       >
                         Создать нового
                       </button>
@@ -486,16 +486,16 @@ export function AdminInvitesPage() {
                             className="flex flex-wrap items-center justify-between gap-2 text-sm"
                           >
                             <div className="min-w-0">
-                              <span className="font-medium text-zinc-100">{m.name}</span>
+                              <span className="font-medium text-fg">{m.name}</span>
                               {m.phone ? (
-                                <span className="ml-2 text-zinc-400">{m.phone}</span>
+                                <span className="ml-2 text-muted">{m.phone}</span>
                               ) : null}
                               {!m.is_active ? (
-                                <span className="ml-2 rounded-full border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                                <span className="ml-2 rounded-full border border-line/20 px-1.5 py-0.5 text-[10px] text-muted">
                                   неактивен
                                 </span>
                               ) : null}
-                              <span className="ml-2 text-[11px] text-zinc-500">
+                              <span className="ml-2 text-[11px] text-muted">
                                 совпадение: {m.score}
                               </span>
                             </div>
@@ -520,12 +520,12 @@ export function AdminInvitesPage() {
       </section>
 
       {/* Aktivnye ssylki */}
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+      <section className="rounded-2xl border border-line/15 bg-panel p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-fg">
           Существующие ссылки
         </h2>
         {invites.length === 0 ? (
-          <div className="mt-3 text-sm text-zinc-500">Пока ни одной ссылки.</div>
+          <div className="mt-3 text-sm text-muted">Пока ни одной ссылки.</div>
         ) : (
           <ul className="mt-3 space-y-2">
             {invites.map((i) => (
@@ -533,23 +533,23 @@ export function AdminInvitesPage() {
                 key={i.id}
                 className={`rounded-xl border p-3 text-sm ${
                   i.is_active
-                    ? "border-zinc-800 bg-zinc-900/40"
-                    : "border-zinc-800/60 bg-zinc-900/20 text-zinc-500"
+                    ? "border-line/15 bg-surface/40"
+                    : "border-line/15/60 bg-surface/20 text-muted"
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-zinc-100">
+                    <div className="text-fg">
                       {i.intended_name || i.intended_role || "Без подсказки"}{" "}
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-xs text-muted">
                         · до {formatDateTime(i.expires_at)} · {i.uses_count}/{i.max_uses}{" "}
                         использовано
                       </span>
                     </div>
                     {i.note ? (
-                      <div className="mt-0.5 text-xs text-zinc-400">{i.note}</div>
+                      <div className="mt-0.5 text-xs text-muted">{i.note}</div>
                     ) : null}
-                    <div className="mt-0.5 text-[11px] text-zinc-500">
+                    <div className="mt-0.5 text-[11px] text-muted">
                       Создано {formatDateTime(i.created_at)}
                       {i.created_by_admin_name ? ` · ${i.created_by_admin_name}` : ""}
                       {i.pending_submissions > 0
@@ -567,7 +567,7 @@ export function AdminInvitesPage() {
                         отозвана
                       </span>
                     ) : (
-                      <span className="rounded-full border border-zinc-700 bg-zinc-900/40 px-2 py-0.5 text-[10px] text-zinc-400">
+                      <span className="rounded-full border border-line/20 bg-surface/40 px-2 py-0.5 text-[10px] text-muted">
                         не активна
                       </span>
                     )}
@@ -591,8 +591,8 @@ export function AdminInvitesPage() {
 
       {/* Istoriya reshennykh */}
       {decided.length > 0 ? (
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
+        <section className="rounded-2xl border border-line/15 bg-panel p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-fg">
             История заявок
           </h2>
           <ul className="mt-3 space-y-2">
@@ -601,12 +601,12 @@ export function AdminInvitesPage() {
               return (
                 <li
                   key={s.id}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-3 text-sm"
+                  className="rounded-xl border border-line/15 bg-surface/30 p-3 text-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <span className="font-medium text-zinc-100">{s.submitted_name}</span>
-                      <span className="ml-2 text-zinc-400">{s.submitted_phone}</span>
+                      <span className="font-medium text-fg">{s.submitted_name}</span>
+                      <span className="ml-2 text-muted">{s.submitted_phone}</span>
                       {s.linked_staff_name ? (
                         <span className="ml-2 text-xs text-emerald-200">
                           → {s.linked_staff_name}
@@ -619,7 +619,7 @@ export function AdminInvitesPage() {
                       {b.label}
                     </span>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-zinc-500">
+                  <div className="mt-0.5 text-[11px] text-muted">
                     {formatDateTime(s.decided_at ?? s.created_at)}
                     {s.decided_by_admin_name ? ` · ${s.decided_by_admin_name}` : ""}
                     {s.reject_reason ? ` · «${s.reject_reason}»` : ""}

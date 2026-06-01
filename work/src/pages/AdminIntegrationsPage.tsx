@@ -137,7 +137,7 @@ function statusBadge(s: OutboxRow["status"]): { label: string; className: string
     case "error":
       return { label: "Ошибка", className: "border-rose-700/60 bg-rose-950/40 text-rose-200" };
     case "skipped":
-      return { label: "Пропущено", className: "border-zinc-700/60 bg-zinc-900/60 text-zinc-300" };
+      return { label: "Пропущено", className: "border-line/20/60 bg-surface/60 text-fg" };
   }
 }
 
@@ -151,7 +151,7 @@ function googleStatusBadge(s: GoogleStatus): { label: string; className: string 
       return { label: "Ошибка", className: "border-rose-700/60 bg-rose-950/40 text-rose-200" };
     case "disconnected":
     default:
-      return { label: "Не подключено", className: "border-zinc-700/60 bg-zinc-900/60 text-zinc-400" };
+      return { label: "Не подключено", className: "border-line/20/60 bg-surface/60 text-muted" };
   }
 }
 
@@ -182,7 +182,7 @@ function modeBadge(m: DeliveryMode): { label: string; className: string; hint: s
     default:
       return {
         label: "Не настроено",
-        className: "border-zinc-700/60 bg-zinc-900/60 text-zinc-400",
+        className: "border-line/20/60 bg-surface/60 text-muted",
         hint: "Введите email мастера или подключите его OAuth — иначе событие в его личный календарь не попадёт.",
       };
   }
@@ -243,7 +243,7 @@ function CopyButton({ value, label }: { value: string; label?: string }) {
           /* ignore */
         }
       }}
-      className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300 transition hover:border-emerald-700 hover:text-emerald-200"
+      className="inline-flex items-center gap-1 rounded border border-line/20 bg-surface px-1.5 py-0.5 text-[10px] font-medium text-fg transition hover:border-emerald-700 hover:text-emerald-200"
       title={`Скопировать «${value}»`}
     >
       {copied ? "✓" : (label ?? "copy")}
@@ -254,7 +254,7 @@ function CopyButton({ value, label }: { value: string; label?: string }) {
 function OAuthValue({ value, multiline = false }: { value: string; multiline?: boolean }) {
   return (
     <span
-      className={`inline-flex max-w-full items-center gap-1.5 rounded border border-zinc-800 bg-black/40 px-1.5 py-0.5 align-middle ${
+      className={`inline-flex max-w-full items-center gap-1.5 rounded border border-line/15 bg-canvas/40 px-1.5 py-0.5 align-middle ${
         multiline ? "" : "whitespace-nowrap"
       }`}
     >
@@ -331,7 +331,7 @@ function OAuthSetupChecklist({
             создания проекта</StepLink> и заведи новый. Имя — любое, для удобства предлагаю:{" "}
             <OAuthValue value="AlesSanna Calendar Sync" />
           </p>
-          <p className="mt-1 text-zinc-500">
+          <p className="mt-1 text-muted">
             Подождать ~30 секунд, пока проект появится в списке вверху страницы — переключиться на
             него.
           </p>
@@ -444,7 +444,7 @@ function OAuthSetupChecklist({
               <OAuthValue value="GOOGLE_OAUTH_CLIENT_SECRET" /> — значение из Google
             </li>
           </ul>
-          <p className="mt-2 text-zinc-500">
+          <p className="mt-2 text-muted">
             Secrets хранятся только на стороне Supabase, в репозиторий и в браузер не попадают.
           </p>
         </>
@@ -461,7 +461,7 @@ function OAuthSetupChecklist({
             работает само — записи начинают попадать в календарь, мастера получают приглашения по
             email.
           </p>
-          <p className="mt-1 text-zinc-500">
+          <p className="mt-1 text-muted">
             Если на шагах что-то не сошлось (например другой Gmail, другой Google Workspace) —
             просто скажи, поправим.
           </p>
@@ -476,7 +476,7 @@ function OAuthSetupChecklist({
 
   return (
     <details
-      className="group rounded-xl border border-zinc-800 bg-zinc-950/80 p-4 open:bg-zinc-950"
+      className="group rounded-xl border border-line/15 bg-panel/80 p-4 open:bg-panel"
       open={completedCount > 0 && !allDone}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
@@ -486,30 +486,30 @@ function OAuthSetupChecklist({
             fill="none"
             stroke="currentColor"
             strokeWidth={1.75}
-            className="h-4 w-4 text-zinc-400 transition group-open:rotate-90"
+            className="h-4 w-4 text-muted transition group-open:rotate-90"
           >
             <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="text-sm font-semibold text-white">
+          <span className="text-sm font-semibold text-fg">
             Памятка: как подключить Google OAuth позже
           </span>
         </span>
         <span className="flex items-center gap-2">
-          <span className="hidden h-1.5 w-32 overflow-hidden rounded-full bg-zinc-800 sm:block">
+          <span className="hidden h-1.5 w-32 overflow-hidden rounded-full bg-surface sm:block">
             <span
               className="block h-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all"
               style={{ width: `${progressPct}%` }}
             />
           </span>
-          <span className="text-[11px] tabular-nums text-zinc-400">
+          <span className="text-[11px] tabular-nums text-muted">
             {completedCount}/{steps.length}
           </span>
         </span>
       </summary>
 
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-3 text-xs text-muted">
         Пошаговая инструкция: ~5–10 минут. Прогресс сохраняется в этом браузере. Скопировать любое
-        значение можно кликом по кнопке <code className="text-zinc-400">copy</code> рядом.
+        значение можно кликом по кнопке <code className="text-muted">copy</code> рядом.
       </p>
 
       <ol className="mt-4 space-y-3">
@@ -521,7 +521,7 @@ function OAuthSetupChecklist({
               className={`rounded-lg border p-3 transition ${
                 checked
                   ? "border-emerald-900/50 bg-emerald-950/10"
-                  : "border-zinc-800 bg-black/30"
+                  : "border-line/15 bg-black/30"
               }`}
             >
               <label className="flex cursor-pointer items-start gap-3">
@@ -536,12 +536,12 @@ function OAuthSetupChecklist({
                 <div className="min-w-0 flex-1">
                   <p
                     className={`text-sm font-medium ${
-                      checked ? "text-emerald-200/80 line-through" : "text-zinc-100"
+                      checked ? "text-emerald-200/80 line-through" : "text-fg"
                     }`}
                   >
                     {s.title}
                   </p>
-                  <div className="mt-1.5 space-y-1.5 text-xs leading-relaxed text-zinc-400">
+                  <div className="mt-1.5 space-y-1.5 text-xs leading-relaxed text-muted">
                     {s.body}
                   </div>
                 </div>
@@ -551,7 +551,7 @@ function OAuthSetupChecklist({
         })}
       </ol>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
         <span>
           Готово {completedCount} из {steps.length} шагов
           {allDone && " — всё сделано, можно звать ассистента."}
@@ -562,7 +562,7 @@ function OAuthSetupChecklist({
             onClick={() => {
               if (window.confirm("Сбросить прогресс памятки?")) setDone({});
             }}
-            className="rounded border border-zinc-800 px-2 py-0.5 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+            className="rounded border border-line/15 px-2 py-0.5 text-muted hover:border-line/20 hover:text-fg"
           >
             Сбросить прогресс
           </button>
@@ -1042,8 +1042,8 @@ export function AdminIntegrationsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Интеграции</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h1 className="text-2xl font-semibold text-fg">Интеграции</h1>
+        <p className="mt-1 text-sm text-muted">
           Внешние сервисы салона: календари, оплата. Сюда попадают{" "}
           <strong>все</strong> новые записи — с публичного сайта и созданные
           администратором в CRM. Доставка в личный календарь мастера —{" "}
@@ -1080,7 +1080,7 @@ export function AdminIntegrationsPage() {
       </section>
 
       {/* ─────── Google Calendar — Salon ─────── */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+      <section className="rounded-xl border border-line/15 bg-panel/60 p-5">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
@@ -1092,8 +1092,8 @@ export function AdminIntegrationsPage() {
               </svg>
             </span>
             <div>
-              <h2 className="text-lg font-semibold text-white">Google Calendar — Салон</h2>
-              <p className="text-xs text-zinc-500">
+              <h2 className="text-lg font-semibold text-fg">Google Calendar — Салон</h2>
+              <p className="text-xs text-muted">
                 Общий рабочий календарь салона — фундамент всей системы. Edge
                 Function пишет сюда событие, а потом добавляет email мастера в
                 <em> attendees</em>, если он указан.
@@ -1115,32 +1115,32 @@ export function AdminIntegrationsPage() {
         )}
 
         <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-zinc-800 bg-black/40 p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-lg border border-line/15 bg-canvas/40 p-3">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted">
               OAuth-аккаунт Google
             </dt>
-            <dd className="mt-1 truncate text-sm text-zinc-100">
+            <dd className="mt-1 truncate text-sm text-fg">
               {settings.google_calendar_account_email ?? (
-                <span className="text-zinc-500">— не подключено —</span>
+                <span className="text-muted">— не подключено —</span>
               )}
             </dd>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-black/40 p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-lg border border-line/15 bg-canvas/40 p-3">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted">
               Целевой календарь
             </dt>
-            <dd className="mt-1 truncate text-sm text-zinc-100">
+            <dd className="mt-1 truncate text-sm text-fg">
               {settings.google_calendar_id ? (
                 <code className="text-emerald-300">{settings.google_calendar_id}</code>
               ) : (
-                <span className="text-zinc-500">создастся как «AlesSanna — Записи» при подключении</span>
+                <span className="text-muted">создастся как «AlesSanna — Записи» при подключении</span>
               )}
             </dd>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-black/40 p-3 sm:col-span-2">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-lg border border-line/15 bg-canvas/40 p-3 sm:col-span-2">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted">
               E-mail салона для приглашений
-              <span className="ml-1 normal-case text-zinc-600">
+              <span className="ml-1 normal-case text-muted">
                 (необязательно — если хочешь получать копии в общий ящик салона)
               </span>
             </dt>
@@ -1158,7 +1158,7 @@ export function AdminIntegrationsPage() {
                     void saveSalonInviteEmail();
                   }
                 }}
-                className="min-w-[220px] flex-1 rounded-md border border-zinc-700 bg-black/40 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-sky-700 focus:outline-none"
+                className="min-w-[220px] flex-1 rounded-md border border-line/20 bg-canvas/40 px-3 py-1.5 text-sm text-fg placeholder:text-muted focus:border-sky-700 focus:outline-none"
               />
               <button
                 type="button"
@@ -1170,21 +1170,21 @@ export function AdminIntegrationsPage() {
               </button>
             </dd>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-black/40 p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-lg border border-line/15 bg-canvas/40 p-3">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted">
               Последняя синхронизация
             </dt>
-            <dd className="mt-1 text-sm text-zinc-100">
+            <dd className="mt-1 text-sm text-fg">
               {formatDate(settings.google_calendar_last_sync_at)}
             </dd>
           </div>
-          <div className="rounded-lg border border-zinc-800 bg-black/40 p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="rounded-lg border border-line/15 bg-canvas/40 p-3">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted">
               Сервис уведомлений
             </dt>
-            <dd className="mt-1 text-sm text-zinc-100">
-              <span className="text-zinc-300">Только Google Calendar</span>
-              <span className="ml-1 text-[10px] text-zinc-600">(без писем-нотификаций)</span>
+            <dd className="mt-1 text-sm text-fg">
+              <span className="text-fg">Только Google Calendar</span>
+              <span className="ml-1 text-[10px] text-muted">(без писем-нотификаций)</span>
             </dd>
           </div>
         </dl>
@@ -1203,11 +1203,11 @@ export function AdminIntegrationsPage() {
           />
         </div>
 
-        <div className="mt-4 rounded-lg border border-zinc-800 bg-black/30 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <div className="mt-4 rounded-lg border border-line/15 bg-black/30 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             Two-way sync engine
           </p>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted">
             Запуск двусторонней синхронизации: outbox to Google, webhook from Google to CRM.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -1235,18 +1235,18 @@ export function AdminIntegrationsPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-200/90">
             Проверка записи в Google (TEST BOOKING)
           </p>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted">
             Создаёт реальное событие «TEST BOOKING» <strong>завтра 15:00–16:00</strong> (
             {SALON_TIME_ZONE}). Если события нет в календаре — ниже будет полный ответ API.
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="flex flex-col text-[11px] text-zinc-400">
+            <label className="flex flex-col text-[11px] text-muted">
               Мастер (OAuth + calendar ID)
               <select
                 value={googleWriteTestStaffId}
                 onChange={(e) => setGoogleWriteTestStaffId(e.target.value)}
                 disabled={staffForGoogleWriteTest.length === 0}
-                className="mt-1 min-w-[220px] rounded-md border border-zinc-700 bg-black/40 px-2 py-1.5 text-sm text-zinc-100 focus:border-amber-700/60 focus:outline-none"
+                className="mt-1 min-w-[220px] rounded-md border border-line/20 bg-canvas/40 px-2 py-1.5 text-sm text-fg focus:border-amber-700/60 focus:outline-none"
               >
                 {staffForGoogleWriteTest.length === 0 ? (
                   <option value="">Нет мастеров с calendar ID</option>
@@ -1280,7 +1280,7 @@ export function AdminIntegrationsPage() {
                 !settings.google_calendar_id ||
                 String(settings.google_calendar_id).trim().toLowerCase() === "primary"
               }
-              className="rounded-md border border-zinc-600 bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:bg-zinc-800/80 disabled:opacity-40"
+              className="rounded-md border border-line/25 bg-surface/60 px-3 py-1.5 text-xs font-medium text-fg transition hover:bg-surface/80 disabled:opacity-40"
               title={
                 String(settings.google_calendar_id ?? "").trim().toLowerCase() === "primary"
                   ? "Укажите явный salon google_calendar_id (не primary) для этой проверки."
@@ -1291,61 +1291,61 @@ export function AdminIntegrationsPage() {
             </button>
           </div>
           {googleCalendarWriteTestResult ? (
-            <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded border border-zinc-800 bg-black/50 p-2 text-[11px] text-zinc-300">
+            <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded border border-line/15 bg-black/50 p-2 text-[11px] text-fg">
               {googleCalendarWriteTestResult}
             </pre>
           ) : null}
         </div>
 
         {settingsLoading && (
-          <p className="mt-3 text-[11px] text-zinc-600">Загружаем статус…</p>
+          <p className="mt-3 text-[11px] text-muted">Загружаем статус…</p>
         )}
       </section>
 
       {/* ─────── Google Calendar — Staff ─────── */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+      <section className="rounded-xl border border-line/15 bg-panel/60 p-5">
         <header>
-          <h2 className="text-lg font-semibold text-white">Импорт старых записей (салонная почта)</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h2 className="text-lg font-semibold text-fg">Импорт старых записей (салонная почта)</h2>
+          <p className="mt-1 text-xs text-muted">
             Запуск с планшета: сначала <strong>Проверить (dry-run)</strong>, затем{" "}
             <strong>Импортировать</strong>. Дубли не создаются: повторный запуск
             пропускает уже импортированные события. После{" "}
             <strong>реального импорта</strong> (не dry-run) цвета мастеров в CRM подтягиваются из
             списка календарей Google — или нажмите отдельную кнопку ниже.
           </p>
-          <p className="mt-2 text-[11px] text-zinc-600">
-            Сопоставление календаря с мастером: поле <code className="text-zinc-400">google_calendar_id</code>{" "}
-            у сотрудника, затем <code className="text-zinc-400">calendar_email</code> (как id календаря), затем
+          <p className="mt-2 text-[11px] text-muted">
+            Сопоставление календаря с мастером: поле <code className="text-muted">google_calendar_id</code>{" "}
+            у сотрудника, затем <code className="text-muted">calendar_email</code> (как id календаря), затем
             точное совпадение названия календаря с именем мастера.
           </p>
         </header>
 
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <label className="text-xs text-zinc-400">
+          <label className="text-xs text-muted">
             С даты
             <input
               type="date"
               value={importFrom}
               onChange={(e) => setImportFrom(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-black/40 px-2 py-1.5 text-sm text-zinc-100 focus:border-sky-700 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-line/20 bg-canvas/40 px-2 py-1.5 text-sm text-fg focus:border-sky-700 focus:outline-none"
             />
           </label>
-          <label className="text-xs text-zinc-400">
+          <label className="text-xs text-muted">
             По дату
             <input
               type="date"
               value={importTo}
               onChange={(e) => setImportTo(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-700 bg-black/40 px-2 py-1.5 text-sm text-zinc-100 focus:border-sky-700 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-line/20 bg-canvas/40 px-2 py-1.5 text-sm text-fg focus:border-sky-700 focus:outline-none"
             />
           </label>
-          <label className="text-xs text-zinc-400 md:col-span-2">
+          <label className="text-xs text-muted md:col-span-2">
             Календарь Google
             <input
               type="text"
               value={settings.google_calendar_id ?? "primary"}
               readOnly
-              className="mt-1 w-full rounded-md border border-zinc-800 bg-black/20 px-2 py-1.5 text-sm text-zinc-400"
+              className="mt-1 w-full rounded-md border border-line/15 bg-canvas/20 px-2 py-1.5 text-sm text-muted"
             />
           </label>
         </div>
@@ -1401,7 +1401,7 @@ export function AdminIntegrationsPage() {
         )}
 
         {importDryResult && (
-          <p className="mt-3 text-xs text-zinc-300">
+          <p className="mt-3 text-xs text-fg">
             Dry-run: найдено {importDryResult.total}, к импорту {importDryResult.inserted}, уже было{" "}
             {importDryResult.skippedAlreadyLinked}, без времени {importDryResult.skippedNoTime}, ошибок{" "}
             {importDryResult.failed}.
@@ -1427,15 +1427,15 @@ export function AdminIntegrationsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+      <section className="rounded-xl border border-line/15 bg-panel/60 p-5">
         <header>
-          <h2 className="text-lg font-semibold text-white">Подключение с другого устройства</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h2 className="text-lg font-semibold text-fg">Подключение с другого устройства</h2>
+          <p className="mt-1 text-xs text-muted">
             Если настраиваешь Google на другом телефоне/планшете: сначала один раз добавь secrets в
             Supabase, потом в этом же экране нажми кнопку импорта.
           </p>
         </header>
-        <div className="mt-3 space-y-2 text-xs text-zinc-300">
+        <div className="mt-3 space-y-2 text-xs text-fg">
           <p>
             Быстрые ссылки:{" "}
             <a
@@ -1491,7 +1491,7 @@ export function AdminIntegrationsPage() {
             </a>
           </p>
           <p>2) Добавь значения c такими ключами (строго по именам):</p>
-          <ul className="list-disc space-y-1 pl-5 text-zinc-400">
+          <ul className="list-disc space-y-1 pl-5 text-muted">
             <li>
               <code className="text-emerald-300">GOOGLE_CLIENT_ID</code>
             </li>
@@ -1509,17 +1509,17 @@ export function AdminIntegrationsPage() {
           <p>
             3) Вернись на эту страницу и нажми <strong>1 кнопка: подключить и импортировать</strong>.
           </p>
-          <p className="text-zinc-500">
+          <p className="text-muted">
             Импорт идёт только в CRM (Google-события не удаляются и не изменяются).
           </p>
         </div>
       </section>
 
       {/* ─────── Google Calendar — Staff ─────── */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-5">
+      <section className="rounded-xl border border-line/15 bg-panel/60 p-5">
         <header>
-          <h2 className="text-lg font-semibold text-white">Календари мастеров</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h2 className="text-lg font-semibold text-fg">Календари мастеров</h2>
+          <p className="mt-1 text-xs text-muted">
             Для каждого мастера выберите способ доставки события в его личный
             календарь. <strong>Email</strong> — самый быстрый: введите адрес и
             всё работает (после подключения OAuth у салона).{" "}
@@ -1534,9 +1534,9 @@ export function AdminIntegrationsPage() {
           </p>
         )}
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
+        <div className="mt-4 overflow-hidden rounded-lg border border-line/15">
           <table className="w-full table-fixed text-left text-sm">
-            <thead className="bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <thead className="bg-surface/60 text-[10px] font-semibold uppercase tracking-wide text-muted">
               <tr>
                 <th className="w-[18%] px-3 py-2">Мастер</th>
                 <th className="w-[8%] px-3 py-2 text-center" title="Создавать события в календаре мастера (staff scope)">
@@ -1551,13 +1551,13 @@ export function AdminIntegrationsPage() {
             <tbody className="divide-y divide-zinc-900">
               {staffLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-zinc-500">
+                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-muted">
                     Загрузка…
                   </td>
                 </tr>
               ) : staff.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-zinc-500">
+                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-muted">
                     В CRM пока нет мастеров. Добавьте в разделе «Персонал».
                   </td>
                 </tr>
@@ -1570,12 +1570,12 @@ export function AdminIntegrationsPage() {
                   const emailKey = `staff-email-${s.id}`;
                   const disconnectKey = `staff-disconnect-${s.id}`;
                   return (
-                    <tr key={s.id} className="bg-black/40 align-top hover:bg-zinc-900/40">
-                      <td className="px-3 py-2 text-sm text-zinc-100">
+                    <tr key={s.id} className="bg-canvas/40 align-top hover:bg-surface/40">
+                      <td className="px-3 py-2 text-sm text-fg">
                         <div className="flex items-center gap-2">
                           <span>{s.name}</span>
                           {!s.is_active && (
-                            <span className="rounded-full border border-zinc-700 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-zinc-500">
+                            <span className="rounded-full border border-line/20 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted">
                               неактивен
                             </span>
                           )}
@@ -1621,7 +1621,7 @@ export function AdminIntegrationsPage() {
                                 void saveStaffInviteEmail(s.id);
                               }
                             }}
-                            className="min-w-[160px] flex-1 rounded-md border border-zinc-700 bg-black/40 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-sky-700 focus:outline-none"
+                            className="min-w-[160px] flex-1 rounded-md border border-line/20 bg-canvas/40 px-2 py-1 text-xs text-fg placeholder:text-muted focus:border-sky-700 focus:outline-none"
                           />
                           {emailDirty && (
                             <button
@@ -1635,12 +1635,12 @@ export function AdminIntegrationsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-xs text-zinc-300">
+                      <td className="px-3 py-2 text-xs text-fg">
                         {s.google_calendar_account_email ?? (
-                          <span className="text-zinc-600">—</span>
+                          <span className="text-muted">—</span>
                         )}
                         {s.google_calendar_last_sync_at && (
-                          <p className="mt-0.5 text-[10px] text-zinc-500">
+                          <p className="mt-0.5 text-[10px] text-muted">
                             синх: {formatDate(s.google_calendar_last_sync_at)}
                           </p>
                         )}
@@ -1651,7 +1651,7 @@ export function AdminIntegrationsPage() {
                             type="button"
                             onClick={() => void disconnectStaffCalendar(s.id)}
                             disabled={actionBusy === disconnectKey}
-                            className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] font-medium text-zinc-200 transition hover:border-rose-700 hover:text-rose-200 disabled:opacity-40"
+                            className="rounded-md border border-line/20 bg-surface px-2 py-1 text-[10px] font-medium text-fg transition hover:border-rose-700 hover:text-rose-200 disabled:opacity-40"
                             title="Отозвать токен и стереть привязку (мастер сможет подключить заново)"
                           >
                             {actionBusy === disconnectKey ? "…" : "Отключить"}
@@ -1660,7 +1660,7 @@ export function AdminIntegrationsPage() {
                           <button
                             type="button"
                             disabled
-                            className="cursor-not-allowed rounded-md border border-zinc-800 bg-zinc-900/40 px-2 py-1 text-[10px] font-medium text-zinc-500"
+                            className="cursor-not-allowed rounded-md border border-line/15 bg-surface/40 px-2 py-1 text-[10px] font-medium text-muted"
                             title="Появится после деплоя Edge Function для Google OAuth"
                           >
                             Подключить
@@ -1675,8 +1675,8 @@ export function AdminIntegrationsPage() {
           </table>
         </div>
 
-        <p className="mt-3 text-[11px] leading-relaxed text-zinc-600">
-          Достаточно ввести <strong className="text-zinc-400">только e-mail</strong> — тогда
+        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+          Достаточно ввести <strong className="text-muted">только e-mail</strong> — тогда
           этот мастер будет добавлен в attendees события салонного календаря и
           получит приглашение (или само событие, если e-mail на Gmail).
           Кнопка «OAuth → Подключить» нужна только если мастер хочет, чтобы
@@ -1694,7 +1694,7 @@ export function AdminIntegrationsPage() {
        * выведены в заголовок, чтобы было видно даже когда блок свёрнут. */}
       <details
         open={counts.error > 0 || counts.skipped > 0}
-        className="group rounded-xl border border-zinc-800 bg-zinc-950/60 p-5 [&_summary::-webkit-details-marker]:hidden"
+        className="group rounded-xl border border-line/15 bg-panel/60 p-5 [&_summary::-webkit-details-marker]:hidden"
       >
         <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 list-none">
           <div className="flex items-center gap-3">
@@ -1705,19 +1705,19 @@ export function AdminIntegrationsPage() {
               strokeWidth={1.75}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-4 w-4 text-zinc-500 transition group-open:rotate-90"
+              className="h-4 w-4 text-muted transition group-open:rotate-90"
               aria-hidden="true"
             >
               <path d="m9 18 6-6-6-6" />
             </svg>
             <div>
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-fg">
                 Очередь синхронизации
-                <span className="ml-2 text-xs font-normal text-zinc-500">
+                <span className="ml-2 text-xs font-normal text-muted">
                   · диагностика
                 </span>
               </h2>
-              <p className="mt-0.5 text-xs text-zinc-500">
+              <p className="mt-0.5 text-xs text-muted">
                 Журнал того, что Edge Function отправляет в Google Calendar.
                 Раскройте, чтобы посмотреть статусы и повторить ошибочные задачи.
               </p>
@@ -1730,7 +1730,7 @@ export function AdminIntegrationsPage() {
               </span>
             )}
             {counts.skipped > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+              <span className="inline-flex items-center gap-1 rounded-full border border-line/20 bg-surface px-2 py-0.5 text-[10px] font-medium text-fg">
                 ⏸ {counts.skipped} пропущено
               </span>
             )}
@@ -1743,12 +1743,12 @@ export function AdminIntegrationsPage() {
         </summary>
 
         <header className="mt-5 flex flex-wrap items-baseline justify-between gap-3">
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted">
             Каждая новая запись попадает сюда: одна строка <em>«Салон»</em>{" "}
             всегда, плюс одна <em>«Мастер»</em> только если у мастера свой
             OAuth. Edge Function обрабатывает строки со статусом{" "}
             <code className="text-sky-300">pending</code>; пока подключения
-            нет — копятся как <code className="text-zinc-300">skipped</code>.
+            нет — копятся как <code className="text-fg">skipped</code>.
           </p>
           <button
             type="button"
@@ -1782,14 +1782,14 @@ export function AdminIntegrationsPage() {
                 className={`rounded-full border px-2.5 py-1 transition ${
                   isActive
                     ? "border-sky-500/60 bg-sky-950/50 text-sky-100"
-                    : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                    : "border-line/15 text-muted hover:border-line/20 hover:text-fg"
                 }`}
               >
                 {label}
               </button>
             );
           })}
-          <span className="mx-2 hidden h-4 w-px bg-zinc-800 sm:inline-block" />
+          <span className="mx-2 hidden h-4 w-px bg-surface sm:inline-block" />
           {(["all", "salon", "staff"] as ScopeFilter[]).map((s) => {
             const isActive = scopeFilter === s;
             const label = s === "all" ? "Все адресаты" : s === "salon" ? "Салон" : "Мастера";
@@ -1801,7 +1801,7 @@ export function AdminIntegrationsPage() {
                 className={`rounded-full border px-2.5 py-1 transition ${
                   isActive
                     ? "border-amber-500/60 bg-amber-950/50 text-amber-100"
-                    : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                    : "border-line/15 text-muted hover:border-line/20 hover:text-fg"
                 }`}
               >
                 {label}
@@ -1816,9 +1816,9 @@ export function AdminIntegrationsPage() {
           </p>
         )}
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
+        <div className="mt-4 overflow-hidden rounded-lg border border-line/15">
           <table className="w-full table-fixed text-left text-sm">
-            <thead className="bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <thead className="bg-surface/60 text-[10px] font-semibold uppercase tracking-wide text-muted">
               <tr>
                 <th className="w-[15%] px-3 py-2">Создано</th>
                 <th className="w-[12%] px-3 py-2">Статус</th>
@@ -1831,13 +1831,13 @@ export function AdminIntegrationsPage() {
             <tbody className="divide-y divide-zinc-900">
               {outboxLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-zinc-500">
+                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-muted">
                     Загрузка…
                   </td>
                 </tr>
               ) : outbox.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-zinc-500">
+                  <td colSpan={6} className="px-3 py-6 text-center text-xs text-muted">
                     Пока пусто. Создайте новую запись в CRM или с публичного сайта —
                     она появится здесь.
                   </td>
@@ -1850,8 +1850,8 @@ export function AdminIntegrationsPage() {
                   const startTime = (payload as { start_time?: string }).start_time ?? null;
                   const isStaffScope = row.target_scope.startsWith("staff:");
                   return (
-                    <tr key={row.id} className="bg-black/40 align-top hover:bg-zinc-900/40">
-                      <td className="px-3 py-2 text-xs text-zinc-400">{formatDate(row.created_at)}</td>
+                    <tr key={row.id} className="bg-canvas/40 align-top hover:bg-surface/40">
+                      <td className="px-3 py-2 text-xs text-muted">{formatDate(row.created_at)}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${badge.className}`}>
                           {badge.label}
@@ -1877,27 +1877,27 @@ export function AdminIntegrationsPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-xs">
-                        <p className="truncate text-zinc-200">
-                          {client || <span className="text-zinc-500">—</span>}
+                        <p className="truncate text-fg">
+                          {client || <span className="text-muted">—</span>}
                         </p>
-                        <p className="truncate text-[10px] text-zinc-500">
+                        <p className="truncate text-[10px] text-muted">
                           {formatDate(startTime)}
                           {row.appointment_id && (
                             <>
                               {" · "}
-                              <code className="text-zinc-600">{row.appointment_id.slice(0, 8)}</code>
+                              <code className="text-muted">{row.appointment_id.slice(0, 8)}</code>
                             </>
                           )}
                         </p>
                       </td>
-                      <td className="px-3 py-2 text-right text-xs text-zinc-400">{row.attempts}</td>
+                      <td className="px-3 py-2 text-right text-xs text-muted">{row.attempts}</td>
                       <td className="px-3 py-2 text-right">
                         {(row.status === "error" || row.status === "skipped") && (
                           <button
                             type="button"
                             onClick={() => void retryOne(row.id)}
                             disabled={actionBusy === row.id}
-                            className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] font-medium text-zinc-200 transition hover:border-sky-700 hover:text-sky-200 disabled:opacity-40"
+                            className="rounded-md border border-line/20 bg-surface px-2 py-1 text-[10px] font-medium text-fg transition hover:border-sky-700 hover:text-sky-200 disabled:opacity-40"
                           >
                             {actionBusy === row.id ? "…" : "Повторить"}
                           </button>
@@ -1911,7 +1911,7 @@ export function AdminIntegrationsPage() {
           </table>
         </div>
 
-        <p className="mt-3 text-[11px] text-zinc-600">
+        <p className="mt-3 text-[11px] text-muted">
           Очередь обновляется автоматически каждые 15 секунд.
         </p>
       </details>

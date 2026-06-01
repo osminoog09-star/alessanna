@@ -118,48 +118,48 @@ export function ClientsPage() {
     void loadVisits(client.id, client.phone);
   }
 
-  if (loading) return <p className="text-zinc-500">{t("common.loading")}</p>;
+  if (loading) return <p className="text-muted">{t("common.loading")}</p>;
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-white">{t("clients.title")}</h1>
-        <p className="text-sm text-zinc-500">{t("clients.subtitle")}</p>
+        <h1 className="text-2xl font-semibold text-fg">{t("clients.title")}</h1>
+        <p className="text-sm text-muted">{t("clients.subtitle")}</p>
       </header>
 
       {listErr && (
         <p className="rounded border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">{listErr}</p>
       )}
 
-      <ul className="divide-y divide-zinc-800 rounded-xl border border-zinc-800">
-        {clients.length === 0 && <li className="px-4 py-6 text-sm text-zinc-500">{t("clients.empty")}</li>}
+      <ul className="divide-y divide-line/15 rounded-xl border border-line/15">
+        {clients.length === 0 && <li className="px-4 py-6 text-sm text-muted">{t("clients.empty")}</li>}
         {clients.map((c) => (
-          <li key={c.id} className="bg-zinc-950/50">
+          <li key={c.id} className="bg-panel/50">
             <button
               type="button"
               onClick={() => toggle(c)}
-              className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left hover:bg-zinc-900/80"
+              className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left hover:bg-surface/80"
             >
-              <span className="font-medium text-white">{c.name}</span>
-              <span className="font-mono text-xs text-zinc-500">{c.phone ?? "—"}</span>
+              <span className="font-medium text-fg">{c.name}</span>
+              <span className="font-mono text-xs text-muted">{c.phone ?? "—"}</span>
             </button>
             {expanded === c.id && (
-              <div className="border-t border-zinc-800 bg-black/40 px-4 py-3">
+              <div className="border-t border-line/15 bg-canvas/40 px-4 py-3">
                 {loadingVisits ? (
-                  <p className="text-sm text-zinc-500">{t("common.loading")}</p>
+                  <p className="text-sm text-muted">{t("common.loading")}</p>
                 ) : visits.length === 0 ? (
-                  <p className="text-sm text-zinc-500">{t("clients.noVisits")}</p>
+                  <p className="text-sm text-muted">{t("clients.noVisits")}</p>
                 ) : (
                   <ul className="space-y-3 text-sm">
                     {visits.map((v) => (
-                      <li key={v.id} className="rounded-lg border border-zinc-800 p-3">
-                        <p className="text-xs text-zinc-500">
+                      <li key={v.id} className="rounded-lg border border-line/15 p-3">
+                        <p className="text-xs text-muted">
                           {v.created_at
                             ? format(parseISO(v.created_at), "d MMM yyyy HH:mm")
                             : "—"}{" "}
                           · {v.status}
                         </p>
-                        <ul className="mt-2 space-y-1 text-zinc-300">
+                        <ul className="mt-2 space-y-1 text-fg">
                           {(v.appointment_services ?? []).map((line) => (
                             <li key={line.id}>
                               {line.service_listings?.name ?? "—"} · {line.staff?.name ?? "—"} ·{" "}
