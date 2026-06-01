@@ -131,7 +131,8 @@ export function ServicesPage() {
   /* v2: by default ALL categories start collapsed (см. effect ниже). v1
    * хранил пустой collapsedCategories, что означало «всё развёрнуто» —
    * при бампе ключа старые юзеры тоже один раз получат свернутый вид. */
-  const SERVICES_PREFS_KEY = "admin/services/v2";
+  // v3 resets old expanded service-card prefs; cards should open collapsed by default.
+  const SERVICES_PREFS_KEY = "admin/services/v3";
   type ActiveFilter = "all" | "active" | "inactive";
   type SortBy = "name" | "price-asc" | "price-desc" | "duration-asc" | "duration-desc" | "masters-desc";
   type ServicesPrefs = {
@@ -167,7 +168,7 @@ export function ServicesPage() {
       return {
         ...DEFAULT_PREFS,
         ...parsed,
-        expandedServiceIds: Array.isArray(parsed.expandedServiceIds) ? parsed.expandedServiceIds.map(String) : [],
+        expandedServiceIds: [],
         collapsedCategories: Array.isArray(parsed.collapsedCategories) ? parsed.collapsedCategories.map(String) : [],
         filterCategoryIds: Array.isArray(parsed.filterCategoryIds) ? parsed.filterCategoryIds.map(String) : [],
       };
@@ -213,7 +214,7 @@ export function ServicesPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const payload: ServicesPrefs = {
-      expandedServiceIds: Array.from(expandedIds),
+      expandedServiceIds: [],
       collapsedCategories: Array.from(collapsedCats),
       filterActive,
       filterNoMasters,
