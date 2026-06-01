@@ -159,6 +159,133 @@ export function ReceptionSidebar({
           })}
         </div>
       </div>
+
+      {/* Bottom section: theme + language + CRM link */}
+      <div className={`mt-auto border-t px-3 pt-3 pb-3 ${borderCls}`}>
+        {/* Language switcher */}
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          {t("common.language")}
+        </p>
+        <div className="mb-3 flex gap-1">
+          {(["ru", "et"] as const).map((code) => (
+            <button
+              key={code}
+              onClick={() => void i18n.changeLanguage(code)}
+              className={[
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                currentLang === code ? accentSel : `${mutedCls} ${hoverCls}`,
+              ].join(" ")}
+            >
+              {code.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Theme picker */}
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          {t("nav.themeLabel")}
+        </p>
+        <div className="mb-3 flex gap-2">
+          {RECEPTION_THEME_IDS.map((id) => {
+            const active = theme === id;
+            const sw = SWATCHES[id];
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTheme(id)}
+                aria-pressed={active}
+                title={t(`nav.theme.${id}`)}
+                className="relative flex h-6 w-6 items-center justify-center rounded-full transition-transform hover:scale-110"
+                style={{
+                  background: `linear-gradient(135deg, ${sw[0]} 0%, ${sw[1]} 60%, ${sw[2]} 100%)`,
+                  boxShadow: active
+                    ? `0 0 0 2px ${sw[0]}, 0 0 0 3.5px rgb(var(--c-gold))`
+                    : "0 0 0 1px rgba(128,128,128,0.25)",
+                }}
+              />
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => { setCrmPrompt(true); setPwValue(""); setPwError(false); }}
+          className={[
+            "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
+            dark ? "text-muted hover:bg-white/5 hover:text-gold" : `text-muted ${hoverCls}`,
+          ].join(" ")}
+        >
+          <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0" fill="currentColor">
+            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h4a1 1 0 001-1v-3h2v3a1 1 0 001 1h4a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+          </svg>
+          {t("reception.toCrm")}
+        </button>
+      </div>
+
+      {/* CRM password modal */}
+      {crmPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-xs overflow-hidden rounded-2xl bg-panel shadow-2xl ring-1 ring-line/15">
+            {/* Header */}
+            <div className={`px-5 py-4 ${useGold ? "bg-gold/10 border-b border-gold/20" : "bg-[#1a73e8]/10 border-b border-[#1a73e8]/20"}`}>
+              <p className={`text-sm font-semibold ${useGold ? "text-gold" : "text-[#1a73e8]"}`}>
+                {t("reception.crmPasswordTitle")}
+              </p>
+            </div>
+            <form
+              className="p-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (pwValue === "2025alessanna") {
+                  navigate("/");
+                } else {
+                  setPwError(true);
+                  setPwValue("");
+                }
+              }}
+            >
+              <input
+                type="password"
+                autoFocus
+                value={pwValue}
+                onChange={(e) => { setPwValue(e.target.value); setPwError(false); }}
+                placeholder={t("reception.crmPasswordPlaceholder")}
+                className={[
+                  "w-full rounded-lg border bg-canvas px-3 py-2.5 text-sm text-fg outline-none transition",
+                  pwError
+                    ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-400"
+                    : useGold
+                    ? "border-line/20 focus:border-gold focus:ring-1 focus:ring-gold/40"
+                    : "border-line/20 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]/40",
+                ].join(" ")}
+              />
+              {pwError && (
+                <p className="mt-1.5 text-xs text-red-400">{t("reception.crmPasswordError")}</p>
+              )}
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCrmPrompt(false)}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium text-muted transition-colors ${hoverCls}`}
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  className={[
+                    "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    useGold
+                      ? "bg-gold text-canvas hover:bg-gold/90"
+                      : "bg-[#1a73e8] text-white hover:bg-[#1557b0]",
+                  ].join(" ")}
+                >
+                  {t("common.confirm")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
