@@ -60,6 +60,20 @@
   color-scheme: dark;
 }
 
+/* White — чистый белый Google Calendar-стиль для ресепшен-страницы. */
+:root[data-theme="white"] {
+  --c-canvas: 255 255 255;     /* #ffffff */
+  --c-panel: 255 255 255;
+  --c-surface: 241 243 244;    /* #f1f3f4 — Google hover gray */
+  --c-fg: 60 64 67;            /* #3c4043 */
+  --c-muted: 112 117 122;      /* #70757a */
+  --c-line: 0 0 0;
+  --c-gold: 26 115 232;        /* #1a73e8 — Google blue as accent */
+  --c-gold-soft: 26 115 232;
+  --c-gold-deep: 11 87 208;    /* #0b57d0 */
+  color-scheme: light;
+}
+
 html,
 body,
 #root {

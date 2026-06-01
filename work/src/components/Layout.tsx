@@ -861,28 +861,36 @@ export function Layout() {
 
         {/* ───── Footer: collapse toggle + logout ───── */}
         <div className="flex items-center justify-between gap-1 border-t border-line/10 p-2">
-          <button
-            type="button"
-            onClick={logout}
-            title={t("nav.logout")}
-            className={`flex items-center gap-2 rounded-lg py-2 text-sm text-muted transition-colors hover:bg-surface hover:text-red-300 ${
-              collapsed ? "w-full justify-center px-2" : "flex-1 px-3 text-left"
-            }`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.75}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4 shrink-0"
-              aria-hidden="true"
+          <div className={`flex flex-col gap-0.5 ${collapsed ? "w-full" : "flex-1"}`}>
+            {/* Reception link */}
+            <a
+              href="/reception"
+              title={t("nav.toReception")}
+              className={`flex items-center gap-2 rounded-lg py-2 text-sm text-muted transition-colors hover:bg-surface hover:text-gold ${
+                collapsed ? "w-full justify-center px-2" : "px-3"
+              }`}
             >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-            </svg>
-            {!collapsed && <span>{t("nav.logout")}</span>}
-          </button>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0" aria-hidden="true">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8M12 17v4" />
+              </svg>
+              {!collapsed && <span>{t("nav.toReception")}</span>}
+            </a>
+            {/* Logout */}
+            <button
+              type="button"
+              onClick={logout}
+              title={t("nav.logout")}
+              className={`flex items-center gap-2 rounded-lg py-2 text-sm text-muted transition-colors hover:bg-surface hover:text-red-300 ${
+                collapsed ? "w-full justify-center px-2" : "px-3 text-left"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+              </svg>
+              {!collapsed && <span>{t("nav.logout")}</span>}
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}

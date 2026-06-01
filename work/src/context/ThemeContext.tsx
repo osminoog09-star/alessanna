@@ -25,7 +25,7 @@ import {
  * их через утилиты `bg-canvas`, `text-fg`, `text-gold` (см. tailwind.config.js).
  */
 
-export type ThemeId = "onyx" | "champagne" | "stone";
+export type ThemeId = "onyx" | "champagne" | "stone" | "white";
 
 const STORAGE_KEY = "alessanna.crm.theme";
 
@@ -39,7 +39,7 @@ export const THEMES: readonly { id: ThemeId; labelKey: string }[] = [
 function readStored(): ThemeId | null {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "onyx" || v === "champagne" || v === "stone") return v;
+    if (v === "onyx" || v === "champagne" || v === "stone" || v === "white") return v;
   } catch {
     /* ignore */
   }

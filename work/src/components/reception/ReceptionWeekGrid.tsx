@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   addMinutes,
   format,
@@ -17,6 +18,7 @@ import type {
 import { buildStaffHueMap } from "../../lib/staffHue";
 import { appointmentInterval, intervalsOverlap } from "../../lib/slots";
 import { googleStaffColor } from "./receptionColors";
+import { useTheme } from "../../context/ThemeContext";
 
 const START_HOUR = 0;
 const END_HOUR = 24;
@@ -24,7 +26,8 @@ const PX_PER_HOUR = 64;
 const TOTAL_PX = (END_HOUR - START_HOUR) * PX_PER_HOUR;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
-const RU_WEEK_DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+// Mon=1..Sat=6, Sun=0 — maps array index (0=Mon…6=Sun) to weekday key
+const WEEKDAY_KEYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
 function timeToPx(date: Date, dayAnchor: Date): number {
   const diffMs = date.getTime() - dayAnchor.getTime();
@@ -79,6 +82,7 @@ type Props = {
   visibleStaffIds: Set<string>;
   onSlotClick: (start: Date, anchorX: number, anchorY: number) => void;
   onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
+  onApptResize?: (appt: AppointmentRow, newStart: Date, newEnd: Date) => void;
   onDayHeaderClick?: (day: Date, x: number, y: number) => void;
   dark?: boolean;
 };
@@ -93,22 +97,179 @@ export function ReceptionWeekGrid({
   visibleStaffIds,
   onSlotClick,
   onApptClick,
+  onApptResize,
   onDayHeaderClick,
   dark,
 }: Props) {
-  const bg = dark ? "bg-panel" : "bg-white";
-  const borderCls = dark ? "border-line/15" : "border-[#dadce0]";
-  const mutedCls = dark ? "text-muted" : "text-[#70757a]";
-  const textCls = dark ? "text-fg" : "text-[#3c4043]";
-  const hoverCls = dark ? "hover:bg-white/5" : "hover:bg-[#f1f3f4]";
-  const hrLine = dark ? "border-line/10" : "border-[#e8eaed]";
-  const todayBg = dark ? "bg-blue-500/[0.05]" : "bg-[#1a73e8]/[0.04]";
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+  const useGold = theme !== "white";
+  const bg = dark ? "bg-panel" : "bg-canvas";
+  const borderCls = "border-line/15";
+  const mutedCls = "text-muted";
+  const textCls = "text-fg";
+  const hoverCls = dark ? "hover:bg-white/5" : "hover:bg-surface";
+  const hrLine = "border-line/10";
+  const todayBg = useGold ? "bg-gold/[0.05]" : "bg-[#1a73e8]/[0.04]";
   const stripes = dark
     ? "repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0, rgba(255,255,255,0.12) 1px, transparent 0, transparent 50%)"
     : "repeating-linear-gradient(-45deg, #c0c4cc 0, #c0c4cc 1px, transparent 0, transparent 50%)";
   const [now, setNow] = useState(() => new Date());
   const bodyRef = useRef<HTMLDivElement>(null);
   const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
+
+  // Resize mode: press and hold a booking for 1 s to put THAT booking into
+  // resize mode. It then shows top/bottom drag handles you can grab (you may
+  // lift your finger first) to change the start/end time in 30-min steps.
+  // Tapping empty calendar space exits resize mode. A quick tap (no hold)
+  // opens the edit popup as usual.
+  const RESIZE_STEP_MIN = 30;
+  const LONG_PRESS_MS = 1000;
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+  const pointerDownY = useRef(0);
+  const [resizeModeId, setResizeModeId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ id: string; start: Date; end: Date } | null>(null);
+
+  // Active handle drag (only while a booking is in resize mode)
+  const handleDragRef = useRef<{
+    appt: AppointmentRow;
+    edge: "top" | "bottom";
+    origStart: Date;
+    origEnd: Date;
+    startClientY: number;
+    curStart: Date;
+    curEnd: Date;
+  } | null>(null);
+
+  function clearLongPress() {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }
+
+  // ---- Mouse: card click opens popup (handle zones stop propagation, so this
+  //      only fires for clicks in the middle area of the card) ----
+  function handleCardPointerDown(e: React.PointerEvent<HTMLDivElement>, appt: AppointmentRow) {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+
+    if (e.pointerType === "mouse") {
+      pointerDownY.current = e.clientY;
+      return; // resize handled by always-visible handle strips
+    }
+
+    // Touch: long-press to enter resize mode
+    if (resizeModeId === appt.id) return;
+    longPressFired.current = false;
+    pointerDownY.current = e.clientY;
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setResizeModeId(appt.id);
+    }, LONG_PRESS_MS);
+  }
+
+  function handleCardPointerUp(e: React.PointerEvent<HTMLDivElement>, appt: AppointmentRow) {
+    clearLongPress();
+
+    if (e.pointerType === "mouse") {
+      if (Math.abs(e.clientY - pointerDownY.current) <= 4) {
+        onApptClick(appt, e.clientX, e.clientY);
+      }
+      return;
+    }
+
+    // Touch path
+    if (longPressFired.current) { longPressFired.current = false; return; }
+    if (resizeModeId === appt.id) return;
+    // If finger moved > 8 px it was a scroll attempt — don't open popup
+    if (Math.abs(e.clientY - pointerDownY.current) > 8) return;
+    onApptClick(appt, e.clientX, e.clientY);
+  }
+
+  function handleCardPointerCancel() {
+    // Browser fired pointercancel — it took over the gesture for scrolling.
+    clearLongPress();
+  }
+
+  // ---- Mouse: immediate drag from always-visible handle strips ----
+  function handleMouseHandlePointerDown(
+    e: React.PointerEvent<HTMLDivElement>,
+    appt: AppointmentRow,
+    edge: "top" | "bottom",
+    start: Date,
+    end: Date,
+  ) {
+    if (e.pointerType !== "mouse") return;
+    e.stopPropagation();
+    handleDragRef.current = {
+      appt, edge, origStart: start, origEnd: end,
+      startClientY: e.clientY, curStart: start, curEnd: end,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleMouseHandlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "mouse") return;
+    e.stopPropagation();
+    const d = handleDragRef.current;
+    handleDragRef.current = null;
+    setPreview(null);
+    if (!d) return;
+    const changed =
+      d.curStart.getTime() !== d.origStart.getTime() ||
+      d.curEnd.getTime() !== d.origEnd.getTime();
+    if (changed && onApptResize) onApptResize(d.appt, d.curStart, d.curEnd);
+  }
+
+  // ---- Touch: dragging a resize handle (only when card is in resize mode) ----
+  function handleHandlePointerDown(
+    e: React.PointerEvent<HTMLDivElement>,
+    appt: AppointmentRow,
+    edge: "top" | "bottom",
+    start: Date,
+    end: Date,
+  ) {
+    e.stopPropagation();
+    clearLongPress();
+    handleDragRef.current = {
+      appt, edge, origStart: start, origEnd: end,
+      startClientY: e.clientY, curStart: start, curEnd: end,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleHandlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const d = handleDragRef.current;
+    if (!d) return;
+    const deltaY = e.clientY - d.startClientY;
+    const stepPx = (RESIZE_STEP_MIN / 60) * PX_PER_HOUR;
+    const steps = Math.round(deltaY / stepPx);
+    const deltaMin = steps * RESIZE_STEP_MIN;
+    let start = d.origStart;
+    let end = d.origEnd;
+    if (d.edge === "top") {
+      start = addMinutes(d.origStart, deltaMin);
+      if (start.getTime() >= end.getTime()) start = addMinutes(end, -RESIZE_STEP_MIN);
+    } else {
+      end = addMinutes(d.origEnd, deltaMin);
+      if (end.getTime() <= start.getTime()) end = addMinutes(start, RESIZE_STEP_MIN);
+    }
+    d.curStart = start;
+    d.curEnd = end;
+    setPreview({ id: d.appt.id, start, end });
+  }
+
+  function handleHandlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    const d = handleDragRef.current;
+    handleDragRef.current = null;
+    setPreview(null);
+    if (!d) return;
+    const changed =
+      d.curStart.getTime() !== d.origStart.getTime() ||
+      d.curEnd.getTime() !== d.origEnd.getTime();
+    if (changed && onApptResize) onApptResize(d.appt, d.curStart, d.curEnd);
+  }
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -120,12 +281,15 @@ export function ReceptionWeekGrid({
   // earlier or later, like a normal calendar.
   useEffect(() => {
     if (bodyRef.current) {
-      bodyRef.current.scrollTop = Math.max(0, (10 - START_HOUR) * PX_PER_HOUR - 8);
+      bodyRef.current.scrollTop = Math.max(0, (8 - START_HOUR) * PX_PER_HOUR - 8);
     }
   }, []);
 
   function handleBodyClick(e: React.MouseEvent<HTMLDivElement>, day: Date) {
     if ((e.target as HTMLElement).closest("[data-appt]")) return;
+    // Tapping empty calendar space exits resize mode (does not also open the
+    // new-booking popup, so it's an easy way to "deactivate" stretching).
+    if (resizeModeId) { setResizeModeId(null); return; }
     const rect = e.currentTarget.getBoundingClientRect();
     const scrollTop = bodyRef.current?.scrollTop ?? 0;
     const yOffset = e.clientY - rect.top + scrollTop;
@@ -158,7 +322,7 @@ export function ReceptionWeekGrid({
           const workingStaff = staff
             .filter((m) => workingIds.has(m.id) && visibleStaffIds.has(m.id))
             .sort((a, b) => a.name.localeCompare(b.name, "et", { sensitivity: "base" }));
-          const ruDay = RU_WEEK_DAYS[i] ?? "";
+          const ruDay = t(`weekday.${WEEKDAY_KEYS[i] ?? 1}`);
           return (
             <div
               key={day.toISOString()}
@@ -174,7 +338,9 @@ export function ReceptionWeekGrid({
               <span
                 className={[
                   "flex h-8 w-8 items-center justify-center rounded-full text-lg font-medium",
-                  isToday ? "bg-[#1a73e8] text-white" : textCls,
+                  isToday
+                    ? useGold ? "bg-gold text-canvas" : "bg-[#1a73e8] text-white"
+                    : textCls,
                 ].join(" ")}
               >
                 {format(day, "d")}
@@ -206,7 +372,7 @@ export function ReceptionWeekGrid({
       </div>
 
       {/* Scrollable time body */}
-      <div ref={bodyRef} className={`flex h-0 flex-1 overflow-y-auto ${bg}`}>
+      <div ref={bodyRef} className={`flex min-h-0 flex-1 overflow-y-scroll ${bg}`}>
         {/* Time gutter */}
         <div className={`relative w-14 shrink-0 ${bg}`} style={{ height: TOTAL_PX }}>
           {HOURS.map((h) => (
@@ -311,8 +477,12 @@ export function ReceptionWeekGrid({
                 {layouts.map(({ appt, col, totalCols }) => {
                   const iv = appointmentInterval(appt);
                   if (!iv) return null;
-                  const topPx = timeToPx(iv.start, dayAnchor);
-                  const heightPx = Math.max(timeToPx(iv.end, dayAnchor) - topPx, 20);
+                  const isResizing = preview?.id === appt.id;
+                  const inResizeMode = resizeModeId === appt.id;
+                  const effStart = isResizing ? preview!.start : iv.start;
+                  const effEnd = isResizing ? preview!.end : iv.end;
+                  const topPx = timeToPx(effStart, dayAnchor);
+                  const heightPx = Math.max(timeToPx(effEnd, dayAnchor) - topPx, 20);
                   if (topPx < -20 || topPx > TOTAL_PX) return null;
 
                   const widthPct = 100 / totalCols;
@@ -322,13 +492,18 @@ export function ReceptionWeekGrid({
                     ? googleStaffColor(member, staffHueMap)
                     : { bg: "#7986cb", fg: "#ffffff", border: "#5c6bc0" };
                   const svc = serviceMap.get(String(appt.service_id));
-                  const isPast = iv.end.getTime() < now.getTime();
+                  const isPast = effEnd.getTime() < now.getTime();
 
                   return (
                     <div
                       key={appt.id}
                       data-appt="1"
-                      className="absolute cursor-pointer overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-shadow hover:shadow-md"
+                      className={[
+                        "absolute overflow-hidden rounded-md px-1.5 py-0.5 text-left shadow-sm transition-all",
+                        inResizeMode ? "touch-none shadow-lg ring-2 ring-white/70" : "hover:shadow-md",
+                        isResizing ? "touch-none" : "",
+                        "group",
+                      ].join(" ")}
                       style={{
                         top: topPx + 1,
                         height: heightPx - 2,
@@ -336,22 +511,77 @@ export function ReceptionWeekGrid({
                         width: `calc(${widthPct}% - 2px)`,
                         backgroundColor: c.bg,
                         color: c.fg,
-                        opacity: isPast ? 0.45 : 1,
+                        opacity: isPast && !inResizeMode ? 0.45 : 1,
+                        cursor: "pointer",
+                        zIndex: isResizing || inResizeMode ? 20 : undefined,
                       }}
-                      onClick={(e) => {
+                      onPointerDown={(e) => {
                         e.stopPropagation();
-                        onApptClick(appt, e.clientX, e.clientY);
+                        handleCardPointerDown(e, appt);
                       }}
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                        handleCardPointerUp(e, appt);
+                      }}
+                      onPointerCancel={handleCardPointerCancel}
                     >
                       <p className="truncate text-[11px] font-semibold leading-tight">
                         {appt.client_name}
                       </p>
                       {heightPx > 28 && (
                         <p className="truncate text-[10px] leading-tight opacity-90">
-                          {format(iv.start, "HH:mm")}
+                          {format(effStart, "HH:mm")}–{format(effEnd, "HH:mm")}
                           {svc ? ` · ${svc.name_et}` : ""}
                         </p>
                       )}
+                      {/* Top resize handle: mouse = always draggable, touch = only in resize mode */}
+                      <div
+                        className={[
+                          "absolute inset-x-0 top-0 z-30 flex h-5 cursor-ns-resize items-start justify-center",
+                          inResizeMode ? "touch-none" : "",
+                        ].join(" ")}
+                        onPointerDown={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerDown(e, appt, "top", iv.start, iv.end);
+                          } else if (inResizeMode) {
+                            handleHandlePointerDown(e, appt, "top", iv.start, iv.end);
+                          }
+                        }}
+                        onPointerMove={handleHandlePointerMove}
+                        onPointerUp={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerUp(e);
+                          } else if (inResizeMode) {
+                            handleHandlePointerUp(e);
+                          }
+                        }}
+                      >
+                        {inResizeMode && <div className="mt-0.5 h-1.5 w-8 rounded-full bg-white shadow" />}
+                      </div>
+                      {/* Bottom resize handle */}
+                      <div
+                        className={[
+                          "absolute inset-x-0 bottom-0 z-30 flex h-5 cursor-ns-resize items-end justify-center",
+                          inResizeMode ? "touch-none" : "",
+                        ].join(" ")}
+                        onPointerDown={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerDown(e, appt, "bottom", iv.start, iv.end);
+                          } else if (inResizeMode) {
+                            handleHandlePointerDown(e, appt, "bottom", iv.start, iv.end);
+                          }
+                        }}
+                        onPointerMove={handleHandlePointerMove}
+                        onPointerUp={(e) => {
+                          if (e.pointerType === "mouse") {
+                            handleMouseHandlePointerUp(e);
+                          } else if (inResizeMode) {
+                            handleHandlePointerUp(e);
+                          }
+                        }}
+                      >
+                        {inResizeMode && <div className="mb-0.5 h-1.5 w-8 rounded-full bg-white shadow" />}
+                      </div>
                     </div>
                   );
                 })}

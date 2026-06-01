@@ -4,6 +4,7 @@
     "loading": "Laadin…",
     "save": "Salvesta",
     "cancel": "Tühista",
+    "confirm": "Sisene",
     "add": "Lisa",
     "service": "Teenus",
     "staff": "Töötaja",
@@ -14,7 +15,12 @@
     "language": "Keel",
     "hShort": "h"
   },
-  "lang": { "ru": "RU", "et": "ET", "fi": "FI", "en": "EN" },
+  "lang": {
+    "ru": "RU",
+    "et": "ET",
+    "fi": "FI",
+    "en": "EN"
+  },
   "login": {
     "title": "Töötaja sisselogimine",
     "subtitle": "Kasuta profiilis olevat telefoninumbrit.",
@@ -64,6 +70,7 @@
     "myHelp": "Abi",
     "analytics": "Analüütika",
     "logout": "Logi välja",
+    "toReception": "Mine retseptsiooni",
     "workerHint": "Meistri režiim: ainult oma broneeringud ja kalender. Täielik juurdepääs juhil.",
     "unreadBadgeAria": "Lugemata: {{count}}",
     "publicSite": "Ava sait administraatorina",
@@ -75,7 +82,8 @@
     "theme": {
       "onyx": "Oonüks",
       "champagne": "Šampanja",
-      "stone": "Kivi"
+      "stone": "Kivi",
+      "white": "Valge"
     },
     "group": {
       "catalog": "Kataloog",
@@ -513,6 +521,27 @@
         "pairFull": "Pool ekraani",
         "density": "Kirje rea suurus"
       }
+    },
+    "mastersTitle": "Meistrid",
+    "colorSettings": "Meistrite värvide seaded",
+    "worksOn": "Töötab",
+    "moreAppts": "+{{count}} veel",
+    "toCrm": "Mine CRM-i",
+    "crmPasswordTitle": "Sisesta CRM-i parool",
+    "crmPasswordPlaceholder": "Parool",
+    "crmPasswordError": "Vale parool",
+    "colorNames": {
+      "tomato": "Tomat",
+      "flamingo": "Flamingo",
+      "tangerine": "Mandariin",
+      "banana": "Banaan",
+      "sage": "Salvei",
+      "basil": "Basiilik",
+      "peacock": "Paabulind",
+      "blueberry": "Mustikas",
+      "lavender": "Lavendel",
+      "grape": "Viinamari",
+      "graphite": "Grafiit"
     }
   },
   "role": {
@@ -581,7 +610,13 @@
     "workloadSoon": "Peaaegu täis"
   },
   "weekday": {
-    "0": "P", "1": "E", "2": "T", "3": "K", "4": "N", "5": "R", "6": "L"
+    "0": "P",
+    "1": "E",
+    "2": "T",
+    "3": "K",
+    "4": "N",
+    "5": "R",
+    "6": "L"
   },
   "proCalendar": {
     "noStaff": "Aktiivseid töötajaid pole.",
@@ -690,7 +725,20 @@
     "noServices": "Aktiivseid teenuseid pole. Lisa need lehel «Teenused» või seo töötajaga jaotises «Töötajad → Oskused».",
     "overlap": "See aeg pole selle töötaja jaoks enam vaba. Värskenda ja vali teine aeg.",
     "fillAll": "Täida kõik väljad.",
-    "closeBooking": "Sulge salvestamata"
+    "closeBooking": "Sulge salvestamata",
+    "editBooking": "Muuda broneeringut",
+    "addClient": "Lisa klient",
+    "start": "Algus",
+    "end": "Lõpp",
+    "resetAuto": "Lähtesta automaatselt",
+    "phoneOptional": "Telefon (vabatahtlik)",
+    "saving": "Salvestamine…",
+    "delete": "Kustuta",
+    "deleteConfirm": "Kustuta see broneering?",
+    "defaultClient": "Klient (vastuvõtt)",
+    "endAfterStart": "Lõpuaeg peab olema hiljem kui algusaeg",
+    "selectService": "— teenus —",
+    "selectStaff": "Vali meister"
   },
   "site": {
     "skip": "Liigu põhisisu juurde",
@@ -875,9 +923,48 @@
       "errMissingStart": "Valige päev ja aeg.",
       "errEmptyItems": "Valige teenus hinnakirjast.",
       "errTooManyItems": "Praegu saab broneerida ühe teenuse kaupa.",
-      "monthsTitle": ["Jaanuar", "Veebruar", "Märts", "Aprill", "Mai", "Juuni", "Juuli", "August", "September", "Oktoober", "November", "Detsember"],
-      "monthsGenitive": ["jaanuar", "veebruar", "märts", "aprill", "mai", "juuni", "juuli", "august", "september", "oktoober", "november", "detsember"],
-      "monthsLower": ["jaanuar", "veebruar", "märts", "aprill", "mai", "juuni", "juuli", "august", "september", "oktoober", "november", "detsember"]
+      "monthsTitle": [
+        "Jaanuar",
+        "Veebruar",
+        "Märts",
+        "Aprill",
+        "Mai",
+        "Juuni",
+        "Juuli",
+        "August",
+        "September",
+        "Oktoober",
+        "November",
+        "Detsember"
+      ],
+      "monthsGenitive": [
+        "jaanuar",
+        "veebruar",
+        "märts",
+        "aprill",
+        "mai",
+        "juuni",
+        "juuli",
+        "august",
+        "september",
+        "oktoober",
+        "november",
+        "detsember"
+      ],
+      "monthsLower": [
+        "jaanuar",
+        "veebruar",
+        "märts",
+        "aprill",
+        "mai",
+        "juuni",
+        "juuli",
+        "august",
+        "september",
+        "oktoober",
+        "november",
+        "detsember"
+      ]
     }
   }
 }

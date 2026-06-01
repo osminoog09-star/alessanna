@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { supabase } from "../../lib/supabase";
 import type { StaffMember, StaffWorkDateRow } from "../../types/database";
 import { googleStaffColor } from "./receptionColors";
 import { buildStaffHueMap } from "../../lib/staffHue";
-
-const RU_DAYS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-const RU_MONTHS = [
-  "января","февраля","марта","апреля","мая","июня",
-  "июля","августа","сентября","октября","ноября","декабря",
-];
 
 type Props = {
   day: Date;
@@ -22,13 +17,15 @@ type Props = {
 };
 
 export function AdminDaySchedulePopup({ day, anchorX, anchorY, allStaff, workDates, onClose, onSaved }: Props) {
+  const { t, i18n } = useTranslation();
   const [saving, setSaving] = useState<string | null>(null);
   const hueMap = buildStaffHueMap(allStaff.map((m) => m.id));
 
   const x = Math.min(anchorX + 8, window.innerWidth - 290);
   const y = Math.min(anchorY, window.innerHeight - 420);
   const dateStr = format(day, "yyyy-MM-dd");
-  const dayLabel = `${RU_DAYS[day.getDay()]}, ${day.getDate()} ${RU_MONTHS[day.getMonth()]}`;
+  const uiLocale = i18n.language === "et" ? "et-EE" : "ru-RU";
+  const dayLabel = day.toLocaleString(uiLocale, { weekday: "long", day: "numeric", month: "long" });
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -73,7 +70,7 @@ export function AdminDaySchedulePopup({ day, anchorX, anchorY, allStaff, workDat
 
         <div className="px-1 py-2">
           <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-[#70757a]">
-            Работает {day.getDate()} {RU_MONTHS[day.getMonth()]}
+            {t("reception.worksOn")} {day.toLocaleString(uiLocale, { day: "numeric", month: "long" })}
           </p>
           {allStaff.map((m) => {
             const isWorking = workDates.some((r) => r.staff_id === m.id && r.work_date === dateStr);

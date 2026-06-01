@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   addDays,
   eachDayOfInterval,
@@ -13,7 +14,7 @@ import type { AppointmentRow, StaffMember } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
 import { googleStaffColor } from "./receptionColors";
 
-const RU_WEEK_DAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const WEEKDAY_KEYS = [1, 2, 3, 4, 5, 6, 0] as const; // Mon→1 … Sun→0
 
 type Props = {
   cursor: Date;
@@ -22,6 +23,7 @@ type Props = {
   visibleStaffIds: Set<string>;
   onDayClick: (day: Date) => void;
   onApptClick: (appt: AppointmentRow, x: number, y: number) => void;
+  dark?: boolean;
 };
 
 export function ReceptionMonthView({
@@ -31,9 +33,15 @@ export function ReceptionMonthView({
   visibleStaffIds,
   onDayClick,
   onApptClick,
+  dark,
 }: Props) {
+  const { t } = useTranslation();
   const today = new Date();
   const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
+
+  const hoverCls = dark ? "hover:bg-white/5" : "hover:bg-surface";
+  const inactiveDay = dark ? "text-fg/30" : "text-fg/30";
+  const offMonthBg = dark ? "bg-canvas/50" : "bg-line/5";
 
   const staffMap = useMemo(() => {
     const m = new Map<string, StaffMember>();
@@ -63,21 +71,21 @@ export function ReceptionMonthView({
   }, [appointments, visibleStaffIds]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
       {/* Column headers */}
-      <div className="grid shrink-0 grid-cols-7 border-b border-[#dadce0] bg-white">
-        {RU_WEEK_DAYS_SHORT.map((d) => (
+      <div className="grid shrink-0 grid-cols-7 border-b border-line/15 bg-canvas">
+        {WEEKDAY_KEYS.map((k) => (
           <div
-            key={d}
-            className="py-2 text-center text-[11px] font-medium uppercase tracking-wide text-[#70757a]"
+            key={k}
+            className="py-2 text-center text-[11px] font-medium uppercase tracking-wide text-muted"
           >
-            {d}
+            {t(`weekday.${k}`)}
           </div>
         ))}
       </div>
 
       {/* Month grid */}
-      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-hidden bg-white">
+      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-hidden bg-canvas">
         {gridDays.map((day) => {
           const key = format(day, "yyyy-MM-dd");
           const dayAppts = apptsByDay.get(key) ?? [];
@@ -91,8 +99,8 @@ export function ReceptionMonthView({
             <div
               key={key}
               className={[
-                "relative flex min-h-0 flex-col overflow-hidden border-b border-r border-[#e8eaed] p-1",
-                !isCurrentMonth ? "bg-[#f8f9fa]" : "",
+                "relative flex min-h-0 flex-col overflow-hidden border-b border-r border-line/10 p-1",
+                !isCurrentMonth ? offMonthBg : "",
               ].join(" ")}
             >
               <button
@@ -102,8 +110,8 @@ export function ReceptionMonthView({
                   isToday
                     ? "bg-[#1a73e8] text-white"
                     : isCurrentMonth
-                    ? "text-[#3c4043] hover:bg-[#f1f3f4]"
-                    : "text-[#bdc1c6] hover:bg-[#f1f3f4]",
+                    ? `text-fg ${hoverCls}`
+                    : `${inactiveDay} ${hoverCls}`,
                 ].join(" ")}
               >
                 {format(day, "d")}
@@ -132,9 +140,9 @@ export function ReceptionMonthView({
                 {hiddenCount > 0 && (
                   <button
                     onClick={() => onDayClick(day)}
-                    className="text-left text-[10px] text-[#70757a] hover:text-[#3c4043]"
+                    className={`text-left text-[10px] text-muted ${hoverCls}`}
                   >
-                    +{hiddenCount} ещё
+                    {t("reception.moreAppts", { count: hiddenCount })}
                   </button>
                 )}
               </div>

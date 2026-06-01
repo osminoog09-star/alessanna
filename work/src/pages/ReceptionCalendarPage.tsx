@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { addDays, addMonths, addWeeks, startOfWeek, subMonths, subWeeks } from "date-fns";
+import { useTranslation } from "react-i18next";
+import { addDays, addMonths, addWeeks, subDays, startOfWeek, subMonths, subWeeks } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import { isStaffRowAdmin, normalizeStaffMember } from "../lib/roles";
-import { AppTopBar } from "../components/AppTopBar";
+import { useTheme } from "../context/ThemeContext";
 import { ReceptionSidebar } from "../components/reception/ReceptionSidebar";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
 import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
@@ -20,7 +21,7 @@ import type {
   StaffWorkDateRow,
 } from "../types/database";
 
-type View = "week" | "month";
+type View = "day" | "week" | "month";
 
 type BookingPopupState = {
   anchorX: number;
@@ -31,6 +32,9 @@ type BookingPopupState = {
 };
 
 export function ReceptionCalendarPage() {
+  const { t, i18n } = useTranslation();
+  const { theme } = useTheme();
+  const dark = theme === "onyx" || theme === "stone";
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -43,6 +47,7 @@ export function ReceptionCalendarPage() {
   const [popup, setPopup] = useState<BookingPopupState | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [dayPopup, setDayPopup] = useState<{ day: Date; x: number; y: number } | null>(null);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -77,7 +82,10 @@ export function ReceptionCalendarPage() {
   useCalendarDataRealtime(load);
 
   const weekStart = useMemo(() => startOfWeek(cursor, { weekStartsOn: 1 }), [cursor]);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = useMemo(() => {
+    if (view === "day") return [cursor];
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [view, cursor, weekStart]);
 
   function handleToggleStaff(id: string) {
     setVisibleStaffIds((prev) => {
@@ -102,6 +110,21 @@ export function ReceptionCalendarPage() {
     });
   }
 
+  async function handleApptResize(appt: AppointmentRow, newStart: Date, newEnd: Date) {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === appt.id
+          ? { ...a, start_time: newStart.toISOString(), end_time: newEnd.toISOString() }
+          : a,
+      ),
+    );
+    const { error } = await supabase
+      .from("appointments")
+      .update({ start_time: newStart.toISOString(), end_time: newEnd.toISOString() })
+      .eq("id", appt.id);
+    if (error) void load();
+  }
+
   function handleDayHeaderClick(day: Date, x: number, y: number) {
     setPopup(null);
     setDayPopup({ day, x, y });
@@ -109,74 +132,91 @@ export function ReceptionCalendarPage() {
 
   function handleDayClick(day: Date) {
     setCursor(day);
-    setView("week");
+    setView("day");
   }
 
   function navigate(dir: 1 | -1) {
-    if (view === "week") setCursor((d) => (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1)));
+    if (view === "day") setCursor((d) => (dir === 1 ? addDays(d, 1) : subDays(d, 1)));
+    else if (view === "week") setCursor((d) => (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1)));
     else setCursor((d) => (dir === 1 ? addMonths(d, 1) : subMonths(d, 1)));
   }
 
-  const periodLabel = cursor.toLocaleString("ru-RU", { month: "long", year: "numeric" });
+  const uiLocale = i18n.language === "et" ? "et-EE" : "ru-RU";
+  const periodLabel = view === "day"
+    ? cursor.toLocaleString(uiLocale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : cursor.toLocaleString(uiLocale, { month: "long", year: "numeric" });
+
+  const navHover = dark ? "hover:bg-white/5" : "hover:bg-surface";
+  const navText = "text-muted";
+  const useGold = theme !== "white";
+  const accentActive = useGold ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]";
+  const todayBtnCls = useGold
+    ? "border-gold/40 text-gold hover:bg-gold/10"
+    : "border-line/15 text-fg hover:bg-surface";
 
   if (loading) {
     return (
-      <div className="flex h-[100dvh] items-center justify-center bg-white text-[#70757a]">
-        Загрузка…
+      <div className="flex h-[100dvh] items-center justify-center bg-canvas text-muted">
+        {t("common.loading")}
       </div>
     );
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-white text-[#3c4043]">
-      <AppTopBar />
-
+    <div className="fixed inset-0 flex flex-col bg-canvas text-fg">
       {/* Top navigation */}
-      <div className="flex shrink-0 items-center border-b border-[#dadce0] bg-white px-3 py-2">
-        {/* Left: Today + view switcher */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCursor(new Date())}
-            className="rounded-lg border border-[#dadce0] px-4 py-1.5 text-sm font-medium text-[#3c4043] hover:bg-[#f1f3f4]"
-          >
-            Сегодня
-          </button>
-          <div className="flex items-center rounded-lg border border-[#dadce0] p-0.5">
-            {(["week", "month"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={[
-                  "rounded-md px-3 py-1 text-sm font-medium transition-colors",
-                  view === v
-                    ? "bg-[#e8f0fe] text-[#1a73e8]"
-                    : "text-[#5f6368] hover:bg-[#f1f3f4]",
-                ].join(" ")}
-              >
-                {v === "week" ? "Неделя" : "Месяц"}
-              </button>
-            ))}
-          </div>
+      <div className="flex shrink-0 items-center gap-1 border-b border-line/15 bg-canvas px-2 py-2">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={() => setShowSidebar((s) => !s)}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${navText} ${navHover} md:hidden`}
+          aria-label="Меню"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
+        {/* Today */}
+        <button
+          onClick={() => setCursor(new Date())}
+          className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${todayBtnCls}`}
+        >
+          {t("calendar.today")}
+        </button>
+
+        {/* View switcher — hidden on mobile (available in sidebar) */}
+        <div className="hidden items-center rounded-lg border border-line/15 p-0.5 md:flex">
+          {(["day", "week", "month"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={[
+                "rounded-md px-3 py-1 text-sm font-medium transition-colors",
+                view === v ? accentActive : `text-muted ${navHover}`,
+              ].join(" ")}
+            >
+              {v === "day" ? t("calendar.day") : v === "week" ? t("calendar.week") : t("calendar.month")}
+            </button>
+          ))}
         </div>
 
-        {/* Center: prev / month-year / next */}
-        <div className="flex flex-1 items-center justify-center gap-1">
+        {/* Prev / period label / Next — centered */}
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-1">
           <button
             onClick={() => navigate(-1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
-            aria-label={view === "week" ? "Предыдущая неделя" : "Предыдущий месяц"}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${navText} ${navHover}`}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="min-w-[160px] text-center text-lg font-normal capitalize text-[#3c4043]">
+          <span className="min-w-0 truncate text-center text-base font-normal capitalize text-fg sm:text-lg">
             {periodLabel}
           </span>
           <button
             onClick={() => navigate(1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
-            aria-label={view === "week" ? "Следующая неделя" : "Следующий месяц"}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${navText} ${navHover}`}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6" />
@@ -184,32 +224,59 @@ export function ReceptionCalendarPage() {
           </button>
         </div>
 
-        {/* Right: settings gear */}
-        <div className="flex items-center">
-          <button
-            onClick={() => setShowSettings(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
-            title="Настройки цветов мастеров"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-              <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96a7.01 7.01 0 00-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.11.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-            </svg>
-          </button>
-        </div>
+        {/* Settings gear */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${navText} ${navHover}`}
+          title={t("reception.colorSettings")}
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96a7.01 7.01 0 00-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.11.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+          </svg>
+        </button>
       </div>
 
       {/* Main layout */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <ReceptionSidebar
-          cursor={cursor}
-          onDateSelect={(date) => { setCursor(date); setView("week"); }}
-          staff={staff}
-          visibleStaffIds={visibleStaffIds}
-          onToggleStaff={handleToggleStaff}
-        />
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        {/* Sidebar: always visible on md+; slide-in drawer on mobile */}
+        <div
+          className={[
+            "absolute inset-y-0 left-0 z-40 flex flex-col transition-transform duration-200 md:relative md:translate-x-0 md:flex",
+            showSidebar ? "translate-x-0" : "-translate-x-full",
+          ].join(" ")}
+        >
+          <ReceptionSidebar
+            cursor={cursor}
+            onDateSelect={(date) => { setCursor(date); setView("week"); setShowSidebar(false); }}
+            staff={staff}
+            visibleStaffIds={visibleStaffIds}
+            onToggleStaff={handleToggleStaff}
+            view={view}
+            onViewChange={setView}
+            dark={dark}
+          />
+        </div>
+
+        {/* Backdrop — closes drawer when tapping outside on mobile */}
+        {showSidebar && (
+          <div
+            className="absolute inset-0 z-30 bg-black/30 md:hidden"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {view === "week" ? (
+          {view === "month" ? (
+            <ReceptionMonthView
+              cursor={cursor}
+              staff={staff}
+              appointments={appointments}
+              visibleStaffIds={visibleStaffIds}
+              onDayClick={handleDayClick}
+              onApptClick={handleApptClick}
+              dark={dark}
+            />
+          ) : (
             <ReceptionWeekGrid
               days={days}
               staff={staff}
@@ -220,16 +287,9 @@ export function ReceptionCalendarPage() {
               visibleStaffIds={visibleStaffIds}
               onSlotClick={handleSlotClick}
               onApptClick={handleApptClick}
-              onDayHeaderClick={handleDayHeaderClick}
-            />
-          ) : (
-            <ReceptionMonthView
-              cursor={cursor}
-              staff={staff}
-              appointments={appointments}
-              visibleStaffIds={visibleStaffIds}
-              onDayClick={handleDayClick}
-              onApptClick={handleApptClick}
+              onApptResize={handleApptResize}
+              onDayHeaderClick={view === "week" ? handleDayHeaderClick : undefined}
+              dark={dark}
             />
           )}
         </div>

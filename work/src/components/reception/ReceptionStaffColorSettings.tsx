@@ -1,21 +1,22 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
 import type { StaffMember } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
 import { googleStaffColor } from "./receptionColors";
 
 const GCAL_COLORS = [
-  { name: "Томат",     hex: "#d50000" },
-  { name: "Фламинго", hex: "#e67c73" },
-  { name: "Мандарин", hex: "#f4511e" },
-  { name: "Банан",    hex: "#f6bf26" },
-  { name: "Шалфей",   hex: "#33b679" },
-  { name: "Базилик",  hex: "#0b8043" },
-  { name: "Павлин",   hex: "#039be5" },
-  { name: "Черника",  hex: "#3f51b5" },
-  { name: "Лаванда",  hex: "#7986cb" },
-  { name: "Виноград", hex: "#8e24aa" },
-  { name: "Графит",   hex: "#616161" },
+  { key: "tomato",     hex: "#d50000" },
+  { key: "flamingo",   hex: "#e67c73" },
+  { key: "tangerine",  hex: "#f4511e" },
+  { key: "banana",     hex: "#f6bf26" },
+  { key: "sage",       hex: "#33b679" },
+  { key: "basil",      hex: "#0b8043" },
+  { key: "peacock",    hex: "#039be5" },
+  { key: "blueberry",  hex: "#3f51b5" },
+  { key: "lavender",   hex: "#7986cb" },
+  { key: "grape",      hex: "#8e24aa" },
+  { key: "graphite",   hex: "#616161" },
 ];
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const staffHueMap = buildStaffHueMap(staff.map((m) => m.id));
@@ -57,7 +59,7 @@ export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) 
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-[#dadce0] px-4 py-3">
-          <span className="text-sm font-semibold text-[#3c4043]">Цвета мастеров</span>
+          <span className="text-sm font-semibold text-[#3c4043]">{t("reception.colorSettings")}</span>
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] hover:bg-[#f1f3f4]"
@@ -83,7 +85,7 @@ export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) 
                   <span className="text-sm font-medium text-[#3c4043]">
                     {member.name}
                     {isSavingThis && (
-                      <span className="ml-1 text-xs text-[#70757a]">сохранение…</span>
+                      <span className="ml-1 text-xs text-[#70757a]">{t("modal.saving")}</span>
                     )}
                   </span>
                 </div>
@@ -93,7 +95,7 @@ export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) 
                     return (
                       <button
                         key={col.hex}
-                        title={col.name}
+                        title={t(`reception.colorNames.${col.key}`)}
                         onClick={() => void handleColorPick(member.id, col.hex)}
                         className="relative h-6 w-6 rounded-full transition-transform hover:scale-110"
                         style={{ backgroundColor: col.hex }}

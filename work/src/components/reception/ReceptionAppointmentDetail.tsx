@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { format, parseISO } from "date-fns";
 import type { AppointmentRow, ServiceRow, StaffMember } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
@@ -24,6 +25,7 @@ export function ReceptionAppointmentDetail({
   services,
   onClose,
 }: Props) {
+  const { t, i18n } = useTranslation();
   const popupRef = useRef<HTMLDivElement>(null);
   const staffHueMap = buildStaffHueMap(staff.map((m) => m.id));
 
@@ -39,7 +41,8 @@ export function ReceptionAppointmentDetail({
   const startDt = parseISO(appt.start_time);
   const endDt = parseISO(appt.end_time);
   const timeLabel = `${format(startDt, "HH:mm")} – ${format(endDt, "HH:mm")}`;
-  const dateLabel = startDt.toLocaleString("ru-RU", {
+  const uiLocale = i18n.language === "et" ? "et-EE" : "ru-RU";
+  const dateLabel = startDt.toLocaleString(uiLocale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -78,7 +81,7 @@ export function ReceptionAppointmentDetail({
             onClick={onClose}
             className="shrink-0 rounded-full p-0.5 opacity-80 hover:opacity-100"
             style={{ color: c.fg }}
-            aria-label="Закрыть"
+            aria-label={t("common.cancel")}
           >
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M3 3l10 10M13 3L3 13" />
@@ -117,7 +120,7 @@ export function ReceptionAppointmentDetail({
             </svg>
             <span className="text-sm text-[#3c4043]">
               {svc.name_et}
-              <span className="ml-1 text-[#70757a]">· {svc.duration_min} мин</span>
+              <span className="ml-1 text-[#70757a]">· {svc.duration_min} {t("common.min")}</span>
             </span>
           </div>
         )}

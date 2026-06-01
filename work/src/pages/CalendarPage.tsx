@@ -242,6 +242,21 @@ export function CalendarPage() {
     setCursor((d) => view === "week" ? addDays(d, dir * 7) : addMonths(d, dir));
   }
 
+  async function handleApptResize(appt: AppointmentRow, newStart: Date, newEnd: Date) {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === appt.id
+          ? { ...a, start_time: newStart.toISOString(), end_time: newEnd.toISOString() }
+          : a,
+      ),
+    );
+    const { error } = await supabase
+      .from("appointments")
+      .update({ start_time: newStart.toISOString(), end_time: newEnd.toISOString() })
+      .eq("id", appt.id);
+    if (error) void load();
+  }
+
   const periodLabel = cursor.toLocaleString("ru-RU", { month: "long", year: "numeric" });
 
   function openQuickBooking() {
@@ -359,6 +374,7 @@ export function CalendarPage() {
                 if (!canUseCalendar) return;
                 setModal({ start: parseISO(appt.start_time), staffId: appt.staff_id, editAppt: appt });
               }}
+              onApptResize={canUseCalendar ? handleApptResize : undefined}
               onDayHeaderClick={canManage ? (day, x, y) => setDayPopup({ day, x, y }) : undefined}
             />
           ) : (
