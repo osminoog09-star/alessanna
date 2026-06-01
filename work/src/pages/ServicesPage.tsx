@@ -131,8 +131,8 @@ export function ServicesPage() {
   /* v2: by default ALL categories start collapsed (см. effect ниже). v1
    * хранил пустой collapsedCategories, что означало «всё развёрнуто» —
    * при бампе ключа старые юзеры тоже один раз получат свернутый вид. */
-  // v3 resets old expanded service-card prefs; cards should open collapsed by default.
-  const SERVICES_PREFS_KEY = "admin/services/v3";
+  // v4 resets old category/card expansion prefs; service groups should open collapsed by default.
+  const SERVICES_PREFS_KEY = "admin/services/v4";
   type ActiveFilter = "all" | "active" | "inactive";
   type SortBy = "name" | "price-asc" | "price-desc" | "duration-asc" | "duration-desc" | "masters-desc";
   type ServicesPrefs = {
@@ -169,7 +169,7 @@ export function ServicesPage() {
         ...DEFAULT_PREFS,
         ...parsed,
         expandedServiceIds: [],
-        collapsedCategories: Array.isArray(parsed.collapsedCategories) ? parsed.collapsedCategories.map(String) : [],
+        collapsedCategories: [],
         filterCategoryIds: Array.isArray(parsed.filterCategoryIds) ? parsed.filterCategoryIds.map(String) : [],
       };
     } catch {
@@ -185,7 +185,7 @@ export function ServicesPage() {
   const [filterCategoryIds, setFilterCategoryIds] = useState<Set<string>>(() => new Set(initialPrefs.filterCategoryIds));
   const [sortBy, setSortBy] = useState<SortBy>(initialPrefs.sortBy);
   const [showToolbar, setShowToolbar] = useState<boolean>(initialPrefs.showToolbar);
-  const [collapseAllInitialized, setCollapseAllInitialized] = useState<boolean>(initialPrefs.collapseAllInitialized);
+  const [collapseAllInitialized, setCollapseAllInitialized] = useState<boolean>(false);
 
   /* Однократный сворачивающий эффект: при первом заходе админа на страницу
    * (нет ни одного флага в localStorage v2) сворачиваем ВСЕ категории, чтобы
@@ -215,14 +215,14 @@ export function ServicesPage() {
     if (typeof window === "undefined") return;
     const payload: ServicesPrefs = {
       expandedServiceIds: [],
-      collapsedCategories: Array.from(collapsedCats),
+      collapsedCategories: [],
       filterActive,
       filterNoMasters,
       filterNotOnMain,
       filterCategoryIds: Array.from(filterCategoryIds),
       sortBy,
       showToolbar,
-      collapseAllInitialized,
+      collapseAllInitialized: false,
     };
     try {
       window.localStorage.setItem(SERVICES_PREFS_KEY, JSON.stringify(payload));
