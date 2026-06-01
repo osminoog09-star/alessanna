@@ -107,7 +107,7 @@ export function ReceptionWeekGrid({
   const textCls = "text-fg";
   const hoverCls = dark ? "hover:bg-white/5" : "hover:bg-surface";
   const hrLine = "border-line/10";
-  const todayBg = dark ? "bg-blue-500/[0.05]" : "bg-[#1a73e8]/[0.04]";
+  const todayBg = dark ? "bg-gold/[0.05]" : "bg-[#1a73e8]/[0.04]";
   const stripes = dark
     ? "repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0, rgba(255,255,255,0.12) 1px, transparent 0, transparent 50%)"
     : "repeating-linear-gradient(-45deg, #c0c4cc 0, #c0c4cc 1px, transparent 0, transparent 50%)";
@@ -335,7 +335,9 @@ export function ReceptionWeekGrid({
               <span
                 className={[
                   "flex h-8 w-8 items-center justify-center rounded-full text-lg font-medium",
-                  isToday ? "bg-[#1a73e8] text-white" : textCls,
+                  isToday
+                    ? dark ? "bg-gold text-canvas" : "bg-[#1a73e8] text-white"
+                    : textCls,
                 ].join(" ")}
               >
                 {format(day, "d")}

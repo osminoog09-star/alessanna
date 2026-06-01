@@ -147,7 +147,11 @@ export function ReceptionCalendarPage() {
     : cursor.toLocaleString(uiLocale, { month: "long", year: "numeric" });
 
   const navHover = dark ? "hover:bg-white/5" : "hover:bg-surface";
-  const navText = dark ? "text-muted" : "text-muted";
+  const navText = "text-muted";
+  const accentActive = dark ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]";
+  const todayBtnCls = dark
+    ? "border-gold/40 text-gold hover:bg-gold/10"
+    : "border-line/15 text-fg hover:bg-surface";
 
   if (loading) {
     return (
@@ -175,7 +179,7 @@ export function ReceptionCalendarPage() {
         {/* Today */}
         <button
           onClick={() => setCursor(new Date())}
-          className={`shrink-0 rounded-lg border border-line/15 px-3 py-1.5 text-sm font-medium text-fg ${navHover}`}
+          className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${todayBtnCls}`}
         >
           {t("calendar.today")}
         </button>
@@ -188,7 +192,7 @@ export function ReceptionCalendarPage() {
               onClick={() => setView(v)}
               className={[
                 "rounded-md px-3 py-1 text-sm font-medium transition-colors",
-                view === v ? "bg-[#e8f0fe] text-[#1a73e8]" : `text-muted ${navHover}`,
+                view === v ? accentActive : `text-muted ${navHover}`,
               ].join(" ")}
             >
               {v === "day" ? t("calendar.day") : v === "week" ? t("calendar.week") : t("calendar.month")}

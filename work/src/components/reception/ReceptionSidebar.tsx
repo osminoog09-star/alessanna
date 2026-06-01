@@ -30,14 +30,17 @@ type Props = {
   onViewChange?: (v: "day" | "week" | "month") => void;
 };
 
-const DAY_KEYS = [1, 2, 3, 4, 5, 6, 0] as const; // Mon→1 … Sun→0
+const DAY_KEYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
-const RECEPTION_THEMES: { id: ThemeId; bg: string; ring: string }[] = [
-  { id: "white",     bg: "#ffffff", ring: "#dadce0" },
-  { id: "champagne", bg: "#fbfaf6", ring: "#d4c9b5" },
-  { id: "stone",     bg: "#2e2a25", ring: "#6b6254" },
-  { id: "onyx",      bg: "#141414", ring: "#444" },
-];
+// [left, middle, right] color stops for the swatch strip
+const SWATCHES: Record<ThemeId, [string, string, string]> = {
+  white:     ["#ffffff", "#f1f3f4", "#1a73e8"],
+  champagne: ["#fbfaf6", "#f4f1eb", "#a3855e"],
+  stone:     ["#25221e", "#38332d", "#d4b896"],
+  onyx:      ["#0a0a0a", "#1a1a1a", "#c4a574"],
+};
+
+const RECEPTION_THEME_IDS: ThemeId[] = ["white", "champagne", "stone", "onyx"];
 
 export function ReceptionSidebar({
   cursor,
@@ -59,14 +62,15 @@ export function ReceptionSidebar({
   const today = new Date();
   const staffHueMap = buildStaffHueMap(staff.map((m) => m.id));
 
-  // CSS variable-based classes work for all themes; only a few differences per dark/light
   const borderCls = "border-line/15";
   const mutedCls = "text-muted";
   const textCls = "text-fg";
   const hoverCls = dark ? "hover:bg-white/5" : "hover:bg-surface";
-  const navBtnCls = dark ? "text-muted hover:bg-white/5" : "text-muted hover:bg-surface";
-  const inactiveCls = "text-fg/30";
-  const weekSelCls = dark ? "bg-blue-500/15 text-blue-400" : "bg-[#e8f0fe] text-[#1a73e8]";
+  const navBtnCls = dark ? "text-muted hover:bg-white/5 hover:text-gold" : "text-muted hover:bg-surface";
+
+  // Accent classes: gold on dark, Google blue on light
+  const todayBubble = dark ? "bg-gold font-bold text-canvas" : "bg-[#1a73e8] font-bold text-white";
+  const accentSel = dark ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]";
 
   const monthStart = startOfMonth(miniCursor);
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -74,16 +78,16 @@ export function ReceptionSidebar({
 
   return (
     <div className={`flex h-full w-64 shrink-0 flex-col overflow-y-auto border-r py-3 bg-canvas ${borderCls}`}>
-      {/* View switcher — only shown on mobile (top bar hides it on sm) */}
+      {/* View switcher — mobile only */}
       {onViewChange && view && (
-        <div className={`mb-3 flex items-center rounded-lg border p-0.5 mx-3 md:hidden ${borderCls}`}>
+        <div className={`mb-3 mx-3 flex items-center rounded-lg border p-0.5 md:hidden ${borderCls}`}>
           {(["day", "week", "month"] as const).map((v) => (
             <button
               key={v}
               onClick={() => onViewChange(v)}
               className={[
                 "flex-1 rounded-md px-2 py-1.5 text-sm font-medium transition-colors",
-                view === v ? "bg-[#e8f0fe] text-[#1a73e8]" : `${mutedCls} ${hoverCls}`,
+                view === v ? accentSel : `${mutedCls} ${hoverCls}`,
               ].join(" ")}
             >
               {v === "day" ? t("calendar.day") : v === "week" ? t("calendar.week") : t("calendar.month")}
@@ -93,68 +97,66 @@ export function ReceptionSidebar({
       )}
 
       {!hideMiniCalendar && (
-      <>
-      {/* Mini calendar */}
-      <div className="px-3">
-        <div className="mb-1 flex items-center justify-between">
-          <button
-            onClick={() => setMiniCursor((d) => subMonths(d, 1))}
-            className={`flex h-7 w-7 items-center justify-center rounded-full ${navBtnCls}`}
-            aria-label={t("calendar.prevMonth") || "‹"}
-          >
-            ‹
-          </button>
-          <span className={`text-xs font-medium capitalize ${textCls}`}>
-            {miniCursor.toLocaleString(uiLocale, { month: "long", year: "numeric" })}
-          </span>
-          <button
-            onClick={() => setMiniCursor((d) => addMonths(d, 1))}
-            className={`flex h-7 w-7 items-center justify-center rounded-full ${navBtnCls}`}
-            aria-label={t("calendar.nextMonth") || "›"}
-          >
-            ›
-          </button>
-        </div>
-
-        {/* Day name headers */}
-        <div className="grid grid-cols-7 text-center">
-          {DAY_KEYS.map((k) => (
-            <div key={k} className={`py-0.5 text-[10px] font-medium ${mutedCls}`}>
-              {t(`weekday.${k}`)}
-            </div>
-          ))}
-        </div>
-
-        {/* Day cells */}
-        <div className="grid grid-cols-7 text-center">
-          {miniDays.map((day) => {
-            const isToday = isSameDay(day, today);
-            const isSelected = isSameWeek(day, cursor, { weekStartsOn: 1 });
-            const isCurrentMonth = isSameMonth(day, miniCursor);
-            return (
+        <>
+          {/* Mini calendar */}
+          <div className="px-3">
+            <div className="mb-1 flex items-center justify-between">
               <button
-                key={day.toISOString()}
-                onClick={() => onDateSelect(day)}
-                className={[
-                  "mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[11px] transition-colors",
-                  isToday
-                    ? "bg-[#1a73e8] font-bold text-white"
-                    : isSelected && !isToday
-                    ? weekSelCls
-                    : isCurrentMonth
-                    ? `${textCls} ${hoverCls}`
-                    : `${inactiveCls} ${hoverCls}`,
-                ].join(" ")}
+                onClick={() => setMiniCursor((d) => subMonths(d, 1))}
+                className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${navBtnCls}`}
+                aria-label={t("calendar.prevMonth") || "‹"}
               >
-                {format(day, "d")}
+                ‹
               </button>
-            );
-          })}
-        </div>
-      </div>
+              <span className={`text-xs font-medium capitalize ${textCls}`}>
+                {miniCursor.toLocaleString(uiLocale, { month: "long", year: "numeric" })}
+              </span>
+              <button
+                onClick={() => setMiniCursor((d) => addMonths(d, 1))}
+                className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${navBtnCls}`}
+                aria-label={t("calendar.nextMonth") || "›"}
+              >
+                ›
+              </button>
+            </div>
 
-      <div className={`mx-3 my-3 border-t ${borderCls}`} />
-      </>
+            <div className="grid grid-cols-7 text-center">
+              {DAY_KEYS.map((k) => (
+                <div key={k} className={`py-0.5 text-[10px] font-medium ${mutedCls}`}>
+                  {t(`weekday.${k}`)}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 text-center">
+              {miniDays.map((day) => {
+                const isToday = isSameDay(day, today);
+                const isSelected = isSameWeek(day, cursor, { weekStartsOn: 1 });
+                const isCurrentMonth = isSameMonth(day, miniCursor);
+                return (
+                  <button
+                    key={day.toISOString()}
+                    onClick={() => onDateSelect(day)}
+                    className={[
+                      "mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[11px] transition-colors",
+                      isToday
+                        ? todayBubble
+                        : isSelected && !isToday
+                        ? accentSel
+                        : isCurrentMonth
+                        ? `${textCls} ${hoverCls}`
+                        : `text-fg/30 ${hoverCls}`,
+                    ].join(" ")}
+                  >
+                    {format(day, "d")}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={`mx-3 my-3 border-t ${borderCls}`} />
+        </>
       )}
 
       {/* Staff list */}
@@ -169,7 +171,7 @@ export function ReceptionSidebar({
             return (
               <label
                 key={member.id}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 ${hoverCls}`}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors ${hoverCls}`}
               >
                 <input
                   type="checkbox"
@@ -197,46 +199,56 @@ export function ReceptionSidebar({
         </div>
       </div>
 
-      {/* Language switcher + Theme picker + CRM link */}
+      {/* Bottom section: theme + language + CRM link */}
       <div className={`mt-auto border-t px-3 pt-3 pb-3 ${borderCls}`}>
-        {/* Theme picker */}
-        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${mutedCls}`}>
+        {/* Theme picker — CRM style */}
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
           {t("nav.themeLabel")}
         </p>
-        <div className="mb-3 flex gap-2">
-          {RECEPTION_THEMES.map(({ id, bg, ring }) => {
-            const isActive = theme === id;
+        <div className="mb-3 grid grid-cols-2 gap-1">
+          {RECEPTION_THEME_IDS.map((id) => {
+            const active = theme === id;
+            const sw = SWATCHES[id];
             return (
               <button
                 key={id}
+                type="button"
                 onClick={() => setTheme(id)}
+                aria-pressed={active}
                 title={t(`nav.theme.${id}`)}
-                className="relative h-6 w-6 rounded-full transition-transform hover:scale-110"
-                style={{
-                  backgroundColor: bg,
-                  boxShadow: isActive
-                    ? `0 0 0 2px ${bg}, 0 0 0 4px #1a73e8`
-                    : `0 0 0 1.5px ${ring}`,
-                }}
-              />
+                className={[
+                  "flex flex-col items-center gap-1 rounded-lg border px-1.5 py-1.5 text-[10px] font-medium uppercase tracking-wide transition",
+                  active
+                    ? "border-gold/60 bg-surface text-gold shadow-gold"
+                    : "border-line/10 bg-canvas/40 text-muted hover:border-gold/30 hover:text-fg",
+                ].join(" ")}
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex h-3 w-7 overflow-hidden rounded-full border border-line/10"
+                >
+                  <span style={{ background: sw[0] }} className="flex-1" />
+                  <span style={{ background: sw[1] }} className="flex-1" />
+                  <span style={{ background: sw[2] }} className="flex-1" />
+                </span>
+                <span className="truncate">{t(`nav.theme.${id}`)}</span>
+              </button>
             );
           })}
         </div>
 
         {/* Language switcher */}
-        <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${mutedCls}`}>
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
           {t("common.language")}
         </p>
-        <div className="flex gap-1">
+        <div className="mb-3 flex gap-1">
           {(["ru", "et"] as const).map((code) => (
             <button
               key={code}
               onClick={() => void i18n.changeLanguage(code)}
               className={[
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                currentLang === code
-                  ? "bg-[#e8f0fe] text-[#1a73e8]"
-                  : `${mutedCls} ${hoverCls}`,
+                currentLang === code ? accentSel : `${mutedCls} ${hoverCls}`,
               ].join(" ")}
             >
               {code.toUpperCase()}
@@ -246,7 +258,10 @@ export function ReceptionSidebar({
 
         <button
           onClick={() => navigate("/")}
-          className={`mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${mutedCls} ${hoverCls}`}
+          className={[
+            "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
+            dark ? "text-muted hover:bg-white/5 hover:text-gold" : `text-muted ${hoverCls}`,
+          ].join(" ")}
         >
           <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0" fill="currentColor">
             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h4a1 1 0 001-1v-3h2v3a1 1 0 001 1h4a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
