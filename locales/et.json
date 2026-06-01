@@ -546,7 +546,8 @@
       "periwinkle": "Rukkilill",
       "indigo":     "Indigo",
       "violet":     "Violett",
-      "slate":      "Terassinе"
+      "slate":      "Terassinе",
+      "custom":     "Oma värv"
     }
   },
   "role": {

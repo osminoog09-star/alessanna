@@ -5,6 +5,8 @@ import type { StaffMember } from "../../types/database";
 import { buildStaffHueMap } from "../../lib/staffHue";
 import { googleStaffColor } from "./receptionColors";
 
+const HEX6 = /^#[0-9a-f]{6}$/i;
+
 const GCAL_COLORS = [
   { key: "deepRed",     hex: "#b71c1c" },
   { key: "raspberry",   hex: "#ba0968" },
@@ -33,7 +35,9 @@ type Props = {
 export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [customStaffId, setCustomStaffId] = useState<string | null>(null);
   const staffHueMap = buildStaffHueMap(staff.map((m) => m.id));
 
   useEffect(() => {
@@ -56,8 +60,30 @@ export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) 
     onSaved();
   }
 
+  function openCustomPicker(memberId: string, currentHex?: string | null) {
+    setCustomStaffId(memberId);
+    if (colorInputRef.current) {
+      if (currentHex && HEX6.test(currentHex)) {
+        colorInputRef.current.value = currentHex;
+      }
+      colorInputRef.current.click();
+    }
+  }
+
+  function handleCustomChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (customStaffId) void handleColorPick(customStaffId, e.target.value);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/20">
+      {/* Hidden shared color input */}
+      <input
+        ref={colorInputRef}
+        type="color"
+        className="sr-only"
+        onChange={handleCustomChange}
+      />
+
       <div
         ref={panelRef}
         className="flex h-full w-80 flex-col overflow-y-auto bg-white shadow-2xl"
@@ -80,6 +106,9 @@ export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) 
           {staff.map((member) => {
             const c = googleStaffColor(member, staffHueMap);
             const isSavingThis = saving === member.id;
+            const currentHex = member.calendar_color_hex?.toLowerCase();
+            const isCustomColor = currentHex && HEX6.test(currentHex) &&
+              !GCAL_COLORS.some((col) => col.hex === currentHex);
             return (
               <div key={member.id} className="py-3">
                 <div className="mb-2 flex items-center gap-2">
@@ -96,7 +125,7 @@ export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) 
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {GCAL_COLORS.map((col) => {
-                    const isActive = member.calendar_color_hex?.toLowerCase() === col.hex;
+                    const isActive = currentHex === col.hex;
                     return (
                       <button
                         key={col.hex}
@@ -123,6 +152,26 @@ export function ReceptionStaffColorSettings({ staff, onClose, onSaved }: Props) 
                       </button>
                     );
                   })}
+
+                  {/* Custom colour button */}
+                  <button
+                    title={t("reception.colorNames.custom")}
+                    onClick={() => openCustomPicker(member.id, member.calendar_color_hex)}
+                    className="relative h-6 w-6 overflow-hidden rounded-full transition-transform hover:scale-110"
+                    style={
+                      isCustomColor
+                        ? { backgroundColor: currentHex }
+                        : { background: "conic-gradient(red,#ff0,lime,cyan,blue,magenta,red)" }
+                    }
+                  >
+                    {isCustomColor ? (
+                      <svg viewBox="0 0 20 20" className="absolute inset-0 h-full w-full" fill="none">
+                        <polyline points="5,10 8.5,13.5 15,7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">+</span>
+                    )}
+                  </button>
                 </div>
               </div>
             );
