@@ -82,7 +82,7 @@ export function ReceptionSidebar({
       {/* Logo */}
       <div className="mb-2 px-5 pt-1">
         <img
-          src="/alessanna-logo.png"
+          src={dark ? "/alessanna-logo.png" : "/alessanna-logo-light.png"}
           alt="AlesSanna"
           className="w-full object-contain"
           style={{ maxHeight: 72 }}
