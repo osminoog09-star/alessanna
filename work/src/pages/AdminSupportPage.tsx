@@ -1299,7 +1299,7 @@ export function AdminSupportPage() {
                     }}
                     placeholder={t("support.replyPlaceholder")}
                     rows={2}
-                    className="flex-1 resize-none rounded-lg border border-line/15 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
+                    className="flex-1 resize-none rounded-lg border border-line/15 bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-emerald-600/60 focus:outline-none"
                   />
                   <button
                     type="button"

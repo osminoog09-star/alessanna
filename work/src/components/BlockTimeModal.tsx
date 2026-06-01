@@ -128,7 +128,7 @@ export function BlockTimeModal({
               <select
                 value={staffId}
                 onChange={(e) => setStaffId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               >
                 {activeStaff.map((em) => (
                   <option key={em.id} value={em.id}>
@@ -144,7 +144,7 @@ export function BlockTimeModal({
               type="datetime-local"
               value={startStr}
               onChange={(e) => setStartStr(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
             />
           </div>
           <div>
@@ -153,7 +153,7 @@ export function BlockTimeModal({
               type="datetime-local"
               value={endStr}
               onChange={(e) => setEndStr(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
             />
           </div>
           <div>
@@ -161,7 +161,7 @@ export function BlockTimeModal({
             <select
               value={timeOffType}
               onChange={(e) => setTimeOffType(e.target.value as TimeOffType)}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
             >
               <option value="manual_block">{t("blockTimeModal.typeManual")}</option>
               <option value="day_off">{t("blockTimeModal.typeDayOff")}</option>
@@ -173,7 +173,7 @@ export function BlockTimeModal({
             <input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               placeholder="—"
             />
           </div>

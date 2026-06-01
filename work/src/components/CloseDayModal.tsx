@@ -92,7 +92,7 @@ export function CloseDayModal({ open, onClose, onSaved, staffList, initialDay }:
               type="date"
               value={dayStr}
               onChange={(e) => setDayStr(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
             />
           </div>
           <div>

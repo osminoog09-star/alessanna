@@ -13,7 +13,7 @@ import { ToggleSwitch } from "../components/ToggleSwitch";
 const editableUi =
   "border border-sky-600/45 ring-1 ring-sky-500/25 focus:border-gold focus:ring-2 focus:ring-sky-500/40";
 const fieldBase =
-  "mt-1 w-full rounded-lg bg-black px-3 py-2 text-sm text-fg disabled:opacity-60";
+  "mt-1 w-full rounded-lg bg-surface px-3 py-2 text-sm text-fg disabled:opacity-60";
 
 function normServiceName(n: string): string {
   return String(n || "").trim().toLowerCase();
@@ -1295,7 +1295,7 @@ export function ServicesPage() {
                   value={serviceSearch}
                   onChange={(e) => setServiceSearch(e.target.value)}
                   placeholder="Поиск по названию услуги…"
-                  className="w-full rounded-lg border border-line/20 bg-black pl-8 pr-8 py-2 text-sm text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
+                  className="w-full rounded-lg border border-line/20 bg-surface pl-8 pr-8 py-2 text-sm text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
                 />
                 {serviceSearch && (
                   <button
@@ -1420,7 +1420,7 @@ export function ServicesPage() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortBy)}
-                    className="rounded-lg border border-line/20 bg-black px-2.5 py-1 text-xs text-fg focus:border-gold focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                    className="rounded-lg border border-line/20 bg-surface px-2.5 py-1 text-xs text-fg focus:border-gold focus:outline-none focus:ring-1 focus:ring-sky-500/40"
                   >
                     <option value="name">по названию (А → Я)</option>
                     <option value="price-asc">цена ↑</option>
@@ -1506,7 +1506,7 @@ export function ServicesPage() {
                   }
                 }}
                 placeholder={t("services.categoryPlaceholder")}
-                className="w-48 rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
+                className="w-48 rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
               <button
                 type="button"
@@ -1554,7 +1554,7 @@ export function ServicesPage() {
                           (e.currentTarget as HTMLInputElement).blur();
                         }
                       }}
-                      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-fg transition hover:border-line/20 focus:border-gold focus:bg-black focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-fg transition hover:border-line/20 focus:border-gold focus:bg-surface focus:outline-none focus:ring-1 focus:ring-sky-500/40"
                     />
                     <span className="shrink-0 rounded-full bg-surface/60 px-1.5 py-0.5 text-[10px] font-medium text-muted" title={`Услуг в категории: ${servicesInCat}`}>
                       {servicesInCat}
@@ -1849,7 +1849,7 @@ export function ServicesPage() {
                               setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_cents } : x)));
                             }}
                             onBlur={() => void saveService(s)}
-                            className={`w-full rounded-lg bg-black px-3 py-2 pr-6 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
+                            className={`w-full rounded-lg bg-surface px-3 py-2 pr-6 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                           />
                           <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">€</span>
                         </div>
@@ -1869,7 +1869,7 @@ export function ServicesPage() {
                               setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, price_max_cents } : x)));
                             }}
                             onBlur={() => void saveService(s)}
-                            className={`w-full rounded-lg bg-black px-3 py-2 pr-6 text-sm text-fg placeholder-muted disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
+                            className={`w-full rounded-lg bg-surface px-3 py-2 pr-6 text-sm text-fg placeholder-muted disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                           />
                           <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted">€</span>
                         </div>
@@ -1889,7 +1889,7 @@ export function ServicesPage() {
                             setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, duration_min } : x)));
                           }}
                           onBlur={() => void saveService(s)}
-                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
+                          className={`w-full rounded-lg bg-surface px-3 py-2 pr-10 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                         />
                         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted">
                           мин
@@ -1910,7 +1910,7 @@ export function ServicesPage() {
                             setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, buffer_after_min } : x)));
                           }}
                           onBlur={() => void saveService(s)}
-                          className={`w-full rounded-lg bg-black px-3 py-2 pr-10 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
+                          className={`w-full rounded-lg bg-surface px-3 py-2 pr-10 text-sm text-fg disabled:opacity-60 ${canManage ? editableUi : "border border-line/20"}`}
                         />
                         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted">
                           мин

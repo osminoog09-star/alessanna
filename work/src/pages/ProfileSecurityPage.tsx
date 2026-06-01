@@ -327,7 +327,7 @@ export function ProfileSecurityPage() {
               inputMode="numeric"
               value={currentPin}
               onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               placeholder={t("profileSecurity.currentPinPlaceholder", { defaultValue: "Оставить пустым, если ещё не задан" })}
               maxLength={12}
               autoComplete="current-password"
@@ -342,7 +342,7 @@ export function ProfileSecurityPage() {
               inputMode="numeric"
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               minLength={4}
               maxLength={12}
               autoComplete="new-password"
@@ -358,7 +358,7 @@ export function ProfileSecurityPage() {
               inputMode="numeric"
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
-              className="mt-1 w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+              className="mt-1 w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               minLength={4}
               maxLength={12}
               autoComplete="new-password"

@@ -301,7 +301,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 type="text"
                 value={editing.name ?? ""}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 required
               />
             </Field>
@@ -310,7 +310,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 <select
                   value={editing.unit ?? "pcs"}
                   onChange={(e) => setEditing({ ...editing, unit: e.target.value })}
-                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                  className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 >
                   {UNITS.map((u) => (
                     <option key={u} value={u}>
@@ -331,7 +331,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                       low_stock_threshold: e.target.value === "" ? null : Number(e.target.value),
                     })
                   }
-                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                  className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 />
               </Field>
             </div>
@@ -340,7 +340,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 type="text"
                 value={editing.category ?? ""}
                 onChange={(e) => setEditing({ ...editing, category: e.target.value })}
-                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 placeholder={t("inventory.categoryPlaceholder", { defaultValue: "лак / база / расходка" })}
               />
             </Field>
@@ -349,7 +349,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                 value={editing.notes ?? ""}
                 onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
                 rows={2}
-                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               />
             </Field>
             {!editing.id && (
@@ -360,7 +360,7 @@ function ItemsTab({ items, onChanged }: { items: InventoryItem[]; onChanged: () 
                   min={0}
                   value={editing.on_hand ?? 0}
                   onChange={(e) => setEditing({ ...editing, on_hand: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                  className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 />
                 <p className="mt-1 text-xs text-muted">
                   {t("inventory.startingBalanceHint", {
@@ -465,7 +465,7 @@ function NormsTab({
             setServiceId(e.target.value);
             setEditing(null);
           }}
-          className="mt-1 w-full max-w-md rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+          className="mt-1 w-full max-w-md rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
         >
           <option value="">— {t("common.choose", { defaultValue: "выбрать" })} —</option>
           {activeServices.map((s) => (
@@ -531,7 +531,7 @@ function NormsTab({
               <select
                 value={editing.inventory_item_id}
                 onChange={(e) => setEditing({ ...editing, inventory_item_id: e.target.value })}
-                className="rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               >
                 {items
                   .filter((i) => i.is_active)
@@ -547,7 +547,7 @@ function NormsTab({
                 min="0.001"
                 value={editing.amount}
                 onChange={(e) => setEditing({ ...editing, amount: Number(e.target.value) })}
-                className="rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 placeholder={t("inventory.amountPerService", { defaultValue: "Расход на 1 услугу" })}
               />
               <div className="flex gap-2">
@@ -698,7 +698,7 @@ function MovementsTab({
               <select
                 value={form.inventory_item_id}
                 onChange={(e) => setForm({ ...form, inventory_item_id: e.target.value })}
-                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 required
               >
                 <option value="">— {t("common.choose", { defaultValue: "выбрать" })} —</option>
@@ -715,7 +715,7 @@ function MovementsTab({
               <select
                 value={form.movement_type}
                 onChange={(e) => setForm({ ...form, movement_type: e.target.value as Movement["movement_type"] })}
-                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               >
                 <option value="purchase">{t("inventory.type.purchase", { defaultValue: "Приход" })}</option>
                 <option value="adjustment_in">{t("inventory.type.adjustment_in", { defaultValue: "Коррекция +" })}</option>
@@ -730,7 +730,7 @@ function MovementsTab({
                 min="0.001"
                 value={form.delta}
                 onChange={(e) => setForm({ ...form, delta: Number(e.target.value) })}
-                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 required
               />
             </Field>
@@ -742,7 +742,7 @@ function MovementsTab({
                   min="0"
                   value={form.cost_cents}
                   onChange={(e) => setForm({ ...form, cost_cents: e.target.value })}
-                  className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                  className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
                 />
               </Field>
             )}
@@ -751,7 +751,7 @@ function MovementsTab({
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={2}
-                className="w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-sm text-fg"
+                className="w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg"
               />
             </Field>
             <div className="flex justify-end gap-2 pt-2">

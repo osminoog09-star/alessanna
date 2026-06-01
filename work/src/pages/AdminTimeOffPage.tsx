@@ -158,7 +158,7 @@ export function AdminTimeOffPage() {
           <select
             value={staffId}
             onChange={(e) => setStaffId(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-fg"
+            className="mt-1 block w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-fg"
           >
             {staffList.map((s) => (
               <option key={s.id} value={s.id}>
@@ -231,7 +231,7 @@ export function AdminTimeOffPage() {
                 value={start}
                 onChange={(e) => onChangeStart(e.target.value)}
                 onClick={() => openPicker(startRef.current)}
-                className="block w-full cursor-pointer rounded-lg border border-line/20 bg-black pl-10 pr-3 py-2 text-sm text-fg [color-scheme:dark] focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
+                className="block w-full cursor-pointer rounded-lg border border-line/20 bg-surface pl-10 pr-3 py-2 text-sm text-fg [color-scheme:dark] focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
             </div>
           </label>
@@ -259,7 +259,7 @@ export function AdminTimeOffPage() {
                 min={start || undefined}
                 onChange={(e) => setEnd(e.target.value)}
                 onClick={() => openPicker(endRef.current)}
-                className="block w-full cursor-pointer rounded-lg border border-line/20 bg-black pl-10 pr-3 py-2 text-sm text-fg [color-scheme:dark] focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
+                className="block w-full cursor-pointer rounded-lg border border-line/20 bg-surface pl-10 pr-3 py-2 text-sm text-fg [color-scheme:dark] focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
             </div>
           </label>
@@ -282,7 +282,7 @@ export function AdminTimeOffPage() {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="например: больничный, отпуск, личное"
-            className="mt-1 block w-full rounded-lg border border-line/20 bg-black px-3 py-2 text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
+            className="mt-1 block w-full rounded-lg border border-line/20 bg-surface px-3 py-2 text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
           />
         </label>
         <button
