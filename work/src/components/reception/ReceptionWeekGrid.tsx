@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   addMinutes,
@@ -115,7 +115,15 @@ export function ReceptionWeekGrid({
     ? "repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0, rgba(255,255,255,0.12) 1px, transparent 0, transparent 50%)"
     : "repeating-linear-gradient(-45deg, #c0c4cc 0, #c0c4cc 1px, transparent 0, transparent 50%)";
   const [now, setNow] = useState(() => new Date());
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Measure scrollbar width so the header columns align with the body columns
+  useLayoutEffect(() => {
+    if (bodyRef.current) {
+      setScrollbarWidth(bodyRef.current.offsetWidth - bodyRef.current.clientWidth);
+    }
+  }, []);
   const staffHueMap = useMemo(() => buildStaffHueMap(staff.map((m) => m.id)), [staff]);
 
   // Resize mode: press and hold a booking for 1 s to put THAT booking into
@@ -308,8 +316,8 @@ export function ReceptionWeekGrid({
 
   return (
     <div className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${bg}`}>
-      {/* Day header row */}
-      <div className={`flex shrink-0 border-b ${borderCls} ${bg}`}>
+      {/* Day header row — right-pad by scrollbar width so columns align with body */}
+      <div className={`flex shrink-0 border-b ${borderCls} ${bg}`} style={{ paddingRight: scrollbarWidth }}>
         <div className={`flex w-14 shrink-0 items-end justify-center pb-1 text-[10px] ${mutedCls}`}>
           GMT+3
         </div>
