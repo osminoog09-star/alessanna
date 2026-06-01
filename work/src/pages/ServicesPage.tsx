@@ -200,8 +200,8 @@ export function ServicesPage() {
       const name = String(c.name || "").trim();
       if (name) allCategoryNames.add(name);
     }
-    if (services.some((s) => !categoryNameFromService(s))) {
-      allCategoryNames.add("Без категории");
+    for (const service of services) {
+      allCategoryNames.add(categoryNameFromService(service) || "Без категории");
     }
     setCollapsedCats((prev) => {
       const next = new Set(prev);
