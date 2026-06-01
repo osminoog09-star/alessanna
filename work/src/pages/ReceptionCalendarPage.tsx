@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { addDays, addMonths, addWeeks, subDays, startOfWeek, subMonths, subWeeks } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { useCalendarDataRealtime } from "../hooks/useSalonRealtime";
 import { loadServicesCatalog } from "../lib/loadServicesCatalog";
 import { isStaffRowAdmin, normalizeStaffMember } from "../lib/roles";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme, type ThemeId } from "../context/ThemeContext";
 import { ReceptionSidebar } from "../components/reception/ReceptionSidebar";
 import { ReceptionWeekGrid } from "../components/reception/ReceptionWeekGrid";
 import { ReceptionMonthView } from "../components/reception/ReceptionMonthView";
@@ -23,6 +24,14 @@ import type {
 
 type View = "day" | "week" | "month";
 
+const SWATCHES: Record<ThemeId, [string, string, string]> = {
+  white:     ["#ffffff", "#f1f3f4", "#1a73e8"],
+  champagne: ["#fbfaf6", "#f4f1eb", "#a3855e"],
+  stone:     ["#25221e", "#38332d", "#d4b896"],
+  onyx:      ["#0a0a0a", "#1a1a1a", "#c4a574"],
+};
+const RECEPTION_THEME_IDS: ThemeId[] = ["white", "champagne", "stone", "onyx"];
+
 type BookingPopupState = {
   anchorX: number;
   anchorY: number;
@@ -33,8 +42,10 @@ type BookingPopupState = {
 
 export function ReceptionCalendarPage() {
   const { t, i18n } = useTranslation();
-  const { theme } = useTheme();
+  const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const dark = theme === "onyx" || theme === "stone";
+  const currentLang = i18n.language.split("-")[0] ?? "ru";
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -49,6 +60,9 @@ export function ReceptionCalendarPage() {
   const [dayPopup, setDayPopup] = useState<{ day: Date; x: number; y: number } | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [crmPrompt, setCrmPrompt] = useState(false);
+  const [pwValue, setPwValue] = useState("");
+  const [pwError, setPwError] = useState(false);
 
   const load = useCallback(async () => {
     const [st, to, ap, svCatalog, ss, wd] = await Promise.all([
@@ -265,35 +279,155 @@ export function ReceptionCalendarPage() {
           />
         )}
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {view === "month" ? (
-            <ReceptionMonthView
-              cursor={cursor}
-              staff={staff}
-              appointments={appointments}
-              visibleStaffIds={visibleStaffIds}
-              onDayClick={handleDayClick}
-              onApptClick={handleApptClick}
-              dark={dark}
-            />
-          ) : (
-            <ReceptionWeekGrid
-              days={days}
-              staff={staff}
-              appointments={appointments}
-              services={services}
-              timeOff={timeOff}
-              workDates={workDates}
-              visibleStaffIds={visibleStaffIds}
-              onSlotClick={handleSlotClick}
-              onApptClick={handleApptClick}
-              onApptResize={handleApptResize}
-              onDayHeaderClick={view === "week" ? handleDayHeaderClick : undefined}
-              dark={dark}
-            />
-          )}
+        {/* Calendar area — padded so the rounded container floats */}
+        <div className="flex min-h-0 flex-1 overflow-hidden p-2 gap-2">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-line/15">
+            {view === "month" ? (
+              <ReceptionMonthView
+                cursor={cursor}
+                staff={staff}
+                appointments={appointments}
+                visibleStaffIds={visibleStaffIds}
+                onDayClick={handleDayClick}
+                onApptClick={handleApptClick}
+                dark={dark}
+              />
+            ) : (
+              <ReceptionWeekGrid
+                days={days}
+                staff={staff}
+                appointments={appointments}
+                services={services}
+                timeOff={timeOff}
+                workDates={workDates}
+                visibleStaffIds={visibleStaffIds}
+                onSlotClick={handleSlotClick}
+                onApptClick={handleApptClick}
+                onApptResize={handleApptResize}
+                onDayHeaderClick={view === "week" ? handleDayHeaderClick : undefined}
+                dark={dark}
+              />
+            )}
+          </div>
+
+          {/* Right rail — language / theme / CRM */}
+          <div className={`flex w-12 shrink-0 flex-col items-center gap-1 rounded-2xl border border-line/15 py-3 ${dark ? "bg-panel" : "bg-canvas"}`}>
+            {/* Language */}
+            {(["ru", "et"] as const).map((code) => (
+              <button
+                key={code}
+                onClick={() => void i18n.changeLanguage(code)}
+                title={code.toUpperCase()}
+                className={[
+                  "flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-semibold transition-colors",
+                  currentLang === code
+                    ? useGold ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]"
+                    : `text-muted ${dark ? "hover:bg-white/5" : "hover:bg-surface"}`,
+                ].join(" ")}
+              >
+                {code.toUpperCase()}
+              </button>
+            ))}
+
+            {/* Divider */}
+            <div className="my-1 w-6 border-t border-line/15" />
+
+            {/* Theme circles */}
+            {RECEPTION_THEME_IDS.map((id) => {
+              const active = theme === id;
+              const sw = SWATCHES[id];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTheme(id)}
+                  title={t(`nav.theme.${id}`)}
+                  className="h-7 w-7 rounded-full transition-transform hover:scale-110"
+                  style={{
+                    background: `linear-gradient(135deg, ${sw[0]} 0%, ${sw[1]} 60%, ${sw[2]} 100%)`,
+                    boxShadow: active
+                      ? `0 0 0 2px ${sw[0]}, 0 0 0 3.5px rgb(var(--c-gold))`
+                      : "0 0 0 1px rgba(128,128,128,0.25)",
+                  }}
+                />
+              );
+            })}
+
+            {/* Divider */}
+            <div className="my-1 w-6 border-t border-line/15" />
+
+            {/* CRM button */}
+            <button
+              onClick={() => { setCrmPrompt(true); setPwValue(""); setPwError(false); }}
+              title={t("reception.toCrm")}
+              className={[
+                "flex h-9 w-9 items-center justify-center rounded-full text-[10px] font-bold tracking-tight transition-colors",
+                useGold
+                  ? "bg-gold/15 text-gold hover:bg-gold/25"
+                  : "bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d3e3fd]",
+              ].join(" ")}
+            >
+              CRM
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* CRM password modal */}
+      {crmPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-xs overflow-hidden rounded-2xl bg-panel shadow-2xl ring-1 ring-line/15">
+            <div className={`px-5 py-4 ${useGold ? "bg-gold/10 border-b border-gold/20" : "bg-[#1a73e8]/10 border-b border-[#1a73e8]/20"}`}>
+              <p className={`text-sm font-semibold ${useGold ? "text-gold" : "text-[#1a73e8]"}`}>
+                {t("reception.crmPasswordTitle")}
+              </p>
+            </div>
+            <form
+              className="p-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (pwValue === "2025alessanna") { navigate("/"); }
+                else { setPwError(true); setPwValue(""); }
+              }}
+            >
+              <input
+                type="password"
+                autoFocus
+                value={pwValue}
+                onChange={(e) => { setPwValue(e.target.value); setPwError(false); }}
+                placeholder={t("reception.crmPasswordPlaceholder")}
+                className={[
+                  "w-full rounded-lg border bg-canvas px-3 py-2.5 text-sm text-fg outline-none transition",
+                  pwError
+                    ? "border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-400"
+                    : useGold
+                    ? "border-line/20 focus:border-gold focus:ring-1 focus:ring-gold/40"
+                    : "border-line/20 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]/40",
+                ].join(" ")}
+              />
+              {pwError && <p className="mt-1.5 text-xs text-red-400">{t("reception.crmPasswordError")}</p>}
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCrmPrompt(false)}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium text-muted transition-colors ${dark ? "hover:bg-white/5" : "hover:bg-surface"}`}
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  className={[
+                    "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    useGold ? "bg-gold text-canvas hover:bg-gold/90" : "bg-[#1a73e8] text-white hover:bg-[#1557b0]",
+                  ].join(" ")}
+                >
+                  {t("common.confirm")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {popup && (
         <ReceptionBookingPopup
