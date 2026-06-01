@@ -148,8 +148,9 @@ export function ReceptionCalendarPage() {
 
   const navHover = dark ? "hover:bg-white/5" : "hover:bg-surface";
   const navText = "text-muted";
-  const accentActive = dark ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]";
-  const todayBtnCls = dark
+  const useGold = theme !== "white";
+  const accentActive = useGold ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]";
+  const todayBtnCls = useGold
     ? "border-gold/40 text-gold hover:bg-gold/10"
     : "border-line/15 text-fg hover:bg-surface";
 

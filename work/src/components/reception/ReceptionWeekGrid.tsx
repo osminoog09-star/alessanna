@@ -18,6 +18,7 @@ import type {
 import { buildStaffHueMap } from "../../lib/staffHue";
 import { appointmentInterval, intervalsOverlap } from "../../lib/slots";
 import { googleStaffColor } from "./receptionColors";
+import { useTheme } from "../../context/ThemeContext";
 
 const START_HOUR = 0;
 const END_HOUR = 24;
@@ -101,13 +102,15 @@ export function ReceptionWeekGrid({
   dark,
 }: Props) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const useGold = theme !== "white";
   const bg = dark ? "bg-panel" : "bg-canvas";
   const borderCls = "border-line/15";
   const mutedCls = "text-muted";
   const textCls = "text-fg";
   const hoverCls = dark ? "hover:bg-white/5" : "hover:bg-surface";
   const hrLine = "border-line/10";
-  const todayBg = dark ? "bg-gold/[0.05]" : "bg-[#1a73e8]/[0.04]";
+  const todayBg = useGold ? "bg-gold/[0.05]" : "bg-[#1a73e8]/[0.04]";
   const stripes = dark
     ? "repeating-linear-gradient(-45deg, rgba(255,255,255,0.12) 0, rgba(255,255,255,0.12) 1px, transparent 0, transparent 50%)"
     : "repeating-linear-gradient(-45deg, #c0c4cc 0, #c0c4cc 1px, transparent 0, transparent 50%)";
@@ -336,7 +339,7 @@ export function ReceptionWeekGrid({
                 className={[
                   "flex h-8 w-8 items-center justify-center rounded-full text-lg font-medium",
                   isToday
-                    ? dark ? "bg-gold text-canvas" : "bg-[#1a73e8] text-white"
+                    ? useGold ? "bg-gold text-canvas" : "bg-[#1a73e8] text-white"
                     : textCls,
                 ].join(" ")}
               >

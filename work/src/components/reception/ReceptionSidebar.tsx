@@ -68,9 +68,10 @@ export function ReceptionSidebar({
   const hoverCls = dark ? "hover:bg-white/5" : "hover:bg-surface";
   const navBtnCls = dark ? "text-muted hover:bg-white/5 hover:text-gold" : "text-muted hover:bg-surface";
 
-  // Accent classes: gold on dark, Google blue on light
-  const todayBubble = dark ? "bg-gold font-bold text-canvas" : "bg-[#1a73e8] font-bold text-white";
-  const accentSel = dark ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]";
+  // Gold accents for all brand themes; blue only for plain white
+  const useGold = theme !== "white";
+  const todayBubble = useGold ? "bg-gold font-bold text-canvas" : "bg-[#1a73e8] font-bold text-white";
+  const accentSel = useGold ? "bg-gold/15 text-gold" : "bg-[#e8f0fe] text-[#1a73e8]";
 
   const monthStart = startOfMonth(miniCursor);
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
