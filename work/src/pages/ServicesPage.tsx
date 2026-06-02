@@ -1811,7 +1811,7 @@ export function ServicesPage() {
                     <label className="block text-[11px] uppercase tracking-wide text-muted lg:col-span-2">
                       {t("services.name")}
                       <input
-                        disabled={!canManage || s.active}
+                        disabled={!canManage}
                         value={s.name_et}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -1824,14 +1824,8 @@ export function ServicesPage() {
                             (e.currentTarget as HTMLInputElement).blur();
                           }
                         }}
-                        title={s.active ? "Выключите услугу, чтобы изменить название" : undefined}
-                        className={`${fieldBase} text-sm font-medium ${canManage && !s.active ? editableUi : "border border-line/20"}`}
+                        className={`${fieldBase} text-sm font-medium ${canManage ? editableUi : "border border-line/20"}`}
                       />
-                      {s.active && (
-                        <span className="mt-1 block text-[10px] normal-case tracking-normal text-muted">
-                          Название можно менять только у выключенной услуги.
-                        </span>
-                      )}
                     </label>
                     <div className="flex gap-2">
                       <label className="block flex-1 text-[11px] uppercase tracking-wide text-muted">
