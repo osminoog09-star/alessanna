@@ -106,7 +106,6 @@ export function ServicesPage() {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
-  const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
   const [headerEditCatId, setHeaderEditCatId] = useState<string | null>(null);
   const [headerEditDraft, setHeaderEditDraft] = useState("");
   /* Черновик имени услуги. Пишем сюда во время набора, чтобы НЕ трогать
@@ -370,12 +369,12 @@ export function ServicesPage() {
   const load = useCallback(async () => {
     let loadedCategories: CategoryRow[] = [];
 
-    const cLegacy = await supabase.from("categories").select("*").order("name");
+    const cLegacy = await supabase.from("categories").select("*").order("created_at", { ascending: true });
     if (!cLegacy.error && cLegacy.data) {
       loadedCategories = cLegacy.data as CategoryRow[];
       setCategories(loadedCategories);
     } else {
-      const cModern = await supabase.from("service_categories").select("id,name").order("name");
+      const cModern = await supabase.from("service_categories").select("id,name").order("created_at", { ascending: true });
       if (cModern.data) {
         loadedCategories = (cModern.data as Array<{ id: string; name: string }>).map((r) => ({
           id: String(r.id) as unknown as number,
@@ -559,15 +558,8 @@ export function ServicesPage() {
     load();
   }
 
-  async function renameCategory(category: CategoryRow) {
-    if (!canManage) return;
-    const key = String(category.id);
-    await renameCategoryTo(category, String(categoryDrafts[key] ?? category.name).trim());
-  }
-
   async function renameCategoryTo(category: CategoryRow, nextNameInput: string) {
     if (!canManage) return;
-    const key = String(category.id);
     const oldName = String(category.name || "").trim();
     const nextName = String(nextNameInput || "").trim();
     if (!nextName || nextName === oldName) return;
@@ -592,7 +584,6 @@ export function ServicesPage() {
     for (const service of servicesInCategory) {
       await saveService({ ...service, category: nextName });
     }
-    setCategoryDrafts((prev) => ({ ...prev, [key]: nextName }));
     load();
   }
 
@@ -1083,9 +1074,19 @@ export function ServicesPage() {
       }
     }
     for (const list of map.values()) list.sort(compare);
+    /* Порядок категорий = порядок в `categories` (загружаем по created_at,
+     * поэтому новые добавленные категории оказываются в конце списка).
+     * Категории, которых нет в справочнике, идут после известных. */
+    const catOrder = new Map<string, number>();
+    categories.forEach((c, i) => catOrder.set(String(c.name || "").trim(), i));
     return Array.from(map.entries())
       .filter(([categoryName]) => categoryName !== "Без категории")
-      .sort((a, b) => a[0].localeCompare(b[0], "ru"));
+      .sort((a, b) => {
+        const ia = catOrder.has(a[0]) ? catOrder.get(a[0])! : Number.MAX_SAFE_INTEGER;
+        const ib = catOrder.has(b[0]) ? catOrder.get(b[0])! : Number.MAX_SAFE_INTEGER;
+        if (ia !== ib) return ia - ib;
+        return a[0].localeCompare(b[0], "ru");
+      });
   }, [
     services, categories, serviceSearch,
     filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds,
@@ -1420,117 +1421,42 @@ export function ServicesPage() {
         )}
       </header>
 
-      {/* ───── Categories manager ───── */}
+      {/* ───── Categories: только заголовок + «+» для добавления ───── */}
       {canManage && (
-        <section className="rounded-2xl border border-line/15/80 bg-panel/60 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-sky-300"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
-                {t("services.categories")}
-                <button
-                  type="button"
-                  onClick={() => setShowNewCategoryInput((v) => !v)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line/20 bg-black/30 text-muted transition hover:border-sky-600/60 hover:bg-sky-950/30 hover:text-sky-200"
-                  title="Добавить категорию"
-                  aria-label="Добавить категорию"
-                >
-                  +
-                </button>
-              </h2>
-            </div>
-            {showNewCategoryInput && (
-            <div className="flex items-center gap-2">
-              <input
-                value={newCat}
-                onChange={(e) => setNewCat(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void addCategory();
-                  }
-                }}
-                placeholder={t("services.categoryPlaceholder")}
-                className="w-48 rounded-lg border border-line/20 bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
-              />
-              <button
-                type="button"
-                onClick={() => void addCategory()}
-                disabled={!newCat.trim()}
-                className="inline-flex items-center gap-1 rounded-lg bg-surface px-3 py-2 text-sm font-medium text-fg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
-                {t("common.add")}
-              </button>
-            </div>
-            )}
-          </div>
-
-          {categories.length === 0 ? (
-            <p className="mt-4 rounded-lg border border-dashed border-line/15 bg-canvas/20 px-3 py-4 text-center text-xs text-muted">
-              Пока нет категорий. Добавьте первую — например, «Стрижка» или «Маникюр».
-            </p>
+        <div className="flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-sky-300"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
+            {t("services.categories")}
+          </h2>
+          {showNewCategoryInput ? (
+            <input
+              autoFocus
+              value={newCat}
+              onChange={(e) => setNewCat(e.target.value)}
+              onBlur={() => { if (!newCat.trim()) setShowNewCategoryInput(false); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void addCategory();
+                  setShowNewCategoryInput(false);
+                }
+                if (e.key === "Escape") { setNewCat(""); setShowNewCategoryInput(false); }
+              }}
+              placeholder={t("services.categoryPlaceholder")}
+              className="w-56 rounded-lg border border-sky-500/50 bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-muted outline-none ring-1 ring-sky-500/30"
+            />
           ) : (
-            <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {categories.map((c) => {
-                const draft = categoryDrafts[String(c.id)];
-                const changed = draft !== undefined && draft !== c.name;
-                const servicesInCat = services.filter(
-                  (s) => categoryNameFromService(s) === c.name,
-                ).length;
-                return (
-                  <li
-                    key={c.id}
-                    className="group flex items-center gap-1.5 rounded-xl border border-line/15/80 bg-black/30 px-2 py-1.5 transition hover:border-line/20 hover:bg-black/50"
-                  >
-                    <input
-                      value={draft ?? c.name}
-                      onChange={(e) =>
-                        setCategoryDrafts((prev) => ({
-                          ...prev,
-                          [String(c.id)]: e.target.value,
-                        }))
-                      }
-                      onBlur={() => {
-                        if (changed) void renameCategory(c);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          (e.currentTarget as HTMLInputElement).blur();
-                        }
-                      }}
-                      className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-fg transition hover:border-line/20 focus:border-gold focus:bg-surface focus:outline-none focus:ring-1 focus:ring-sky-500/40"
-                    />
-                    <span className="shrink-0 rounded-full bg-surface/60 px-1.5 py-0.5 text-[10px] font-medium text-muted" title={`Услуг в категории: ${servicesInCat}`}>
-                      {servicesInCat}
-                    </span>
-                    {changed && (
-                      <button
-                        type="button"
-                        onClick={() => void renameCategory(c)}
-                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-700/50 bg-sky-950/40 text-sky-300 transition hover:border-sky-500 hover:bg-sky-900/60"
-                        title="Сохранить новое название"
-                        aria-label="Сохранить"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="m5 13 4 4L19 7" /></svg>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void deleteCategory(c)}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted opacity-0 transition group-hover:opacity-100 hover:bg-red-950/40 hover:text-red-300"
-                      title="Удалить категорию"
-                      aria-label="Удалить"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <button
+              type="button"
+              onClick={() => setShowNewCategoryInput(true)}
+              className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-white/[0.07] hover:text-fg"
+              title="Добавить категорию"
+              aria-label="Добавить категорию"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
           )}
-        </section>
+        </div>
       )}
 
       <div className="space-y-6">
