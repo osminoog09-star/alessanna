@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { supabase } from "../lib/supabase";
@@ -103,6 +103,11 @@ export function ServicesPage() {
   const { t } = useTranslation();
   const { canManage } = useEffectiveRole();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+  /* Зеркало `categories` в ref: колбэки (syncServiceToPublicCatalog/load)
+   * читают актуальный справочник, не завися от него в массиве зависимостей —
+   * иначе load пересоздаётся при каждом setCategories и зацикливает перезагрузку. */
+  const categoriesRef = useRef<CategoryRow[]>([]);
+  useEffect(() => { categoriesRef.current = categories; }, [categories]);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
@@ -274,7 +279,7 @@ export function ServicesPage() {
     if (!serviceName) return;
 
     try {
-      const catSource = categoriesOverride ?? categories;
+      const catSource = categoriesOverride ?? categoriesRef.current;
       let categoryName = categoryNameFromService(service, catSource);
       if (!categoryName && service.category_id != null) {
         const catLegacy = await supabase.from("categories").select("name").eq("id", service.category_id).maybeSingle();
@@ -353,7 +358,7 @@ export function ServicesPage() {
     } catch (err) {
       console.error("[services-sync] syncServiceToPublicCatalog crashed", err);
     }
-  }, [categories]);
+  }, []);
 
   const deleteServiceFromPublicCatalog = useCallback(async (service: ServiceRow) => {
     const serviceName = String(service.name_et || "").trim();
@@ -1425,7 +1430,7 @@ export function ServicesPage() {
       {canManage && (
         <div className="flex items-center gap-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-sky-300"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-gold"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
             {t("services.categories")}
           </h2>
           {showNewCategoryInput ? (
