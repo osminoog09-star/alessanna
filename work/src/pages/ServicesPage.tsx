@@ -1118,7 +1118,9 @@ export function ServicesPage() {
       }
     }
     for (const list of map.values()) list.sort(compare);
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "ru"));
+    return Array.from(map.entries())
+      .filter(([categoryName]) => categoryName !== "Без категории")
+      .sort((a, b) => a[0].localeCompare(b[0], "ru"));
   }, [
     services, categories, serviceSearch,
     filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds,
