@@ -11,7 +11,7 @@ import { normalizeRoles } from "../lib/roles";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 
 const editableUi =
-  "border border-sky-600/45 ring-1 ring-sky-500/25 focus:border-gold focus:ring-2 focus:ring-sky-500/40";
+  "border border-white/15 focus:border-gold/50 focus:ring-1 focus:ring-gold/20";
 const fieldBase =
   "mt-1 w-full rounded-lg bg-surface px-3 py-2 text-sm text-fg disabled:opacity-60";
 
@@ -1448,7 +1448,7 @@ export function ServicesPage() {
                 if (e.key === "Escape") { setNewCat(""); setShowNewCategoryInput(false); }
               }}
               placeholder={t("services.categoryPlaceholder")}
-              className="w-56 rounded-lg border border-sky-500/50 bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-muted outline-none ring-1 ring-sky-500/30"
+              className="w-56 rounded-lg border border-gold/40 bg-surface px-3 py-1.5 text-sm text-fg placeholder:text-muted outline-none ring-1 ring-gold/20"
             />
           ) : (
             <button
@@ -1512,7 +1512,7 @@ export function ServicesPage() {
                   ><path d="m6 9 6 6 6-6" /></svg>
                   <span
                     aria-hidden="true"
-                    className="h-2 w-2 shrink-0 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400 shadow-sm shadow-emerald-500/30"
+                    className="h-2 w-2 shrink-0 rounded-full bg-gold/25"
                   />
                 </button>
                 {canManage && categoryForGroup && headerEditCatId === String(categoryForGroup.id) ? (
@@ -1528,7 +1528,7 @@ export function ServicesPage() {
                       if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
                       if (e.key === "Escape") setHeaderEditCatId(null);
                     }}
-                    className="min-w-0 flex-1 rounded border border-sky-500/50 bg-surface/50 px-2 py-0.5 text-sm font-semibold text-fg outline-none ring-1 ring-sky-500/30"
+                    className="min-w-0 flex-1 rounded border border-gold/40 bg-surface/50 px-2 py-0.5 text-sm font-semibold text-fg outline-none ring-1 ring-gold/20"
                   />
                 ) : (
                   <>
@@ -1556,25 +1556,13 @@ export function ServicesPage() {
                       </button>
                     )}
                     {activeCount < list.length && (
-                      <span className="shrink-0 rounded-full border border-amber-700/40 bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-300" title="Часть услуг выключена">
-                        {activeCount}/{list.length} активно
-                      </span>
+                      <span className="text-[10px] text-muted/50">{activeCount}/{list.length}</span>
                     )}
                     {noMastersCount > 0 && (
-                      <span
-                        className="shrink-0 rounded-full border border-rose-700/50 bg-rose-950/30 px-2 py-0.5 text-[10px] font-medium text-rose-200"
-                        title={`Без назначенных мастеров: ${noMastersCount}. Услуги скрыты на сайте, никто их не возьмёт.`}
-                      >
-                        ⚠ {noMastersCount} без мастеров
-                      </span>
+                      <span className="text-[10px] text-gold/40" title={`Без назначенных мастеров: ${noMastersCount}. Услуги скрыты на сайте, никто их не возьмёт.`}> {noMastersCount} без мастеров</span>
                     )}
                     {notOnSiteCount > 0 && (
-                      <span
-                        className="shrink-0 rounded-full border border-amber-700/40 bg-amber-950/20 px-2 py-0.5 text-[10px] font-medium text-amber-300"
-                        title={`Не опубликовано на главном сайте: ${notOnSiteCount}. Нажмите «Обновить всё на сайте» вверху страницы.`}
-                      >
-                        🌐 {notOnSiteCount} не на сайте
-                      </span>
+                      <span className="text-[10px] text-muted/40" title={`Не опубликовано на главном сайте: ${notOnSiteCount}. Нажмите «Обновить всё на сайте» вверху страницы.`}>· {notOnSiteCount} не на сайте</span>
                     )}
                   </>
                 )}
@@ -1618,28 +1606,8 @@ export function ServicesPage() {
                 return (
                 <article
                   key={s.id}
-                  className={
-                    "group relative overflow-hidden rounded-xl border bg-black/30 shadow-sm transition hover:border-line/20/80 " +
-                    (!s.active
-                      ? "border-rose-800/60 bg-rose-950/20 shadow-rose-950/20"
-                      : noMasters
-                        ? "border-amber-700/60 shadow-amber-950/20"
-                        : "border-line/15/80 shadow-black/30")
-                  }
+                  className="group relative overflow-hidden rounded-xl border border-white/[0.05] bg-white/[0.02] transition hover:border-white/[0.08]"
                 >
-                  {/* Vertical accent strip on left, colored by service state */}
-                  <span
-                    aria-hidden="true"
-                    className={
-                      "absolute inset-y-0 left-0 w-0.5 " +
-                      (!s.active
-                        ? "bg-gradient-to-b from-rose-500 to-rose-700"
-                        : noMasters
-                          ? "bg-gradient-to-b from-amber-500 to-amber-700"
-                          : "bg-gradient-to-b from-emerald-500 to-sky-500")
-                    }
-                  />
-
                   {/* === Compact summary row (always visible) === */}
                   <div className="flex items-center gap-2 px-3 py-2 pl-4">
                     <button
@@ -1664,20 +1632,14 @@ export function ServicesPage() {
                         aria-hidden="true"
                         className={
                           "h-2 w-2 shrink-0 rounded-full " +
-                          (!s.active
-                            ? "bg-rose-500"
-                            : noMasters
-                              ? "bg-amber-400"
-                              : existsOnMain
-                                ? "bg-emerald-400"
-                                : "bg-sky-400")
+                          (!s.active ? "bg-white/20" : noMasters ? "bg-gold/50" : "bg-white/30")
                         }
                       />
-                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-fg" : "text-rose-200/80 line-through decoration-rose-500/60"}`}>
+                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-fg" : "text-muted/50 line-through"}`}>
                         {String(s.name_et || "").trim() || <span className="italic text-muted">без названия</span>}
                       </span>
                       <span className="hidden sm:inline-flex shrink-0 items-center gap-2 text-[11px] text-muted tabular-nums">
-                        <span className="rounded-md border border-line/15 bg-surface/50 px-1.5 py-0.5 font-medium text-fg">
+                        <span className="font-medium text-fg tabular-nums">
                           {formatPriceEur(s.price_cents, s.price_max_cents)}
                         </span>
                         <span title="Длительность">
@@ -1689,18 +1651,12 @@ export function ServicesPage() {
                           </span>
                         )}
                         {noMasters ? (
-                          <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-700/60 bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-200" title="Услугу никто не выполняет">
-                            ⚠ без мастеров
-                          </span>
+                          <span className="text-[10px] text-gold/50" title="Услугу никто не выполняет">без мастеров</span>
                         ) : (
-                          <span className="inline-flex items-center gap-0.5 rounded-full border border-line/15 bg-surface/40 px-1.5 py-0.5 text-[10px] text-fg" title={`Назначено мастеров: ${masterLinksCount}`}>
-                            👤 {masterLinksCount}
-                          </span>
+                          <span className="text-[10px] text-muted tabular-nums" title={`Назначено мастеров: ${masterLinksCount}`}>👤 {masterLinksCount}</span>
                         )}
                         {!existsOnMain && s.active && (
-                          <span className="rounded-full border border-amber-700/60 bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-300" title="Услуга не опубликована на сайте">
-                            не на сайте
-                          </span>
+                          <span className="text-[10px] text-muted/50" title="Услуга не опубликована на сайте">· не на сайте</span>
                         )}
                       </span>
                     </button>
@@ -1724,18 +1680,14 @@ export function ServicesPage() {
                   </div>
 
                   {/* === Mobile-only chips line (sm:hidden) === */}
-                  <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2 sm:hidden text-[11px] text-muted tabular-nums">
-                    <span className="rounded-md border border-line/15 bg-surface/50 px-1.5 py-0.5 font-medium text-fg">
-                      {formatPriceEur(s.price_cents, s.price_max_cents)}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2 px-4 pb-2 sm:hidden text-[11px] text-muted tabular-nums">
+                    <span className="font-medium text-fg">{formatPriceEur(s.price_cents, s.price_max_cents)}</span>
                     <span>{Number(s.duration_min || 0)} мин</span>
-                    {Number(s.buffer_after_min || 0) > 0 && (
-                      <span className="text-muted">+{Number(s.buffer_after_min || 0)}</span>
-                    )}
+                    {Number(s.buffer_after_min || 0) > 0 && <span>+{Number(s.buffer_after_min || 0)}</span>}
                     {noMasters ? (
-                      <span className="rounded-full border border-amber-700/60 bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-200">⚠ без мастеров</span>
+                      <span className="text-gold/50">без мастеров</span>
                     ) : (
-                      <span className="rounded-full border border-line/15 bg-surface/40 px-1.5 py-0.5 text-[10px] text-fg">👤 {masterLinksCount}</span>
+                      <span>👤 {masterLinksCount}</span>
                     )}
                   </div>
 
@@ -1909,11 +1861,11 @@ export function ServicesPage() {
                        * на самом деле эту услугу не выбирала). */
                       if (links.length === 0) {
                         return (
-                          <div className="mt-2 rounded-md border border-amber-700/50 bg-amber-950/30 p-2.5 text-xs text-amber-200">
+                          <div className="mt-2 rounded-md border border-gold/20 bg-gold/[0.05] p-2.5 text-xs text-gold/60">
                             <p className="font-medium">Услугу никто не выполняет.</p>
-                            <p className="mt-0.5 text-amber-200/80">
+                            <p className="mt-0.5 text-gold/50">
                               Услуга скрыта на публичном сайте и недоступна в онлайн-записи, пока хотя бы один мастер не возьмёт её. Откройте{" "}
-                              <span className="font-mono text-amber-100">/admin/staff</span>, выберите мастера и включите услугу в блоке «Неактивные услуги».
+                              <span className="font-mono text-gold/70">/admin/staff</span>, выберите мастера и включите услугу в блоке «Неактивные услуги».
                             </p>
                           </div>
                         );
@@ -1941,11 +1893,11 @@ export function ServicesPage() {
                         /* В staff_services есть строки, но ни один из этих мастеров
                          * сейчас не «mастер» (мог уволиться, потерять роль и т.п.). */
                         return (
-                          <div className="mt-2 rounded-md border border-amber-700/50 bg-amber-950/30 p-2.5 text-xs text-amber-200">
+                          <div className="mt-2 rounded-md border border-gold/20 bg-gold/[0.05] p-2.5 text-xs text-gold/60">
                             <p className="font-medium">Назначения «висят» на неактивных мастерах.</p>
-                            <p className="mt-0.5 text-amber-200/80">
+                            <p className="mt-0.5 text-gold/50">
                               В staff_services есть привязки, но у этих сотрудников сейчас нет активной роли «Мастер». Откройте{" "}
-                              <span className="font-mono text-amber-100">/admin/staff</span> и переназначьте услугу действующему мастеру.
+                              <span className="font-mono text-gold/70">/admin/staff</span> и переназначьте услугу действующему мастеру.
                             </p>
                           </div>
                         );
@@ -1957,18 +1909,15 @@ export function ServicesPage() {
                               key={c.id}
                               title={c.reason}
                               className={
-                                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition " +
+                                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium " +
                                 (c.available
-                                  ? "border-emerald-600/60 bg-emerald-900/30 text-emerald-200"
-                                  : "border-line/20 bg-surface/40 text-muted")
+                                  ? "border-gold/30 bg-gold/[0.07] text-gold/80"
+                                  : "border-white/10 bg-white/[0.03] text-muted")
                               }
                             >
                               <span
                                 aria-hidden="true"
-                                className={
-                                  "h-1.5 w-1.5 rounded-full " +
-                                  (c.available ? "bg-emerald-400" : "bg-zinc-600")
-                                }
+                                className={"h-1.5 w-1.5 rounded-full " + (c.available ? "bg-gold/60" : "bg-white/20")}
                               />
                               {c.name}
                             </span>
@@ -1984,11 +1933,10 @@ export function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => void deleteService(s)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted transition hover:bg-red-950/40 hover:text-red-300 focus:opacity-100"
+                        className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-white/[0.06] hover:text-fg/60"
                         title={t("services.deletePermanent")}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
-                        {t("services.deletePermanent")}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
                       </button>
                     </div>
                   )}
