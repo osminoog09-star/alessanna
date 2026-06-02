@@ -1603,6 +1603,9 @@ export function ServicesPage() {
                     >
                       <h3 className="truncate text-sm font-semibold text-fg">{categoryName}</h3>
                     </button>
+                    <span className="shrink-0 rounded-full bg-surface/70 px-2 py-0.5 text-[10px] font-medium text-muted">
+                      {list.length}
+                    </span>
                     {canManage && categoryForGroup && (
                       <button
                         type="button"
@@ -1616,9 +1619,6 @@ export function ServicesPage() {
                         </svg>
                       </button>
                     )}
-                    <span className="shrink-0 rounded-full bg-surface/70 px-2 py-0.5 text-[10px] font-medium text-muted">
-                      {list.length}
-                    </span>
                     {activeCount < list.length && (
                       <span className="shrink-0 rounded-full border border-amber-700/40 bg-amber-950/30 px-2 py-0.5 text-[10px] font-medium text-amber-300" title="Часть услуг выключена">
                         {activeCount}/{list.length} активно
@@ -1660,10 +1660,10 @@ export function ServicesPage() {
                   <button
                     type="button"
                     onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
-                    className="inline-flex items-center gap-1 rounded-md border border-line/20 bg-black/30 px-2.5 py-1 text-xs text-fg transition hover:border-emerald-700/60 hover:bg-emerald-950/30 hover:text-emerald-200"
+                    className="flex h-7 w-7 items-center justify-center rounded border border-line/20 bg-black/30 text-fg transition hover:border-emerald-700/60 hover:bg-emerald-950/30 hover:text-emerald-200"
+                    title="Добавить услугу"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M12 5v14M5 12h14" /></svg>
-                    Добавить услугу
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
                   </button>
                 </div>
               )}
