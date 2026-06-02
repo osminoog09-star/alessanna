@@ -1492,7 +1492,7 @@ export function ServicesPage() {
                       onClick={() => toggleCategoryCollapsed(categoryName)}
                       className="min-w-0 flex-1 text-left"
                     >
-                      <h3 className="truncate text-sm font-semibold text-fg">{categoryName}</h3>
+                      <h3 className="truncate text-sm font-semibold text-muted">{categoryName}</h3>
                     </button>
                     <span className="shrink-0 rounded-full bg-surface/70 px-2 py-0.5 text-[10px] font-medium text-muted">
                       {list.length}
@@ -1583,11 +1583,11 @@ export function ServicesPage() {
                         className={`h-3.5 w-3.5 shrink-0 text-muted transition ${isExpanded ? "rotate-180" : ""}`}
                         aria-hidden="true"
                       ><path d="m6 9 6 6 6-6" /></svg>
-                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-fg" : "text-muted/50 line-through"}`}>
+                      <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-muted" : "text-muted/50 line-through"}`}>
                         {String(s.name_et || "").trim() || <span className="italic text-muted">без названия</span>}
                       </span>
                       <span className="hidden sm:inline-flex shrink-0 items-center gap-2 text-[11px] text-muted tabular-nums">
-                        <span className="font-medium text-fg tabular-nums">
+                        <span className="font-medium text-muted tabular-nums">
                           {formatPriceEur(s.price_cents, s.price_max_cents)}
                         </span>
                         <span title="Длительность">
@@ -1760,7 +1760,7 @@ export function ServicesPage() {
                   {/* Masters block */}
                   <div className="mt-3 rounded-lg border border-gold/10 bg-canvas/20 p-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="flex items-center gap-1.5 text-xs font-medium text-fg">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-muted"><path d="M16 21v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-1a4 4 0 0 0-3-3.87M17 3.13a4 4 0 0 1 0 7.74" /></svg>
                         Мастера
                       </p>
@@ -1936,7 +1936,7 @@ export function ServicesPage() {
                   className={`${fieldBase} border border-line/20`}
                 />
               </label>
-              <div className="flex items-center gap-2 text-xs text-fg">
+              <div className="flex items-center gap-2 text-xs text-muted">
                 <ToggleSwitch checked={quickActive} onCheckedChange={setQuickActive} aria-label="Услуга активна" />
                 <span>Услуга активна</span>
               </div>
@@ -1949,7 +1949,7 @@ export function ServicesPage() {
                   {staffListedAsMasters(staff).map((m) => {
                     const on = quickStaffIds.includes(m.id);
                     return (
-                      <div key={m.id} className="flex items-center gap-2 text-xs text-fg">
+                      <div key={m.id} className="flex items-center gap-2 text-xs text-muted">
                         <ToggleSwitch
                           size="sm"
                           checked={on}
