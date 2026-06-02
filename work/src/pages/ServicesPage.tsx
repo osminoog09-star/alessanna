@@ -1125,7 +1125,7 @@ export function ServicesPage() {
   return (
     <div className="space-y-8">
       {/* ───── Page header ───── */}
-      <header className="rounded-2xl border border-gold/15 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-black/70 p-5 shadow-sm shadow-black/30">
+      <header className="rounded-2xl border border-gold/15 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight text-fg">{t("services.title")}</h1>
