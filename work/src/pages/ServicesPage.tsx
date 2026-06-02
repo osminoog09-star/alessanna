@@ -9,6 +9,7 @@ import { formatPriceEur } from "../lib/format";
 import { listingPriceMaxCents, priceMaxEur } from "../lib/serviceListing";
 import { normalizeRoles } from "../lib/roles";
 import { ToggleSwitch } from "../components/ToggleSwitch";
+import { useTheme } from "../context/ThemeContext";
 
 const editableUi =
   "border border-gold/20 focus:border-gold/50 focus:ring-1 focus:ring-gold/20";
@@ -102,6 +103,8 @@ async function fetchServicesFromListingsCatalog(): Promise<ServiceRow[]> {
 export function ServicesPage() {
   const { t } = useTranslation();
   const { canManage } = useEffectiveRole();
+  const { theme } = useTheme();
+  const isDark = theme === "onyx" || theme === "stone";
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   /* Зеркало `categories` в ref: колбэки (syncServiceToPublicCatalog/load)
    * читают актуальный справочник, не завися от него в массиве зависимостей —
@@ -1132,16 +1135,16 @@ export function ServicesPage() {
 
             {/* Stat chips */}
             <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/15 bg-sky-300/[0.06] px-2.5 py-1 text-sky-200/80">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-sky-300/60" />
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${isDark ? "border-sky-300/15 bg-sky-300/[0.06] text-sky-200/80" : "border-sky-500/25 bg-sky-500/[0.08] text-sky-700"}`}>
+                <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${isDark ? "bg-sky-300/60" : "bg-sky-500/70"}`} />
                 Всего услуг: <strong className="font-semibold">{servicesStats.total}</strong>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[0.06] px-2.5 py-1 text-emerald-200/80">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-300/60" />
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${isDark ? "border-emerald-300/15 bg-emerald-300/[0.06] text-emerald-200/80" : "border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-700"}`}>
+                <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${isDark ? "bg-emerald-300/60" : "bg-emerald-500/70"}`} />
                 Активных: <strong className="font-semibold">{servicesStats.active}</strong>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/15 bg-amber-300/[0.06] px-2.5 py-1 text-amber-200/80">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-300/60" />
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${isDark ? "border-amber-300/15 bg-amber-300/[0.06] text-amber-200/80" : "border-amber-500/25 bg-amber-500/[0.08] text-amber-700"}`}>
+                <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${isDark ? "bg-amber-300/60" : "bg-amber-500/70"}`} />
                 На главной: <strong className="font-semibold">{servicesStats.onSite}</strong>
                 {publicCheckLoading && <span className="ml-1 opacity-70">(проверка…)</span>}
               </span>
@@ -1161,18 +1164,18 @@ export function ServicesPage() {
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition " +
                   (servicesStats.noMasters > 0
                     ? (filterNoMasters
-                        ? "border-rose-300/40 bg-rose-300/[0.12] text-rose-100"
-                        : "border-rose-300/15 bg-rose-300/[0.06] text-rose-200/80 hover:border-rose-300/30 hover:bg-rose-300/[0.1]")
+                        ? (isDark ? "border-rose-300/40 bg-rose-300/[0.12] text-rose-100" : "border-rose-500/40 bg-rose-500/[0.12] text-rose-700")
+                        : (isDark ? "border-rose-300/15 bg-rose-300/[0.06] text-rose-200/80 hover:border-rose-300/30 hover:bg-rose-300/[0.1]" : "border-rose-500/25 bg-rose-500/[0.06] text-rose-700 hover:border-rose-500/40 hover:bg-rose-500/[0.1]"))
                     : (filterNoMasters
                         ? "border-gold/30 bg-surface/60 text-fg"
-                        : "border-white/10 bg-surface/40 text-fg hover:border-white/20"))
+                        : "border-line/10 bg-surface/40 text-fg hover:border-line/20"))
                 }
               >
                 <span
                   aria-hidden="true"
                   className={
                     "h-1.5 w-1.5 rounded-full " +
-                    (servicesStats.noMasters > 0 ? "bg-rose-300/60" : "bg-zinc-500")
+                    (servicesStats.noMasters > 0 ? (isDark ? "bg-rose-300/60" : "bg-rose-500/70") : "bg-muted")
                   }
                 />
                 Без мастеров: <strong className="font-semibold">{servicesStats.noMasters}</strong>
@@ -1185,7 +1188,7 @@ export function ServicesPage() {
               <button
                 type="button"
                 onClick={() => void refreshPublicStatus()}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-white/[0.06] hover:text-fg"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-line/[0.06] hover:text-fg"
                 title="Проверить главную — сверить CRM со списком услуг, который видит сайт"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" /></svg>
@@ -1234,7 +1237,7 @@ export function ServicesPage() {
                   "relative flex h-9 w-9 items-center justify-center rounded-lg transition " +
                   (filtersActive
                     ? "text-gold hover:bg-gold/[0.1]"
-                    : "text-muted hover:bg-white/[0.06] hover:text-fg")
+                    : "text-muted hover:bg-line/[0.06] hover:text-fg")
                 }
                 aria-expanded={showToolbar}
                 title="Фильтры и сортировка"
@@ -1294,7 +1297,7 @@ export function ServicesPage() {
                       "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
                       (filterNoMasters
                         ? "border-gold/40 bg-gold/[0.1] text-gold"
-                        : "border-line/20 bg-surface/40 text-fg hover:border-white/20 hover:text-fg")
+                        : "border-line/20 bg-surface/40 text-fg hover:border-line/20 hover:text-fg")
                     }
                     title="Услуги, которые никто не выполняет"
                   >
@@ -1307,7 +1310,7 @@ export function ServicesPage() {
                       "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
                       (filterNotOnMain
                         ? "border-gold/40 bg-gold/[0.1] text-gold"
-                        : "border-line/20 bg-surface/40 text-fg hover:border-white/20 hover:text-fg")
+                        : "border-line/20 bg-surface/40 text-fg hover:border-line/20 hover:text-fg")
                     }
                     title="Услуги, которых ещё нет на сайте"
                   >
@@ -1410,7 +1413,7 @@ export function ServicesPage() {
             <button
               type="button"
               onClick={() => setShowNewCategoryInput(true)}
-              className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-white/[0.07] hover:text-fg"
+              className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-line/[0.07] hover:text-fg"
               title="Добавить категорию"
               aria-label="Добавить категорию"
             >
@@ -1446,7 +1449,7 @@ export function ServicesPage() {
             key={categoryName}
             className="overflow-hidden rounded-2xl border border-gold/15 bg-panel/60"
           >
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gold/10 bg-gradient-to-r from-zinc-900/60 to-transparent px-5 py-3">
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gold/10 px-5 py-3">
               <div className="group flex items-center gap-2 min-w-0 flex-1">
                 <button
                   type="button"
@@ -1501,7 +1504,7 @@ export function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => { setHeaderEditCatId(String(categoryForGroup.id)); setHeaderEditDraft(categoryName); }}
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted transition hover:bg-white/[0.08] hover:text-fg"
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted transition hover:bg-line/[0.08] hover:text-fg"
                         title="Переименовать категорию"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
@@ -1536,7 +1539,7 @@ export function ServicesPage() {
                   <button
                     type="button"
                     onClick={() => openQuickCreate(categoryName === "Без категории" ? "" : categoryName)}
-                    className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-white/[0.07] hover:text-fg"
+                    className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-line/[0.07] hover:text-fg"
                     title="Добавить услугу"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
@@ -1558,14 +1561,14 @@ export function ServicesPage() {
                 return (
                 <article
                   key={s.id}
-                  className="group relative overflow-hidden rounded-xl border border-gold/10 bg-white/[0.02] transition hover:border-gold/20"
+                  className="group relative overflow-hidden rounded-xl border border-gold/10 bg-line/[0.02] transition hover:border-gold/20"
                 >
                   {/* === Compact summary row (always visible) === */}
                   <div className="flex items-center gap-2 px-3 py-2 pl-4">
                     <button
                       type="button"
                       onClick={() => toggleExpanded(String(s.id))}
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left transition hover:bg-white/[0.02] focus:outline-none focus:bg-white/[0.04]"
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left transition hover:bg-line/[0.02] focus:outline-none focus:bg-line/[0.04]"
                       aria-expanded={isExpanded}
                       title={isExpanded ? "Свернуть карточку" : "Раскрыть карточку для редактирования"}
                     >
@@ -1835,7 +1838,7 @@ export function ServicesPage() {
                                 "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium " +
                                 (c.available
                                   ? "border-gold/30 bg-gold/[0.07] text-gold/80"
-                                  : "border-white/10 bg-white/[0.03] text-muted")
+                                  : "border-line/10 bg-line/[0.03] text-muted")
                               }
                             >
                               {c.name}
@@ -1852,7 +1855,7 @@ export function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => void deleteService(s)}
-                        className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-white/[0.06] hover:text-fg/60"
+                        className="flex h-7 w-7 items-center justify-center rounded text-muted transition hover:bg-line/[0.06] hover:text-fg/60"
                         title={t("services.deletePermanent")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
