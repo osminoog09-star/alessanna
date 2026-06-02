@@ -121,6 +121,7 @@ export function ServicesPage() {
   >({});
   const [publicListingNames, setPublicListingNames] = useState<Set<string>>(new Set());
   const [publicCheckLoading, setPublicCheckLoading] = useState(false);
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
 
   /* === Compact mode + persistent UI prefs ====================================
    * Большие салоны держат 30+ услуг — раскрытая «портянка» полей делает страницу
@@ -547,6 +548,7 @@ export function ServicesPage() {
       }
     }
     setNewCat("");
+    setShowNewCategoryInput(false);
     load();
   }
 
@@ -768,61 +770,6 @@ export function ServicesPage() {
       return;
     }
     await deleteServiceFromPublicCatalog(s);
-    await refreshPublicStatus();
-    load();
-  }
-
-  async function addService() {
-    if (!canManage) return;
-    let insertRes = await supabase
-      .from("services")
-      .insert({
-        name_et: i18n.t("services.newServiceDefault"),
-        duration_min: 60,
-        buffer_after_min: 10,
-        price_cents: 3000,
-        active: true,
-        sort_order: services.length,
-      })
-      .select("*")
-      .single();
-    if (insertRes.error) {
-      insertRes = await supabase
-        .from("services")
-        .insert({
-          name: i18n.t("services.newServiceDefault"),
-          duration: 60,
-          buffer_after_min: 10,
-          price: 30,
-          category: null,
-        })
-        .select("*")
-        .single();
-      if (insertRes.error && String(insertRes.error.message || "").includes("buffer_after_min")) {
-        insertRes = await supabase
-          .from("services")
-          .insert({
-            name: i18n.t("services.newServiceDefault"),
-            duration: 60,
-            price: 30,
-            category: null,
-          })
-          .select("*")
-          .single();
-      }
-    }
-    if (insertRes.error) {
-      console.error("[services] add failed", insertRes.error);
-      return;
-    }
-    if (insertRes.data) {
-      const row = insertRes.data as Record<string, unknown>;
-      const normalized =
-        row.name_et != null
-          ? (insertRes.data as ServiceRow)
-          : mapModernServices([row])[0];
-      await syncServiceToPublicCatalog(normalized);
-    }
     await refreshPublicStatus();
     load();
   }
@@ -1264,14 +1211,6 @@ export function ServicesPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12m-4-4 4 4 4-4M4 21h16" /></svg>
                 Обновить всё на сайте
               </button>
-              <button
-                type="button"
-                onClick={() => void addService()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-fg shadow-sm shadow-sky-500/20 transition hover:bg-sky-500"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
-                {t("services.addService")}
-              </button>
             </div>
           )}
         </div>
@@ -1482,11 +1421,18 @@ export function ServicesPage() {
               <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-fg">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-sky-300"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
                 {t("services.categories")}
+                <button
+                  type="button"
+                  onClick={() => setShowNewCategoryInput((v) => !v)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line/20 bg-black/30 text-muted transition hover:border-sky-600/60 hover:bg-sky-950/30 hover:text-sky-200"
+                  title="Добавить категорию"
+                  aria-label="Добавить категорию"
+                >
+                  +
+                </button>
               </h2>
-              <p className="mt-1 text-xs text-muted">
-                Это категории услуг. В каждую категорию можно добавить услуги.
-              </p>
             </div>
+            {showNewCategoryInput && (
             <div className="flex items-center gap-2">
               <input
                 value={newCat}
@@ -1510,6 +1456,7 @@ export function ServicesPage() {
                 {t("common.add")}
               </button>
             </div>
+            )}
           </div>
 
           {categories.length === 0 ? (
@@ -1562,15 +1509,6 @@ export function ServicesPage() {
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="m5 13 4 4L19 7" /></svg>
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => openQuickCreate(String(c.name || "").trim())}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-emerald-950/40 hover:text-emerald-300"
-                      title="Добавить услугу в эту категорию"
-                      aria-label="Добавить услугу"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>
-                    </button>
                     <button
                       type="button"
                       onClick={() => void deleteCategory(c)}
