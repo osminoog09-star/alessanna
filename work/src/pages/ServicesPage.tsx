@@ -11,7 +11,7 @@ import { normalizeRoles } from "../lib/roles";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 
 const editableUi =
-  "border border-white/15 focus:border-gold/50 focus:ring-1 focus:ring-gold/20";
+  "border border-gold/20 focus:border-gold/50 focus:ring-1 focus:ring-gold/20";
 const fieldBase =
   "mt-1 w-full rounded-lg bg-surface px-3 py-2 text-sm text-fg disabled:opacity-60";
 
@@ -1136,13 +1136,13 @@ export function ServicesPage() {
   return (
     <div className="space-y-8">
       {/* ───── Page header ───── */}
-      <header className="rounded-2xl border border-line/15/80 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-black/70 p-5 shadow-sm shadow-black/30">
+      <header className="rounded-2xl border border-gold/15 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-black/70 p-5 shadow-sm shadow-black/30">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span
                 aria-hidden="true"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-sky-700/40 bg-sky-950/40 text-sky-300"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gold/25 bg-gold/[0.07] text-gold"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z M3.3 7 12 12m0 0 8.7-5M12 12v10" />
@@ -1156,16 +1156,16 @@ export function ServicesPage() {
 
             {/* Stat chips */}
             <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-700/40 bg-sky-950/30 px-2.5 py-1 text-sky-200">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/15 bg-sky-300/[0.06] px-2.5 py-1 text-sky-200/80">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-sky-300/60" />
                 Всего услуг: <strong className="font-semibold">{servicesStats.total}</strong>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-700/40 bg-emerald-950/30 px-2.5 py-1 text-emerald-200">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[0.06] px-2.5 py-1 text-emerald-200/80">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-300/60" />
                 Активных: <strong className="font-semibold">{servicesStats.active}</strong>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-700/40 bg-amber-950/30 px-2.5 py-1 text-amber-200">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/15 bg-amber-300/[0.06] px-2.5 py-1 text-amber-200/80">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-300/60" />
                 На главной: <strong className="font-semibold">{servicesStats.onSite}</strong>
                 {publicCheckLoading && <span className="ml-1 opacity-70">(проверка…)</span>}
               </span>
@@ -1185,18 +1185,18 @@ export function ServicesPage() {
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition " +
                   (servicesStats.noMasters > 0
                     ? (filterNoMasters
-                        ? "border-rose-500/80 bg-rose-900/40 text-rose-100"
-                        : "border-rose-700/50 bg-rose-950/30 text-rose-200 hover:border-rose-500/70 hover:bg-rose-900/40")
+                        ? "border-rose-300/40 bg-rose-300/[0.12] text-rose-100"
+                        : "border-rose-300/15 bg-rose-300/[0.06] text-rose-200/80 hover:border-rose-300/30 hover:bg-rose-300/[0.1]")
                     : (filterNoMasters
-                        ? "border-line/30/80 bg-surface/60 text-fg"
-                        : "border-line/20/50 bg-surface/40 text-fg hover:border-line/30/70"))
+                        ? "border-gold/30 bg-surface/60 text-fg"
+                        : "border-white/10 bg-surface/40 text-fg hover:border-white/20"))
                 }
               >
                 <span
                   aria-hidden="true"
                   className={
                     "h-1.5 w-1.5 rounded-full " +
-                    (servicesStats.noMasters > 0 ? "bg-rose-400" : "bg-zinc-500")
+                    (servicesStats.noMasters > 0 ? "bg-rose-300/60" : "bg-zinc-500")
                   }
                 />
                 Без мастеров: <strong className="font-semibold">{servicesStats.noMasters}</strong>
@@ -1218,7 +1218,7 @@ export function ServicesPage() {
               <button
                 type="button"
                 onClick={() => void syncAllServicesToPublicSite()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-700/60 bg-amber-950/40 px-3 py-2 text-sm font-medium text-amber-100 transition hover:border-amber-500/80 hover:bg-amber-950/70"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gold/30 bg-gold/[0.08] px-3 py-2 text-sm font-medium text-gold transition hover:border-gold/50 hover:bg-gold/[0.14]"
                 title="Записывает все активные услуги из CRM в таблицу для главного сайта (service_listings)"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 3v12m-4-4 4 4 4-4M4 21h16" /></svg>
@@ -1259,7 +1259,7 @@ export function ServicesPage() {
                 className={
                   "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition " +
                   (filtersActive
-                    ? "border-sky-600/60 bg-sky-950/40 text-sky-200 hover:border-sky-500"
+                    ? "border-gold/30 bg-gold/[0.08] text-gold hover:border-gold/50"
                     : "border-line/20 bg-black/30 text-fg hover:border-line/30 hover:bg-surface")
                 }
                 aria-expanded={showToolbar}
@@ -1268,7 +1268,7 @@ export function ServicesPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M6 12h12M10 18h4" /></svg>
                 Фильтры
                 {filtersActive && (
-                  <span className="rounded-full bg-sky-500/20 px-1.5 text-[10px] font-semibold text-sky-200">
+                  <span className="rounded-full bg-gold/20 px-1.5 text-[10px] font-semibold text-gold">
                     {[
                       filterActive !== "all" ? 1 : 0,
                       filterNoMasters ? 1 : 0,
@@ -1305,7 +1305,7 @@ export function ServicesPage() {
             </div>
 
             {showToolbar && (
-              <div className="rounded-xl border border-line/15/80 bg-canvas/40 p-3 space-y-3">
+              <div className="rounded-xl border border-gold/10 bg-canvas/40 p-3 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] uppercase tracking-wide text-muted">Статус:</span>
                   {([
@@ -1320,7 +1320,7 @@ export function ServicesPage() {
                       className={
                         "rounded-full border px-3 py-1 text-xs font-medium transition " +
                         (filterActive === opt.id
-                          ? "border-sky-500/70 bg-sky-900/40 text-sky-100"
+                          ? "border-gold/40 bg-gold/[0.1] text-gold"
                           : "border-line/20 bg-surface/40 text-fg hover:border-line/30 hover:text-fg")
                       }
                     >
@@ -1337,8 +1337,8 @@ export function ServicesPage() {
                     className={
                       "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
                       (filterNoMasters
-                        ? "border-amber-500/70 bg-amber-950/40 text-amber-100"
-                        : "border-line/20 bg-surface/40 text-fg hover:border-amber-700/50 hover:text-amber-200")
+                        ? "border-gold/40 bg-gold/[0.1] text-gold"
+                        : "border-line/20 bg-surface/40 text-fg hover:border-white/20 hover:text-fg")
                     }
                     title="Услуги, которые никто не выполняет"
                   >
@@ -1350,8 +1350,8 @@ export function ServicesPage() {
                     className={
                       "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition " +
                       (filterNotOnMain
-                        ? "border-amber-500/70 bg-amber-950/40 text-amber-100"
-                        : "border-line/20 bg-surface/40 text-fg hover:border-amber-700/50 hover:text-amber-200")
+                        ? "border-gold/40 bg-gold/[0.1] text-gold"
+                        : "border-line/20 bg-surface/40 text-fg hover:border-white/20 hover:text-fg")
                     }
                     title="Услуги, которых ещё нет на сайте"
                   >
@@ -1364,7 +1364,7 @@ export function ServicesPage() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortBy)}
-                    className="rounded-lg border border-line/20 bg-surface px-2.5 py-1 text-xs text-fg focus:border-gold focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                    className="rounded-lg border border-line/20 bg-surface px-2.5 py-1 text-xs text-fg focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold/30"
                   >
                     <option value="name">по названию (А → Я)</option>
                     <option value="price-asc">цена ↑</option>
@@ -1389,7 +1389,7 @@ export function ServicesPage() {
                           className={
                             "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition " +
                             (checked
-                              ? "border-sky-500/70 bg-sky-900/40 text-sky-100"
+                              ? "border-gold/40 bg-gold/[0.1] text-gold"
                               : "border-line/20 bg-surface/40 text-muted hover:border-line/30 hover:text-fg")
                           }
                         >
@@ -1488,9 +1488,9 @@ export function ServicesPage() {
           return (
           <section
             key={categoryName}
-            className="overflow-hidden rounded-2xl border border-line/15/80 bg-panel/60"
+            className="overflow-hidden rounded-2xl border border-gold/15 bg-panel/60"
           >
-            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line/15/60 bg-gradient-to-r from-zinc-900/60 to-transparent px-5 py-3">
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gold/10 bg-gradient-to-r from-zinc-900/60 to-transparent px-5 py-3">
               <div className="group flex items-center gap-2 min-w-0 flex-1">
                 <button
                   type="button"
@@ -1510,10 +1510,6 @@ export function ServicesPage() {
                     className={`h-3.5 w-3.5 shrink-0 transition ${isCatCollapsed ? "-rotate-90" : ""}`}
                     aria-hidden="true"
                   ><path d="m6 9 6 6 6-6" /></svg>
-                  <span
-                    aria-hidden="true"
-                    className="h-2 w-2 shrink-0 rounded-full bg-gold/25"
-                  />
                 </button>
                 {canManage && categoryForGroup && headerEditCatId === String(categoryForGroup.id) ? (
                   <input
@@ -1542,6 +1538,9 @@ export function ServicesPage() {
                     <span className="shrink-0 rounded-full bg-surface/70 px-2 py-0.5 text-[10px] font-medium text-muted">
                       {list.length}
                     </span>
+                    {activeCount < list.length && (
+                      <span className="shrink-0 text-[10px] text-muted/50">{activeCount}/{list.length}</span>
+                    )}
                     {canManage && categoryForGroup && (
                       <button
                         type="button"
@@ -1554,9 +1553,6 @@ export function ServicesPage() {
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </button>
-                    )}
-                    {activeCount < list.length && (
-                      <span className="text-[10px] text-muted/50">{activeCount}/{list.length}</span>
                     )}
                     {noMastersCount > 0 && (
                       <span className="text-[10px] text-gold/40" title={`Без назначенных мастеров: ${noMastersCount}. Услуги скрыты на сайте, никто их не возьмёт.`}> {noMastersCount} без мастеров</span>
@@ -1574,7 +1570,7 @@ export function ServicesPage() {
                       <button
                         type="button"
                         onClick={() => void deleteCategory(categoryForGroup)}
-                        className="flex h-7 w-7 items-center justify-center rounded text-rose-400 transition hover:bg-rose-950/40 hover:text-rose-300"
+                        className="flex h-7 w-7 items-center justify-center rounded text-rose-300/60 transition hover:bg-rose-300/[0.08] hover:text-rose-300/90"
                         title="Удалить категорию"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
@@ -1606,7 +1602,7 @@ export function ServicesPage() {
                 return (
                 <article
                   key={s.id}
-                  className="group relative overflow-hidden rounded-xl border border-white/[0.05] bg-white/[0.02] transition hover:border-white/[0.08]"
+                  className="group relative overflow-hidden rounded-xl border border-gold/10 bg-white/[0.02] transition hover:border-gold/20"
                 >
                   {/* === Compact summary row (always visible) === */}
                   <div className="flex items-center gap-2 px-3 py-2 pl-4">
@@ -1628,13 +1624,6 @@ export function ServicesPage() {
                         className={`h-3.5 w-3.5 shrink-0 text-muted transition ${isExpanded ? "rotate-180" : ""}`}
                         aria-hidden="true"
                       ><path d="m6 9 6 6 6-6" /></svg>
-                      <span
-                        aria-hidden="true"
-                        className={
-                          "h-2 w-2 shrink-0 rounded-full " +
-                          (!s.active ? "bg-white/20" : noMasters ? "bg-gold/50" : "bg-white/30")
-                        }
-                      />
                       <span className={`min-w-0 flex-1 truncate text-sm font-medium ${s.active ? "text-fg" : "text-muted/50 line-through"}`}>
                         {String(s.name_et || "").trim() || <span className="italic text-muted">без названия</span>}
                       </span>
@@ -1693,7 +1682,7 @@ export function ServicesPage() {
 
                   {/* === Expanded full editor === */}
                   {isExpanded && (
-                  <div className="border-t border-line/15/60 p-4 pt-3">
+                  <div className="border-t border-gold/10 p-4 pt-3">
                   {/* Form grid — name takes 2 cols on lg for visibility */}
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
                     <label className="block text-[11px] uppercase tracking-wide text-muted lg:col-span-2">
@@ -1832,7 +1821,7 @@ export function ServicesPage() {
                     </label>
                   </div>
                   {/* Masters block */}
-                  <div className="mt-3 rounded-lg border border-line/15/80 bg-canvas/20 p-3">
+                  <div className="mt-3 rounded-lg border border-gold/10 bg-canvas/20 p-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <p className="flex items-center gap-1.5 text-xs font-medium text-fg">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-muted"><path d="M16 21v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-1a4 4 0 0 0-3-3.87M17 3.13a4 4 0 0 1 0 7.74" /></svg>
@@ -1909,16 +1898,12 @@ export function ServicesPage() {
                               key={c.id}
                               title={c.reason}
                               className={
-                                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium " +
+                                "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium " +
                                 (c.available
                                   ? "border-gold/30 bg-gold/[0.07] text-gold/80"
                                   : "border-white/10 bg-white/[0.03] text-muted")
                               }
                             >
-                              <span
-                                aria-hidden="true"
-                                className={"h-1.5 w-1.5 rounded-full " + (c.available ? "bg-gold/60" : "bg-white/20")}
-                              />
                               {c.name}
                             </span>
                           ))}

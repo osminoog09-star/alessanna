@@ -426,12 +426,14 @@ export function Layout() {
           {!collapsed ? (
             <>
               <div className="min-w-0 leading-none">
-                <p className="font-display text-2xl uppercase tracking-[0.32em] text-gold">
-                  {t("brand")}
-                </p>
-                <p className="mt-1 truncate text-[9px] uppercase tracking-[0.36em] text-muted">
-                  {t("brand.tagline", { defaultValue: "Nails & Beauty Salon" })}
-                </p>
+                <img
+                  src={theme === "onyx" || theme === "stone" ? "/alessanna-logo.png" : "/alessanna-logo-light.png"}
+                  alt={t("brand")}
+                  title={t("brand")}
+                  className="w-full object-contain object-left"
+                  style={{ maxHeight: 48 }}
+                  draggable={false}
+                />
               </div>
               <LanguageSwitcher className="justify-end" />
             </>
