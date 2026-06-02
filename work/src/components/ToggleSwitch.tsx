@@ -33,9 +33,9 @@ export function ToggleSwitch({
         if (!disabled) onCheckedChange(!checked);
       }}
       className={[
-        "relative inline-flex shrink-0 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50",
+        "relative inline-flex shrink-0 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/30",
         track,
-        checked ? "border-emerald-600/50 bg-emerald-600" : "border-zinc-600 bg-zinc-700",
+        checked ? "border-gold/50 bg-gold" : "border-white/10 bg-white/[0.08]",
         disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer",
       ].join(" ")}
     >
