@@ -178,39 +178,13 @@ export function ServicesPage() {
   };
   const initialPrefs = useMemo(loadPrefs, []);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(initialPrefs.expandedServiceIds));
-  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(() => new Set(initialPrefs.collapsedCategories));
+  const [openCats, setOpenCats] = useState<Set<string>>(() => new Set());
   const [filterActive, setFilterActive] = useState<ActiveFilter>(initialPrefs.filterActive);
   const [filterNoMasters, setFilterNoMasters] = useState<boolean>(initialPrefs.filterNoMasters);
   const [filterNotOnMain, setFilterNotOnMain] = useState<boolean>(initialPrefs.filterNotOnMain);
   const [filterCategoryIds, setFilterCategoryIds] = useState<Set<string>>(() => new Set(initialPrefs.filterCategoryIds));
   const [sortBy, setSortBy] = useState<SortBy>(initialPrefs.sortBy);
   const [showToolbar, setShowToolbar] = useState<boolean>(initialPrefs.showToolbar);
-  const [collapseAllInitialized, setCollapseAllInitialized] = useState<boolean>(false);
-
-  /* Однократный сворачивающий эффект: при первом заходе админа на страницу
-   * (нет ни одного флага в localStorage v2) сворачиваем ВСЕ категории, чтобы
-   * на /services сразу была краткая «карта» салона, а детали разворачивались
-   * по клику. После того как мы это сделали хоть раз — флаг collapseAll-
-   * Initialized уезжает в localStorage и больше не трогает выбор юзера. */
-  useEffect(() => {
-    if (collapseAllInitialized) return;
-    if (categories.length === 0 && services.length === 0) return;
-    const allCategoryNames = new Set<string>();
-    for (const c of categories) {
-      const name = String(c.name || "").trim();
-      if (name) allCategoryNames.add(name);
-    }
-    for (const service of services) {
-      allCategoryNames.add(categoryNameFromService(service) || "Без категории");
-    }
-    setCollapsedCats((prev) => {
-      const next = new Set(prev);
-      for (const n of allCategoryNames) next.add(n);
-      return next;
-    });
-    setCollapseAllInitialized(true);
-  }, [categories, services, collapseAllInitialized]);
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const payload: ServicesPrefs = {
@@ -227,7 +201,7 @@ export function ServicesPage() {
     try {
       window.localStorage.setItem(SERVICES_PREFS_KEY, JSON.stringify(payload));
     } catch { /* quota / private mode — silently ignore */ }
-  }, [expandedIds, collapsedCats, filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds, sortBy, showToolbar, collapseAllInitialized]);
+  }, [expandedIds, openCats, filterActive, filterNoMasters, filterNotOnMain, filterCategoryIds, sortBy, showToolbar]);
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -237,7 +211,7 @@ export function ServicesPage() {
     });
   }
   function toggleCategoryCollapsed(name: string) {
-    setCollapsedCats((prev) => {
+    setOpenCats((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name); else next.add(name);
       return next;
@@ -1612,7 +1586,7 @@ export function ServicesPage() {
               s.active &&
               !publicListingNames.has(String(s.name_et || "").trim().toLowerCase()),
           ).length;
-          const isCatCollapsed = collapsedCats.has(categoryName);
+          const isCatCollapsed = !openCats.has(categoryName);
           return (
           <section
             key={categoryName}
